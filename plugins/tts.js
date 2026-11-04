@@ -1,5 +1,5 @@
 const googleTTS = require('google-tts-api');
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, FileBuilder, MessageFlags } = require('discord.js');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
@@ -30,154 +30,63 @@ data: new SlashCommandBuilder()
             .setRequired(true)
     ),
 
-// 🔥 NEW SIGNATURE: 6 parameters with usedCommand
+// One message, like a real Discord command: the text, the detected voice, and the audio file inside the card.
+// (Before: a "processing" embed, then an edit with a STATISTICS block; the voice was labelled "neural", which
+// Google Translate's voice is not.)
 run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
-        // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
         lang = client.detectLanguage ? client.detectLanguage('tts', message.guild?.id) : 'en';
-        
         const t = loadT(lang);
-        const version = client.version || '1.6.0';
+        const tr = (k, v) => i18n.t(`tts.${k}`, lang, v);
         const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
-        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
-        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
-        
         let text = args.join(' ');
 
-        // ================= FETCH REPLIED MESSAGE =================
+        // Reply to a message with .tts to read it aloud
         if (!text && message.reference) {
             try {
                 const repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
-                if (repliedMsg.content) {
-                    text = repliedMsg.content;
-                }
+                if (repliedMsg.content) text = repliedMsg.content;
             } catch {
-                const errorEmbed = new EmbedBuilder()
-                    .setColor('#ED4245')
-                    .setDescription(t.fetchError)
-                    .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon });
-                return message.reply({ embeds: [errorEmbed] }).catch(() => {});
+                return message.reply({ content: t.fetchError, allowedMentions: { repliedUser: false } }).catch(() => {});
             }
         }
 
-        // ================= NO TEXT PROVIDED =================
         if (!text) {
-            const helpEmbed = new EmbedBuilder()
-                .setColor('#00fbff')
-                .setAuthor({ name: t.author, iconURL: client.user.displayAvatarURL() })
-                .setDescription(
-                    `${t.noText}\n\n` +
-                    `**${t.usage}:** \`${prefix}tts [${lang === 'fr' ? 'texte' : 'text'}]\`\n` +
-                    `**${lang === 'fr' ? 'Exemple' : 'Example'}:** \`${prefix}tts ${lang === 'fr' ? 'Bonjour tout le monde' : 'Hello world'}\`\n\n` +
-                    `💡 ${lang === 'fr' ? 'Vous pouvez aussi répondre à un message avec' : 'You can also reply to a message with'} \`${prefix}tts\``
-                )
-                .setFooter({ text: `${guildName} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            return message.reply({ embeds: [helpEmbed] }).catch(() => {});
+            return message.reply({
+                content: `${t.noText}\n-# ${t.usage} : \`${prefix}tts ${tr('exampleText')}\` · ${tr('replyHint', { cmd: `\`${prefix}tts\`` })}`,
+                allowedMentions: { repliedUser: false },
+            }).catch(() => {});
         }
 
-        // ================= INTELLIGENT LANGUAGE DETECTION =================
+        // French or English voice, from the text itself
         const frenchPattern = /[éèêëàâäôöùûüÿçœæ]/i;
         const frenchWords = /\b(le|la|les|un|une|des|du|de|et|est|dans|pour|avec|vous|nous|je|tu|il|elle|bonjour|salut|merci|comment|quoi|pourquoi|quand)\b/i;
         const isFrench = frenchPattern.test(text) || frenchWords.test(text);
-        
-        const langCode = isFrench ? 'fr' : 'en';
         const voiceCode = isFrench ? 'fr-FR' : 'en-US';
         const langFlag = isFrench ? '🇫🇷' : '🇺🇸';
         const langName = isFrench ? 'Français' : 'English';
-        const voiceName = isFrench ? 'Française' : 'American';
-        
-        // ================= TRUNCATE TEXT =================
+
         const maxLength = 200;
         const isTruncated = text.length > maxLength;
-        const truncated = isTruncated ? text.substring(0, maxLength) + '…' : text;
-        
-        // ================= PROCESSING EMBED =================
-        const processingEmbed = new EmbedBuilder()
-            .setColor('#9b59b6')
-            .setAuthor({ name: t.author, iconURL: client.user.displayAvatarURL() })
-            .setDescription(
-                `**${t.processing}**\n\n` +
-                `**${t.detected}:** ${langFlag} ${langName}\n` +
-                `**${t.voice}:** 🎤 ${voiceName}\n` +
-                `**${t.text}:** ${text.length} ${t.characters}`
-            )
-            .setFooter({ text: `${guildName} • ${t.node} • v${version}`, iconURL: guildIcon })
-            .setTimestamp();
-        
-        const processingMsg = await message.reply({ embeds: [processingEmbed] }).catch(() => {});
+        const spoken = isTruncated ? text.substring(0, maxLength) + '…' : text;
 
+        if (!message.isSlash) message.channel?.sendTyping?.().catch(() => {});
         try {
-            // ================= GENERATE TTS =================
-            const url = googleTTS.getAudioUrl(truncated, {
-                lang: voiceCode,
-                slow: false,
-                host: 'https://translate.google.com',
+            const url = googleTTS.getAudioUrl(spoken, { lang: voiceCode, slow: false, host: 'https://translate.google.com' });
+            const quote = spoken.replace(/\n+/g, ' ').substring(0, 300);
+            const card = new ContainerBuilder().setAccentColor(0x5865F2)
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${t.author}\n> ${quote}`))
+                .addFileComponents(new FileBuilder().setURL('attachment://voice.mp3'))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                    `-# ${langFlag} ${langName} · ${text.length} ${t.characters}${isTruncated ? ` · ${tr('truncatedNote', { n: maxLength })}` : ''}`));
+            await message.reply({
+                components: [card],
+                files: [{ attachment: url, name: 'voice.mp3' }],
+                flags: MessageFlags.IsComponentsV2,
+                allowedMentions: { parse: [], repliedUser: false },
             });
-
-            // ================= SUCCESS EMBED =================
-            const successEmbed = new EmbedBuilder()
-                .setColor('#2ecc71')
-                .setAuthor({ name: t.author, iconURL: client.user.displayAvatarURL() })
-                .setDescription(
-                    `**${t.detected}:** ${langFlag} ${langName}\n` +
-                    `**${t.voice}:** 🎤 ${t.neuralVoice} (${voiceName})\n` +
-                    `**${t.text}:**\n\`\`\`${truncated}\`\`\``
-                )
-                .addFields({
-                    name: '📊 STATISTICS',
-                    value: `\`\`\`yaml\n${t.characters}: ${text.length}\n${t.truncated}: ${isTruncated ? '✅ Yes' : '❌ No'}\n\`\`\``,
-                    inline: false
-                })
-                .setFooter({ 
-                    text: `${guildName} • ${t.node} • ${isTruncated ? t.truncated : t.fullMessage} • v${version}`, 
-                    iconURL: guildIcon 
-                })
-                .setTimestamp();
-
-            // ================= EDIT OR SEND NEW =================
-            if (processingMsg) {
-                await processingMsg.edit({ 
-                    embeds: [successEmbed], 
-                    files: [{
-                        attachment: url,
-                        name: `neural_voice_${langCode}_${Date.now()}.mp3`
-                    }] 
-                }).catch(async () => {
-                    // If edit fails, send new
-                    await message.reply({
-                        embeds: [successEmbed],
-                        files: [{
-                            attachment: url,
-                            name: `neural_voice_${langCode}_${Date.now()}.mp3`
-                        }]
-                    }).catch(() => {});
-                });
-            } else {
-                await message.reply({
-                    embeds: [successEmbed],
-                    files: [{
-                        attachment: url,
-                        name: `neural_voice_${langCode}_${Date.now()}.mp3`
-                    }]
-                }).catch(() => {});
-            }
-
         } catch (error) {
-            console.error('[TTS] Error:', error);
-            
-            const errorEmbed = new EmbedBuilder()
-                .setColor('#ED4245')
-                .setAuthor({ name: t.author, iconURL: client.user.displayAvatarURL() })
-                .setDescription(t.uplinkFailure)
-                .setFooter({ text: `${guildName} • ${t.node} • v${version}`, iconURL: guildIcon })
-                .setTimestamp();
-            
-            if (processingMsg) {
-                await processingMsg.edit({ embeds: [errorEmbed], files: [] }).catch(() => {});
-            } else {
-                await message.reply({ embeds: [errorEmbed] }).catch(() => {});
-            }
+            console.error('[TTS] Error:', error.message);
+            await message.reply({ content: t.uplinkFailure, allowedMentions: { repliedUser: false } }).catch(() => {});
         }
     },
 
@@ -186,7 +95,10 @@ run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         const text = interaction.options.getString('text');
         const args = text.split(' ');
         
+        // Fetching the voice can take a few seconds: answer Discord first ("thinking…"), then send the card
+        await interaction.deferReply().catch(() => {});
         const fakeMessage = {
+            isSlash: true,
             author: interaction.user,
             guild: interaction.guild,
             channel: interaction.channel,

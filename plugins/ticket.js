@@ -1,7 +1,7 @@
 const {
     EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder,
     ButtonStyle, PermissionFlagsBits, ChannelType, StringSelectMenuBuilder,
-    ModalBuilder, TextInputBuilder, TextInputStyle
+    ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags
 } = require('discord.js');
 const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');
@@ -171,10 +171,46 @@ function panelCard(s, gn, lang='en', actionRow = null, client = null) {
     return _v2.card(0x00f0ff, items);
 }
 
-function panelMenu(s) {
-    const sel=new StringSelectMenuBuilder().setCustomId('ticket_category_select').setPlaceholder('Select category...');
-    getCats(s).forEach(c=>sel.addOptions({label:`${c.emoji} ${c.label}`,description:c.desc.substring(0,100),value:c.value,emoji:c.emoji}));
+// The category menu. The emoji was shown twice (in the label and as the emoji); an empty description or a typo in an
+// emoji typed on the dashboard made Discord refuse the whole panel.
+const EMOJI_OK = /^(<a?:\w{2,32}:\d{15,25}>|[\p{Extended_Pictographic}\u{1F1E6}-\u{1F1FF}][\u{FE0F}\u{200D}\p{Extended_Pictographic}\u{1F3FB}-\u{1F3FF}\u{1F1E6}-\u{1F1FF}]*)$/u;
+function panelMenu(s, lang = 'en') {
+    const sel=new StringSelectMenuBuilder().setCustomId('ticket_category_select').setPlaceholder(t('ticket.panel_placeholder', lang));
+    getCats(s).slice(0, 25).forEach(c=>{
+        const o={label:String(c.label||'Support').substring(0,100),value:String(c.value||c.label||'support').substring(0,100)};
+        const d=String(c.desc||'').trim(); if(d) o.description=d.substring(0,100);
+        const em=String(c.emoji||'').trim(); if(EMOJI_OK.test(em)) o.emoji=em;
+        sel.addOptions(o);
+    });
     return sel;
+}
+
+// Panels already posted get the current layout and texts once at start-up (they used to keep the old ones until
+// someone posted a new panel), and the bot remembers which message is the panel.
+async function refreshPostedPanels(client) {
+    const db = client?.db; if (!db) return;
+    let rows = [];
+    try { rows = db.prepare("SELECT guild_id, ticket_panel_channel AS ch, ticket_panel_message_id AS mid FROM server_settings WHERE ticket_panel_channel IS NOT NULL AND ticket_panel_channel != ''").all(); } catch (e) { return; }
+    let done = 0;
+    for (const r of rows) {
+        const g = client.guilds.cache.get(r.guild_id); if (!g) continue;
+        const ch = g.channels.cache.get(r.ch); if (!ch?.messages) continue;
+        try {
+            let m = r.mid ? await ch.messages.fetch(r.mid).catch(() => null) : null;
+            if (!m) {
+                const recent = await ch.messages.fetch({ limit: 50 }).catch(() => null);
+                m = recent ? [...recent.values()].find((x) => x.author?.id === client.user.id && JSON.stringify(x.components || []).includes('ticket_category_select')) : null;
+            }
+            if (!m || !m.flags?.has?.(MessageFlags.IsComponentsV2)) continue; // an older embed panel: post a new one with /ticket panel
+            const ss = client.getServerSettings?.(g.id) || {};
+            const lang = pickLang(client, g.id, null);
+            const e = panelCard(ss, g.name, lang, new ActionRowBuilder().addComponents(panelMenu(ss, lang)), client);
+            await m.edit({ components: e.components, flags: e.flags, allowedMentions: { parse: [] } });
+            if (m.id !== r.mid) db.prepare('UPDATE server_settings SET ticket_panel_message_id=? WHERE guild_id=?').run(m.id, g.id);
+            done++;
+        } catch (e) { console.error('[TICKET] panel refresh', r.guild_id, e.message); }
+    }
+    if (done) console.log(`[TICKET] Refreshed ${done} posted panel(s)`);
 }
 
 async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false, s=null, issueDesc=null) {
@@ -241,6 +277,7 @@ function onMessageActivity(message, client, s) {
 }
 
 module.exports = {
+    refreshPostedPanels,
     name:'ticket', aliases:['tickets','support'], category:'UTILITY', cooldown:5000,
     description:'🎫 Professional ticket system — panel, categories, auto-close, logs.',
     usage:'.ticket [panel|close|setup|config|setcategory|setstaffrole|settranscript|setautoclose|setlimit]',
@@ -298,7 +335,7 @@ module.exports = {
             ]);
             return msg.reply(setupCard).catch(()=>{});
         }
-        if(sub==='panel'){const e=panelCard(es,g.name,lang,null,client),m=panelMenu(es),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);const s=await msg.channel.send(e).catch(()=>null);if(s){await msg.react(`${EMOJIS.check}`).catch(()=>{});try{db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(g.id);db.prepare(`UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=? WHERE guild_id=?`).run(msg.channel.id,msg.channel.name||String(msg.channel.id),g.id);}catch(e){}}return;}
+        if(sub==='panel'){const e=panelCard(es,g.name,lang,null,client),m=panelMenu(es,lang),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);const s=await msg.channel.send(e).catch(()=>null);if(s){await msg.react(`${EMOJIS.check}`).catch(()=>{});try{db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(g.id);db.prepare(`UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=?,ticket_panel_message_id=? WHERE guild_id=?`).run(msg.channel.id,msg.channel.name||String(msg.channel.id),s.id,g.id);}catch(e){}}return;}
         if(sub==='close'){const ch=msg.channel,tk=active.get(ch.id);if(!tk)return msg.reply(t('ticket.not_a_ticket', lang)).catch(()=>{});if(msg.author.id!==tk.creatorId&&!isStaff(msg.member,es))return msg.reply(t('ticket.noPerm', lang)).catch(()=>{});await saveTx(ch,tk,msg.author.id,client,es);await msg.reply(t('ticket.closing', lang)).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${msg.author.tag}`).catch(()=>{}),5000);return;}
 
         const _v2 = require('../lib/games/v2');
@@ -348,7 +385,7 @@ module.exports = {
             ]);
             return ix.reply({ ...setupCard, flags: 1 << 6 | 32768 });
         }
-        if(sc==='panel'){const _cp=require('../lib/canPost'),_me=g.members.me,_d=_cp.diagnose(g,ix.channel,_me);if(!_d.ok)return ix.reply({content:t('ticket.'+_d.key,lang,{ch:String(ix.channel),role:_d.role||'',perms:_cp.localize(_d.missing||[],lang).join(', '),bot:_me.roles.botRole?.name||_me.displayName,cmd: mentions(ix.client, ix.commandName, 'panel')}),flags:1<<6}).catch(()=>{});const e=panelCard(ss,g.name,lang,null,client),m=panelMenu(ss),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);await ix.reply({content:t('ticket.posting', lang),flags:1<<6});const s=await ix.channel.send(e).catch(err=>{console.error('[TICKET] panel send failed:',err.message);return null;});if(s){await ix.editReply({content:t('ticket.posted', lang)}).catch(()=>{});try{db.prepare('UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=? WHERE guild_id=?').run(ix.channel.id,ix.channel.name||String(ix.channel.id),g.id);}catch(e){}}else await ix.editReply({content:t('ticket.failed_generic', lang)}).catch(()=>{});return;}
+        if(sc==='panel'){const _cp=require('../lib/canPost'),_me=g.members.me,_d=_cp.diagnose(g,ix.channel,_me);if(!_d.ok)return ix.reply({content:t('ticket.'+_d.key,lang,{ch:String(ix.channel),role:_d.role||'',perms:_cp.localize(_d.missing||[],lang).join(', '),bot:_me.roles.botRole?.name||_me.displayName,cmd: mentions(ix.client, ix.commandName, 'panel')}),flags:1<<6}).catch(()=>{});const e=panelCard(ss,g.name,lang,null,client),m=panelMenu(ss,lang),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);await ix.reply({content:t('ticket.posting', lang),flags:1<<6});const s=await ix.channel.send(e).catch(err=>{console.error('[TICKET] panel send failed:',err.message);return null;});if(s){await ix.editReply({content:t('ticket.posted', lang)}).catch(()=>{});try{db.prepare('UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=?,ticket_panel_message_id=? WHERE guild_id=?').run(ix.channel.id,ix.channel.name||String(ix.channel.id),s.id,g.id);}catch(e){}}else await ix.editReply({content:t('ticket.failed_generic', lang)}).catch(()=>{});return;}
         if(sc==='close'){const ch=ix.channel,tk=active.get(ch.id);if(!tk)return ix.reply({content:t('ticket.not_a_ticket', lang),flags:1<<6});if(u.id!==tk.creatorId&&!isStaff(ix.member,ss))return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6});await ix.deferReply();await saveTx(ch,tk,u.id,client,ss);await ix.editReply({content:t('ticket.closing', lang)}).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${u.tag}`).catch(()=>{}),5000);return;}
         if(sc==='leaderboard'){
             await ix.deferReply({flags:1<<6});

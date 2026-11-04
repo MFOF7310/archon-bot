@@ -46,12 +46,12 @@
   "statusActiveBody": "**Chat methods:**\n> Mention me: `@Archon`\n> Prefix: `{prefix}ai [message]`\n> Just say my name: `Archon [message]`",
   "statusStandbyDesc": "I'm taking a quick nap right now. 💤 Use the command below to wake me up!",
   "statusStandbyBody": "**How to wake me:**\n> `{prefix}lydia on` or `/lydia on`",
-  "onAuthor": "SYSTEM MONITOR • ONLINE",
-  "onDesc": "```ansi\n\u001b[1;32m[ NEURAL LINK ESTABLISHED ]\u001b[0m\n\u001b[32m{botName} is now active in #{channel}\u001b[0m\n```\n",
+  "onAuthor": "AI chat is on here",
+  "onDesc": "**{botName}** now answers in #{channel}.\n\n",
   "onBody": "**Chat methods:**\n• Mention @{botName}\n• Type `{prefix}ai [question]`\n• Say `{botName} [question]`\n\n🧠 Memory: `[MEMORY: key | value]`\n🕐 Reminders: `[REMIND: 5 min | message]`\n🌐 Universal language auto-detection",
   "onFooter": "Ready to help",
-  "offAuthor": "SYSTEM MONITOR • OFFLINE",
-  "offDesc": "```ansi\n\u001b[1;31m[ NEURAL LINK TERMINATED ]\u001b[0m\n\u001b[31m{botName} has been deactivated in #{channel}\u001b[0m\n```\n",
+  "offAuthor": "AI chat is off here",
+  "offDesc": "**{botName}** no longer answers in #{channel}.\n\n",
   "offBody": "**Reactivate:** `{prefix}lydia on`\n\n💬 Available in other active channels.",
   "offFooter": "Sleep mode",
   "actions": {
@@ -92,14 +92,14 @@
     "text": "One sec, looking at that…"
   },
   "classification": {
-    "unclassified": "UNCLASSIFIED",
-    "systemAlert": "SYSTEM ALERT",
-    "securityBrief": "SECURITY BRIEF",
-    "technicalBrief": "TECHNICAL BRIEF",
-    "intelReport": "INTEL REPORT",
-    "medicalAdvisory": "MEDICAL ADVISORY",
-    "fieldGuide": "FIELD GUIDE",
-    "researchNote": "RESEARCH NOTE"
+    "unclassified": "Answer",
+    "systemAlert": "Error",
+    "securityBrief": "Security",
+    "technicalBrief": "Tech",
+    "intelReport": "Research",
+    "medicalAdvisory": "Health",
+    "fieldGuide": "Guide",
+    "researchNote": "Study notes"
   },
   "noAccount": "You don't have a profile yet! Say hi in the chat or use a command to get started.",
   "readyToClaim": "Ready to claim!",
@@ -108,5 +108,10 @@
   "useClaim": "Use `/claim` to grab your reward.",
   "welcome_msg": "Hey {user}! 👋 A member of our team will be with you shortly. Feel free to drop any extra details or screenshots below.",
   "thinkingEmbed.label": "Thinking...",
-  "thinkingEmbed.text": "Give me a second to process that..."
+  "thinkingEmbed.text": "Give me a second to process that...",
+  "sourcesTitle": "🔗 Sources",
+  "memory_card_title": "🧠 What I remember about {user}",
+  "memory_empty_title": "📭 Nothing saved yet",
+  "memory_count": "{n} saved",
+  "memory_saved_on": "Saved {date}"
 }

@@ -46,12 +46,12 @@
   "statusActiveBody": "**聊天方式：**\n> 提及我：`@Archon`\n> 前缀：`{prefix}ai [消息]`\n> 直接叫我的名字：`Archon [消息]`",
   "statusStandbyDesc": "我现在正在小睡。💤 使用下面的命令叫醒我！",
   "statusStandbyBody": "**如何叫醒我：**\n> `{prefix}lydia on` 或 `/lydia on`",
-  "onAuthor": "系统监视 • 在线",
-  "onDesc": "```ansi\n\u001b[1;32m[ 神经链接已建立 ]\u001b[0m\n\u001b[32m{botName} 现已在 #{channel} 激活\u001b[0m\n```\n",
+  "onAuthor": "AI 聊天已在此开启",
+  "onDesc": "**{botName}** 现在会在 #{channel} 回复。\n\n",
   "onBody": "**聊天方式：**\n• @ 提及 {botName}\n• 输入 `{prefix}ai [问题]`\n• 直接说 `{botName} [问题]`\n\n🧠 记忆：`[MEMORY: 键 | 值]`\n🕐 提醒：`[REMIND: 5 min | 内容]`\n🌐 全语言自动检测",
   "onFooter": "随时待命",
-  "offAuthor": "系统监视 • 离线",
-  "offDesc": "```ansi\n\u001b[1;31m[ 神经链接已断开 ]\u001b[0m\n\u001b[31m{botName} 已在 #{channel} 关闭\u001b[0m\n```\n",
+  "offAuthor": "AI 聊天已在此关闭",
+  "offDesc": "**{botName}** 不再在 #{channel} 回复。\n\n",
   "offBody": "**重新激活：** `{prefix}lydia on`\n\n💬 其他已激活的频道仍可使用",
   "offFooter": "睡眠模式",
   "actions": {
@@ -92,14 +92,14 @@
     "text": "稍等，我看一下…"
   },
   "classification": {
-    "unclassified": "非机密",
-    "systemAlert": "系统警报",
-    "securityBrief": "安全简报",
-    "technicalBrief": "技术简报",
-    "intelReport": "情报报告",
-    "medicalAdvisory": "医疗提示",
-    "fieldGuide": "战术指南",
-    "researchNote": "研究笔记"
+    "unclassified": "回答",
+    "systemAlert": "错误",
+    "securityBrief": "安全",
+    "technicalBrief": "技术",
+    "intelReport": "研究",
+    "medicalAdvisory": "健康",
+    "fieldGuide": "指南",
+    "researchNote": "学习笔记"
   },
   "noAccount": "你还没有创建个人档案！在聊天中打个招呼或使用命令来开始。",
   "readyToClaim": "准备好领取了！",
@@ -108,5 +108,10 @@
   "useClaim": "使用 `/claim` 获取你的奖励。",
   "welcome_msg": "你好 {user}！👋 我们的团队成员很快就会为你服务。请随时在下方添加任何额外细节或截图。",
   "thinkingEmbed.label": "思考中...",
-  "thinkingEmbed.text": "给我一秒钟处理一下..."
+  "thinkingEmbed.text": "给我一秒钟处理一下...",
+  "sourcesTitle": "🔗 来源",
+  "memory_card_title": "🧠 我记得的关于 {user} 的事",
+  "memory_empty_title": "📭 还没有保存任何内容",
+  "memory_count": "已保存 {n} 条",
+  "memory_saved_on": "保存于 {date}"
 }

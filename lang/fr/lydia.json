@@ -46,12 +46,12 @@
   "statusActiveBody": "**Comment discuter :**\n> Mentionne-moi : `@Archon`\n> Préfixe : `{prefix}ai [message]`\n> Dis juste mon nom : `Archon [message]`",
   "statusStandbyDesc": "Je fais une petite sieste pour le moment. 💤 Utilise la commande ci-dessous pour me réveiller !",
   "statusStandbyBody": "**Comment me réveiller :**\n> `{prefix}lydia on` ou `/lydia on`",
-  "onAuthor": "MONITEUR • EN LIGNE",
-  "onDesc": "```ansi\n\u001b[1;32m[ LIEN NEURAL ÉTABLI ]\u001b[0m\n\u001b[32m{botName} est maintenant actif dans #{channel}\u001b[0m\n```\n",
+  "onAuthor": "Discussion IA activée ici",
+  "onDesc": "**{botName}** répond maintenant dans #{channel}.\n\n",
   "onBody": "**Méthodes de chat :**\n• Mentionne @{botName}\n• Tape `{prefix}ai [question]`\n• Dis `{botName} [question]`\n\n🧠 Mémoire : `[MEMORY: clé | valeur]`\n🕐 Rappels : `[REMIND: 5 min | message]`\n🌐 Détection automatique de la langue",
   "onFooter": "Prête à aider",
-  "offAuthor": "MONITEUR • HORS LIGNE",
-  "offDesc": "```ansi\n\u001b[1;31m[ LIEN NEURAL TERMINÉ ]\u001b[0m\n\u001b[31m{botName} a été désactivé dans #{channel}\u001b[0m\n```\n",
+  "offAuthor": "Discussion IA désactivée ici",
+  "offDesc": "**{botName}** ne répond plus dans #{channel}.\n\n",
   "offBody": "**Réactivation :** `{prefix}lydia on`\n\n💬 Disponible dans les autres salons actifs",
   "offFooter": "Mode veille",
   "actions": {
@@ -92,14 +92,14 @@
     "text": "Je regarde ça…"
   },
   "classification": {
-    "unclassified": "NON CLASSIFIÉ",
-    "systemAlert": "ALERTE SYSTÈME",
-    "securityBrief": "NOTE DE SÉCURITÉ",
-    "technicalBrief": "NOTE TECHNIQUE",
-    "intelReport": "RAPPORT DE RENSEIGNEMENT",
-    "medicalAdvisory": "AVIS MÉDICAL",
-    "fieldGuide": "GUIDE DE TERRAIN",
-    "researchNote": "NOTE DE RECHERCHE"
+    "unclassified": "Réponse",
+    "systemAlert": "Erreur",
+    "securityBrief": "Sécurité",
+    "technicalBrief": "Tech",
+    "intelReport": "Recherche",
+    "medicalAdvisory": "Santé",
+    "fieldGuide": "Guide",
+    "researchNote": "Notes d'étude"
   },
   "noAccount": "Tu n'as pas encore de profil ! Dis bonjour dans le chat ou utilise une commande pour commencer.",
   "readyToClaim": "Prêt à réclamer !",
@@ -108,5 +108,10 @@
   "useClaim": "Utilise `/claim` pour récupérer ta récompense.",
   "welcome_msg": "Salut {user} ! 👋 Un membre de notre équipe sera avec toi sous peu. N'hésite pas à ajouter des détails ou des captures d'écran ci-dessous.",
   "thinkingEmbed.label": "Je réfléchis...",
-  "thinkingEmbed.text": "Donne-moi une seconde pour traiter ça..."
+  "thinkingEmbed.text": "Donne-moi une seconde pour traiter ça...",
+  "sourcesTitle": "🔗 Sources",
+  "memory_card_title": "🧠 Ce que je retiens sur {user}",
+  "memory_empty_title": "📭 Rien d'enregistré pour l'instant",
+  "memory_count": "{n} enregistré(s)",
+  "memory_saved_on": "Enregistré le {date}"
 }

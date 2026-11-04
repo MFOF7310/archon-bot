@@ -132,5 +132,6 @@
   "modal_created_desc": "您的私人支持频道已准备就绪：{channel}。让我们来解决这个问题。",
   "panel_how_it_works": "**如何运作：**\n1. 在下方选择一个类别。\n2. 将立即创建一个私人频道。\n3. 提供截图或详细信息，以便我们的团队更快地为您提供帮助。\n4. 支持人员将很快与您联系。",
   "panel_response_time": "-# ⏱️ **响应时间：** 我们的团队通常会在 **2 小时**内回复。",
-  "panel_available": "**可用类别**"
+  "panel_available": "**可用类别**",
+  "panel_placeholder": "选择一个类别…"
 }

@@ -1,6 +1,6 @@
 {
-  "author": "🎙️ MOTEUR DE SYNTHÈSE VOCALE",
-  "detected": "Langue Détectée",
+  "author": "🎙️ Synthèse vocale",
+  "detected": "Langue détectée",
   "text": "Texte",
   "truncated": "Tronqué",
   "fullMessage": "Message complet",
@@ -9,9 +9,12 @@
   "usage": "Utilisation",
   "fetchError": "❌ Impossible de récupérer le message répondu.",
   "uplinkFailure": "⚠️ **Voix indisponible :** le moteur de voix ne répond pas pour le moment.",
-  "node": "Nœud Bamako",
+  "node": "Voix",
   "characters": "caractères",
   "voice": "Voix",
-  "neuralVoice": "Voix Neurale",
-  "clickToPlay": "🔊 Cliquez pour jouer le fichier audio ci-dessus !"
+  "neuralVoice": "Voix Google",
+  "clickToPlay": "🔊 Appuie sur lecture dans le fichier ci-dessus.",
+  "exampleText": "Bonjour tout le monde",
+  "replyHint": "ou réponds à un message avec {cmd}",
+  "truncatedNote": "lu jusqu'à {n} caractères"
 }

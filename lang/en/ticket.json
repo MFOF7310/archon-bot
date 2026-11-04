@@ -132,5 +132,6 @@
   "modal_created_desc": "Your private support channel is ready: {channel}. Let's get this sorted.",
   "panel_how_it_works": "**How it works:**\n1. Select a category below.\n2. A private channel is created instantly.\n3. Provide screenshots or details so our team can assist you faster.\n4. A support agent will be with you shortly.",
   "panel_response_time": "-# ⏱️ **Response Time:** Our staff typically replies within **2 hours**.",
-  "panel_available": "**Available Categories**"
+  "panel_available": "**Available Categories**",
+  "panel_placeholder": "Choose a category…"
 }

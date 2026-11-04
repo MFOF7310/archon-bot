@@ -113,15 +113,49 @@ function getPinStats(db, guildId) {
     }
 }
 
-async function createArchiveChannel(guild) {
+// The pin archive has its own channel, remembered per server. It used to borrow the server's log channel (pins
+// landed among the logs) and, on a server without one, it made the archive the server's log channel.
+const ARCHIVE_CATEGORY = '📂 Archives';
+const OLD_CATEGORY = '📂 NEURAL ARCHIVES';
+const OLD_CHANNEL = '📌-neural-archives';
+const archiveName = (lang) => (lang === 'fr' ? '📌-épinglés' : '📌-pins');
+
+function archiveStore(db) {
+    if (!db) return null;
+    try { db.prepare('CREATE TABLE IF NOT EXISTS pin_archive (guild_id TEXT PRIMARY KEY, channel_id TEXT NOT NULL)').run(); return db; } catch (e) { return null; }
+}
+function rememberArchive(db, guildId, channelId) {
+    const d = archiveStore(db);
+    if (!d) return;
+    try { d.prepare('INSERT OR REPLACE INTO pin_archive (guild_id, channel_id) VALUES (?, ?)').run(guildId, channelId); } catch (e) {}
+}
+
+async function findArchiveChannel(db, guild, lang) {
+    const d = archiveStore(db);
+    let row = null;
+    try { row = d ? d.prepare('SELECT channel_id FROM pin_archive WHERE guild_id = ?').get(guild.id) : null; } catch (e) {}
+    let ch = row ? guild.channels.cache.get(row.channel_id) : null;
+    if (ch) return ch;
+    // An archive made by an earlier version: keep using it (no duplicate) and give it the new names
+    ch = guild.channels.cache.find((c) => c.type === 0 && [OLD_CHANNEL, archiveName('fr'), archiveName('en')].includes(c.name));
+    if (ch) {
+        if (ch.name === OLD_CHANNEL) ch.setName(archiveName(lang)).catch(() => {});
+        if (ch.parent?.name === OLD_CATEGORY) ch.parent.setName(ARCHIVE_CATEGORY).catch(() => {});
+        rememberArchive(db, guild.id, ch.id);
+        return ch;
+    }
+    ch = await createArchiveChannel(guild, lang);
+    if (ch) rememberArchive(db, guild.id, ch.id);
+    return ch;
+}
+
+async function createArchiveChannel(guild, lang) {
     try {
-        let archiveCategory = guild.channels.cache.find(
-            c => c.type === 4 && c.name === '📂 NEURAL ARCHIVES'
-        );
-        
+        let archiveCategory = guild.channels.cache.find(c => c.type === 4 && (c.name === ARCHIVE_CATEGORY || c.name === OLD_CATEGORY));
+        if (archiveCategory?.name === OLD_CATEGORY) archiveCategory.setName(ARCHIVE_CATEGORY).catch(() => {});
         if (!archiveCategory) {
             archiveCategory = await guild.channels.create({
-                name: '📂 NEURAL ARCHIVES',
+                name: ARCHIVE_CATEGORY,
                 type: 4,
                 permissionOverwrites: [
                     {
@@ -131,12 +165,14 @@ async function createArchiveChannel(guild) {
                 ]
             });
         }
-        
+
         const archiveChannel = await guild.channels.create({
-            name: '📌-neural-archives',
+            name: archiveName(lang),
             type: 0,
             parent: archiveCategory.id,
-            topic: '📂 Pin archive: reply to any message with .pin to save it here!',
+            topic: lang === 'fr'
+                ? '📌 Archives des messages épinglés : réponds à un message avec .pin pour le garder ici.'
+                : '📌 Pinned messages archive: reply to any message with .pin to keep it here.',
             permissionOverwrites: [
                 {
                     id: guild.id,
@@ -145,7 +181,7 @@ async function createArchiveChannel(guild) {
                 }
             ]
         });
-        
+
         return archiveChannel;
     } catch (err) {
         console.error('[ARCHIVE] Failed to create archive channel:', err.message);
@@ -282,15 +318,7 @@ async function handlePin(client, message, args, db, serverSettings, t, lang) {
     
     savePinToDatabase(db, targetMessage, message.author);
     
-    let archiveChannelId = serverSettings?.logChannel;
-    let archiveChannel = archiveChannelId ? message.guild.channels.cache.get(archiveChannelId) : null;
-    
-    if (!archiveChannel) {
-        archiveChannel = await createArchiveChannel(message.guild);
-        if (archiveChannel && client.updateServerSetting) {
-            client.updateServerSetting(message.guild.id, 'log', archiveChannel.id);
-        }
-    }
+    const archiveChannel = await findArchiveChannel(db, message.guild, lang);
     
     const archiveEmbed = new EmbedBuilder()
         .setColor('#00fbff')

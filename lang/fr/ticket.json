@@ -132,5 +132,6 @@
   "modal_created_desc": "Votre salon d'assistance privé est prêt : {channel}. Réglons ça ensemble.",
   "panel_how_it_works": "**Comment ça marche :**\n1. Sélectionnez une catégorie ci-dessous.\n2. Un salon privé est créé instantanément.\n3. Fournissez des captures d'écran ou des détails pour que notre équipe puisse vous aider plus rapidement.\n4. Un agent de support sera avec vous sous peu.",
   "panel_response_time": "-# ⏱️ **Temps de réponse :** Notre équipe répond généralement en moins de **2 heures**.",
-  "panel_available": "**Catégories Disponibles**"
+  "panel_available": "**Catégories Disponibles**",
+  "panel_placeholder": "Choisis une catégorie…"
 }

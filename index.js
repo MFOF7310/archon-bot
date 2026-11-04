@@ -7604,6 +7604,8 @@ function rotateStatus() {
 client.once('clientReady', async () => {
     // Auto-clean orphaned music panels on boot
     try { require('./plugins/music.js').autoCleanOldPanels(client); } catch(e) { console.error('[MUSIC CLEAN]', e.message); }
+    // Ticket panels already posted get the current layout and texts (once, 20 s after start, when channels are cached)
+    setTimeout(() => { require('./plugins/ticket.js').refreshPostedPanels(client).catch(e => console.error('[TICKET PANELS]', e.message)); }, 20000);
     try {
         const _servers = client.guilds.cache.size;
         const _users = client.guilds.cache.reduce((t, g) => t + g.memberCount, 0);

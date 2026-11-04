@@ -892,10 +892,9 @@ function buildEmbed(reply, message, options = {}) {
   const c = new ContainerBuilder().setAccentColor(embedColor);
 
   if (isThinking) {
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${badgeEmoji} ${classification} • ${require('../lib/i18n').t('lydia.thinkingEmbed.label', lang)}**`));
-    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\`\`\`ansi\n\u001b[1;33m[ ${theme.name.toUpperCase()} ] \u001b[0m\u001b[33m${require('../lib/i18n').t('lydia.thinkingEmbed.text', lang)}\u001b[0m\n\`\`\``));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON CG-223 // ${message.guild?.name || 'DM'} // ${bamakoTime} UTC`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${badgeEmoji} ${classification} · ${require('../lib/i18n').t('lydia.thinkingEmbed.label', lang)}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*${require('../lib/i18n').t('lydia.thinkingEmbed.text', lang)}*`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${message.guild?.name || 'DM'} · ${bamakoTime} UTC`));
     return c;
   }
 
@@ -909,8 +908,7 @@ function buildEmbed(reply, message, options = {}) {
     const cChunk = new ContainerBuilder().setAccentColor(embedColor);
 
     if (i === 0) {
-      cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${badgeEmoji} ${classification}**`));
-      cChunk.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+      cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${badgeEmoji} ${classification}`));
     } else {
       cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${title || 'Continued'}**`));
       cChunk.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
@@ -929,7 +927,7 @@ function buildEmbed(reply, message, options = {}) {
           const tTitle = s.title.length > 80 ? s.title.substring(0, 80) + '...' : s.title;
           return `[[${idx + 1}]](${s.url}) ${tTitle}`;
         }).join('\n');
-        cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**🔗 Real-Time Sources**\n${sourceLinks}`));
+        cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${require('../lib/i18n').t('lydia.sourcesTitle', lang)}**\n${sourceLinks}`));
       }
 
       const botCommands = ['.daily', '.shop', '.profile', '.level', '.market', '.help', '.ticket', '.remind', '.afk', '.invest', '.claim', '.streak', '.rank', '.leaderboard', '.whois', '.mute', '.kick', '.ban', '.warn', '.automod'];
@@ -1463,22 +1461,22 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
 
     if (!memories.length) {
       const c = new ContainerBuilder().setAccentColor(0xf1c40f);
-      c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📭 MEMORY VAULT • ${username}`));
-      c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-      c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\`\`\`ansi\n\u001b[1;33m[ ARCHIVE EMPTY ]\u001b[0m\n\u001b[33m${t('lydia.memory_empty', lang)}\u001b[0m\n\`\`\`\n` + t('lydia.memory_empty_hint', lang) + '\n\n' + t('lydia.memory_example', lang)));
+      c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t('lydia.memory_empty_title', lang)}`));
+      c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${t('lydia.memory_empty', lang)}\n\n` + t('lydia.memory_empty_hint', lang) + '\n\n' + t('lydia.memory_example', lang)));
       c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('lydia.memory_footer', lang)}`));
       await respond({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
       return;
     }
 
     const c = new ContainerBuilder().setAccentColor(0x2ecc71);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🧠 MEMORY ARCHIVE • ${username}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t('lydia.memory_card_title', lang, { user: username })}\n-# ${t('lydia.memory_count', lang, { n: memories.length })}`));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\`\`\`ansi\n\u001b[1;32m[ ${memories.length} RECORD(S) FOUND ]\u001b[0m\n\`\`\``));
     
     for (const m of memories.slice(0, 25)) {
-      const date = new Date(m.updated_at).toLocaleDateString();
-      c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**📌 ${m.memory_key}**\n${m.memory_value}\n*Stored: ${date}*`));
+      // Discord shows the date in each reader's own format (stored in ms; older rows may be in seconds)
+      const ms = Number(m.updated_at) < 1e12 ? Number(m.updated_at) * 1000 : Number(m.updated_at);
+      const date = ms > 0 ? `<t:${Math.floor(ms / 1000)}:D>` : '—';
+      c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**📌 ${m.memory_key}**\n${m.memory_value}\n-# ${t('lydia.memory_saved_on', lang, { date })}`));
     }
     
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${memories.length > 25 ? t('lydia.memory_showing', lang, { count: 25, total: memories.length }) : t('lydia.memory_footer', lang)}`));
@@ -1487,7 +1485,7 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
   } catch (err) {
     console.error(`${C.red}[LYDIA MEMORY]${C.reset} ${err.message}`);
     const c = new ContainerBuilder().setAccentColor(0xe74c3c);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🔴 SYSTEM ALERT`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🔴 ${t('lydia.classification.systemAlert', lang)}`));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('lydia.memory_error', lang)));
     await respond({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
   }

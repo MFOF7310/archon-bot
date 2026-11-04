@@ -46,12 +46,12 @@
   "statusActiveBody": "**طرق الدردشة:**\n> أشر إلي: `@Archon`\n> البادئة: `{prefix}ai [رسالة]`\n> فقط قل اسمي: `Archon [رسالة]`",
   "statusStandbyDesc": "أنا آخذ قيلولة سريعة الآن. 💤 استخدم الأمر أدناه لإيقاظي!",
   "statusStandbyBody": "**كيف توقظني:**\n> `{prefix}lydia on` أو `/lydia on`",
-  "onAuthor": "مراقبة النظام • متصلة",
-  "onDesc": "```ansi\n\u001b[1;32m[ تم إنشاء الرابط العصبي ]\u001b[0m\n\u001b[32m{botName} صارت نشطة في #{channel}\u001b[0m\n```\n",
+  "onAuthor": "الدردشة مع الذكاء الاصطناعي مفعّلة هنا",
+  "onDesc": "**{botName}** يرد الآن في #{channel}.\n\n",
   "onBody": "**طرق الدردشة:**\n• أذكر @{botName}\n• اكتب `{prefix}ai [سؤال]`\n• قل `{botName} [سؤال]`\n\n🧠 الذاكرة: `[MEMORY: مفتاح | قيمة]`\n🕐 التذكيرات: `[REMIND: 5 min | رسالة]`\n🌐 كشف اللغة تلقائيًا",
   "onFooter": "جاهزة للمساعدة",
-  "offAuthor": "مراقبة النظام • متوقفة",
-  "offDesc": "```ansi\n\u001b[1;31m[ انقطع الرابط العصبي ]\u001b[0m\n\u001b[31m{botName} توقفت في #{channel}\u001b[0m\n```\n",
+  "offAuthor": "الدردشة مع الذكاء الاصطناعي متوقفة هنا",
+  "offDesc": "**{botName}** لم يعد يرد في #{channel}.\n\n",
   "offBody": "**إعادة التفعيل:** `{prefix}lydia on`\n\n💬 ما زلت متاحة بالقنوات النشطة الأخرى",
   "offFooter": "وضع النوم",
   "actions": {
@@ -92,14 +92,14 @@
     "text": "لحظة، أنظر في الأمر…"
   },
   "classification": {
-    "unclassified": "غير سري",
-    "systemAlert": "تنبيه النظام",
-    "securityBrief": "إحاطة أمنية",
-    "technicalBrief": "إحاطة تقنية",
-    "intelReport": "تقرير استخباراتي",
-    "medicalAdvisory": "إرشاد طبي",
-    "fieldGuide": "دليل ميداني",
-    "researchNote": "مذكرة بحثية"
+    "unclassified": "إجابة",
+    "systemAlert": "خطأ",
+    "securityBrief": "أمان",
+    "technicalBrief": "تقنية",
+    "intelReport": "بحث",
+    "medicalAdvisory": "صحة",
+    "fieldGuide": "دليل",
+    "researchNote": "ملاحظات دراسية"
   },
   "noAccount": "ليس لديك ملف تعريف بعد! قل مرحباً في الدردشة أو استخدم أمرًا للبدء.",
   "readyToClaim": "جاهز للمطالبة!",
@@ -108,5 +108,10 @@
   "useClaim": "استخدم `/claim` للحصول على مكافأتك.",
   "welcome_msg": "مرحبًا {user}! 👋 سيكون أحد أعضاء فريقنا معك قريبًا. لا تتردد في إضافة أي تفاصيل أو لقطات شاشة أدناه.",
   "thinkingEmbed.label": "أفكر...",
-  "thinkingEmbed.text": "أعطني لحظة لمعالجة ذلك..."
+  "thinkingEmbed.text": "أعطني لحظة لمعالجة ذلك...",
+  "sourcesTitle": "🔗 المصادر",
+  "memory_card_title": "🧠 ما أتذكره عن {user}",
+  "memory_empty_title": "📭 لا شيء محفوظ بعد",
+  "memory_count": "{n} محفوظة",
+  "memory_saved_on": "حُفظ في {date}"
 }

@@ -1,5 +1,5 @@
 {
-  "author": "🎙️ VOICE SYNTHESIS ENGINE",
+  "author": "🎙️ Text to speech",
   "detected": "Detected Language",
   "text": "Text",
   "truncated": "Truncated",
@@ -9,9 +9,12 @@
   "usage": "Usage",
   "fetchError": "❌ Could not fetch the replied message.",
   "uplinkFailure": "⚠️ **Voice unavailable:** the voice engine isn't responding right now.",
-  "node": "Bamako Node",
+  "node": "Voice",
   "characters": "characters",
   "voice": "Voice",
-  "neuralVoice": "Neural Voice",
-  "clickToPlay": "🔊 Click to play the audio file above!"
+  "neuralVoice": "Google voice",
+  "clickToPlay": "🔊 Press play on the file above.",
+  "exampleText": "Hello everyone",
+  "replyHint": "or reply to a message with {cmd}",
+  "truncatedNote": "read up to {n} characters"
 }
