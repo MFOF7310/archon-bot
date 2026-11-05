@@ -1,8 +1,9 @@
 const {
     EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder,
     ButtonStyle, PermissionFlagsBits, ChannelType, StringSelectMenuBuilder,
-    ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags
+    ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, TextDisplayBuilder
 } = require('discord.js');
+const { toV2, fit, isV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const mentions = require('../lib/mentions');
@@ -106,7 +107,7 @@ function resetACTimer(cid, client, s, remainingMs) {
         timersForCid.warn = setTimeout(async () => {
             try {
                 const ch = await client.channels.fetch(cid).catch(() => null);
-                if (ch && active.has(cid)) await ch.send({ embeds: [new EmbedBuilder().setColor('#f39c12').setDescription(t('ticket.acWarn', lang) || '⏰ This ticket will auto-close in 1 hour.')] }).catch(() => {});
+                if (ch && active.has(cid)) await ch.send(toV2({ embeds: [new EmbedBuilder().setColor('#f39c12').setDescription(t('ticket.acWarn', lang) || '⏰ This ticket will auto-close in 1 hour.')] })).catch(() => {});
             } catch (e) {}
         }, warnMs);
     }
@@ -117,7 +118,7 @@ function resetACTimer(cid, client, s, remainingMs) {
             const tk = active.get(cid);
             if (!tk) { timers.delete(cid); return; }
             const txResult = await saveTx(ch, tk, null, client, s);
-            if (ch) await ch.send({ embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription(t('ticket.acDone', lang) || '🔒 Ticket auto-closed.')] }).catch(() => {});
+            if (ch) await ch.send(toV2({ embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription(t('ticket.acDone', lang) || '🔒 Ticket auto-closed.')] })).catch(() => {});
             active.delete(cid);
             if (client.db) delTicket(client.db, cid);
             timers.delete(cid);
@@ -135,7 +136,7 @@ async function saveTx(ch, tk, closer, client, s) {
         const lines=[]; lines.push(`= TICKET LOG =`,`#${tk.number||'?'} | ${tk.category||'?'}`,`By: ${tk.creatorTag||'?'} | ${new Date(tk.createdAt).toISOString()}`,`Claimed: ${tk.claimedBy?`<@${tk.claimedBy}>`:'No'} | Closed: ${closer?`<@${closer}>`:'?'}`,`${'='.repeat(40)}`);
         msgs.reverse().forEach(m=>{const d=new Date(m.createdTimestamp).toISOString().slice(0,19).replace('T',' ');lines.push(`[${d}] ${m.author.tag}: ${m.content||'(file)'}`);});
         const tx=lines.join('\n'); const tcid=s?.ticketTranscriptChannel;
-        if(tcid){try{const tc=await client.channels.fetch(tcid);if(tc?.guildId===tk.guildId&&(tc.type===ChannelType.GuildText||tc.type===5)){const e=new EmbedBuilder().setColor('#3498db').setTitle(`#${tk.number||'?'} Closed`).setDescription(t('ticket.closedLog', lang, {user: tk.creatorId, number: tk.number, cat: tk.category||'?'})).setTimestamp();await tc.send({embeds:[e],files:[{attachment:Buffer.from(tx),name:`ticket-${tk.number||ch.id}.txt`}]});return true;}}catch(e){}}
+        if(tcid){try{const tc=await client.channels.fetch(tcid);if(tc?.guildId===tk.guildId&&(tc.type===ChannelType.GuildText||tc.type===5)){const e=new EmbedBuilder().setColor('#3498db').setTitle(`#${tk.number||'?'} Closed`).setDescription(t('ticket.closedLog', lang, {user: tk.creatorId, number: tk.number, cat: tk.category||'?'})).setTimestamp();const sentTx=await require('../lib/safeSend').safeSend('ticket-log',tc,toV2({embeds:[e],files:[{attachment:Buffer.from(tx),name:`ticket-${tk.number||ch.id}.txt`}]}),{guild:tc.guild});if(sentTx)return true;}}catch(e){}}
         return {buffer:Buffer.from(tx),filename:`ticket-${tk.number||ch.id}.txt`};
     }catch(e){return false;}
 }
@@ -237,7 +238,11 @@ async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false, s=null, iss
         { row: r }
     ]);
     
-    await ch.send({ content: `${staffPing}`, ...view }).catch(err => console.error('[TICKET] welcomeMsg send failed:', err.message));
+    // A card cannot carry plain content: the staff ping goes on top of the card, and only that role and the member are notified
+    // (the card alone pings nobody). The ping used to be sent as content next to the card, so Discord refused the whole message.
+    const mentions = { parse: [], users: [u.id], roles: s?.ticketStaffRole ? [String(s.ticketStaffRole)] : [] };
+    const opening = staffPing ? { ...view, components: [new TextDisplayBuilder().setContent(staffPing), ...view.components], allowedMentions: mentions } : { ...view, allowedMentions: mentions };
+    await ch.send(opening).catch(err => console.error('[TICKET] welcomeMsg send failed:', err.message));
 }
 
 function cfgCard(s, g, c, lang='en') {
@@ -274,6 +279,27 @@ function onMessageActivity(message, client, s) {
     const cid = message.channel.id;
     if (!active.has(cid)) return;
     resetACTimer(cid, client, s);
+}
+
+// The opening card once a staff member claims the ticket: the same card, a status line above the buttons, Claim turned off.
+// Works on the card's own data, so nothing the member wrote is rebuilt or lost.
+function claimedCard(msg, uid, lang) {
+    const status = `**${t('ticket.st', lang)}** · ${t('ticket.claimed2', lang)} · <@${uid}>`;
+    const walk = (c) => {
+        if (!c || typeof c !== 'object') return c;
+        if (c.type === 17 && Array.isArray(c.components)) {
+            const out = [];
+            for (const k of c.components) {
+                const isClaimRow = k.type === 1 && (k.components || []).some((b) => String(b.custom_id || '').startsWith('ticket_claim_'));
+                if (isClaimRow) out.push({ type: 10, content: status });
+                out.push(walk(k));
+            }
+            return { ...c, components: out };
+        }
+        if (c.type === 1) return { ...c, components: (c.components || []).map((b) => String(b.custom_id || '').startsWith('ticket_claim_') ? { ...b, disabled: true, style: 2, label: t('ticket.claimed', lang) } : b) };
+        return c;
+    };
+    return { components: msg.components.map((c) => walk(c.toJSON?.() ?? c)), flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };
 }
 
 module.exports = {
@@ -517,10 +543,13 @@ module.exports = {
             tk.claimedBy=uid; if(db)saveTicket(db,cid,tk);
             try{
                 const msgs=await ix.channel.messages.fetch({limit:10});
-                const wm=msgs.find(m=>m.author.id===client.user.id&&m.embeds?.[0]?.author?.name?.includes('TICKET'));
+                // the opening card (Components V2): a status line, and the Claim button turned off
+                const card=msgs.find(m=>m.author.id===client.user.id&&isV2(m)&&JSON.stringify(m.components.map(c=>c.toJSON?.()??c)).includes('ticket_claim_'));
+                if(card) await card.edit(claimedCard(card, uid, lang)).catch((e)=>console.error('[TICKET] claim status:', e.message));
+                const wm=card?null:msgs.find(m=>m.author.id===client.user.id&&m.embeds?.[0]?.author?.name?.includes('TICKET'));
                 if(wm&&wm.embeds[0]){
                     const ne=EmbedBuilder.from(wm.embeds[0]).spliceFields(3,1,{name:t('ticket.st', lang),value:`${t('ticket.claimed2', lang)}\n${t('ticket.claimed', lang)}: <@${uid}>`,inline:true});
-                    await wm.edit({embeds:[ne]}).catch(()=>{});
+                    await wm.edit(fit(wm, {embeds:[ne]})).catch(()=>{});
                 }
             }catch(e){}
             await ix.channel.send(t('ticket.claimed_msg', lang, {user: uid}));
@@ -534,13 +563,13 @@ module.exports = {
             await ix.deferReply({flags:1<<6}).catch(()=>{});
             const e=new EmbedBuilder().setColor('#e74c3c').setTitle(t('ticket.closeQ', lang)).setDescription(t('ticket.closeD', lang));
             const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t('ticket.closeY', lang)).setStyle(ButtonStyle.Danger).setEmoji('✅'),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t('ticket.closeN', lang)).setStyle(ButtonStyle.Secondary).setEmoji('❌'));
-            await ix.editReply({embeds:[e],components:[r]}).catch(()=>{});
+            await ix.editReply(toV2({embeds:[e],components:[r]})).catch(()=>{});
             return true;
         }
 
         if(act==='confirmclose'){
             const cl=p[4]||uid;
-            await ix.update({content:t('ticket.closing', lang),embeds:[],components:[]}).catch(()=>{});
+            await ix.update(fit(ix.message, {content:t('ticket.closing', lang),embeds:[],components:[]})).catch(()=>{});
             const ch=ix.channel;
             if(tk) await saveTx(ch,tk,cl,client,ss);
             await ch.send(t('ticket.closedBy', lang, {user: cl})).catch(()=>{});
@@ -582,20 +611,20 @@ module.exports = {
             const stars = parseInt(p[2]) || 0;
             const gid = p[3];
             const starEmoji = '⭐'.repeat(stars);
-            await ix.update({ 
+            await ix.update(fit(ix.message, { 
                 embeds: [new EmbedBuilder().setColor(0x2ecc71)
                     .setDescription(t('ticket.rating_thanks', lang, {stars: starEmoji}))],
                 components: [] 
-            }).catch(()=>{});
+            })).catch(()=>{});
             try {
                 const ss2 = client.getServerSettings?.(gid) || {};
                 const txCh = ss2?.ticketTranscriptChannel;
                 if (txCh) {
                     const logCh = await client.channels.fetch(txCh).catch(()=>null);
                     if (logCh) {
-                        await logCh.send({ embeds: [new EmbedBuilder().setColor(0xf1c40f)
+                        await require('../lib/safeSend').safeSend('ticket-log', logCh, toV2({ embeds: [new EmbedBuilder().setColor(0xf1c40f)
                             .setDescription(t('ticket.rating_log', lang, {stars: starEmoji, count: stars, user: `<@${ix.user.id}>`}))
-                            .setTimestamp()] }).catch(()=>{});
+                            .setTimestamp()], allowedMentions: { parse: [] } }), { guild: logCh.guild });
                     }
                 }
             } catch(e) {}
