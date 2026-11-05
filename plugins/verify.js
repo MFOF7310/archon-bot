@@ -7,6 +7,7 @@ const {
     PermissionsBitField, AttachmentBuilder,
     ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle
 } = require('discord.js');
+const { toV2, fit, isV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const { applyUnverifiedLock, lockSummary, validateVerifyRole, GUARD_MSG } = require('../lib/verify-guard.js');
 const crypto = require('crypto');
 const { generateCaptcha, randomCode } = require('./captcha.js');
@@ -69,11 +70,11 @@ async function kickIfStillUnverified(client, db, gid, uid) {
         const dmCh = await m.createDM().catch(() => null);
         if (dmCh) {
             const invRow = await storedInviteRow(db, guild, lang);
-            await dmCh.send({ embeds: [new EmbedBuilder().setColor(0xff8800)
+            await dmCh.send(toV2({ embeds: [new EmbedBuilder().setColor(0xff8800)
                 .setTitle(`${EMOJIS.warning} ${vt(lang, 'tooManyTitle')}`)
                 .setDescription(vt(lang, 'kickDm', { server: guild.name }))
                 .setFooter({ text: vt(lang, 'bamakoFooter') })],
-                components: invRow ? [invRow] : [] }).catch(() => {});
+                components: invRow ? [invRow] : [] })).catch(() => {});
         }
     } catch {}
     await m.kick('Failed to verify in time').catch(() => {});
@@ -119,7 +120,7 @@ async function logVerify(guild, db, color, title, userId, detail = '', lang = 'e
             .setFooter({ text: vt(lang, 'logFooter') || 'ARCHON CG-223 • Verification' })
             .setTimestamp();
 
-        await ch.send({ embeds: [embed], allowedMentions: { parse: [] } });
+        await require('../lib/safeSend').safeSend('modlog', ch, toV2({ embeds: [embed], allowedMentions: { parse: [] } }), { guild, channelId: row?.mod_log_channel || null });
     } catch (e) { console.error(`[VERIFY] modlog guild=${guild.id}:`, e.message); }
 }
 
@@ -300,27 +301,27 @@ module.exports = {
         if (sub === 'enable') {
             const { isPremium } = require('./premium.js');
             if (!isPremium(db, gid)) {
-                return interaction.reply({ embeds: [new EmbedBuilder()
+                return interaction.reply(toV2({ embeds: [new EmbedBuilder()
                     .setColor(0xffd700).setTitle(`⭐ ${vt(lang, 'premiumTitle')}`).setDescription(vt(lang, 'premiumDesc'))
                     .addFields({ name: vt(lang, 'premiumHowTo'), value: vt(lang, 'premiumHowToValue') }).setFooter({ text: vt(lang, 'bamakoFooter') })
-                ], flags: 64 });
+                ], flags: 64 }));
             }
             db.prepare(`UPDATE server_settings SET verify_enabled = 1 WHERE guild_id = ?`).run(gid);
             const settings = db.prepare('SELECT verify_role_id, verify_kick_days FROM server_settings WHERE guild_id = ?').get(gid);
             const role = settings?.verify_role_id ? `<@&${settings.verify_role_id}>` : vt(lang, 'setroleHint');
-            return interaction.reply({
+            return interaction.reply(toV2({
                 embeds: [new EmbedBuilder().setColor(0x00cc44).setTitle(`${EMOJIS.verified} ${vt(lang, 'enableTitle')}`)
                     .addFields(
                         { name: vt(lang, 'verifiedRoleLabel'), value: role, inline: true },
                         { name: vt(lang, 'autokickLabel'), value: settings?.verify_kick_days ? vt(lang, 'autokickMin', { mins: settings.verify_kick_days }) : vt(lang, 'disabled'), inline: true }
                     ).setFooter({ text: vt(lang, 'enableFooter') })],
                 flags: 64
-            });
+            }));
         }
 
         if (sub === 'disable') {
             db.prepare(`UPDATE server_settings SET verify_enabled = 0 WHERE guild_id = ?`).run(gid);
-            return interaction.reply({ embeds: [new EmbedBuilder().setColor(0xff3311).setDescription(`⚠️ ${vt(lang, 'disableDesc')}`)], flags: 64 });
+            return interaction.reply(toV2({ embeds: [new EmbedBuilder().setColor(0xff3311).setDescription(`⚠️ ${vt(lang, 'disableDesc')}`)], flags: 64 }));
         }
 
         if (sub === 'setrole') {
@@ -330,16 +331,16 @@ module.exports = {
             const cur = db.prepare('SELECT verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
             if (cur?.verify_unverified_role_id === role.id) return interaction.reply({ content: vt(lang, 'roleDiffError'), flags: 64 });
             db.prepare(`UPDATE server_settings SET verify_role_id = ? WHERE guild_id = ?`).run(role.id, gid);
-            return interaction.reply({ embeds: [new EmbedBuilder().setColor(0x00aaff).setDescription(vt(lang, 'roleSetDesc', { role: String(role) }))], flags: 64 });
+            return interaction.reply(toV2({ embeds: [new EmbedBuilder().setColor(0x00aaff).setDescription(vt(lang, 'roleSetDesc', { role: String(role) }))], flags: 64 }));
         }
 
         if (sub === 'setkick') {
             const mins = interaction.options.getInteger('minutes');
             db.prepare(`UPDATE server_settings SET verify_kick_days = ? WHERE guild_id = ?`).run(mins, gid);
-            return interaction.reply({
+            return interaction.reply(toV2({
                 embeds: [new EmbedBuilder().setColor(0x00aaff).setDescription(mins === 0 ? `${EMOJIS.check} ${vt(lang, 'setkickDisabled')}` : `⚠️ ${vt(lang, 'setkickEnabled', { mins })}`)],
                 flags: 64
-            });
+            }));
         }
 
         if (sub === 'setunverified') {
@@ -353,13 +354,13 @@ module.exports = {
             await interaction.deferReply({ flags: 64 });
             ensureCols(db);
             const total = interaction.guild.channels.cache.filter(c => !c.isThread?.() && c.type !== 4).size;
-            await interaction.editReply({ content: vt(lang, 'lockingChannels', { server: interaction.guild.name, count: total, role: String(role) }) }).catch(() => {});
+            await interaction.editReply(toV2({ content: vt(lang, 'lockingChannels', { server: interaction.guild.name, count: total, role: String(role) }) })).catch(() => {});
 
             const r = await applyUnverifiedLock(interaction.guild, role, db);
-            return interaction.editReply({
+            return interaction.editReply(toV2({
                 content: '', embeds: [new EmbedBuilder().setColor(r.failed ? 0xf1c40f : 0x00cc44)
                     .setTitle(vt(lang, 'configuredTitle')).setDescription(lockSummary(r, `${role}`)).setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })]
-            });
+            }));
         }
 
         if (sub === 'panel') {
@@ -404,10 +405,10 @@ module.exports = {
                 vt(lang, 'qsSetrole', { id: cmdId }), vt(lang, 'qsSetunverified', { id: cmdId }), vt(lang, 'qsSetkick', { id: cmdId }),
             ].join('\n');
 
-            return interaction.reply({
+            return interaction.reply(toV2({
                 embeds: [new EmbedBuilder().setColor(enabled ? 0x00cc44 : 0x888888).setTitle(vt(lang, 'gateTitle')).setDescription(desc).setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
                 flags: 64
-            });
+            }));
         }
     },
 
@@ -475,12 +476,12 @@ module.exports = {
         let dmChannel = null;
         try {
             dmChannel = await member.createDM();
-            dmMsg = await dmChannel.send({ embeds: [captchaEmbed], files: [attachment] }); // Clean, no button
+            dmMsg = await dmChannel.send(toV2({ embeds: [captchaEmbed], files: [attachment] })); // Clean, no button
         } catch {
             const sysCh = pl ? null : member.guild.systemChannel;
             if (sysCh) {
                 try {
-                    dmMsg = await sysCh.send({ content: vt(lang, 'sysChanPing', { user: member }), embeds: [captchaEmbed], files: [attachment] });
+                    dmMsg = await sysCh.send(toV2({ content: vt(lang, 'sysChanPing', { user: member }), embeds: [captchaEmbed], files: [attachment] }));
                     dmChannel = sysCh;
                 } catch {}
             }
@@ -503,11 +504,11 @@ module.exports = {
                     const dmCh = await freshMember.createDM().catch(() => null);
                     if (dmCh) {
                         const invRow = await storedInviteRow(db, member.guild, lang);
-                        await dmCh.send({ embeds: [new EmbedBuilder().setColor(0xff8800)
+                        await dmCh.send(toV2({ embeds: [new EmbedBuilder().setColor(0xff8800)
                             .setTitle(`${EMOJIS.warning} ${vt(lang, 'tooManyTitle')}`)
                             .setDescription(vt(lang, 'kickDm', { server: member.guild.name }))
                             .setFooter({ text: vt(lang, 'bamakoFooter') })],
-                            components: invRow ? [invRow] : [] }).catch(() => {});
+                            components: invRow ? [invRow] : [] })).catch(() => {});
                     }
                 } catch {}
                 await freshMember.kick('Failed to verify in time').catch(() => {});
@@ -658,12 +659,12 @@ module.exports = {
             const member = await guild.members.fetch(message.author.id).catch(() => null);
             if (!member) return true;
 
-            await message.channel.send({ embeds: [new EmbedBuilder()
+            await message.channel.send(toV2({ embeds: [new EmbedBuilder()
                 .setColor(0x00cc44)
                 .setTitle(`${EMOJIS.verified} ${vt(lang, 'verifiedDmTitle')}`)
                 .setDescription(vt(lang, 'welcomeDm', { server: guild.name }))
                 .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
-            ]}).catch(() => {});
+            ]})).catch(() => {});
 
             (async () => {
                 if (uRole) await member.roles.remove(uRole).catch(() => {});
@@ -687,10 +688,10 @@ module.exports = {
                 if (kickOn) {
                     // They are getting kicked. Send the Rejoin button.
                     const invRow = await storedInviteRow(db, guild, lang);
-                    await message.channel.send({ 
+                    await message.channel.send(toV2({ 
                         embeds: [new EmbedBuilder().setColor(0xff3311).setTitle(vt(lang, 'tooManyTitle')).setDescription(vt(lang, 'kickDm', { server: guild.name })).setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
                         components: invRow ? [invRow] : []
-                    }).catch(() => {});
+                    })).catch(() => {});
                     
                     if (member) {
                         const hasRole = settings.verify_role_id && member.roles.cache.has(settings.verify_role_id);
@@ -704,10 +705,10 @@ module.exports = {
                 } else {
                     // Kick is off. Send the Panel button so they can try in the server.
                     const pl = await panelLink(guild, db, lang);
-                    await message.channel.send({ 
+                    await message.channel.send(toV2({ 
                         embeds: [new EmbedBuilder().setColor(0xff3311).setTitle(vt(lang, 'tooManyTitle')).setDescription(vt(lang, 'failPanelDm', { server: guild.name })).setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
                         components: pl ? [pl.row] : []
-                    }).catch(() => {});
+                    })).catch(() => {});
                 }
             } else {
                 db.prepare('UPDATE verify_pending SET attempts = ? WHERE guild_id = ? AND user_id = ?').run(attempts, gid, message.author.id);
