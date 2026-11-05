@@ -308,7 +308,7 @@ module.exports = {
     },
 
     // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, usedCommand, serverSettings, lang) => {
+    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         const sub = args[0]?.toLowerCase() || 'config';
         const prefix = serverSettings?.prefix || '.';
         let cfg = Style.normalizeWelcomeConfig(serverSettings);
