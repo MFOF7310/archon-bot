@@ -2,7 +2,7 @@ const { EmbedBuilder, PermissionsBitField } = require('discord.js');
 
 module.exports = {
     name: 'roleinfo',
-    aliases: ['role', 'ri', 'infosrole'],
+    aliases: ['ri', 'infosrole'],
     description: 'ℹ️ Display information about a role.',
     category: 'UTILITY',
     cooldown: 3000,

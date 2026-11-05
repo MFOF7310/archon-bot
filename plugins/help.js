@@ -199,7 +199,7 @@ async function handleComponent(interaction, client) {
 
 module.exports = {
     name: 'help',
-    aliases: ['h', 'menu', 'docs', 'aide', 'commandes', 'commands'],
+    aliases: ['h', 'menu', 'docs', 'aide'],
     description: 'Every command, by category',
     category: 'SYSTEM',
     cooldown: 3000,

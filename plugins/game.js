@@ -777,7 +777,7 @@ async function handleComponent(interaction, client) {
 // ================= EXPORTS =================
 module.exports = {
     name: 'game',
-    aliases: ['jeu', 'jouer', 'codm', 'slots', 'slot', 'tictactoe', 'ttt', 'morpion', 'blackjack', 'bj', 'roulette'],
+    aliases: ['jouer', 'slots', 'slot', 'ttt', 'blackjack', 'bj', 'roulette'],
     description: '🎮 Game center: CODM, slots, tic-tac-toe, blackjack, roulette and trivia',
     category: 'GAMING',
     usage: '/game <subcommand>',

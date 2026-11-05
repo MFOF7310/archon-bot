@@ -21,7 +21,7 @@ const SUB_ALIASES = {
     ping: ['ping', 'pong', 'latency', 'lag', 'pongue'],
     stats: ['stats', 'statistiques', 'sysinfo', 'systemstats', 'diagnostics'],
     activity: ['botstats', 'bs', 'bstats', 'archonstats', 'activity', 'activite'],
-    about: ['about', 'apropos', 'botinfo', 'dossier'],
+    about: ['about', 'apropos', 'botinfo'],
     invite: ['invite', 'inviter', 'invitelink'],
 };
 

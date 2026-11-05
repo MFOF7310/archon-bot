@@ -507,7 +507,7 @@ async function handleRank(message, args, client, db, lang = 'en') {
 module.exports = {
     name: 'leveling',
     category: 'SOCIAL',
-    aliases: ['rank', 'level'],
+    aliases: [],
     description: '📈 Dynamic canvas leveling with per-server themes, rank cards, welcome banners, and milestone auto-roles.',
     usage: '.leveling [rank @user] | .leveling theme <color> | .leveling config',
     cooldown: 3000,

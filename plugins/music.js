@@ -1449,7 +1449,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
 // ═══════════════════════════════════════════════════════
 module.exports = {
     name: 'music',
-    aliases: ['m', 'musique', 'play', 'p'],
+    aliases: ['m', 'musique', 'play'],
     description: '🎵 Full music system for ARCHON CG-223',
     category: 'MUSIC',
     cooldown: 2000,

@@ -390,7 +390,7 @@ async function buildRankCanvas(target, userData, rank, totalUsers, guildId, guil
 
 module.exports = {
     name: 'rank',
-    aliases: ['level', 'xp', 'rang', 'niveau', 'dossier', 'agent', 'profil', 'profile'],
+    aliases: ['xp', 'rang', 'niveau', 'dossier', 'agent', 'profil', 'profile'],
     description: '📊 Show a rank card with level, XP and activity.',
     category: 'PROFILE',
     usage: '.rank [@user] | /rank',

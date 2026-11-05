@@ -45,7 +45,7 @@ const fmt = (amt, emoji) => `${(amt || 0).toLocaleString()} ${emoji}`;
 
 module.exports = {
     name: 'credit',
-    aliases: ['credits', 'bal', 'balance', 'crédits', 'solde', 'pay', 'transfer', 'donate', 'send'],
+    aliases: ['credits', 'bal', 'balance', 'crédits', 'solde', 'transfer', 'donate'],
     description: '💰 Bank of Bamako: check balances, send credits and see the leaderboard.',
     category: 'ECONOMY',
     usage: '.bal [@user] | .pay @user <amount>',

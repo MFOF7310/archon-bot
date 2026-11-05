@@ -2,7 +2,7 @@ const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
     name: 'avatar',
-    aliases: ['av', 'pfp', 'photo'],
+    aliases: ['av', 'pfp'],
     description: '🖼️ Display your or another user\'s avatar in high quality.',
     category: 'UTILITY',
     cooldown: 3000,

@@ -6,7 +6,7 @@ const T = {
 };
 
 module.exports = {
-    name: 'customrole', aliases: ['role', 'colorrole', 'myrole', 'buyrole'],
+    name: 'customrole', aliases: ['colorrole', 'myrole', 'buyrole'],
     description: '🎨 Buy a custom color role with credits — express yourself!',
     category: 'ECONOMY', cooldown: 10000, usage: '.customrole <color> <name>', examples: ['.customrole #FF5733 MyRole', '.customrole red VIP', '/customrole color:#3498db name:Elite'],
     data: new SlashCommandBuilder().setName('customrole').setDescription('🎨 Buy a custom color role').addStringOption(o => o.setName('color').setDescription('Color hex or name (red, blue, green...)').setRequired(true)).addStringOption(o => o.setName('name').setDescription('Role name').setRequired(true)),

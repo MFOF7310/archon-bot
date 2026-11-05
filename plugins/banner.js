@@ -3,7 +3,7 @@ const axios = require('axios');
 
 module.exports = {
     name: 'banner',
-    aliases: ['banniere', 'bg'],
+    aliases: ['banniere'],
     description: '🎨 Display your or another user\'s banner.',
     category: 'UTILITY',
     cooldown: 3000,

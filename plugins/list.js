@@ -315,7 +315,7 @@ function createCommandDetailEmbed(client, cmd, prefix, lang, t, version, guildNa
 // ================= MAIN EXPORT =================
 module.exports = {
     name: 'list',
-    aliases: ['commands', 'cmds', 'registry', 'registre', 'commandes', 'ls'],
+    aliases: ['commands', 'cmds', 'registry', 'registre', 'commandes'],
     description: '📋 Display a professional, organized list of all available commands.',
     category: 'UTILITY',
     usage: '[category|command|search]',

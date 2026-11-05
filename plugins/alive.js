@@ -136,7 +136,7 @@ async function measureRest(client) {
 
 module.exports = {
     name: 'alive',
-    aliases: ['status', 'health', 'uptime', 'version', 'enligne', 'etat', 'sante'],
+    aliases: ['status', 'health', 'uptime', 'enligne', 'etat', 'sante'],
     description: '📡 Check if the bot is alive and get system statistics',
     category: 'SYSTEM',
     usage: '.alive',

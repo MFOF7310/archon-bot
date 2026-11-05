@@ -3,7 +3,7 @@ const { resolveEmoji } = require('../lib/emoji-resolver');
 
 module.exports = {
     name: 'lookup',
-    aliases: ['userinfo', 'investigate', 'scan'],
+    aliases: ['investigate'],
     description: '🔍 Owner-only: Deep scan a user across all databases',
     category: 'OWNER',
     cooldown: 3000,

@@ -213,7 +213,7 @@ const data = new SlashCommandBuilder()
 
 module.exports = {
     name: 'remind',
-    aliases: ['reminder', 'remindme', 'rappel', 'reminders'],
+    aliases: ['reminder', 'rappel', 'reminders'],
     description: 'Set a reminder or see the ones you have',
     category: 'UTILITY',
     cooldown: 2000,

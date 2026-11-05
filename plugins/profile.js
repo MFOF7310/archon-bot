@@ -533,7 +533,7 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
 // ══════════════════════════════════════════════════════════════
 module.exports = {
     name: 'profile',
-    aliases: ['p', 'identifiant', 'userinfo', 'agent', 'profil'],
+    aliases: ['p', 'identifiant', 'userinfo'],
     description: '📋 A member profile with level, credits and stats.',
     category: 'PROFILE',
     usage: '.profile [@user]',

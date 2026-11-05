@@ -10,7 +10,7 @@ function xpForLevel(lvl) { return Math.pow((lvl - 1) / 0.1, 2); }
 function bar(pct, len = 15) { const f = Math.round((pct / 100) * len); return '█'.repeat(Math.max(0, f)) + '░'.repeat(Math.max(0, len - f)); }
 
 module.exports = {
-    name: 'level', aliases: ['lvl', 'xp', 'progress', 'rank'],
+    name: 'level', aliases: ['lvl', 'progress'],
     description: '📊 Check your level progress with XP bar and rank.',
     category: 'UTILITY', cooldown: 3000, usage: '.level [@user]', examples: ['.level', '.level @user', '/level user:@user'],
     data: new SlashCommandBuilder().setName('level').setDescription('📊 Check level progress').addUserOption(o => o.setName('user').setDescription('User to check (default: you)').setRequired(false)),
