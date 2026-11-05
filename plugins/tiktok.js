@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MediaGalleryBuilder, MediaGalleryItemBuilder, MessageFlags, SectionBuilder, ThumbnailBuilder } = require('discord.js');
+const { toV2, fit } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const { t } = require('../lib/i18n');
 const mentions = require('../lib/mentions');
 const EMOJIS = require('../config/emojis');
@@ -767,13 +768,13 @@ module.exports = {
                 .setFooter({ text: 'ARCHON CG-223 • TikTok Debug', iconURL: guildIcon })
                 .setTimestamp();
 
-            return statusMsg.edit({ embeds: [embed] });
+            return statusMsg.edit(fit(statusMsg, { embeds: [embed] }));
         }
 
      // ─── TEST NOTIFICATION (owner only) ───
 if (action === 'test' || action === 'simulate') {
     if (!isGuildOwner(message)) {
-        return message.reply({ embeds: [buildOwnerErrorEmbed(client, message.guild, lang)] });
+        return message.reply(toV2({ embeds: [buildOwnerErrorEmbed(client, message.guild, lang)] }));
     }
     const username = args[1]?.replace(/^@/, '').trim();
     if (!username) return message.reply(t('tiktok.test_usage', lang));
@@ -814,7 +815,7 @@ if (action === 'test' || action === 'simulate') {
 
         // ─── OWNER GUARD ───
         if (!isGuildOwner(message)) {
-            return message.reply({ embeds: [buildOwnerErrorEmbed(client, message.guild, lang)] });
+            return message.reply(toV2({ embeds: [buildOwnerErrorEmbed(client, message.guild, lang)] }));
         }
 
         // ─── SET ───
@@ -850,7 +851,7 @@ if (action === 'test' || action === 'simulate') {
 
             const existing = db.prepare('SELECT target_channel_id FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(guildId, username.toLowerCase());
             if (existing && existing.target_channel_id === channelId) {
-                return statusMsg.edit({ content: t('tiktok.already_tracked', lang, { username, channel: channelId }), embeds: [], components: [] });
+                return statusMsg.edit(fit(statusMsg, { content: t('tiktok.already_tracked', lang, { username, channel: channelId }), embeds: [], components: [] }));
             }
 
             const lastVideoId = testData?.latestVideo?.id ? String(testData.latestVideo.id) : null;
@@ -898,7 +899,7 @@ if (action === 'test' || action === 'simulate') {
                 .setAuthor({ name: '📱 Tracking Removed', iconURL: guildIcon })
                 .setDescription(t('tiktok.removed', lang))
                 .setFooter({ text: 'ARCHON CG-223  •  TikTok Engine', iconURL: client.user.displayAvatarURL() }).setTimestamp();
-            return message.reply({ embeds: [embed] });
+            return message.reply(toV2({ embeds: [embed] }));
         }
 
         // ─── HELP ───
@@ -919,7 +920,7 @@ if (action === 'test' || action === 'simulate') {
             )
             .setFooter({ text: 'ARCHON CG-223  •  TikTok Engine', iconURL: client.user.displayAvatarURL() })
             .setTimestamp();
-        return message.reply({ embeds: [helpEmbed] });
+        return message.reply(toV2({ embeds: [helpEmbed] }));
     },
 
     // ─── SLASH COMMAND HANDLER ───
@@ -949,7 +950,7 @@ if (action === 'test' || action === 'simulate') {
             return interaction.reply({ components: [buildListEmbed(tracks, interaction.guild, client, lang)], flags: MessageFlags.IsComponentsV2 });
         }
 
-        if (!isOwner) return interaction.reply({ embeds: [buildOwnerErrorEmbed(client, interaction.guild, lang)], flags: 1 << 6 });
+        if (!isOwner) return interaction.reply(toV2({ embeds: [buildOwnerErrorEmbed(client, interaction.guild, lang)], flags: 1 << 6 }));
 
         if (subcommand === 'check') {
             const username = interaction.options.getString('username').replace(/^@/, '').trim();

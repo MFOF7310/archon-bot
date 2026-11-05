@@ -2,6 +2,7 @@ const { resolveEmoji } = require('../lib/emoji-resolver');
 const i18n = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionsBitField, ContainerBuilder, TextDisplayBuilder, SectionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, SeparatorBuilder, SeparatorSpacingSize, ChannelSelectMenuBuilder, ChannelType, ThumbnailBuilder } = require('discord.js');
+const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 
 // ═══════════════════════════════════════════════════════
 // UTILS
@@ -310,7 +311,7 @@ async function endGiveawayDb(id, client, db) {
                         `**Server:** ${guildName}\n\n` +
                         (gw.amount > 0 ? `Credits have been added to your account!` : `You won the custom prize! Contact the host to claim it.`)
                     );
-                await user.send({ embeds: [dm] }).catch(() => {});
+                await user.send(toV2({ embeds: [dm] })).catch(() => {});
             }
         } else {
             await require('../lib/safeSend').safeSend('giveaway', channel, { content: 'No one entered the giveaway.' });
