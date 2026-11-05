@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 
 // ================= ENGINE IMPORTS =================
 const voteSync = require('./votesync.js');
@@ -309,14 +310,14 @@ module.exports = {
                 if (result.error === 'NOT_VOTED') {
                     const embed = new EmbedBuilder().setColor('#e74c3c').setTitle(t.noVote)
                         .setDescription(t.voteFirst.replace('{link}', t.voteLink.replace('{botId}', client.user.id)));
-                    return message.reply({ embeds: [embed] }).catch(() => {});
+                    return message.reply(toV2({ embeds: [embed] })).catch(() => {});
                 }
                 if (result.error === 'CHECK_FAILED') return message.reply({ content: t.checkError, allowedMentions: { parse: [] } }).catch(() => {});
-                if (result.error === 'COOLDOWN') return message.reply({ embeds: [new EmbedBuilder().setColor('#e67e22').setTitle(t.cooldownWord).setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))] }).catch(() => {});
+                if (result.error === 'COOLDOWN') return message.reply(toV2({ embeds: [new EmbedBuilder().setColor('#e67e22').setTitle(t.cooldownWord).setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))] })).catch(() => {});
                 return message.reply({ content: t.processFail, allowedMentions: { parse: [] } }).catch(() => {});
             }
             const embed = buildClaimEmbed(t, result, result.nextVote);
-            message.reply({ embeds: [embed] }).catch(() => {});
+            message.reply(toV2({ embeds: [embed] })).catch(() => {});
             if (result.dmSent !== false) message.reply({ content: t.dmSuccess, allowedMentions: { parse: [] } }).catch(() => {});
             return;
         }
@@ -334,7 +335,7 @@ module.exports = {
                     { name: t.total.replace('{n}', stats.total_votes), value: t.rewards.replace('{n}', stats.total_rewards.toLocaleString()), inline: true },
                     { name: t.rankLabel, value: rank >= 0 ? `#${rank + 1}` : t.unranked, inline: true }
                 ).setFooter({ text: t.footer }).setTimestamp();
-            return message.reply({ embeds: [embed] }).catch(() => {});
+            return message.reply(toV2({ embeds: [embed] })).catch(() => {});
         }
 
         // ---- LEADERBOARD ----
@@ -399,7 +400,7 @@ module.exports = {
                 .setTitle('🔧 VOTE REPAIR COMPLETE')
                 .setDescription(report.substring(0, 2000) || '✅ Done')
                 .setFooter({ text: `${totalFixed} entries fixed • Locked permanently` });
-            return message.reply({ embeds: [embed] }).catch(() => {});
+            return message.reply(toV2({ embeds: [embed] })).catch(() => {});
         }
 
         // ---- ADMIN DIAGNOSTIC ----
@@ -439,14 +440,14 @@ module.exports = {
                     { name: t.statusApi, value: hasApi ? '✅ Configured' : '❌ Missing TOPGG_API_TOKEN', inline: true },
                     { name: t.statusWebhook, value: hasWebhook ? '✅ Configured' : '❌ Not configured', inline: true }
                 ).setFooter({ text: t.footer }).setTimestamp();
-            return message.reply({ embeds: [embed] }).catch(() => {});
+            return message.reply(toV2({ embeds: [embed] })).catch(() => {});
         }
 
         // ---- PORTAL (default) ----
         const status = await getRealtimeStatus(client, uid, gid, db);
         const embed = buildPortalEmbed(client, message.author, status, t, lang, message.guild);
         const row = buildPortalRow(client, status, t, false);
-        const sent = await message.reply({ embeds: [embed], components: [row] }).catch(() => null);
+        const sent = await message.reply(toV2({ embeds: [embed], components: [row] })).catch(() => null);
         if (!sent) return;
 
         const collector = sent.createMessageComponentCollector({ time: 120000 });
@@ -477,7 +478,7 @@ module.exports = {
                     )
                     .setFooter({ text: 'ARCHON CG-223 • Vote Command' });
 
-                i.followUp({ embeds: [ce], flags: MessageFlags.Ephemeral }).catch(() => {});
+                i.followUp(toV2({ embeds: [ce], flags: MessageFlags.Ephemeral })).catch(() => {});
                 return;
             }
 
@@ -486,11 +487,11 @@ module.exports = {
                 if (!result.success) {
                     if (result.error === 'NOT_VOTED') return i.followUp({ content: t.noVote + ' ' + t.voteFirst.replace('{link}', t.voteLink.replace('{botId}', client.user.id)), flags: MessageFlags.Ephemeral }).catch(() => {});
                     if (result.error === 'CHECK_FAILED') return i.followUp({ content: t.checkError, flags: MessageFlags.Ephemeral }).catch(() => {});
-                    if (result.error === 'COOLDOWN') return i.followUp({ embeds: [new EmbedBuilder().setColor('#e67e22').setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))], flags: MessageFlags.Ephemeral }).catch(() => {});
+                    if (result.error === 'COOLDOWN') return i.followUp(toV2({ embeds: [new EmbedBuilder().setColor('#e67e22').setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))], flags: MessageFlags.Ephemeral })).catch(() => {});
                     return i.followUp({ content: t.processFail, flags: MessageFlags.Ephemeral }).catch(() => {});
                 }
                 const ce = buildClaimEmbed(t, result, result.nextVote);
-                i.followUp({ embeds: [ce], flags: MessageFlags.Ephemeral }).catch(() => {});
+                i.followUp(toV2({ embeds: [ce], flags: MessageFlags.Ephemeral })).catch(() => {});
                 await sent.delete().catch(() => {});
             } else if (i.customId === 'vote_stats') {
                 const s = voteSync.getStats(db, uid, gid);
@@ -502,7 +503,7 @@ module.exports = {
                         { name: t.total.replace('{n}', s.total_votes), value: t.rewards.replace('{n}', s.total_rewards.toLocaleString()), inline: true },
                         { name: t.rankLabel, value: r >= 0 ? `#${r + 1}` : t.unranked, inline: true }
                     ).setFooter({ text: t.footer }).setTimestamp();
-                i.followUp({ embeds: [se], flags: MessageFlags.Ephemeral }).catch(() => {});
+                i.followUp(toV2({ embeds: [se], flags: MessageFlags.Ephemeral })).catch(() => {});
             } else if (i.customId === 'vote_lb') {
                 const lb = db.prepare(`SELECT user_id, total_votes, current_streak, best_streak, total_rewards FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC LIMIT 10`).all(gid);
                 const entries = await Promise.all(lb.map(async row => {
@@ -537,12 +538,12 @@ module.exports = {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral });
             const result = await voteSync.processVote(uid, gid, client);
             if (!result.success) {
-                if (result.error === 'NOT_VOTED') return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#e74c3c').setTitle(t.noVote).setDescription(t.voteFirst.replace('{link}', t.voteLink.replace('{botId}', client.user.id)))] });
+                if (result.error === 'NOT_VOTED') return interaction.editReply(toV2({ embeds: [new EmbedBuilder().setColor('#e74c3c').setTitle(t.noVote).setDescription(t.voteFirst.replace('{link}', t.voteLink.replace('{botId}', client.user.id)))] }));
                 if (result.error === 'CHECK_FAILED') return interaction.editReply({ content: t.checkError });
-                if (result.error === 'COOLDOWN') return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#e67e22').setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))] });
+                if (result.error === 'COOLDOWN') return interaction.editReply(toV2({ embeds: [new EmbedBuilder().setColor('#e67e22').setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))] }));
                 return interaction.editReply({ content: t.processFail });
             }
-            await interaction.editReply({ embeds: [buildClaimEmbed(t, result, result.nextVote)] });
+            await interaction.editReply(toV2({ embeds: [buildClaimEmbed(t, result, result.nextVote)] }));
             if (result.dmSent !== false) {
                 await interaction.followUp({ content: t.dmSuccess, flags: MessageFlags.Ephemeral }).catch(() => {});
             }
@@ -561,7 +562,7 @@ module.exports = {
                     { name: t.total.replace('{n}', stats.total_votes), value: t.rewards.replace('{n}', stats.total_rewards.toLocaleString()), inline: true },
                     { name: t.rankLabel, value: rank >= 0 ? `#${rank + 1}` : t.unranked, inline: true }
                 ).setFooter({ text: t.footer }).setTimestamp();
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply(toV2({ embeds: [embed] }));
         }
 
         // ---- LEADERBOARD ----
@@ -597,7 +598,7 @@ module.exports = {
                     { name: t.statusApi, value: hasApi ? '✅ Configured' : '❌ Missing TOPGG_API_TOKEN', inline: true },
                     { name: t.statusWebhook, value: hasWebhook ? '✅ Configured' : '❌ Not configured', inline: true }
                 ).setFooter({ text: t.footer }).setTimestamp();
-            return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+            return interaction.reply(toV2({ embeds: [embed], flags: MessageFlags.Ephemeral }));
         }
 
         // ---- PORTAL (default) ----
@@ -605,7 +606,7 @@ module.exports = {
         const status = await getRealtimeStatus(client, uid, gid, client.db);
         const embed = buildPortalEmbed(client, interaction.user, status, t, lang, interaction.guild);
         const row = buildPortalRow(client, status, t, true);
-        interaction.editReply({ embeds: [embed], components: [row] }).catch(() => {});
+        interaction.editReply(toV2({ embeds: [embed], components: [row] })).catch(() => {});
     },
 
     // ================= BUTTON HANDLER (slash portal) =================
@@ -643,19 +644,19 @@ module.exports = {
                 )
                 .setFooter({ text: 'ARCHON CG-223 • Vote Command' });
 
-            return interaction.editReply({ embeds: [ce] });
+            return interaction.editReply(toV2({ embeds: [ce] }));
         }
 
         // ---- CLAIM ----
         if (id === 'vote_claim_slash') {
             const result = await voteSync.processVote(uid, gid, client);
             if (!result.success) {
-                if (result.error === 'NOT_VOTED') return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#e74c3c').setTitle(t.noVote).setDescription(t.voteFirst.replace('{link}', t.voteLink.replace('{botId}', client.user.id)))] });
+                if (result.error === 'NOT_VOTED') return interaction.editReply(toV2({ embeds: [new EmbedBuilder().setColor('#e74c3c').setTitle(t.noVote).setDescription(t.voteFirst.replace('{link}', t.voteLink.replace('{botId}', client.user.id)))] }));
                 if (result.error === 'CHECK_FAILED') return interaction.editReply({ content: t.checkError });
-                if (result.error === 'COOLDOWN') return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#e67e22').setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))] });
+                if (result.error === 'COOLDOWN') return interaction.editReply(toV2({ embeds: [new EmbedBuilder().setColor('#e67e22').setDescription(t.alreadyClaimed.replace('{time}', `<t:${result.nextVote}:R>`))] }));
                 return interaction.editReply({ content: t.processFail });
             }
-            await interaction.editReply({ embeds: [buildClaimEmbed(t, result, result.nextVote)] });
+            await interaction.editReply(toV2({ embeds: [buildClaimEmbed(t, result, result.nextVote)] }));
             if (result.dmSent !== false) {
                 await interaction.followUp({ content: t.dmSuccess, flags: MessageFlags.Ephemeral }).catch(() => {});
             }
@@ -667,11 +668,11 @@ module.exports = {
             const stats = voteSync.getStats(client.db, uid, gid);
             const all = client.db.prepare(`SELECT user_id FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC`).all(gid);
             const rank = all.findIndex(u => u.user_id === uid);
-            return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#ffd700').setTitle(`📊 ${t.title}`).addFields(
+            return interaction.editReply(toV2({ embeds: [new EmbedBuilder().setColor('#ffd700').setTitle(`📊 ${t.title}`).addFields(
                 { name: t.streak.replace('{days}', stats.current_streak), value: t.best.replace('{days}', stats.best_streak), inline: true },
                 { name: t.total.replace('{n}', stats.total_votes), value: t.rewards.replace('{n}', stats.total_rewards.toLocaleString()), inline: true },
                 { name: t.rankLabel, value: rank >= 0 ? `#${rank + 1}` : t.unranked, inline: true }
-            ).setFooter({ text: t.footer }).setTimestamp()] });
+            ).setFooter({ text: t.footer }).setTimestamp()] }));
         }
 
         // ---- LEADERBOARD ----
@@ -680,7 +681,7 @@ module.exports = {
             let desc = '```yaml\n';
             for (let i = 0; i < lb.length; i++) { let n; try { n = (await client.users.fetch(lb[i].user_id)).username; } catch { n = 'Unknown'; } desc += `${t.rankEmoji[i] || '📌'} ${n.padEnd(18)} ${lb[i].total_votes} ${t.votesUnit}\n`; }
             desc += '```';
-            return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#ffd700').setTitle(t.lbTitle).setDescription(desc).setFooter({ text: t.footer }).setTimestamp()] });
+            return interaction.editReply(toV2({ embeds: [new EmbedBuilder().setColor('#ffd700').setTitle(t.lbTitle).setDescription(desc).setFooter({ text: t.footer }).setTimestamp()] }));
         }
     },
 
