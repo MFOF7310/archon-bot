@@ -225,18 +225,18 @@ function progressText(streak, lang, I) {
     return `${I('milestone')} ${fill(t.nextMilestone, { days: bold(amount(days, 'day', lang)), bonus: amount(bonus, 'credit', lang) })}\n${bar} ${pctText} · ${fill(t.toGo, { n: days - streak })}`;
 }
 
-function voteButton(client, t) {
-    return new ButtonBuilder().setLabel(t.btnVote).setStyle(ButtonStyle.Link).setURL(voteUrl(client)).setEmoji('⭐');
+function voteButton(client, t, where) {
+    return new ButtonBuilder().setLabel(t.btnVote).setStyle(ButtonStyle.Link).setURL(voteUrl(client)).setEmoji(icon('star', where));
 }
 
-function portalRow(client, state, t, sfx) {
+function portalRow(client, state, t, sfx, where) {
     const row = new ActionRowBuilder();
-    if (state === 'ready' || state === 'first') row.addComponents(voteButton(client, t));
-    if (state !== 'wait') row.addComponents(new ButtonBuilder().setCustomId(`vote_claim${sfx}`).setLabel(t.btnClaim).setStyle(ButtonStyle.Success).setEmoji('💰'));
-    else row.addComponents(new ButtonBuilder().setCustomId(`vote_check_status${sfx}`).setLabel(t.btnWait).setStyle(ButtonStyle.Secondary).setEmoji('⏰'));
+    if (state === 'ready' || state === 'first') row.addComponents(voteButton(client, t, where));
+    if (state !== 'wait') row.addComponents(new ButtonBuilder().setCustomId(`vote_claim${sfx}`).setLabel(t.btnClaim).setStyle(ButtonStyle.Success).setEmoji(icon('coins', where)));
+    else row.addComponents(new ButtonBuilder().setCustomId(`vote_check_status${sfx}`).setLabel(t.btnWait).setStyle(ButtonStyle.Secondary).setEmoji(icon('clock', where)));
     if (state !== 'first') row.addComponents(
-        new ButtonBuilder().setCustomId(`vote_stats${sfx}`).setLabel(t.btnStats).setStyle(ButtonStyle.Secondary).setEmoji('📊'),
-        new ButtonBuilder().setCustomId(`vote_lb${sfx}`).setLabel(t.btnTop).setStyle(ButtonStyle.Secondary).setEmoji('🏆'),
+        new ButtonBuilder().setCustomId(`vote_stats${sfx}`).setLabel(t.btnStats).setStyle(ButtonStyle.Secondary).setEmoji(icon('stats', where)),
+        new ButtonBuilder().setCustomId(`vote_lb${sfx}`).setLabel(t.btnTop).setStyle(ButtonStyle.Secondary).setEmoji(icon('trophy', where)),
     );
     return row;
 }
@@ -262,7 +262,7 @@ function portalCard(client, who, status, lang, where, guildName, isSlash = false
         if (lines.length) items.push({ text: lines.join('\n') });
         if (status.state !== 'wait') items.push({ rule: true }, { text: progressText(status.alive ? s.current_streak : 0, lang, I) });
     }
-    items.push({ row: portalRow(client, status.state, t, isSlash ? '_slash' : '') });
+    items.push({ row: portalRow(client, status.state, t, isSlash ? '_slash' : '', where) });
     if (guildName) items.push({ text: `-# ${esc(guildName)}` });
     return card(COLOR[status.state] ?? COLOR.ready, items);
 }
@@ -338,7 +338,7 @@ async function lbImage(client, db, gid, guildName) {
 function waitCard(client, nextVote, lang, where) {
     const t = L(lang), I = (k) => icon(k, where);
     const left = nextVote - Math.floor(Date.now() / 1000);
-    if (left <= 0) return card(COLOR.ready, [{ text: `### ${t.readyNow}` }, { row: new ActionRowBuilder().addComponents(voteButton(client, t)) }]);
+    if (left <= 0) return card(COLOR.ready, [{ text: `### ${t.readyNow}` }, { row: new ActionRowBuilder().addComponents(voteButton(client, t, where)) }]);
     const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60);
     return card(COLOR.wait, [
         { text: `### ${I('clock')} ${fill(t.waitTitle, { when: `<t:${nextVote}:R>` })}` },
