@@ -5,6 +5,7 @@ const {
     ThumbnailBuilder, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags
 } = require('discord.js');
+const { toV2, fit } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const EMOJIS = require('../config/emojis');
 const { t } = require('../lib/i18n');
 const mention = require('../lib/mentions');
@@ -128,11 +129,11 @@ function resetInactivityTimer(q) {
         const lang = _ssI.language && _ssI.language !== 'auto' ? _ssI.language : 'en';
         if (qNow.player?.state?.status === AudioPlayerStatus.Playing) { resetInactivityTimer(qNow); return; }
         try {
-            await qNow.textChannel?.send({ embeds: [new EmbedBuilder()
+            await qNow.textChannel?.send(toV2({ embeds: [new EmbedBuilder()
                 .setColor(0xFEE75C)
                 .setAuthor({ name: '💤 Auto-Disconnect' })
                 .setDescription(t('music.inactivity_disconnect', lang, { cmd_play: mention(global.client, 'music', 'play') }))
-            ] });
+            ] }));
         } catch(e) {}
         destroyQueue(q.guild.id);
     }, INACTIVITY_MS);
@@ -1182,7 +1183,7 @@ async function playNext(q) {
             const giveUpEmbed = new EmbedBuilder().setColor(ARCHON.red)
                 .setAuthor({ name: '🎵 ARCHON Music', iconURL: q._client?.user?.displayAvatarURL() })
                 .setDescription(t('music.too_many_errors', lang, { cmd_play: mention(global.client, 'music', 'play') }));
-            await q.textChannel?.send({ embeds: [giveUpEmbed] }).catch(() => {});
+            await q.textChannel?.send(toV2({ embeds: [giveUpEmbed] })).catch(() => {});
             q.autoplay = false;
             return;
         }
@@ -1196,10 +1197,10 @@ async function playNext(q) {
         }
         // Edit existing error message instead of spamming new ones
         if (q._errorMsg) {
-            await q._errorMsg.edit({ embeds: [errEmbed] }).catch(() => { q._errorMsg = null; });
+            await q._errorMsg.edit(fit(q._errorMsg, { embeds: [errEmbed] })).catch(() => { q._errorMsg = null; });
         }
         if (!q._errorMsg) {
-            q._errorMsg = await q.textChannel?.send({ embeds: [errEmbed] }).catch(() => null);
+            q._errorMsg = await q.textChannel?.send(toV2({ embeds: [errEmbed] })).catch(() => null);
         }
         setTimeout(() => playNext(q), 2000);
     }
@@ -1631,10 +1632,10 @@ module.exports = {
             q._client = client;
             q.voiceChannel = vc;
 
-            await interaction.editReply({
+            await interaction.editReply(toV2({
                 embeds: [new EmbedBuilder().setColor(ARCHON.gold)
                     .setDescription(t('music.downloading_files', lang, { emoji: EMOJIS.loading, count: atts.length }))]
-            });
+            }));
 
             const added = [];
             for (const att of atts) {
@@ -1664,17 +1665,17 @@ module.exports = {
             }
 
             if (!added.length) {
-                return interaction.editReply({
+                return interaction.editReply(toV2({
                     embeds: [new EmbedBuilder().setColor(ARCHON.red)
                         .setDescription(t('music.no_valid_files', lang, { emoji: EMOJIS.error, exts: validExts.join(', ') }))]
-                });
+                }));
             }
 
             const isPlaying = q.player && q.currentTrack && q.player.state.status !== AudioPlayerStatus.Idle;
-            await interaction.editReply({
+            await interaction.editReply(toV2({
                 embeds: [new EmbedBuilder().setColor(isPlaying ? 0x1DB954 : ARCHON.cyan)
                     .setDescription(t('music.files_added', lang, { count: added.length, list: added.map(a => `> ${a}`).join('\n') }))]
-            });
+            }));
 
             if (!isPlaying) {
                 try { await ensureConnection(q); await playNext(q); }
