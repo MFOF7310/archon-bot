@@ -12,6 +12,8 @@ const {
     EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
     ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType
 } = require('discord.js');
+const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
+const { icon } = require('../lib/icons');
 const i18n = require('../lib/i18n');
 const canPost = require('../lib/canPost');
 
@@ -53,7 +55,7 @@ function welcomeScreen(lang, guild, client) {
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('setup_start').setLabel(T(lang, 'start')).setStyle(ButtonStyle.Success),
         new ButtonBuilder().setCustomId('setup_cancel').setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary));
-    return { embeds: [embed], components: [row] };
+    return toV2({ embeds: [embed], components: [row] });
 }
 
 function questionScreen(lang, guild, idx, notice) {
@@ -67,24 +69,24 @@ function questionScreen(lang, guild, idx, notice) {
     const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('setup_skip').setLabel(T(lang, 'skip')).setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('setup_cancel').setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary));
-    return { embeds: [embed], components: [new ActionRowBuilder().addComponents(picker), buttons] };
+    return toV2({ embeds: [embed], components: [new ActionRowBuilder().addComponents(picker), buttons] });
 }
 
 function summaryScreen(lang, guild, state, warnings, prefix) {
     const lines = STEPS.map((s) => {
         const label = T(lang, `line.${s.key}`);
-        return state[s.key] ? `✅ ${label}: ${s.kind === 'role' ? `<@&${state[s.key]}>` : `<#${state[s.key]}>`}` : `⏭️ ${label}: ${T(lang, 'skipped')}`;
+        return state[s.key] ? `${icon('ok', guild)} ${label}: ${s.kind === 'role' ? `<@&${state[s.key]}>` : `<#${state[s.key]}>`}` : `⏭️ ${label}: ${T(lang, 'skipped')}`;
     });
     let text = `${T(lang, 'doneText')}\n\n${lines.join('\n')}`;
-    if (warnings.length) text += `\n\n**⚠️ ${T(lang, 'attention')}**\n${warnings.join('\n\n')}`;
+    if (warnings.length) text += `\n\n**${icon('warn', guild)} ${T(lang, 'attention')}**\n${warnings.join('\n\n')}`;
     text += `\n\n${T(lang, 'next')}\n${T(lang, 'prefixLine', { prefix })}`;
     const embed = new EmbedBuilder().setColor(warnings.length ? AMBER : GREEN).setTitle(T(lang, 'doneTitle')).setDescription(text)
         .setFooter({ text: safeName(guild.name) }).setTimestamp();
-    return { embeds: [embed], components: [] };
+    return toV2({ embeds: [embed], components: [] });
 }
 
 function plainScreen(lang, key) {
-    return { embeds: [new EmbedBuilder().setColor(GREY).setDescription(T(lang, key))], components: [] };
+    return toV2({ embeds: [new EmbedBuilder().setColor(GREY).setDescription(T(lang, key))], components: [] });
 }
 
 // ── the checks ───────────────────────────────────────
@@ -206,6 +208,6 @@ module.exports = {
         const state = { rules: '111111111111111111', welcome: '222222222222222222', member: '333333333333333333' };
         const shots = [welcomeScreen(lang, guild, null), ...STEPS.map((_, n) => questionScreen(lang, guild, n)), questionScreen(lang, guild, 2, T(lang, 'roleManaged')),
             summaryScreen(lang, guild, state, ['example warning'], '.'), plainScreen(lang, 'cancelled'), plainScreen(lang, 'timeoutSaved')];
-        return shots.map((s) => JSON.stringify({ embeds: s.embeds.map((e) => e.toJSON()), components: s.components.map((c) => c.toJSON()) }));
+        return shots.map((s) => JSON.stringify({ flags: s.flags, components: s.components.map((c) => c.toJSON()) }));
     }
 };
