@@ -5150,64 +5150,12 @@ safeOn(Events.GuildCreate, async (guild) => {
         // Skip owner's test guild — they already know the bot
         if (guild.id === process.env.GUILD_ID) return;
 
-        // WELCOME_V2 — Dynamic via i18n
-        const pickLang = require('./lib/pick-lang').pickLang;
-        const i18n = require('./lib/i18n');
-        const lang = pickLang(client, guild.id, guild); // Guild object is used for preferredLocale fallback
-        const tW = (k, v) => i18n.t(k, lang, v);
-
-        const title = `## 🦅 ${tW('gwTitle')}`;
-        const featuresTitle = `## ⚡ ${tW('gwFeatTitle')}`;
-        const features = tW('gwFeat');
-        const startTitle = `## 🚀 ${tW('gwStartTitle')}`;
-        const startText = tW('gwStartText');
-
-        const owner = await guild.fetchOwner().catch(() => null);
-        const ownerName = owner ? owner.user.username : 'Admin';
-
-        const { ContainerBuilder, TextDisplayBuilder, SectionBuilder, ThumbnailBuilder, SeparatorBuilder, SeparatorSpacingSize, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
-
-        const container = new ContainerBuilder()
-            .setAccentColor(0x2ecc71)
-            .addSectionComponents(
-                new SectionBuilder()
-                    .addTextDisplayComponents(
-                        new TextDisplayBuilder().setContent(`${title}\n${tW('gwIntro', { user: ownerName, guild: guild.name })}`)
-                    )
-                    .setThumbnailAccessory(new ThumbnailBuilder().setURL(client.user.displayAvatarURL({ extension: 'png', size: 256 })))
-            )
-            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`${featuresTitle}\n${features}`))
-            .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`${startTitle}\n${startText}`))
-            .addActionRowComponents(
-                new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setLabel(lang === 'fr' ? 'Serveur Support' : 'Support Server').setStyle(ButtonStyle.Link).setURL('https://discord.gg/NFSMFJajp9'),
-                    new ButtonBuilder().setLabel('Dashboard').setStyle(ButtonStyle.Link).setURL('https://bamako-steel-dev.xyz/dashboard')
-                )
-            );
-        const welcome = { components: [container], flags: MessageFlags.IsComponentsV2 };
-
-        let via = null;
-        if (owner && !owner.user.bot) {
-            const ok = await owner.send(welcome).then(() => true).catch(() => false);
-            if (ok) via = `DM ${owner.user.tag}`;
-        }
-        if (!via) {
-            const me = guild.members.me;
-            const text = [...guild.channels.cache.filter(c => c.type === 0).values()]
-                .sort((x, y) => x.rawPosition - y.rawPosition);
-            const ch = [guild.systemChannel, ...text].find(c =>
-                c && c.permissionsFor(me)?.has(['ViewChannel', 'SendMessages', 'EmbedLinks']));
-            if (ch) {
-                const ok = await ch.send(welcome).then(() => true).catch(() => false);
-                if (ok) via = `#${ch.name}`;
-            }
-        }
+        // The welcome card: to whoever added ARCHON, else the owner, else in the server (lib/guild-welcome)
+        const via = await require('./lib/guild-welcome').sendWelcome(client, guild);
         console.log(`[GUILD CREATE] Welcome ${via ? 'sent via ' + via : 'NOT delivered'} (${guild.name})`);
 
     } catch (e) {
-        console.log(`\x1b[33m[GUILD CREATE]\x1b[0m Could not DM owner: ${e.message}`);
+        console.log(`\x1b[33m[GUILD CREATE]\x1b[0m Welcome failed: ${e.message}`);
     }
 });
 
