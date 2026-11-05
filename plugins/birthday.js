@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 
 // ================= BIRTHDAY INTELLIGENCE DIVISION =================
 const birthdays = new Map();
@@ -23,6 +24,8 @@ const t = {
         announcementTitle: '🎉 Happy birthday!',
         announcementDesc: (user, age) => `Everyone wishes **${user}** a happy birthday!\n${age ? 'They turn **' + age + '** today.' : ''}`,
         announcementFooter: '🎂 Drop a birthday wish in chat.',
+        wishButton: 'Wish happy birthday',
+        giftButton: 'Send a gift',
         months: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
         noPermission: "❌ You don't have permission to change someone else's birthday.",
         invalidDay: '❌ Day must be between 1 and 31.',
@@ -48,6 +51,8 @@ const t = {
         announcementTitle: '🎉 Joyeux anniversaire !',
         announcementDesc: (user, age) => `Tout le monde souhaite un joyeux anniversaire à **${user}** !\n${age ? '**' + age + '** ans aujourd\'hui !' : ''}`,
         announcementFooter: "🎂 Laisse-lui un petit mot dans le chat !",
+        wishButton: 'Souhaiter un bon anniversaire',
+        giftButton: 'Offrir un cadeau',
         months: ['JAN', 'FÉV', 'MAR', 'AVR', 'MAI', 'JUN', 'JUL', 'AOÛ', 'SEP', 'OCT', 'NOV', 'DÉC'],
         noPermission: "❌ Tu n'as pas la permission de modifier l'anniversaire d'un autre membre.",
         invalidDay: '❌ Le jour doit être entre 1 et 31.',
@@ -402,78 +407,29 @@ async function checkAndAnnounceBirthdays(client) {
                 const channel = configuredChannelId ? guild.channels.cache.get(configuredChannelId) : guild.systemChannel;
                 if (!channel && !configuredChannelId) continue;
                 
-                const lang = guild.preferredLocale === 'fr' ? 'fr' : 'en';
+                const lang = ['fr', 'en'].includes(ss.language) ? ss.language : (String(guild.preferredLocale || '').startsWith('fr') ? 'fr' : 'en');
                 const strings = t[lang];
                 const age = calculateAge(bday.year);
                 const milestone = getMilestoneData(age);
                 const ageCat = getAgeCategory(age);
-                
-                // Year progress
-                const yearProgress = Math.floor((today - new Date(currentYear, 0, 1)) / (1000 * 60 * 60 * 24));
-                const progressPercent = Math.floor((yearProgress / 365) * 100);
-                const progressBar = '█'.repeat(Math.floor(progressPercent / 10)) + '░'.repeat(10 - Math.floor(progressPercent / 10));
-                
-                // Zodiac
                 const zodiac = getZodiacSign(bday.day, bday.month);
-                
-                const embed = new EmbedBuilder()
-                    .setColor(milestone.color || ageCat.color)
-                    .setAuthor({ 
-                        name: `🚨 ${strings.announcementTitle}`, 
-                        iconURL: 'https://cdn.discordapp.com/emojis/1120816625522311178.png' 
-                    })
-                    .setDescription(
-                        `# 🎂 BIRTHDAY ALERT — ${member.user.username.toUpperCase()}\n\n` +
-                        `### ${member.user}\n` +
-                        `All units, celebrate this agent's special day!\n\n` +
-                        `**${ageCat.msg}**\n` +
-                        `${milestone.badge ? milestone.badge + ' **' + milestone.title + '**' : ''}`
-                    )
-                    .setThumbnail(member.user.displayAvatarURL({ size: 512, dynamic: true }))
-                    .addFields(
-                        { 
-                            name: '📊 BIRTHDAY DOSSIER', 
-                            value: 
-                                '```yaml\n' +
-                                `🎂 Age Today      : ${age || 'Hidden'}\n` +
-                                `📅 Born           : ${bday.day} ${strings.months[bday.month-1]} ${bday.year || '????'}\n` +
-                                `♈ Zodiac         : ${zodiac}\n` +
-                                `🌍 Timezone       : ${bday.timezone || 'UTC'}\n` +
-                                `📊 Year Progress  : ${progressBar} ${progressPercent}%\n` +
-                                '```',
-                            inline: false 
-                        },
-                        {
-                            name: '💝 BIRTHDAY WISHES',
-                            value: '*Drop a message below to celebrate this agent!* 🎈',
-                            inline: false
-                        }
-                    )
-                    
-                    .setFooter({ 
-                        text: `🎂 ${guild.name} • Birthday Intelligence Division • v${client.version || '2.0.0'}`, 
-                        iconURL: guild.iconURL() 
-                    })
-                    .setTimestamp();
-                
+                const color = parseInt(String(milestone.color || ageCat.color || '#FFD700').replace('#', ''), 16);
+
                 const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId(`bday_celebrate_${userId}`)
-                        .setLabel('Wish Happy Birthday')
-                        .setEmoji('🎉')
-                        .setStyle(ButtonStyle.Success),
-                    new ButtonBuilder()
-                        .setCustomId(`bday_gift_${userId}`)
-                        .setLabel('Send Virtual Gift')
-                        .setEmoji('🎁')
-                        .setStyle(ButtonStyle.Primary)
+                    new ButtonBuilder().setCustomId(`bday_celebrate_${userId}`).setLabel(strings.wishButton).setEmoji('🎉').setStyle(ButtonStyle.Success),
+                    new ButtonBuilder().setCustomId(`bday_gift_${userId}`).setLabel(strings.giftButton).setEmoji('🎁').setStyle(ButtonStyle.Primary)
                 );
-                
-                await require('../lib/safeSend').safeSend('birthday', channel, {
-                    content: `${require('../config/emojis').party_2} ${require('../config/emojis').cake} — ${member}'s special day! Let's celebrate!`,
-                    embeds: [embed],
-                    components: [row]
-                }, { guild, channelId: configuredChannelId, quiet: !configuredChannelId });
+                const { card } = require('../lib/games/v2');
+                const payload = card(color, [
+                    { thumbnail: [`## ${strings.announcementTitle}\n${strings.announcementDesc(String(member), age)}`, member.user.displayAvatarURL({ size: 256 })] },
+                    { rule: true },
+                    { text: `🎂 ${bday.day} ${strings.months[bday.month - 1]}${zodiac ? ` · ${String(zodiac).split(' ')[0]}` : ''}${milestone.badge ? ` · ${milestone.badge}` : ''}` },
+                    { text: `-# ${strings.announcementFooter}` },
+                    { row },
+                ]);
+                // the member is the one person notified
+                payload.allowedMentions = { users: [userId] };
+                await require('../lib/safeSend').safeSend('birthday', channel, payload, { guild, channelId: configuredChannelId, quiet: !configuredChannelId });
                 
                 console.log(`[BIRTHDAY] 🎂 Announced birthday for ${member.user.tag} (Age: ${age || 'unknown'})`);
                 break;
@@ -549,7 +505,7 @@ module.exports = {
             if (!isValidDate(day, month, year || 2000)) return message.reply(strings.invalidDate);
             saveBirthday(db, message.author.id, day, month, year);
             const dateStr = formatDate(day, month, year, lang);
-            return message.reply({ 
+            return message.reply(toV2({ 
                 embeds: [new EmbedBuilder()
                     .setColor('#FF69B4')
                     .setAuthor({ name: strings.setTitle, iconURL: message.author.displayAvatarURL() })
@@ -557,14 +513,14 @@ module.exports = {
                     .setFooter({ text: '🎂 Birthday Intelligence Division' })
                     .setTimestamp()
                 ] 
-            });
+            }));
         }
 
         if (subcommand === 'remove') {
             const exists = birthdays.get(message.author.id);
             if (!exists) return message.reply(strings.removeError);
             deleteBirthday(db, message.author.id);
-            return message.reply({ 
+            return message.reply(toV2({ 
                 embeds: [new EmbedBuilder()
                     .setColor('#FF69B4')
                     .setAuthor({ name: strings.removeTitle, iconURL: message.author.displayAvatarURL() })
@@ -572,7 +528,7 @@ module.exports = {
                     .setFooter({ text: '🎂 Birthday Intelligence Division' })
                     .setTimestamp()
                 ] 
-            });
+            }));
         }
 
         if (subcommand === 'check') {
@@ -585,7 +541,7 @@ module.exports = {
             const zodiac = getZodiacSign(bday.day, bday.month);
             const age = calculateAge(bday.year);
             
-            return message.reply({ 
+            return message.reply(toV2({ 
                 embeds: [new EmbedBuilder()
                     .setColor('#FF69B4')
                     .setAuthor({ name: strings.checkTitle, iconURL: user.displayAvatarURL() })
@@ -599,19 +555,19 @@ module.exports = {
                     .setFooter({ text: '🎂 Birthday Intelligence Division' })
                     .setTimestamp()
                 ] 
-            });
+            }));
         }
 
         if (subcommand === 'list') {
             const upcoming = getUpcomingBirthdays(90);
-            if (upcoming.length === 0) return message.reply({ 
+            if (upcoming.length === 0) return message.reply(toV2({ 
                 embeds: [new EmbedBuilder()
                     .setColor('#FF69B4')
                     .setAuthor({ name: strings.listTitle, iconURL: client.user.displayAvatarURL() })
                     .setDescription(strings.listEmpty)
                     .setFooter({ text: '🎂 Birthday Intelligence Division' })
                 ] 
-            });
+            }));
             const embed = new EmbedBuilder()
                 .setColor('#FF69B4')
                 .setAuthor({ name: strings.listTitle, iconURL: client.user.displayAvatarURL() })
@@ -622,10 +578,10 @@ module.exports = {
                 }).join('\n'))
                 .setFooter({ text: `🎂 ${upcoming.length} upcoming birthdays • 90-day window` })
                 .setTimestamp();
-            return message.reply({ embeds: [embed] });
+            return message.reply(toV2({ embeds: [embed] }));
         }
 
-        return message.reply({ 
+        return message.reply(toV2({ 
             embeds: [new EmbedBuilder()
                 .setColor('#FF69B4')
                 .setAuthor({ name: '🎂 Birthday Intelligence Division', iconURL: client.user.displayAvatarURL() })
@@ -641,7 +597,7 @@ module.exports = {
                 )
                 .setFooter({ text: '🎂 Birthday Intelligence Division' })
             ] 
-        });
+        }));
     },
 
     execute: async (interaction, client) => {
@@ -671,7 +627,7 @@ module.exports = {
             const dateStr = formatDate(day, month, year, lang);
             const zodiac = getZodiacSign(day, month);
             
-            return interaction.editReply({ 
+            return interaction.editReply(toV2({ 
                 embeds: [new EmbedBuilder()
                     .setColor('#FF69B4')
                     .setAuthor({ name: strings.setTitle, iconURL: interaction.user.displayAvatarURL() })
@@ -679,14 +635,14 @@ module.exports = {
                     .setFooter({ text: '🎂 Birthday Intelligence Division' })
                     .setTimestamp()
                 ] 
-            });
+            }));
         }
 
         if (subcommand === 'remove') {
             const exists = birthdays.get(interaction.user.id);
             if (!exists) return interaction.editReply(strings.removeError);
             deleteBirthday(db, interaction.user.id);
-            return interaction.editReply({ 
+            return interaction.editReply(toV2({ 
                 embeds: [new EmbedBuilder()
                     .setColor('#FF69B4')
                     .setAuthor({ name: strings.removeTitle, iconURL: interaction.user.displayAvatarURL() })
@@ -694,7 +650,7 @@ module.exports = {
                     .setFooter({ text: '🎂 Birthday Intelligence Division' })
                     .setTimestamp()
                 ] 
-            });
+            }));
         }
 
         if (subcommand === 'check') {
@@ -709,7 +665,7 @@ module.exports = {
                         ? (lang === 'fr' ? '❌ Aucun dossier anniversaire trouve.\nUtilisez `/birthday set` pour l\'ajouter.' : '❌ No birthday record found.\nUse `/birthday set` to register.')
                         : (lang === 'fr' ? `❌ ${user.username} n'a pas de dossier anniversaire.` : `❌ ${user.username} has no birthday record.`))
                     .setFooter({ text: '🎂 Birthday Intelligence Division' });
-                return interaction.editReply({ embeds: [noBdayEmbed] });
+                return interaction.editReply(toV2({ embeds: [noBdayEmbed] }));
             }
             
             const daysUntil = getDaysUntil(bday.day, bday.month);
@@ -785,7 +741,7 @@ module.exports = {
                 components.push(row);
             }
             
-            return interaction.editReply({ embeds: [embed], components: components.length > 0 ? components : undefined });
+            return interaction.editReply(toV2({ embeds: [embed], components: components.length > 0 ? components : undefined }));
         }
 
         if (subcommand === 'list') {
@@ -796,7 +752,7 @@ module.exports = {
                     .setAuthor({ name: '📅 ' + strings.listTitle, iconURL: client.user.displayAvatarURL() })
                     .setDescription('✨ ' + strings.listEmpty)
                     .setFooter({ text: '🎂 Use /birthday set to register your birthday' });
-                return interaction.editReply({ embeds: [emptyEmbed] });
+                return interaction.editReply(toV2({ embeds: [emptyEmbed] }));
             }
             
             const grouped = {};
@@ -854,7 +810,7 @@ module.exports = {
                 iconURL: client.user.displayAvatarURL() 
             }).setTimestamp();
             
-            return interaction.editReply({ embeds: [embed] });
+            return interaction.editReply(toV2({ embeds: [embed] }));
         }
     },
 
