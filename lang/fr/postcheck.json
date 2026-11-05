@@ -40,7 +40,8 @@
     "giveaway": "résultats de giveaway",
     "automod": "AutoMod",
     "verify": "la vérification",
-    "test": "message de test"
+    "test": "message de test",
+    "ticket-log": "transcription de ticket"
   },
   "alertBtnCheck": "Revérifier",
   "alertBtnMute": "Couper 7 jours",

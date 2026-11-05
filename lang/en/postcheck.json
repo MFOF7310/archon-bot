@@ -40,7 +40,8 @@
     "giveaway": "giveaway results",
     "automod": "AutoMod",
     "verify": "verification",
-    "test": "test message"
+    "test": "test message",
+    "ticket-log": "ticket transcript"
   },
   "alertBtnCheck": "Check again",
   "alertBtnMute": "Mute 7 days",
