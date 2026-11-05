@@ -4,6 +4,9 @@ const {
     ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, TextDisplayBuilder
 } = require('discord.js');
 const { toV2, fit, isV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
+const { card: v2card } = require('../lib/games/v2');
+const { icon } = require('../lib/icons');
+const { safeSend } = require('../lib/safeSend');
 const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const mentions = require('../lib/mentions');
@@ -117,7 +120,7 @@ function resetACTimer(cid, client, s, remainingMs) {
             const ch = await client.channels.fetch(cid).catch(() => null);
             const tk = active.get(cid);
             if (!tk) { timers.delete(cid); return; }
-            const txResult = await saveTx(ch, tk, null, client, s);
+            const txResult = await saveTx(ch, tk, null, client, s, 'auto');
             if (ch) await ch.send(toV2({ embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription(t('ticket.acDone', lang) || '🔒 Ticket auto-closed.')] })).catch(() => {});
             active.delete(cid);
             if (client.db) delTicket(client.db, cid);
@@ -129,15 +132,72 @@ function resetACTimer(cid, client, s, remainingMs) {
     timers.set(cid, timersForCid);
 }
 
-async function saveTx(ch, tk, closer, client, s) {
+// How long a ticket stayed open: "12 min", "2 h 14 min", "3 d 4 h"
+function openFor(ms, lang) {
+    const m = Math.floor(Math.max(0, ms) / 60000), h = Math.floor(m / 60), d = Math.floor(h / 24);
+    if (d >= 1) return t('ticket.durDay', lang, { d, h: h % 24 });
+    if (h >= 1) return t('ticket.durHour', lang, { h, m: m % 60 });
+    return t('ticket.durMin', lang, { m: Math.max(1, m) });
+}
+
+// The ticket log card: who opened, claimed and closed the ticket, how long it stayed open, how many messages,
+// and the transcript as a download box. kind: 'closed' (by someone) · 'auto' (inactivity) · 'saved' (transcript button, still open)
+function ticketLogCard(tk, { kind = 'closed', closer = null, by = null, count = 0, file = null, lang = 'en', where = null } = {}) {
+    const I = (k) => icon(k, where);
+    const L = (k, v) => t('ticket.' + k, lang, v || {});
+    const at = (id) => `<@${id}>`;
+    const open = openFor(Date.now() - (Number(tk.createdAt) || Date.now()), lang);
+    const sub = [tk.category, L(kind === 'saved' ? 'logOpenSince' : 'logOpenFor', { time: open })].filter(Boolean).join(' · ');
+    const lines = [`${I('member')} ${L('logOpenedBy', { user: at(tk.creatorId) })}`];
+    if (kind === 'closed' && tk.claimedBy && closer) lines.push(`${I('claimed')} ${L('logClaimedClosed', { staff: at(tk.claimedBy), closer: at(closer) })}`);
+    else {
+        if (tk.claimedBy) lines.push(`${I('claimed')} ${L('logClaimedBy', { staff: at(tk.claimedBy) })}`);
+        if (kind === 'closed' && closer) lines.push(`${I('lock')} ${L('logClosedBy', { closer: at(closer) })}`);
+        if (kind === 'auto') lines.push(`${I('lock')} ${L('logAutoClosed')}`);
+        if (kind === 'saved' && by) lines.push(`${I('file')} ${L('logSavedBy', { user: at(by) })}`);
+    }
+    lines.push(`${I('messages')} ${count === 1 ? L('logMessagesOne') : L('logMessages', { n: count >= 100 ? '100+' : count })}`);
+    /** @type {any[]} */
+    const items = [
+        { text: `### ${I('ticket')} ${L(kind === 'saved' ? 'logSavedTitle' : 'logClosedTitle', { number: tk.number || '?' })}\n-# ${sub}` },
+        { rule: true },
+        { text: lines.join('\n') },
+    ];
+    if (file) items.push({ file: `attachment://${file}` });
+    items.push({ text: `-# <t:${Math.floor(Date.now() / 1000)}:f>` });
+    return v2card(kind === 'auto' ? 0x95a5a6 : 0x3498db, items);
+}
+
+// The support rating as the log channel gets it
+function ratingLogCard({ stars, rater, number = null, staff = null, category = null, lang = 'en', where = null }) {
+    const I = (k) => icon(k, where);
+    const L = (k, v) => t('ticket.' + k, lang, v || {});
+    const lines = [`${I('ticket')} ${number ? L('rateTicket', { number, cat: category ? ` · ${category}` : '', user: `<@${rater}>` }) : L('rateBy', { user: `<@${rater}>` })}`];
+    if (staff) lines.push(`${I('claimed')} ${L('rateStaff', { staff: `<@${staff}>` })}`);
+    return v2card(0xf1c40f, [
+        { text: `### ${L('rateTitle', { n: stars })}\n${'⭐'.repeat(stars)}` },
+        { rule: true },
+        { text: lines.join('\n') },
+        { text: `-# <t:${Math.floor(Date.now() / 1000)}:f>` },
+    ]);
+}
+
+async function saveTx(ch, tk, closer, client, s, kind = 'closed', by = null) {
     const lang = pickLang(client, s?.guildId, null) || 'en';
     try {
-        const msgs = await ch.messages.fetch({limit:100}).catch(()=>new Map());
+        const fetched = await ch.messages.fetch({limit:100}).catch(()=>new Map());
+        const msgs = [...fetched.values()].reverse();
         const lines=[]; lines.push(`= TICKET LOG =`,`#${tk.number||'?'} | ${tk.category||'?'}`,`By: ${tk.creatorTag||'?'} | ${new Date(tk.createdAt).toISOString()}`,`Claimed: ${tk.claimedBy?`<@${tk.claimedBy}>`:'No'} | Closed: ${closer?`<@${closer}>`:'?'}`,`${'='.repeat(40)}`);
-        msgs.reverse().forEach(m=>{const d=new Date(m.createdTimestamp).toISOString().slice(0,19).replace('T',' ');lines.push(`[${d}] ${m.author.tag}: ${m.content||'(file)'}`);});
+        msgs.forEach(m=>{const d=new Date(m.createdTimestamp).toISOString().slice(0,19).replace('T',' ');lines.push(`[${d}] ${m.author.tag}: ${m.content||'(file)'}`);});
         const tx=lines.join('\n'); const tcid=s?.ticketTranscriptChannel;
-        if(tcid){try{const tc=await client.channels.fetch(tcid);if(tc?.guildId===tk.guildId&&(tc.type===ChannelType.GuildText||tc.type===5)){const e=new EmbedBuilder().setColor('#3498db').setTitle(`#${tk.number||'?'} Closed`).setDescription(t('ticket.closedLog', lang, {user: tk.creatorId, number: tk.number, cat: tk.category||'?'})).setTimestamp();const sentTx=await require('../lib/safeSend').safeSend('ticket-log',tc,toV2({embeds:[e],files:[{attachment:Buffer.from(tx),name:`ticket-${tk.number||ch.id}.txt`}]}),{guild:tc.guild});if(sentTx)return true;}}catch(e){}}
-        return {buffer:Buffer.from(tx),filename:`ticket-${tk.number||ch.id}.txt`};
+        const file=`ticket-${tk.number||ch.id}.txt`;
+        if(tcid){try{const tc=await client.channels.fetch(tcid);if(tc?.guildId===tk.guildId&&(tc.type===ChannelType.GuildText||tc.type===5)){
+            const payload=ticketLogCard(tk,{kind,closer,by,count:msgs.length,file,lang,where:tc});
+            payload.files=[{attachment:Buffer.from(tx),name:file}];
+            const sentTx=await safeSend('ticket-log',tc,payload,{guild:tc.guild});
+            if(sentTx)return true;
+        }}catch(e){}}
+        return {buffer:Buffer.from(tx),filename:file};
     }catch(e){return false;}
 }
 
@@ -416,7 +476,7 @@ module.exports = {
         if(sc==='leaderboard'){
             await ix.deferReply({flags:1<<6});
             try {
-                const rows = db.prepare('SELECT staff_id, AVG(stars) as avg, COUNT(*) as total FROM ticket_ratings WHERE guild_id = ? GROUP BY staff_id ORDER BY avg DESC, total DESC LIMIT 10').all(g.id);
+                const rows = db.prepare('SELECT staff_id, AVG(stars) as avg, COUNT(*) as total FROM ticket_ratings WHERE guild_id = ? AND staff_id IS NOT NULL GROUP BY staff_id ORDER BY avg DESC, total DESC LIMIT 10').all(g.id);
                 if(!rows.length) return ix.editReply({content:t('ticket.no_ratings', lang) || 'No ratings found.'});
                 const desc = rows.map((r,i) => {
                     const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'•';
@@ -582,12 +642,16 @@ module.exports = {
                 const creator = await client.users.fetch(tk?.creatorId || crid).catch(()=>null);
                 if (creator && creator.id !== cl) {
                     const _v2 = require('../lib/games/v2');
+                    // ticket_rate_<stars>_<guild>_<number>_<staff>_<category>: the log card names the ticket and who handled it
+                    const staffId = tk?.claimedBy || cl;
+                    const base = `${ix.guild?.id}_${tk?.number || 0}_${staffId || 0}`;
+                    const rid = (n) => { const id = `ticket_rate_${n}_${base}${tk?.categoryValue ? `_${tk.categoryValue}` : ''}`; return id.length <= 100 ? id : `ticket_rate_${n}_${base}`; };
                     const ratingRow = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId(`ticket_rate_1_${ix.guild?.id}`).setLabel('⭐').setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder().setCustomId(`ticket_rate_2_${ix.guild?.id}`).setLabel('⭐⭐').setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder().setCustomId(`ticket_rate_3_${ix.guild?.id}`).setLabel('⭐⭐⭐').setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder().setCustomId(`ticket_rate_4_${ix.guild?.id}`).setLabel('⭐⭐⭐⭐').setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder().setCustomId(`ticket_rate_5_${ix.guild?.id}`).setLabel('⭐⭐⭐⭐⭐').setStyle(ButtonStyle.Success),
+                        new ButtonBuilder().setCustomId(rid(1)).setLabel('⭐').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId(rid(2)).setLabel('⭐⭐').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId(rid(3)).setLabel('⭐⭐⭐').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId(rid(4)).setLabel('⭐⭐⭐⭐').setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId(rid(5)).setLabel('⭐⭐⭐⭐⭐').setStyle(ButtonStyle.Success),
                     );
                     const ratingCard = _v2.card(0x00f0ff, [
                         { text: `## ⭐ ${t('ticket.rating_closed', lang)}` },
@@ -605,26 +669,34 @@ module.exports = {
 
         if(act==='cancelclose'){await ix.deleteReply().catch(()=>{});return true;}
 
-        if(act==='transcript'){if(!isC&&!isS)return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6}).catch(()=>{});await ix.deferReply({flags:1<<6});const ch=ix.channel;if(!tk)return ix.editReply({content:t('ticket.data_not_found', lang)}).catch(()=>{});const r=await saveTx(ch,tk,null,client,ss);if(r===true)await ix.editReply({content:t('ticket.txSaved', lang)}).catch(()=>{});else if(r&&r.buffer)await ix.editReply({content:t('ticket.txSaved', lang),files:[{attachment:r.buffer,name:r.filename}]}).catch(()=>{});else await ix.editReply({content:t('ticket.failed_generic', lang)}).catch(()=>{});resetACTimer(cid,client,ss);return true;}
+        if(act==='transcript'){if(!isC&&!isS)return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6}).catch(()=>{});await ix.deferReply({flags:1<<6});const ch=ix.channel;if(!tk)return ix.editReply({content:t('ticket.data_not_found', lang)}).catch(()=>{});const r=await saveTx(ch,tk,null,client,ss,'saved',uid);if(r===true)await ix.editReply({content:t('ticket.txSaved', lang)}).catch(()=>{});else if(r&&r.buffer)await ix.editReply({content:t('ticket.txSaved', lang),files:[{attachment:r.buffer,name:r.filename}]}).catch(()=>{});else await ix.editReply({content:t('ticket.failed_generic', lang)}).catch(()=>{});resetACTimer(cid,client,ss);return true;}
 
         if(act==='rate'){
-            const stars = parseInt(p[2]) || 0;
+            const stars = Math.min(5, Math.max(1, parseInt(p[2]) || 1));
             const gid = p[3];
+            const number = p[4] && p[4] !== '0' ? p[4] : null;          // older rating messages carry neither
+            const staff = /^\d{15,25}$/.test(p[5] || '') ? p[5] : null;
+            const catValue = p.slice(6).join('_') || null;
             const starEmoji = '⭐'.repeat(stars);
             await ix.update(fit(ix.message, { 
                 embeds: [new EmbedBuilder().setColor(0x2ecc71)
                     .setDescription(t('ticket.rating_thanks', lang, {stars: starEmoji}))],
                 components: [] 
             })).catch(()=>{});
+            // /ticket leaderboard and /ticket stats read the ratings from here
             try {
-                const ss2 = client.getServerSettings?.(gid) || {};
+                const seen = number ? db?.prepare('SELECT 1 FROM ticket_ratings WHERE guild_id = ? AND ticket_id = ? AND rater_id = ?').get(gid, String(number), ix.user.id) : null;
+                if (db && !seen) db.prepare('INSERT INTO ticket_ratings (guild_id, ticket_id, staff_id, rater_id, stars) VALUES (?, ?, ?, ?, ?)').run(gid, number ? String(number) : null, staff, ix.user.id, stars);
+            } catch(e) { console.error('[TICKET] rating save:', e.message); }
+            try {
+                const ss2 = effectiveSettings(client.getServerSettings?.(gid) || {}, gid);
                 const txCh = ss2?.ticketTranscriptChannel;
                 if (txCh) {
                     const logCh = await client.channels.fetch(txCh).catch(()=>null);
                     if (logCh) {
-                        await require('../lib/safeSend').safeSend('ticket-log', logCh, toV2({ embeds: [new EmbedBuilder().setColor(0xf1c40f)
-                            .setDescription(t('ticket.rating_log', lang, {stars: starEmoji, count: stars, user: `<@${ix.user.id}>`}))
-                            .setTimestamp()], allowedMentions: { parse: [] } }), { guild: logCh.guild });
+                        const cat = catValue ? getCats(ss2).find((c) => c.value === catValue) : null;
+                        const logLang = pickLang(client, gid, null) || 'en';
+                        await safeSend('ticket-log', logCh, ratingLogCard({ stars, rater: ix.user.id, number, staff, category: cat ? `${cat.emoji} ${cat.label}` : null, lang: logLang, where: logCh }), { guild: logCh.guild });
                     }
                 }
             } catch(e) {}
@@ -634,5 +706,6 @@ module.exports = {
         return false;
     },
 
-    setupTicketDB, loadAllTicketsFromDB, onMessageActivity
+    setupTicketDB, loadAllTicketsFromDB, onMessageActivity,
+    _cards: { ticketLogCard, ratingLogCard, openFor }
 };
