@@ -119,5 +119,9 @@
     "timeout": "ARCHON is timed out",
     "refused": "Discord refused the message",
     "soft": "{perms} is off: emojis show as text"
-  }
+  },
+  "groupCore": "Essential",
+  "groupFeature": "Depending on the feature",
+  "countOf": "{ok} of {total} in place",
+  "checkedShort": "checked {when}"
 }

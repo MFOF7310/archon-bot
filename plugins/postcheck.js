@@ -27,26 +27,40 @@ function oneChannel(guild, channel, lang, hint, where) {
     const target = channel ? String(channel) : T('alertNoChannel', lang);
     const vars = (d) => ({ channel: target, bot: botName(me), perms: cp.localize(d.missing || [], lang).join(', '), role: d.role || T('someRole', lang) });
     const explain = (d) => `${T(cp.keyFor('why', d.reason), lang, vars(d))}\n\n${T(cp.keyFor('fix', d.reason), lang, vars(d))}`;
-    const head = (title) => ({ text: `### ${title}\n-# ${T('checkedAt', lang, { when: when() })}` });
     const foot = { text: `-# ${hint}` };
 
+    // the permissions, essential ones first (one line when they agree), then each one a feature needs
     const perms = channel && typeof channel.permissionsFor === 'function' ? channel.permissionsFor(me) : null;
     const thread = !!channel?.isThread?.();
-    const lines = [], missing = [];
+    const core = [], extra = [], missing = [];
     if (perms) {
         for (const [key, use] of LIST) {
             const p = key === 'send' && thread ? cp.PERMS.sendThreads : cp.PERMS[key];
             const has = !!perms.has(p[1]);
             if (!has) missing.push(p);
-            lines.push(`${icon(has ? 'ok' : 'no', where)} **${cp.localize([p[0]], lang)[0]}** · ${T(use, lang)}`);
+            (use === 'useCore' ? core : extra).push({ has, name: cp.localize([p[0]], lang)[0], use });
         }
     }
+    const mark = (has) => icon(has ? 'ok' : 'no', where);
+    const lines = [];
+    if (core.length) {
+        lines.push(`-# ${T('groupCore', lang)}`);
+        if (core.every((c) => c.has === core[0].has)) lines.push(`${mark(core[0].has)} ${core.map((c) => `**${c.name}**`).join(' · ')}`);
+        else for (const c of core) lines.push(`${mark(c.has)} **${c.name}**`);
+    }
+    if (extra.length) {
+        lines.push(`-# ${T('groupFeature', lang)}`);
+        for (const c of extra) lines.push(`${mark(c.has)} **${c.name}** · ${T(c.use, lang)}`);
+    }
     const list = lines.length ? [{ rule: true }, { text: lines.join('\n') }] : [];
+    const total = core.length + extra.length;
+    const sub = [total ? T('countOf', lang, { ok: total - missing.length, total }) : null, T('checkedShort', lang, { when: when() })].filter(Boolean).join(' · ');
+    const head = (title) => ({ text: `### ${title}\n-# ${sub}` });
 
     // first: can ARCHON post here at all?
-    const core = cp.diagnose(guild, channel, me, [cp.PERMS.view, cp.PERMS.send]);
-    if (!core.ok) return card(RED, [head(`${icon('no', where)} ${T('noTitle', lang, { channel: target })}`), ...list, { rule: true }, { text: explain(core) }, foot]);
-    if (!missing.length) return card(GREEN, [head(`${icon('ok', where)} ${T('okTitle', lang, { channel: target })}`), ...list, { text: `-# ${T('okDesc', lang)}` }, foot]);
+    const coreCheck = cp.diagnose(guild, channel, me, [cp.PERMS.view, cp.PERMS.send]);
+    if (!coreCheck.ok) return card(RED, [head(`${icon('no', where)} ${T('noTitle', lang, { channel: target })}`), ...list, { rule: true }, { text: explain(coreCheck) }, foot]);
+    if (!missing.length) return card(GREEN, [head(`${icon('ok', where)} ${T('okTitle', lang, { channel: target })}`), ...list, foot]);
     // it posts, but some things will not work here: name what blocks them
     const d = cp.diagnose(guild, channel, me, missing);
     return card(AMBER, [head(`${icon('warn', where)} ${T('limitTitle', lang, { channel: target })}`), ...list, ...(d.ok ? [] : [{ rule: true }, { text: explain(d) }]), foot]);

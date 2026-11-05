@@ -119,5 +119,9 @@
     "timeout": "ARCHON est exclu temporairement",
     "refused": "Discord a refusé le message",
     "soft": "{perms} désactivé : émojis en texte brut"
-  }
+  },
+  "groupCore": "Indispensable",
+  "groupFeature": "Selon la fonction",
+  "countOf": "{ok} sur {total} en place",
+  "checkedShort": "vérifié {when}"
 }
