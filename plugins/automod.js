@@ -3,6 +3,7 @@ const axios = require('axios');
 const cmdSlash = require('../lib/cmd').slash;
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { card: v2card } = require('../lib/games/v2');
+const { toV2, fit } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const ui = require('../lib/games/ui');
 const EMOJIS = require('../config/emojis');
 
@@ -279,10 +280,10 @@ async function resumeRaids(client, db) {
             console.log(`[RAID] ✅ Raid over in ${guild.name} — monitoring resumed`);
             const owner = await guild.fetchOwner().catch(() => null); if (!owner) return;
             const L = require('../lib/botPerms').langOf({ guild, client });
-            owner.send({ embeds: [new EmbedBuilder().setColor(0x00cc44)
+            owner.send(toV2({ embeds: [new EmbedBuilder().setColor(0x00cc44)
                 .setTitle(require('../lib/i18n').t('automod.raidClearedTitle', L, { server: guild.name }))
                 .setDescription(require('../lib/i18n').t('automod.raidClearedDesc', L))
-                .setFooter({ text: 'ARCHON CG-223' })] }).catch(() => {});
+                .setFooter({ text: 'ARCHON CG-223' })] })).catch(() => {});
         };
         setTimeout(check, 5 * 60000);
     }
@@ -334,7 +335,7 @@ async function handleRaidDetection(member, client, db) {
                 )
                 .setFooter({ text: _t('raidAlertFooter') })
                 .setTimestamp();
-            await owner.send({ embeds: [embed] }).catch(() => {});
+            await owner.send(toV2({ embeds: [embed] })).catch(() => {});
         }
 
         // Auto-unlock after 5 min
@@ -346,12 +347,12 @@ async function handleRaidDetection(member, client, db) {
                 forgetRaid(db, gid);
                 console.log(`[RAID] ✅ Raid over in ${member.guild.name} — monitoring resumed`);
                 if (owner) {
-                    owner.send({ embeds: [new EmbedBuilder()
+                    owner.send(toV2({ embeds: [new EmbedBuilder()
                         .setColor(0x00cc44)
                         .setTitle(require('../lib/i18n').t('automod.raidClearedTitle', require('../lib/botPerms').langOf({ guild: member.guild, client }), { server: member.guild.name }))
                         .setDescription(require('../lib/i18n').t('automod.raidClearedDesc', require('../lib/botPerms').langOf({ guild: member.guild, client })))
                         .setFooter({ text: 'ARCHON CG-223' })
-                    ]}).catch(() => {});
+                    ]})).catch(() => {});
                 }
             } else {
                 setTimeout(_recheck, 5 * 60000); // joins are still coming in: look again later,
@@ -370,13 +371,13 @@ async function handleRaidDetection(member, client, db) {
             const _kl = require('../lib/botPerms').langOf({ guild: member.guild, client });
             const _kt = (k, v) => require('../lib/i18n').t('automod.' + k, _kl, v);
             const _kd = (n) => _kt(Number(n) === 1 ? 'daysOne' : 'daysMany', { n });
-            await dm.send({
+            await dm.send(toV2({
                 embeds: [new EmbedBuilder()
                     .setColor(0xff8800)
                     .setTitle(_kt('raidKickTitle', { server: member.guild.name }))
                                 .setDescription(_kt('raidKickDesc', { server: member.guild.name, days: _kd(minAgeDays), age: _kd(accountAge.toFixed(1)), left: _kd(Math.max(1, Math.ceil(minAgeDays - accountAge))) }))
                     .setFooter({ text: 'ARCHON CG-223' })]
-            }).catch(() => {});
+            })).catch(() => {});
         } catch {}
     }
 }
@@ -556,11 +557,11 @@ async function takeAction(message, violations, client, db) {
     }
 
     try {
-        const notif = await message.channel.send({
+        const notif = await message.channel.send(toV2({
             embeds: [new EmbedBuilder()
                 .setColor(actionColor)
                 .setDescription(_t('strikeNotice', { emoji: '🛡️', user: message.author.username, rule: ruleName(violations[0], _t) }))]
-        }).catch(() => {});
+        })).catch(() => {});
         if (notif) setTimeout(() => notif.delete().catch(() => {}), 10000);
     } catch (e) {}
 
@@ -861,13 +862,13 @@ async function handleAppeal(message, client) {
         }
 
         if (appeals.length === 0) {
-            return message.reply({
+            return message.reply(toV2({
                 embeds: [new EmbedBuilder()
                     .setColor(C.GREY)
                     .setTitle(_t0('appeal_noStrikesTitle'))
                     .setDescription(_t0('appeal_noStrikesDesc'))
                     .setFooter({ text: 'ARCHON CG-223' })]
-            }).catch(() => {});
+            })).catch(() => {});
         }
 
         const _v2 = require('../lib/games/v2');
@@ -901,13 +902,13 @@ async function handleAppeal(message, client) {
         }
 
         if (!serverName) {
-            return message.reply({
+            return message.reply(toV2({
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
                     .setTitle(_t0('appeal_missingServerTitle'))
                     .setDescription(_t0('appeal_missingServerDesc'))
                     .setFooter({ text: 'ARCHON CG-223' })]
-            }).catch(() => {});
+            })).catch(() => {});
         }
 
         let targetGuild = null;
@@ -919,23 +920,23 @@ async function handleAppeal(message, client) {
         }
 
         if (!targetGuild && usedFallback && body.split(' ').length > 1) {
-            return message.reply({
+            return message.reply(toV2({
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
                     .setTitle(_t0('appeal_ambiguousTitle'))
                     .setDescription(_t0('appeal_ambiguousDesc'))
                     .setFooter({ text: 'ARCHON CG-223' })]
-            }).catch(() => {});
+            })).catch(() => {});
         }
 
         if (!targetGuild) {
-            return message.reply({
+            return message.reply(toV2({
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
                     .setTitle(_t0('appeal_notFoundTitle'))
                     .setDescription(_t0('appeal_notFoundDesc', { name: serverName }))
                     .setFooter({ text: 'ARCHON CG-223' })]
-            }).catch(() => {});
+            })).catch(() => {});
         }
 
         const _tA = (k, v) => require('../lib/i18n').t('automod.' + k, _tGuild(targetGuild), v);
@@ -949,25 +950,25 @@ async function handleAppeal(message, client) {
         if (banUntil && now < banUntil) {
             const remainingMs = banUntil - now;
             const remainingDays = Math.ceil(remainingMs / 86400000);
-            return message.reply({
+            return message.reply(toV2({
                 embeds: [new EmbedBuilder()
                     .setColor(C.DARK)
                     .setTitle(_tA('appeal_bannedTitle'))
                     .setDescription(_tA('appeal_bannedDesc', { server: targetGuild.name, days: _tA(remainingDays === 1 ? 'daysOne' : 'daysMany', { n: remainingDays }) }))
                     .setFooter({ text: 'ARCHON CG-223' })]
-            }).catch(() => {});
+            })).catch(() => {});
         }
 
         if (lastAppeal && (now - lastAppeal) < APPEAL_COOLDOWN) {
             const remainingMs = APPEAL_COOLDOWN - (now - lastAppeal);
             const remainingHrs = Math.ceil(remainingMs / 3600000);
-            return message.reply({
+            return message.reply(toV2({
                 embeds: [new EmbedBuilder()
                     .setColor(C.YELLOW)
                     .setTitle(_tA('appeal_cooldownTitle'))
                     .setDescription(_tA('appeal_cooldownDesc', { server: targetGuild.name, hours: _tA(remainingHrs === 1 ? 'hoursOne' : 'hoursMany', { n: remainingHrs }) }))
                     .setFooter({ text: 'ARCHON CG-223' })]
-            }).catch(() => {});
+            })).catch(() => {});
         }
 
         try {
@@ -1015,7 +1016,7 @@ async function handleAppeal(message, client) {
 
             // Tier 1: Try to DM the owner
             if (owner && !owner.user.bot) {
-                sent = await owner.send({ embeds: [tribunalEmbed], components: [row] }).catch(() => null);
+                sent = await owner.send(toV2({ embeds: [tribunalEmbed], components: [row] })).catch(() => null);
                 if (sent) deliveryMethod = 'dm';
             }
 
@@ -1027,11 +1028,11 @@ async function handleAppeal(message, client) {
                     const logCh = targetGuild.channels.cache.get(logId);
                     if (logCh && require('../lib/canPost').log(targetGuild, logCh, targetGuild.members.me, 'automod-appeals').ok) {
                         const ownerMention = owner ? `<@${owner.id}>` : 'Server owner';
-                        sent = await logCh.send({
+                        sent = await logCh.send(toV2({
                             content: `${ownerMention} — an appeal was submitted but I couldn't DM you directly.`,
                             embeds: [tribunalEmbed],
                             components: [row]
-                        }).catch(() => null);
+                        })).catch(() => null);
                         if (sent) deliveryMethod = 'log_channel';
                     }
                 }
@@ -1082,23 +1083,23 @@ async function handleAppeal(message, client) {
                 ? _tU('appeal_submittedDescLog', { server: targetGuild.name })
                 : _tU('appeal_submittedDescQueued', { server: targetGuild.name });
 
-            return message.reply({
+            return message.reply(toV2({
                 embeds: [new EmbedBuilder()
                     .setColor(deliveryMethod === 'queued' ? C.YELLOW : C.GREEN)
                     .setTitle(_tU(deliveryMethod === 'queued' ? 'appeal_queuedTitle' : 'appeal_submittedTitle',
                         deliveryMethod === 'queued' ? {} : { emoji: require('../config/emojis').success || '✅' }))
                     .setDescription(confirmDesc + '\n\n' + _tU('appeal_submittedFooter'))
                     .setFooter({ text: 'ARCHON CG-223' })]
-            }).catch(() => {});
+            })).catch(() => {});
 
         } catch (e) {
-            return message.reply({
+            return message.reply(toV2({
                 embeds: [new EmbedBuilder()
                     .setColor(C.RED)
                     .setTitle(_t0('appeal_failedTitle'))
                     .setDescription(_t0('appeal_failedDesc'))
                     .setFooter({ text: 'ARCHON CG-223' })]
-            }).catch(() => {});
+            })).catch(() => {});
         }
     }
 }
@@ -1178,10 +1179,10 @@ async function handleAppealButton(interaction, client) {
     if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate().catch(() => {});
 
     if (!vote) {
-        return interaction.editReply({ content: `⚠️ ${_TA('appeal_expired')}`, embeds: [], components: [] }).catch(() => {});
+        return interaction.editReply(fit(interaction.message, { content: `⚠️ ${_TA('appeal_expired')}`, embeds: [], components: [] })).catch(() => {});
     }
     if (vote.status !== 'pending') {
-        return interaction.editReply({ content: `⚠️ ${_TA('decisionRejected')}`, embeds: [], components: [] }).catch(() => {});
+        return interaction.editReply(fit(interaction.message, { content: `⚠️ ${_TA('decisionRejected')}`, embeds: [], components: [] })).catch(() => {});
     }
 
     // ── Permission guard: owner OR admin/mod ──
@@ -1191,7 +1192,7 @@ async function handleAppealButton(interaction, client) {
         || _perms?.has('ManageGuild')
         || _perms?.has('ManageMessages');
     if (!_canRule) {
-        return interaction.editReply({ content: `🔒 **${_TA('appeal_notYoursTitle')}**\n${_TA('appeal_notYoursDesc')}`, embeds: [], components: [] }).catch(() => {});
+        return interaction.editReply(fit(interaction.message, { content: `🔒 **${_TA('appeal_notYoursTitle')}**\n${_TA('appeal_notYoursDesc')}`, embeds: [], components: [] })).catch(() => {});
     }
 
     const guild = client.guilds.cache.get(vote.guildId);
@@ -1232,20 +1233,20 @@ async function handleAppealButton(interaction, client) {
         if (targetUser) {
             const _tU = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
             const lifted = timeoutLifted ? _tU('appeal_approvedTimeoutLifted') : _tU('appeal_approvedTimeoutExpired');
-            await targetUser.send({ embeds: [new EmbedBuilder()
+            await targetUser.send(toV2({ embeds: [new EmbedBuilder()
                 .setColor(C.GREEN)
                 .setTitle(`${_E.verified || '✅'} ${_tU('appeal_approvedTitle')}`)
                 .setDescription(_tU('appeal_approvedDesc', { server: guild?.name || 'the server' }) + lifted)
-                .setFooter({ text: 'ARCHON CG-223' })] }).catch(() => {});
+                .setFooter({ text: 'ARCHON CG-223' })] })).catch(() => {});
         }
     } else if (action === 'reject') {
         if (targetUser) {
             const _tU = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
-            await targetUser.send({ embeds: [new EmbedBuilder()
+            await targetUser.send(toV2({ embeds: [new EmbedBuilder()
                 .setColor(C.RED)
                 .setTitle(`${_E.error || '❌'} ${_tU('appeal_rejectedTitle')}`)
                 .setDescription(_tU('appeal_rejectedDesc', { server: guild?.name || 'the server' }))
-                .setFooter({ text: 'ARCHON CG-223' })] }).catch(() => {});
+                .setFooter({ text: 'ARCHON CG-223' })] })).catch(() => {});
         }
     } else if (action === 'ban') {
         appealCooldowns.set(`ban:${vote.userId}:${vote.guildId}`, Date.now() + 7 * 86400000);
@@ -1255,11 +1256,11 @@ async function handleAppealButton(interaction, client) {
         history.set(k, entry);
         if (targetUser) {
             const _tU = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
-            await targetUser.send({ embeds: [new EmbedBuilder()
+            await targetUser.send(toV2({ embeds: [new EmbedBuilder()
                 .setColor(C.DARK)
                 .setTitle(`${_E.lock || '🔨'} ${_tU('appeal_banTitle')}`)
                 .setDescription(_tU('appeal_banDesc', { server: guild?.name || 'the server' }))
-                .setFooter({ text: 'ARCHON CG-223' })] }).catch(() => {});
+                .setFooter({ text: 'ARCHON CG-223' })] })).catch(() => {});
         }
     }
 
@@ -1282,7 +1283,7 @@ async function handleAppealButton(interaction, client) {
         new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel(_T('appeal_btnBan')).setEmoji('🔨').setStyle(ButtonStyle.Secondary).setDisabled(true)
     );
 
-    await interaction.editReply({ embeds: [decided], components: [lockedRow] })
+    await interaction.editReply(fit(interaction.message, { embeds: [decided], components: [lockedRow] }))
         .then(() => console.log(`[TRIBUNAL] ${appealId} → ${statusLabel} by ${interaction.user.tag}`))
         .catch((e) => console.error('[TRIBUNAL] edit failed:', e.message));
 
@@ -1702,14 +1703,14 @@ module.exports = {
             const _T = (k, v) => require('../lib/i18n').t('automod.' + k, _LG, v);
             const pending = formatPendingAppeals(ix.guild.id);
             if (pending.length === 0) {
-                return ix.reply({
+                return ix.reply(toV2({
                     embeds: [new EmbedBuilder()
                         .setColor(C.GREEN)
                         .setTitle(_T('admin_appealsTitle'))
                         .setDescription(_T('admin_appealsEmpty'))
                         .setFooter({ text: 'ARCHON CG-223' })],
                     flags: 1 << 6
-                });
+                }));
             }
             const _v2 = require('../lib/games/v2');
             const items = [
@@ -1743,7 +1744,7 @@ module.exports = {
             client.db.prepare("UPDATE server_settings SET automod_enabled = ?, updated_at = strftime('%s','now') WHERE guild_id = ?").run(en ? '1' : '0', ix.guild.id);
             client.settings.delete(ix.guild.id);
             const e = new EmbedBuilder().setColor(en ? C.GREEN : C.GREY).setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() }).setDescription(_TA(en ? 'admin_enableOk' : 'admin_disableOk', { cmd: cmdSlash(client, 'automod domains', { guild: ix.guild }) })).setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
-            await ix.reply({ embeds: [e], flags: 1 << 6 });
+            await ix.reply(toV2({ embeds: [e], flags: 1 << 6 }));
             await syncRules(ix.guild, en ? 'create' : 'delete', ss);
             return;
         }
@@ -1821,13 +1822,13 @@ module.exports = {
             const _T = (k, v) => require('../lib/i18n').t('automod.' + k, _LG, v);
             const pending = formatPendingAppeals(msg.guild.id);
             if (pending.length === 0) {
-                return msg.reply({
+                return msg.reply(toV2({
                     embeds: [new EmbedBuilder()
                         .setColor(C.GREEN)
                         .setTitle(_T('admin_appealsTitle'))
                         .setDescription(_T('admin_appealsEmpty'))
                         .setFooter({ text: 'ARCHON CG-223' })]
-                });
+                }));
             }
             const _v2 = require('../lib/games/v2');
             const items = [

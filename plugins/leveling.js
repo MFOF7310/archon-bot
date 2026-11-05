@@ -1,5 +1,6 @@
 const { EmbedBuilder, AttachmentBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { t } = require('../lib/i18n');
+const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const fs = require('fs');
 const path = require('path');
@@ -474,7 +475,7 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) 
     const lvLang = ['en','fr','bm','zh','ar'].includes(ss.language) ? ss.language : (['en','fr','bm','zh','ar'].includes(client.userLastLang?.get(member.id)) ? client.userLastLang.get(member.id) : 'en');
     const embed = new EmbedBuilder().setColor(parseInt(theme.bg1.replace('#', ''), 16)).setDescription(_t('leveling.levelUpLine', lvLang, { user: member.user.tag, level: newLevel })).setImage('attachment://levelup.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
     if (added.length) embed.addFields({ name: _t('leveling.newRolesLabel', lvLang), value: added.map(r => `• ${r}`).join('\n'), inline: false });
-    await safeSend('levelup-milestone', ch, { content: _t('leveling.levelUpLine', lvLang, { user: String(member), level: newLevel }), embeds: [embed], files: [new AttachmentBuilder(png, { name: 'levelup.png' })] }, { guild: member.guild, channelId: chId, quiet: !chId });
+    await safeSend('levelup-milestone', ch, toV2({ content: _t('leveling.levelUpLine', lvLang, { user: String(member), level: newLevel }), embeds: [embed], files: [new AttachmentBuilder(png, { name: 'levelup.png' })] }), { guild: member.guild, channelId: chId, quiet: !chId });
 }
 
 async function handleWelcome(member, client, db) {
@@ -486,7 +487,7 @@ async function handleWelcome(member, client, db) {
     const chId = ss.welcomeChannel || ss.welcome_channel;
     const ch = chId ? member.guild.channels.cache.get(chId) : member.guild.systemChannel;
     if (!ch) return;
-    await ch.send({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'welcome.png' })] }).catch(() => { });
+    await ch.send(toV2({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'welcome.png' })] })).catch(() => { });
 }
 
 async function handleRank(message, args, client, db, lang = 'en') {
@@ -499,7 +500,7 @@ async function handleRank(message, args, client, db, lang = 'en') {
     const customTheme = getThemeDB(db, message.guild.id);
     const png = await renderRankCard(target, rank, row.level, row.xp, customTheme);
     const embed = new EmbedBuilder().setColor(0x5865f2).setImage('attachment://rank.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
-    await message.reply({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'rank.png' })] }).catch(() => { });
+    await message.reply(toV2({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'rank.png' })] })).catch(() => { });
 }
 
 // ================= MODULE =================
@@ -540,7 +541,7 @@ module.exports = {
                     { name: 'Welcome Theme', value: t ? `\`${t.welcome_bg1 || 'default'} → ${t.welcome_bg2 || 'default'}\` | Accent: \`${t.welcome_accent || 'default'}\`` : 'Default (Discord blue)', inline: false },
                     { name: 'Commands', value: '`\rank [@user]` — Show rank card\n`\leveling theme level #bg1 #bg2 #accent` — Customize\n`\leveling theme reset` — Reset to default', inline: false }
                 ).setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
-            return message.reply({ embeds: [e] }).catch(() => { });
+            return message.reply(toV2({ embeds: [e] })).catch(() => { });
         }
         if (sub === 'theme') {
             const adm = message.member.permissions.has(PermissionFlagsBits.Administrator);
@@ -564,7 +565,7 @@ module.exports = {
             tCtx.fillStyle = g; tCtx.fillRect(0, 0, 200, 80);
             const preview = await testCanvas.encode('png');
             const embed = new EmbedBuilder().setColor(parseInt((data.levelAccent || data.welcomeAccent || '#8b9aff').replace('#', ''), 16)).setDescription(t('leveling.theme_updated', lang, { type })).setImage('attachment://preview.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
-            return message.reply({ embeds: [embed], files: [new AttachmentBuilder(preview, { name: 'preview.png' })] }).catch(() => { });
+            return message.reply(toV2({ embeds: [embed], files: [new AttachmentBuilder(preview, { name: 'preview.png' })] })).catch(() => { });
         }
         return handleRank(message, args, client, db, lang);
     },
@@ -587,7 +588,7 @@ module.exports = {
             const customTheme = db ? getThemeDB(db, ix.guild.id) : null;
             const png = await renderRankCard(target, rank, row.level, row.xp, customTheme);
             const embed = new EmbedBuilder().setColor(0x5865f2).setImage('attachment://rank.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
-            return ix.editReply({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'rank.png' })] }).catch(() => { });
+            return ix.editReply(toV2({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'rank.png' })] })).catch(() => { });
         }
 
         if (sc === 'config') {
@@ -597,7 +598,7 @@ module.exports = {
                     { name: 'Level Theme', value: t ? `\`${t.level_bg1 || 'default'} → ${t.level_bg2 || 'default'}\` | Accent: \`${t.level_accent || 'default'}\`` : 'Default (Discord blue)', inline: false },
                     { name: 'Welcome Theme', value: t ? `\`${t.welcome_bg1 || 'default'} → ${t.welcome_bg2 || 'default'}\` | Accent: \`${t.welcome_accent || 'default'}\`` : 'Default (Discord blue)', inline: false }
                 ).setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
-            return ix.reply({ embeds: [e], flags: 1 << 6 });
+            return ix.reply(toV2({ embeds: [e], flags: 1 << 6 }));
         }
 
         if (group === 'theme') {

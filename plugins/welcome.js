@@ -24,6 +24,7 @@ const {
     ThumbnailBuilder,
 } = require('discord.js');
 const { t } = require('../lib/i18n');
+const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const Style = require('./welcome-style.js');
 
 // Card sends upload a file — the check must mirror the send (View/Send/Embed + Attach Files)
@@ -315,9 +316,9 @@ module.exports = {
         cfg = applyOwnerEnvFallback(cfg, message.guild.id);
 
         if (sub === 'test') {
-            await message.reply({
+            await message.reply(toV2({
                 embeds: [new EmbedBuilder().setColor(0x00fbff).setDescription(`**${t('welcome.test_sending', lang)}**`).setFooter({ text: t('welcome.footer', lang) })]
-            }).catch(() => {});
+            })).catch(() => {});
             await handleWelcome(message.member, client, db);
             return;
         }
@@ -334,13 +335,13 @@ module.exports = {
             client.settings.delete(message.guild.id);
 
             const preview = Style.formatTemplate(customMsg, message.member, message.guild.memberCount);
-            return message.reply({
+            return message.reply(toV2({
                 embeds: [new EmbedBuilder().setColor(0x00fbff).setTitle(t('welcome.welcome_updated', lang))
                     .addFields(
                         { name: t('welcome.field_template', lang), value: `\`${customMsg}\``, inline: false },
                         { name: t('welcome.field_preview', lang), value: preview, inline: false }
                     ).setFooter({ text: t('welcome.footer', lang) })]
-            }).catch(() => {});
+            })).catch(() => {});
         }
 
         if (sub === 'goodbyemsg' || sub === 'goodbye' || sub === 'leavemsg') {
@@ -355,13 +356,13 @@ module.exports = {
             client.settings.delete(message.guild.id);
 
             const preview = Style.formatTemplate(customMsg, message.member, message.guild.memberCount);
-            return message.reply({
+            return message.reply(toV2({
                 embeds: [new EmbedBuilder().setColor(0xe74c3c).setTitle(t('welcome.goodbye_updated', lang))
                     .addFields(
                         { name: t('welcome.field_template', lang), value: `\`${customMsg}\``, inline: false },
                         { name: t('welcome.field_preview', lang), value: preview, inline: false }
                     ).setFooter({ text: t('welcome.footer', lang) })]
-            }).catch(() => {});
+            })).catch(() => {});
         }
 
         // Default: config display
@@ -370,7 +371,7 @@ module.exports = {
         const wMsg = cfg.welcomeMessage || t('welcome.default_welcome_msg', lang);
         const gMsg = cfg.goodbyeMessage || t('welcome.default_goodbye_msg', lang);
 
-        return message.reply({
+        return message.reply(toV2({
             embeds: [new EmbedBuilder()
                 .setColor(0x00fbff)
                 .setAuthor({ name: t('welcome.author', lang), iconURL: client.user.displayAvatarURL() })
@@ -384,7 +385,7 @@ module.exports = {
                 )
                 .setFooter({ text: t('welcome.footer', lang) })
                 .setTimestamp()]
-        }).catch(() => {});
+        })).catch(() => {});
     },
 
     // ================= SLASH COMMAND =================
@@ -407,7 +408,7 @@ module.exports = {
         const lang = _ssW.language && _ssW.language !== 'auto' ? _ssW.language : (ix.locale?.startsWith('fr') ? 'fr' : 'en');
 
         if (sc === 'config') {
-            return ix.reply({
+            return ix.reply(toV2({
                 embeds: [new EmbedBuilder()
                     .setColor(0x00fbff)
                     .setAuthor({ name: t('welcome.author', lang), iconURL: client.user.displayAvatarURL() })
@@ -419,7 +420,7 @@ module.exports = {
                         { name: t('welcome.field_setup', lang), value: t('welcome.setup_slash', lang), inline: false }
                     ).setFooter({ text: t('welcome.footer', lang) }).setTimestamp()],
                 flags: 1 << 6
-            });
+            }));
         }
 
         if (sc === 'test') {
@@ -441,14 +442,14 @@ module.exports = {
             client.updateServerSetting(ix.guild.id, 'welcome_message', customMsg);
             client.settings.delete(ix.guild.id);
             const preview = Style.formatTemplate(customMsg, ix.member, ix.guild.memberCount);
-            return ix.reply({
+            return ix.reply(toV2({
                 embeds: [new EmbedBuilder().setColor(0x00fbff).setTitle(t('welcome.welcome_updated', lang))
                     .addFields(
                         { name: t('welcome.field_template', lang), value: `\`${customMsg}\``, inline: false },
                         { name: t('welcome.field_preview', lang), value: preview, inline: false }
                     ).setFooter({ text: t('welcome.footer', lang) })],
                 flags: 1 << 6
-            });
+            }));
         }
 
         if (sc === 'goodbyemsg') {
@@ -459,14 +460,14 @@ module.exports = {
             client.updateServerSetting(ix.guild.id, 'goodbye_message', customMsg);
             client.settings.delete(ix.guild.id);
             const preview = Style.formatTemplate(customMsg, ix.member, ix.guild.memberCount);
-            return ix.reply({
+            return ix.reply(toV2({
                 embeds: [new EmbedBuilder().setColor(0xe74c3c).setTitle(t('welcome.goodbye_updated', lang))
                     .addFields(
                         { name: t('welcome.field_template', lang), value: `\`${customMsg}\``, inline: false },
                         { name: t('welcome.field_preview', lang), value: preview, inline: false }
                     ).setFooter({ text: t('welcome.footer', lang) })],
                 flags: 1 << 6
-            });
+            }));
         }
     }
 };
