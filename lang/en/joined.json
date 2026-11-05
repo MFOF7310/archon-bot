@@ -1,8 +1,6 @@
 {
   "thanks": "Thanks for adding me, {user}",
-  "hello": "Hello, {user}",
   "subThanks": "{guild} · ready in 2 minutes",
-  "subHello": "I just joined {guild} · ready in 2 minutes",
   "arrivedTitle": "I just joined {guild}",
   "arrivedSub": "Ready in 2 minutes: here's how",
   "stepSetup": "{cmd} 4 questions: rules, welcome, member role, log channel",
@@ -16,7 +14,6 @@
   "btnDashboard": "Open the dashboard",
   "btnSupport": "Support server",
   "whyInviter": "You're getting this because you added ARCHON to {guild}.",
-  "whyOwner": "You're getting this because you own {guild}.",
   "use": {
     "core": "everything I do",
     "links": "link previews",

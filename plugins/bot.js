@@ -13,7 +13,6 @@ const BotStats = require('./bot-stats.js');
 const SUPPORT_URL = 'https://discord.gg/NFSMFJajp9';
 const DASHBOARD_URL = 'https://bamako-steel-dev.xyz';
 const GITHUB_URL = 'https://github.com/MFOF7310';
-const PERMISSIONS = '2253174475189366';
 const REFRESH_PAUSE_MS = 3000;
 const COLOR = { ok: 0x2ecc71, warn: 0xf1c40f, bad: 0xe74c3c, wait: 0x95a5a6, info: 0x5865f2 };
 
@@ -29,7 +28,7 @@ const SUB_ALIASES = {
 const em = (k, fb = '') => E[k] || fb;
 const tr = (lang) => (k, vars) => t('bot.' + k, lang, vars || {});
 const foot = (client) => `-# ARCHON CG-223 · v${version(client)}`;
-const inviteUrl = (client) => `https://discord.com/oauth2/authorize?client_id=${client.user.id}&permissions=${PERMISSIONS}&scope=bot%20applications.commands`;
+const inviteUrl = (client) => require('../lib/invite').inviteUrl(client.user.id);
 const voteUrl = (client) => `https://top.gg/bot/${client.user.id}/vote`;
 
 function version(client) {
