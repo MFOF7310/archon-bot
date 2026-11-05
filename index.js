@@ -7224,8 +7224,18 @@ apiApp.get('/api/modlogs/:guildId', (req, res) => {
 });
 
 // TOP.GG VOTE WEBHOOK
+// v1: x-topgg-signature "t=<unix time>,v1=<hex HMAC-SHA256 of 't.rawBody'>" signed with the webhook secret (whs_…);
+// legacy v0: the secret in the Authorization header. A refused request is logged with the reason, once per 10 minutes.
+const voteRefusals = { last: 0, quiet: 0 };
+function voteRefused(reason) {
+    const now = Date.now();
+    if (now - voteRefusals.last < 600000) { voteRefusals.quiet++; return; }
+    const more = voteRefusals.quiet ? ` (${voteRefusals.quiet} more refused since the last line)` : '';
+    voteRefusals.last = now; voteRefusals.quiet = 0;
+    console.warn(`[VOTE] Top.gg webhook refused: ${reason}${more}`);
+}
 apiApp.post('/api/vote', (req, res) => {
-    const secret = process.env.TOPGG_WEBHOOK_SECRET;
+    const secret = String(process.env.TOPGG_WEBHOOK_SECRET || '').trim();
     if (!secret) return res.status(503).json({ error: 'not_configured' });
     const crypto = require('crypto');
     const safeEq = (a, b) => {
@@ -7235,23 +7245,36 @@ apiApp.post('/api/vote', (req, res) => {
     const rb = req.rawBody;
     const raw = Buffer.isBuffer(rb) ? rb.toString('utf8') : String(rb || '');
     const sig = String(req.headers['x-topgg-signature'] || '');
-    const parts = {};
+    let t = null;
+    const v1 = [];
     for (const kv of sig.split(',')) {
         const k = kv.indexOf('=');
-        if (k > 0) parts[kv.slice(0, k).trim()] = kv.slice(k + 1).trim();
+        if (k <= 0) continue;
+        const key = kv.slice(0, k).trim(), val = kv.slice(k + 1).trim();
+        if (key === 't') t = val;
+        else if (key === 'v1') v1.push(val);
     }
 
-    let ok = false;
-    if (parts.t && parts.v1 && raw) {
-        if (Math.abs(Date.now() / 1000 - Number(parts.t)) <= 300) {
-            const expected = crypto.createHmac('sha256', secret).update(`${parts.t}.${raw}`).digest('hex');
-            ok = safeEq(expected, parts.v1);
+    let ok = false, why = '';
+    if (t && v1.length && raw) {
+        const ts = Number(t) > 1e12 ? Number(t) / 1000 : Number(t);      // seconds, or milliseconds
+        const skew = Math.round(Date.now() / 1000 - ts);
+        if (!Number.isFinite(ts) || Math.abs(skew) > 300) why = `the signature time is ${skew} s away from the server clock (check the VPS time)`;
+        else {
+            const expected = crypto.createHmac('sha256', secret).update(`${t}.${raw}`).digest('hex');
+            ok = v1.some((s) => safeEq(expected, s));
+            if (!ok) why = 'the signature does not match TOPGG_WEBHOOK_SECRET. Copy the secret (whs_…) from top.gg → your bot → Webhooks into .env, restart, then press "Send test" on top.gg';
         }
+    } else if (sig) {
+        why = raw ? 'the x-topgg-signature header is incomplete' : 'the request body is empty';
     } else if (req.headers['authorization']) {
         ok = safeEq(req.headers['authorization'], secret); // legacy v0
+        if (!ok) why = 'the Authorization header does not match TOPGG_WEBHOOK_SECRET';
+    } else {
+        why = 'no signature and no Authorization header (not a Top.gg request)';
     }
     if (!ok) {
-        console.warn(`[VOTE] rejected (signed=${!!sig}, body=${raw.length}b)`);
+        voteRefused(why);
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
