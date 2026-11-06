@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags, StringSelectMenuBuilder, StringSelectMenuOptionBuilder } = require('discord.js');
 const { icon } = require('../lib/ui/icons');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { pickLang } = require('../lib/pick-lang');
@@ -19,9 +19,9 @@ module.exports = {
 
     data: new SlashCommandBuilder().setName('inventory').setDescription('🎒 Your items')
         .addSubcommand(sub => sub.setName('browse').setDescription('Open the shop'))
-        .addSubcommand(sub => sub.setName('buy').setDescription('Buy an item').addStringOption(o => o.setName('item').setDescription('Item ID').setRequired(true)))
+        .addSubcommand(sub => sub.setName('buy').setDescription('Buy an item').addStringOption(o => o.setName('item').setDescription('Item ID').setRequired(true).setAutocomplete(true)))
         .addSubcommand(sub => sub.setName('inventory').setDescription('View your inventory'))
-        .addSubcommand(sub => sub.setName('sell').setDescription('Sell an item').addStringOption(o => o.setName('item').setDescription('Item ID').setRequired(true))),
+        .addSubcommand(sub => sub.setName('sell').setDescription('Sell an item').addStringOption(o => o.setName('item').setDescription('Item ID (optional, shows menu if empty)').setRequired(false).setAutocomplete(true))),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         if (!lang) lang = pickLang(client, message.guild?.id, message, message.author?.id);
@@ -31,6 +31,40 @@ module.exports = {
         if (['buy', 'purchase', 'acheter'].includes(cmd)) return handleBuy(message, args, client, db, lang, guildId);
         if (['sell', 'vendre'].includes(cmd)) return handleSell(message, args, client, db, lang, guildId, guildName);
         return handleInventory(message, client, db, lang, guildId, guildName);
+    },
+
+
+    autocomplete: async (interaction, client) => {
+        const focused = interaction.options.getFocused().toLowerCase();
+        const sub = interaction.options.getSubcommand();
+        const userId = interaction.user.id;
+        const guildId = interaction.guildId || 'DM';
+        const db = client.db;
+        const catalog = client.shopItems || [];
+        let choices = [];
+
+        if (sub === 'sell') {
+            let rows = [];
+            // CORRECTION : On ajoute 'quantity' dans le SELECT
+            try { rows = db.prepare('SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND active = 1 AND quantity > 0').all(userId, guildId); } catch(e) {}
+            
+            choices = rows.map(r => {
+                const item = catalog.find(x => x.id === r.item_id);
+                if (!item) return null;
+                const lang = interaction.locale?.split('-')[0] || 'en';
+                const name = item[lang]?.name || item.en?.name || item.id;
+                return { name: `${name} (x${r.quantity})`, value: item.id };
+            }).filter(Boolean);
+        } else if (sub === 'buy') {
+            choices = catalog.map(item => {
+                const lang = interaction.locale?.split('-')[0] || 'en';
+                const name = item[lang]?.name || item.en?.name || item.id;
+                return { name: `${name} (${item.price} credits)`, value: item.id };
+            });
+        }
+
+        const filtered = choices.filter(c => c.name.toLowerCase().includes(focused) || c.value.toLowerCase().includes(focused));
+        await interaction.respond(filtered.slice(0, 25)).catch(() => {});
     },
 
     execute: async (interaction, client) => {
@@ -57,7 +91,7 @@ function inventoryView(client, db, userId, lang, guildId, guildName) {
     const userData = (client.getUserData ? client.getUserData(userId, guildId) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId)) || { credits: 0 };
     const catalog = client.shopItems || [];
     let rows = [];
-    try { rows = db.prepare('SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND active = 1 AND quantity > 0 ORDER BY item_id').all(userId); } catch (e) {}
+    try { rows = db.prepare('SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND active = 1 AND quantity > 0 ORDER BY item_id').all(userId, guildId); } catch (e) {}
     const list = rows.map((r) => {
         const it = catalog.find((x) => x.id === r.item_id);
         const name = it ? (it[lang]?.name || it.en?.name || r.item_id) : r.item_id;
@@ -122,7 +156,7 @@ async function handleBuy(message, args, client, db, lang, guildId) {
     const itemId = String(args[0] || '').trim().toLowerCase();
     if (!itemId) return message.reply(t('inventory.usage', lang)).catch(() => {});
     const item = (client.shopItems || []).find((x) => x.id === itemId);
-    if (!item) return message.reply(t('inventory.itemNotFound', lang)).catch(() => {});
+    if (!item) return handleSell(message, [], client, db, lang, guildId, guildName);
 
     const fd = db.prepare('SELECT credits, xp, level FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
     const bal = fd?.credits || 0;
@@ -140,9 +174,9 @@ async function handleBuy(message, args, client, db, lang, guildId) {
     if (item.effect?.streak_protection) {
         db.prepare('UPDATE users SET streak_protections = COALESCE(streak_protections, 0) + 1 WHERE id = ? AND guild_id = ?').run(userId, guildId);
     }
-    const owned = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND item_id = ?').get(userId, itemId);
-    if (owned) db.prepare('UPDATE user_inventory SET quantity = quantity + 1, active = 1 WHERE user_id = ? AND item_id = ?').run(userId, itemId);
-    else db.prepare('INSERT INTO user_inventory (user_id, item_id, quantity, active) VALUES (?, ?, 1, 1)').run(userId, itemId);
+    const owned = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, itemId);
+    if (owned) db.prepare('UPDATE user_inventory SET quantity = quantity + 1, active = 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, itemId);
+    else db.prepare('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity, active) VALUES (?, ?, ?, 1, 1)').run(userId, guildId, itemId);
     if (client.userDataCache) client.userDataCache.delete(userId + ':' + guildId);
 
     const name = item[lang]?.name || item.en?.name || itemId;
@@ -156,12 +190,82 @@ async function handleBuy(message, args, client, db, lang, guildId) {
 async function handleSell(message, args, client, db, lang, guildId, guildName) {
     const userId = message.author.id;
     const itemId = String(args[0] || '').trim().toLowerCase();
-    if (!itemId) return message.reply(t('inventory.usage', lang)).catch(() => {});
+
+    // Si pas d'ID fourni, on affiche le menu déroulant
+    if (!itemId) {
+        let ownedRows = [];
+        try { ownedRows = db.prepare('SELECT item_id, quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND active = 1 AND quantity > 0').all(userId, guildId); } catch(e) {}
+        
+        if (!ownedRows.length) return message.reply(t('inventory.noItemsPurchased', lang)).catch(() => {});
+
+        const catalog = client.shopItems || [];
+        const options = [];
+        
+        for (const row of ownedRows) {
+            const item = catalog.find(x => x.id === row.item_id);
+            if (!item) continue;
+            
+            const name = item[lang]?.name || item.en?.name || item.id;
+            const opt = new StringSelectMenuOptionBuilder()
+                .setLabel(`${name} (x${row.quantity})`)
+                .setDescription(`${t('inventory.sellPrice', lang) || 'Sell for'} : ${Math.floor(item.price * 0.5).toLocaleString()} ${t('shop.creditsLabel', lang) || 'credits'}`)
+                .setValue(item.id);
+            
+            // Ajout de l'émoji custom
+            if (item.emoji) {
+                const m = /^<(a?):(\w+):(\d+)>$/.exec(item.emoji);
+                if (m) opt.setEmoji({ id: m[3], name: m[2], animated: m[1] === 'a' });
+                else opt.setEmoji(item.emoji);
+            }
+            options.push(opt);
+        }
+
+        const menu = new StringSelectMenuBuilder()
+            .setCustomId('sell_menu')
+            .setPlaceholder(t('inventory.selectToSell', lang) || 'Select an item to sell...')
+            .addOptions(options);
+
+        const row = new ActionRowBuilder().addComponents(menu);
+        const reply = await message.reply({ content: `**${t('inventory.selectToSell', lang)}**`, components: [row] }).catch(() => null);
+        
+        if (reply && reply.createMessageComponentCollector) {
+            const collector = reply.createMessageComponentCollector({ time: 60000 });
+            collector.on('collect', async (i) => {
+                if (i.user.id !== userId) return i.reply({ content: '❌ This menu is not yours.', flags: 64 });
+                const selectedId = i.values[0];
+                const selectedItem = catalog.find(x => x.id === selectedId);
+                await i.deferUpdate();
+                
+                // On exécute la vente directement
+                const sellPrice = Math.floor(selectedItem.price * 0.5);
+                const userData = db.prepare('SELECT credits FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId) || { credits: 0 };
+                const newCredits = (userData.credits || 0) + sellPrice;
+                
+                db.prepare('UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?').run(newCredits, userId, guildId);
+                
+                const owned = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, selectedId);
+                if (owned.quantity > 1) {
+                    db.prepare('UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, selectedId);
+                } else {
+                    db.prepare('DELETE FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, selectedId);
+                }
+                
+                const c = new ContainerBuilder().setAccentColor(0xe67e22)
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('inventory.sellSuccess', lang) || 'Item Sold!'}\n**${selectedItem.emoji || '📦'} ${selectedItem[lang]?.name || selectedItem.id}** · ${t('inventory.soldFor', lang) || 'Sold for'} ${sellPrice.toLocaleString()} ${em('ic_credit', '🪙')}`))
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang) || 'New balance'} : ${newCredits.toLocaleString()} ${em('ic_credit', '🪙')}`));
+                
+                return i.editReply({ components: [c], flags: MessageFlags.IsComponentsV2 });
+            });
+        }
+        return;
+    }
+
+    // ... Garde la logique de vente directe existante (si le mec tape l'ID à la main)
     const item = (client.shopItems || []).find((x) => x.id === itemId);
-    if (!item) return message.reply(t('inventory.itemNotFound', lang)).catch(() => {});
+    if (!item) return handleSell(message, [], client, db, lang, guildId, guildName);
 
     let owned = null;
-    try { owned = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND item_id = ? AND active = 1').get(userId, itemId); } catch (e) {}
+    try { owned = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND active = 1').get(userId, guildId, itemId); } catch (e) {}
     if (!owned || owned.quantity <= 0) return message.reply(t('inventory.notOwnedSell', lang)).catch(() => {});
 
     const userData = (client.getUserData ? client.getUserData(userId, guildId) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId)) || { credits: 0 };
@@ -170,12 +274,12 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
     db.prepare('UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?').run(newCredits, userId, guildId);
     if (client.queueUserUpdate) client.queueUserUpdate(userId, guildId, { ...userData, credits: newCredits });
     if (client.userDataCache) client.userDataCache.delete(`${userId}:${guildId}`);
-    if (owned.quantity > 1) db.prepare('UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND item_id = ?').run(userId, itemId);
-    else db.prepare('DELETE FROM user_inventory WHERE user_id = ? AND item_id = ?').run(userId, itemId);
+    if (owned.quantity > 1) db.prepare('UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, itemId);
+    else db.prepare('DELETE FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, itemId);
 
     const name = item[lang]?.name || item.en?.name || itemId;
     const c = new ContainerBuilder().setAccentColor(0xe67e22)
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t('inventory.sellSuccess', lang)}\n**${item.emoji || '📦'} ${name}** · ${t('inventory.soldFor', lang, { price: sellPrice.toLocaleString() })}`))
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang)} : ${newCredits.toLocaleString()} 🪙 · ${guildName}`));
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('inventory.sellSuccess', lang)}\n**${item.emoji || '📦'} ${name}** · ${t('inventory.soldFor', lang, { price: sellPrice.toLocaleString() })} ${em('ic_credit', '🪙')}`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang)} : ${newCredits.toLocaleString()} ${em('ic_credit', '🪙')} · ${guildName}`));
     return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
 }
