@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const { icon } = require('../lib/ui/icons');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { pickLang } = require('../lib/pick-lang');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { t } = require('../lib/i18n');
@@ -7,7 +8,7 @@ const { t } = require('../lib/i18n');
 // Translations: lang/{en,fr,bm,zh,ar}/inventory.json
 
 function getMarketState(guildId) { try { const mm = require('./market-manager'); return mm.getMarketState(guildId); } catch (e) { return { trend: 'STEADY', multiplier: 1.0 }; } }
-function getTrend() { try { const mm = require('./market-manager'); const ms = mm.getMarketState(); return mm.TRENDS[ms.trend] || mm.TRENDS.STEADY; } catch (e) { return { emoji: '📊', name: 'Steady', color: '#f1c40f', multiplier: [0.98, 1.08] }; } }
+function getTrend() { try { const mm = require('./market-manager'); const ms = mm.getMarketState(); return mm.TRENDS[ms.trend] || mm.TRENDS.STEADY; } catch (e) { return { emoji: em('ic_chart', '📊'), name: 'Steady', color: '#f1c40f', multiplier: [0.98, 1.08] }; } }
 
 module.exports = {
     // Its own name: it used to be called "shop" like plugins/shop.js, so whichever file loaded last took the
