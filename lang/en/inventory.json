@@ -27,5 +27,8 @@
   "noItemsAvailable": "No items available",
   "notYours": "Oops, this menu belongs to someone else.",
   "sellPrice": "Sell for",
-  "selectToSell": "Select an item from your bag to sell:"
+  "selectToSell": "Select an item from your bag to sell:",
+  "menuNotYours": "❌ This menu is not yours.",
+  "itemUnavailable": "❌ This item is no longer available in the shop.",
+  "refreshFailed": "❌ Failed to refresh inventory."
 }

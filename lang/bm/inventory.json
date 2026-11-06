@@ -23,5 +23,8 @@
   "noItemsAvailable": "Article foye te yen fɔlɔ",
   "notYours": "Oups, nin menu bɛ mɔgɔ wɛrɛ bolo.",
   "sellPrice": "A fɛn ka sɔngɔ",
-  "selectToSell": "I ka fɛn dɔ sugandi i ka saku kɔnɔ ka a sɔngɔ:"
+  "selectToSell": "I ka fɛn dɔ sugandi i ka saku kɔnɔ ka a sɔngɔ:",
+  "menuNotYours": "❌ Nin menu tɛ i ta ye.",
+  "itemUnavailable": "❌ Nin fɛn in tɛ sɔrɔ bitiki kɔnɔ tuguni. ",
+  "refreshFailed": "❌ Ɛnvanteri ma sen ka la kuraya."
 }

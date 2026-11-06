@@ -122,7 +122,7 @@ async function handleInventory(message, client, db, lang, guildId, guildName) {
                 return await i.update(inventoryView(client, db, userId, lang, guildId, guildName));
             } catch (e) {
                 console.error('[INV REFRESH ERROR]', e);
-                return i.reply({ content: '❌ Failed to refresh inventory.', flags: 64 }).catch(() => {});
+                return i.reply({ content: t('inventory.refreshFailed', lang) || '❌ Failed to refresh inventory.', flags: 64 }).catch(() => {});
             }
         }
         if (i.customId === 'inv_shop') {
@@ -238,7 +238,7 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
         if (reply && reply.createMessageComponentCollector) {
             const collector = reply.createMessageComponentCollector({ time: 60000 });
             collector.on('collect', async (i) => {
-                if (i.user.id !== userId) return i.reply({ content: '❌ This menu is not yours.', flags: 64 }).catch(() => {});
+                if (i.user.id !== userId) return i.reply({ content: t('inventory.menuNotYours', lang) || '❌ This menu is not yours.', flags: 64 }).catch(() => {});
                 const selectedId = i.values[0];
                 const selectedItem = catalog.find(x => x.id === selectedId);
                 await i.deferUpdate();

@@ -27,5 +27,8 @@
   "noItemsAvailable": "暂无可用物品",
   "notYours": "哎呀，这个菜单是别人的。",
   "sellPrice": "出售价格",
-  "selectToSell": "从背包中选择要出售的物品："
+  "selectToSell": "从背包中选择要出售的物品：",
+  "menuNotYours": "❌ 这个菜单不是你的。",
+  "itemUnavailable": "❌ 该物品已不在商店中。",
+  "refreshFailed": "❌ 刷新库存失败。"
 }

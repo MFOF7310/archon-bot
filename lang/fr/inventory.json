@@ -27,5 +27,8 @@
   "noItemsAvailable": "Aucun article disponible",
   "notYours": "Oups, ce menu appartient à quelqu'un d'autre.",
   "sellPrice": "Vendre pour",
-  "selectToSell": "Sélectionne un objet de ton sac à vendre :"
+  "selectToSell": "Sélectionne un objet de ton sac à vendre :",
+  "menuNotYours": "❌ Ce menu ne vous appartient pas.",
+  "itemUnavailable": "❌ Cet objet n'est plus disponible dans la boutique.",
+  "refreshFailed": "❌ Impossible d'actualiser l'inventaire."
 }
