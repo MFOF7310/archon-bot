@@ -3274,9 +3274,9 @@ try {
         }
     }
 
-    startBatchWriteInterval();
-    startReminderHeartbeat();
-    startCacheJanitor();
+    /* startBatchWriteInterval() - moved to maintenance */;
+    /* startReminderHeartbeat() - moved to maintenance */;
+    /* startCacheJanitor() - moved to maintenance */;
 
     // ================= WEEKLY PURGE SCHEDULER =================
     setInterval(() => {

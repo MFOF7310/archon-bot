@@ -1,5 +1,5 @@
 const { version: discordVersion, SlashCommandBuilder } = require('discord.js');
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 const os = require('os');
 const { ns } = require('../lib/lang');
 const E = require('../config/emojis');

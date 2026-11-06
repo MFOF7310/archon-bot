@@ -3,7 +3,7 @@
 // Security boundary: the model only *proposes* via a JSON intent; this file decides.
 // ═══════════════════════════════════════════════════════════════════════════
 const { EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 const i18n = require('../lib/i18n');
 // Bambara strings aren't written yet: bm servers get French (Mali's official language)
 const pickLang = (l) => ({ en: 'en', fr: 'fr', zh: 'zh', ar: 'ar', bm: 'fr' })[l] || null;

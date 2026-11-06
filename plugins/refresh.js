@@ -1,6 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 const fs = require('fs');
 const path = require('path');
 

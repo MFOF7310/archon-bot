@@ -1,5 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 
 // ================= BIRTHDAY INTELLIGENCE DIVISION =================

@@ -1,5 +1,5 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
-const { iconObj } = require('../lib/icons');
+const { iconObj } = require('../lib/ui/icons');
 const v2 = require('../lib/games/v2');
 const i18n = require('../lib/i18n');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };

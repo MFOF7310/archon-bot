@@ -5,7 +5,7 @@ const {
     ThumbnailBuilder, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags
 } = require('discord.js');
-const { icon, iconObj } = require('../lib/icons');
+const { icon, iconObj } = require('../lib/ui/icons');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { toV2, fit } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const EMOJIS = require('../config/emojis');

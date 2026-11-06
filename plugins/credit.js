@@ -1,7 +1,7 @@
 const i18n = require('../lib/i18n');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 const { PermissionFlagsBits } = require('discord.js');
 
 // ================= UNIFIED LEVEL CALCULATION =================

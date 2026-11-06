@@ -10,7 +10,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, MessageFlags, AttachmentBuilder, escapeMarkdown } = require('discord.js');
 const { toV2 } = require('../lib/v2convert');   // the admin repair report (classic embed → card)
 const { card } = require('../lib/games/v2');
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 
 // ================= ENGINE IMPORTS =================
 const voteSync = require('./votesync.js');

@@ -1,6 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ChannelType, ComponentType, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
-const { iconObj } = require('../lib/icons');
-const { icon } = require('../lib/icons');
+const { iconObj } = require('../lib/ui/icons');
+const { icon } = require('../lib/ui/icons');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');

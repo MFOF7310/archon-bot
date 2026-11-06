@@ -5,7 +5,7 @@ const {
 } = require('discord.js');
 const { toV2, fit, isV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const { card: v2card } = require('../lib/games/v2');
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { safeSend } = require('../lib/safeSend');
 const EMOJIS = require('../config/emojis');

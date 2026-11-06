@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { iconObj } = require('../lib/icons');
+const { iconObj } = require('../lib/ui/icons');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');

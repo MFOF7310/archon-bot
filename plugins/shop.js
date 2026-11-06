@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 const parseEmoji = (str) => {
     if (!str) return undefined;
     const m = /^<(a?):(\w+):(\d+)>$/.exec(str);

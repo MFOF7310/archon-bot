@@ -9,7 +9,7 @@ const { SlashCommandBuilder, ChannelType, PermissionFlagsBits, ActionRowBuilder,
 const cp = require('../lib/canPost');
 const i18n = require('../lib/i18n');
 const { card } = require('../lib/games/v2');
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 const { slash } = require('../lib/cmd');
 
 const T = (key, lang, vars) => i18n.t(`postcheck.${key}`, lang, vars);

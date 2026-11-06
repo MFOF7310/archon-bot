@@ -1,6 +1,6 @@
 const axios = require('axios');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 const EMOJIS = require('../config/emojis');
 
 /**

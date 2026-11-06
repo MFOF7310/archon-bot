@@ -15,7 +15,7 @@ const EMOJIS = require('../config/emojis');
 const mentions = require('../lib/mentions');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-const { iconObj } = require('../lib/icons');
+const { iconObj } = require('../lib/ui/icons');
 const { pickLang } = require('../lib/pick-lang');
 const i18nV = require('../lib/i18n');
 

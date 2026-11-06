@@ -1,5 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
-const { icon, iconObj } = require('../lib/icons');
+const { icon, iconObj } = require('../lib/ui/icons');
 const { t: i18nT } = require('../lib/i18n');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 

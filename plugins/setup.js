@@ -13,7 +13,7 @@ const {
     ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType
 } = require('discord.js');
 const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 const i18n = require('../lib/i18n');
 const canPost = require('../lib/canPost');
 

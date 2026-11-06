@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
-const { iconObj } = require('../lib/icons');
+const { iconObj } = require('../lib/ui/icons');
 const { exec } = require('child_process');
 const os = require('os');
 const fs = require('fs');

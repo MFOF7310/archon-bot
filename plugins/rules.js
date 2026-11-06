@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 const { t } = require('../lib/i18n');
 const ui = require('../lib/games/ui');
 const v2 = require('../lib/games/v2');

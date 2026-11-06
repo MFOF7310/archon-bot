@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ComponentType } = require('discord.js');
-const { icon } = require('../lib/icons');
+const { icon } = require('../lib/ui/icons');
 
 // ================= TERMINAL COLORS =================
 const green = "\x1b[32m", red = "\x1b[31m", reset = "\x1b[0m";
