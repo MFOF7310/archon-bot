@@ -61,11 +61,11 @@ function inventoryView(client, db, userId, lang, guildId, guildName) {
     const list = rows.map((r) => {
         const it = catalog.find((x) => x.id === r.item_id);
         const name = it ? (it[lang]?.name || it.en?.name || r.item_id) : r.item_id;
-        return `• ${it?.emoji || '📦'} **${name}** ×${r.quantity} · \`${r.item_id}\``;
+        return `• ${it?.emoji || em('ic_bag', '📦')} **${name}** ×${r.quantity} · \`${r.item_id}\``;
     }).join('\n') || t('inventory.noItemsPurchased', lang);
 
     const container = new ContainerBuilder().setAccentColor(0x9b59b6);
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🎒 ${t('inventory.yourInventory', lang)}\n**${t('inventory.yourCredits', lang)} :** \`${(userData.credits || 0).toLocaleString()}\` 🪙`));
+    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_bag', '🎒')} ${t('inventory.yourInventory', lang)}\n**${t('inventory.yourCredits', lang)} :** \`${(userData.credits || 0).toLocaleString()}\` ${em('ic_credit', '🪙')}`));
     container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('inventory.purchasedItems', lang)}**\n${list}`));
     container.addActionRowComponents(new ActionRowBuilder().addComponents(
@@ -83,11 +83,29 @@ async function handleInventory(message, client, db, lang, guildId, guildName) {
     const collector = sent.createMessageComponentCollector({ time: 120000 });
     collector.on('collect', async (i) => {
         if (i.user.id !== userId) return i.reply({ content: t('inventory.notYours', lang), flags: 64 }).catch(() => {});
-        if (i.customId === 'inv_refresh') return i.update(inventoryView(client, db, userId, lang, guildId, guildName)).catch(() => {});
+        if (i.customId === 'inv_refresh') {
+            try {
+                return await i.update(inventoryView(client, db, userId, lang, guildId, guildName));
+            } catch (e) {
+                console.error('[INV REFRESH ERROR]', e);
+                return i.reply({ content: '❌ Failed to refresh inventory.', flags: 64 }).catch(() => {});
+            }
+        }
         if (i.customId === 'inv_shop') {
+            // GUARD: Ignore si l'interaction est déjà traitée (double-clic)
+            if (i.deferred || i.replied) return;
+            
+            // On achète 15 minutes de temps à Discord pour éviter le timeout
+            await i.deferReply({ flags: 64 }).catch(() => {});
+            
             const shop = client.commands?.get('shop');
-            await i.deferUpdate().catch(() => {});
-            if (shop?.run) return shop.run(client, message, [], db, client.getServerSettings?.(guildId) || {}, 'shop');
+            const fakeMsg = {
+                author: i.user,
+                guild: i.guild,
+                channel: i.channel,
+                reply: async (opts) => i.editReply(typeof opts === 'string' ? { content: opts } : opts)
+            };
+            if (shop?.run) return shop.run(client, fakeMsg, [], db, client.getServerSettings?.(guildId) || {}, 'shop', lang).catch(e => console.error('[SHOP BTN ERROR]', e));
         }
     });
     collector.on('end', () => {

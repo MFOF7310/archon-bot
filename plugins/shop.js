@@ -107,16 +107,25 @@ module.exports = {
             if (i.customId === 'shop_inventory') {
                 collector.stop();
                 const invCmd = client.commands.get('inventory');
-                if (invCmd) return await invCmd.run(client, message, [], db, serverSettings, 'inventory');
+                const fakeMsg = { 
+                    author: i.user, guild: i.guild, channel: i.channel, 
+                    reply: async (opts) => i.followUp(typeof opts === 'string' ? { content: opts } : opts) 
+                };
+                if (invCmd) return invCmd.run(client, fakeMsg, [], db, serverSettings, 'inventory', lang).catch(e => console.error('[SHOP TO INV ERROR]', e));
                 return;
             }
 
             if (i.customId === 'shop_refresh') {
-                const freshData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
-                const freshInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
-                const freshOwned = new Set(freshInv.map(x => x.item_id));
-                const freshView = module.exports.buildView(client, freshData, freshOwned, lang, guildName, version);
-                return await i.editReply(freshView.view).catch(() => {});
+                try {
+                    const freshData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                    const freshInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
+                    const freshOwned = new Set(freshInv.map(x => x.item_id));
+                    const freshView = module.exports.buildView(client, freshData, freshOwned, lang, guildName, version);
+                    return await i.editReply(freshView.view);
+                } catch (e) {
+                    console.error('[SHOP REFRESH ERROR]', e);
+                    return i.followUp({ content: '❌ Failed to refresh shop.', flags: 64 }).catch(() => {});
+                }
             }
 
             if (i.customId === 'shop_select') {
