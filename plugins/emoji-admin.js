@@ -184,7 +184,10 @@ module.exports = {
         .setName('emojis')
         .setDescription('Emoji registry sync tools')
         .addSubcommand(s => s.setName('check').setDescription('Report registry sync status'))
-        .addSubcommand(s => s.setName('sync').setDescription('Apply registry sync (owner only)')),
+        .addSubcommand(s => s.setName('sync').setDescription('Apply registry sync (owner only)'))
+        .addSubcommand(s => s.setName('add').setDescription('Upload a new emoji directly to App')
+            .addStringOption(o => o.setName('name').setDescription('Emoji name (e.g. ic_new)').setRequired(true))
+            .addAttachmentOption(o => o.setName('image').setDescription('PNG or GIF file').setRequired(true))),
 
     execute: async (interaction) => {
         const sub = interaction.options.getSubcommand();
@@ -192,6 +195,37 @@ module.exports = {
         const t = (k, v) => i18n.t('emojis.' + k, lang, v);
 
         // Guard : sync = owner uniquement
+        if (sub === 'add') {
+            if (interaction.user.id !== process.env.OWNER_ID) return interaction.reply({ content: '❌ Owner only.', flags: 64 });
+            await interaction.deferReply({ flags: 64 });
+            const name = interaction.options.getString('name');
+            const image = interaction.options.getAttachment('image');
+            try {
+                // Upload vers Discord
+                const emoji = await interaction.client.application.emojis.create({ attachment: image.url, name });
+                const isAnimated = emoji.animated ? 'a' : '';
+                const line = `    ${name}: '<${isAnimated}:${emoji.name}:${emoji.id}>',\n`;
+                
+                // Injection dans config/emojis.js
+                let reg = fs.readFileSync(REGISTRY_PATH, 'utf-8');
+                const isOverwrite = reg.includes(`${name}:`);
+                if (isOverwrite) {
+                    reg = reg.replace(new RegExp(`\\b${name}:\\s*'[^']+',`), line.trim());
+                } else {
+                    reg = reg.replace(/};\s*$/, line + '};');
+                }
+                fs.writeFileSync(REGISTRY_PATH, reg, 'utf-8');
+                
+                const msg = isOverwrite 
+                    ? `🔄 **${name}** (ID: ${emoji.id}) a été **écrasé** avec succès dans le registre !`
+                    : `✨ **${name}** (ID: ${emoji.id}) a été **ajouté** au registre !`;
+                    
+                return interaction.editReply(`${msg}\n👉 Pense à redémarrer le bot (\`pm2 restart\`).`);
+            } catch (e) {
+                console.error('[EMOJIS ADD]', e);
+                return interaction.editReply(`❌ Erreur : ${e.message}`);
+            }
+        }
         if (sub === 'sync') {
             const OWNER = process.env.OWNER_ID;
             if (OWNER && interaction.user.id !== OWNER) {

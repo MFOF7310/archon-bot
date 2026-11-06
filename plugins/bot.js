@@ -76,7 +76,7 @@ async function pingCard(client, lang, db) {
     const state = ['bad', 'warn', 'ok'].find(x => tiers.includes(x)) || 'ok';
     const val = (ms) => ms == null ? '—' : `${ms} ms`;
     return v2.card(COLOR[state], [
-        { text: `## ${em('ping_rest', '📡')} ${_('ping_title')}\n${_('ping_' + state, { ms: m.rest })}` },
+        { text: `## ${em('ic_satellite', '📡')} ${_('ping_title')}\n${_('ping_' + state, { ms: m.rest })}` },
         { rule: true },
         { text: [
             `${DOT[tiers[0]]()} **${_('ping_reply')}** · ${val(m.rest)}`,

@@ -6,6 +6,7 @@ const {
 const { toV2, fit, isV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const { card: v2card } = require('../lib/games/v2');
 const { icon } = require('../lib/icons');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { safeSend } = require('../lib/safeSend');
 const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');
@@ -640,18 +641,23 @@ module.exports = {
             
             try {
                 const creator = await client.users.fetch(tk?.creatorId || crid).catch(()=>null);
-                if (creator && creator.id !== cl) {
+                if (creator) {
+                    const member = await ix.guild.members.fetch(creator.id).catch(() => null);
+                    const isOwner = ix.guild.ownerId === creator.id;
+                    const isStaff = member && (member.permissions.has('ManageChannels') || member.permissions.has('Administrator'));
+                    
+                    if (!isStaff || isOwner) {
                     const _v2 = require('../lib/games/v2');
                     // ticket_rate_<stars>_<guild>_<number>_<staff>_<category>: the log card names the ticket and who handled it
                     const staffId = tk?.claimedBy || cl;
                     const base = `${ix.guild?.id}_${tk?.number || 0}_${staffId || 0}`;
                     const rid = (n) => { const id = `ticket_rate_${n}_${base}${tk?.categoryValue ? `_${tk.categoryValue}` : ''}`; return id.length <= 100 ? id : `ticket_rate_${n}_${base}`; };
                     const ratingRow = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder().setCustomId(rid(1)).setLabel('⭐').setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder().setCustomId(rid(2)).setLabel('⭐⭐').setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder().setCustomId(rid(3)).setLabel('⭐⭐⭐').setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder().setCustomId(rid(4)).setLabel('⭐⭐⭐⭐').setStyle(ButtonStyle.Secondary),
-                        new ButtonBuilder().setCustomId(rid(5)).setLabel('⭐⭐⭐⭐⭐').setStyle(ButtonStyle.Success),
+                        new ButtonBuilder().setCustomId(rid(1)).setLabel('1').setEmoji(icon('star')).setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId(rid(2)).setLabel('2').setEmoji(icon('star')).setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId(rid(3)).setLabel('3').setEmoji(icon('star')).setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId(rid(4)).setLabel('4').setEmoji(icon('star')).setStyle(ButtonStyle.Secondary),
+                        new ButtonBuilder().setCustomId(rid(5)).setLabel('5').setEmoji(icon('star')).setStyle(ButtonStyle.Success),
                     );
                     const ratingCard = _v2.card(0x00f0ff, [
                         { text: `## ⭐ ${t('ticket.rating_closed', lang)}` },
@@ -660,6 +666,7 @@ module.exports = {
                         { row: ratingRow }
                     ]);
                     await creator.send(ratingCard).catch(()=>{});
+                    }
                 }
             } catch(e) {}
             

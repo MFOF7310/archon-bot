@@ -1,9 +1,10 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
-
-// ================= BILINGUAL TRANSLATIONS =================
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+const { iconObj } = require('../lib/icons');
+const v2 = require('../lib/games/v2');
 const i18n = require('../lib/i18n');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
+
 const I18N_KEYS = ["author","title","description","tiktok","tiktokDesc","instagram","instagramDesc","facebook","facebookDesc","whatsapp","whatsappDesc","discord","discordDesc","github","githubDesc","footer","tip","tipText","nodeLocation","nodeStatus","quickStats","members","servers","commands","uptime","voteLink","voteDesc","inviteLink","inviteDesc"];
-// Clés dans lang/<locale>/socials.json ; '' retombe sur EN dans t().
 function loadT(lang) {
     const o = {};
     for (const k of I18N_KEYS) o[k] = i18n.t(`socials.${k}`, lang);
@@ -19,34 +20,23 @@ module.exports = {
     usage: '.socials',
     examples: ['.socials', '.reseaux'],
 
-    // ================= SLASH COMMAND DATA =================
     data: new SlashCommandBuilder()
         .setName('socials')
         .setDescription('🔗 Display official social media links / Afficher les liens sociaux'),
-
-    // 🔥 NEW SIGNATURE: 6 parameters with usedCommand
+    
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-    const guildId = message.guild?.id ?? 'DM';
-        
-        // 🔥 NEURAL LANGUAGE BRIDGE - Alias-based detection!
+        const guildId = message.guild?.id ?? 'DM';
         lang = client.detectLanguage ? client.detectLanguage('socials', guildId) : 'en';
-        
         const t = loadT(lang);
         const version = client.version || '1.8.0';
         const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
-        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
-        const ping = Math.round(client.ws.ping);
-        
-        // ================= QUICK STATS =================
+        const ping = Math.max(0, Math.round(client.ws.ping));
+
         const totalMembers = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
         const totalGuilds = (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size);
         const totalCommands = client.commands?.size || 0;
-        const uptime = process.uptime();
-        const days = Math.floor(uptime / 86400);
-        const hours = Math.floor((uptime % 86400) / 3600);
-        const uptimeStr = days > 0 ? `${days}j ${hours}h` : `${hours}h ${Math.floor((uptime % 3600) / 60)}m`;
-        
-        // ================= SOCIAL LINKS =================
+        const uptimeStr = Math.floor(process.uptime() / 3600) + 'h';
+
         const socialLinks = {
             tiktok: 'https://www.tiktok.com/@cloudgaming223',
             facebook: 'https://www.facebook.com/share/17KysmJrtm/',
@@ -55,207 +45,89 @@ module.exports = {
             discord: 'https://discord.gg/NFSMFJajp9',
             github: 'https://github.com/MFOF7310'
         };
-        
-        // ================= MAIN EMBED =================
-        const socialEmbed = new EmbedBuilder()
-            .setColor('#00acee')
-            .setAuthor({ 
-                name: t.author, 
-                iconURL: client.user.displayAvatarURL() 
-            })
-            .setTitle(t.title)
-            .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
-            .setDescription(
-                `${t.description}\n\n` +
-                `**${t.tip}:** ${t.tipText}`
-            )
-            .addFields(
-                { 
-                    name: t.tiktok, 
-                    value: `\`${t.tiktokDesc}\`\n└─ @cloudgaming223`, 
-                    inline: true 
-                },
-                { 
-                    name: t.instagram, 
-                    value: `\`${t.instagramDesc}\`\n└─ @mfof7310`, 
-                    inline: true 
-                },
-                { 
-                    name: t.facebook, 
-                    value: `\`${t.facebookDesc}\`\n└─ Eagle Community`, 
-                    inline: true 
-                },
-                { 
-                    name: t.whatsapp, 
-                    value: `\`${t.whatsappDesc}\`\n└─ +1 (548) 520-0518`, 
-                    inline: true 
-                },
-                { 
-                    name: t.discord, 
-                    value: `\`${t.discordDesc}\`\n└─ discord.gg/eaglecommunity`, 
-                    inline: true 
-                },
-                { 
-                    name: t.github, 
-                    value: `\`${t.githubDesc}\`\n└─ github.com/MFOF7310`, 
-                    inline: true 
-                }
-            )
-            .addFields(
-                {
-                    name: t.nodeLocation,
-                    value: t.nodeStatus.replace('{ping}', ping),
-                    inline: false
-                },
-                {
-                    name: `📊 ${t.quickStats}`,
-                    value: `\`\`\`yaml\n${t.members}: ${totalMembers.toLocaleString()}\n${t.servers}: ${totalGuilds}\n${t.commands}: ${totalCommands}\n${t.uptime}: ${uptimeStr}\`\`\``,
-                    inline: true
-                },
-                {
-                    name: '🔗 ' + (lang === 'fr' ? 'LIENS RAPIDES' : 'QUICK LINKS'),
-                    value: `\`\`\`yaml\n${t.voteLink}: Top.gg\n${t.inviteLink}: Discord\nSupport: WhatsApp\`\`\``,
-                    inline: true
-                }
-            )
-            .setFooter({ 
-                text: `${guildName} • ${t.footer} • v${version}`, 
-                iconURL: guildIcon 
-            })
-            .setTimestamp();
 
-        // ================= BUTTON ROWS =================
+        // Les boutons D'ABORD
         const row1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setLabel('TikTok')
-                .setURL(socialLinks.tiktok)
-                .setStyle(ButtonStyle.Link)
-                .setEmoji('🎬'),
-            new ButtonBuilder()
-                .setLabel('Instagram')
-                .setURL(socialLinks.instagram)
-                .setStyle(ButtonStyle.Link)
-                .setEmoji('📸'),
-            new ButtonBuilder()
-                .setLabel('Facebook')
-                .setURL(socialLinks.facebook)
-                .setStyle(ButtonStyle.Link)
-                .setEmoji('🔵'),
-            new ButtonBuilder()
-                .setLabel('GitHub')
-                .setURL(socialLinks.github)
-                .setStyle(ButtonStyle.Link)
-                .setEmoji('💻')
-        );
-        
-        const row2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setLabel('WhatsApp')
-                .setURL(socialLinks.whatsapp)
-                .setStyle(ButtonStyle.Link)
-                .setEmoji('💬'),
-            new ButtonBuilder()
-                .setLabel('Discord')
-                .setURL(socialLinks.discord)
-                .setStyle(ButtonStyle.Link)
-                .setEmoji('🎮'),
-            new ButtonBuilder()
-                .setCustomId('socials_stats')
-                .setLabel(lang === 'fr' ? '📊 Stats' : '📊 Stats')
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('📊'),
-            new ButtonBuilder()
-                .setCustomId('socials_invite')
-                .setLabel(lang === 'fr' ? '🔗 Inviter' : '🔗 Invite')
-                .setStyle(ButtonStyle.Success)
-                .setEmoji('🔗')
+            new ButtonBuilder().setLabel('TikTok').setURL(socialLinks.tiktok).setStyle(ButtonStyle.Link).setEmoji(iconObj('tiktok_logo', null, '🎬')),
+            new ButtonBuilder().setLabel('Instagram').setURL(socialLinks.instagram).setStyle(ButtonStyle.Link).setEmoji(iconObj('instagram', null, '📸')),
+            new ButtonBuilder().setLabel('Facebook').setURL(socialLinks.facebook).setStyle(ButtonStyle.Link).setEmoji(iconObj('facebook', null, '')),
+            new ButtonBuilder().setLabel('GitHub').setURL(socialLinks.github).setStyle(ButtonStyle.Link).setEmoji(iconObj('developericon', null, '💻'))
         );
 
-        const reply = await message.reply({ 
-            embeds: [socialEmbed], 
-            components: [row1, row2] 
-        }).catch(() => {});
-        
+        const row2 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setLabel('WhatsApp').setURL(socialLinks.whatsapp).setStyle(ButtonStyle.Link).setEmoji(iconObj('whatsapp', null, '💬')),
+            new ButtonBuilder().setLabel('Discord').setURL(socialLinks.discord).setStyle(ButtonStyle.Link).setEmoji(iconObj('discord', null, '🎮')),
+            new ButtonBuilder().setCustomId('socials_stats').setLabel('📊 Stats').setStyle(ButtonStyle.Secondary).setEmoji(iconObj('charts', null, '📊')),
+            new ButtonBuilder().setCustomId('socials_invite').setLabel('🔗 Invite').setStyle(ButtonStyle.Success).setEmoji(iconObj('website', null, '🔗'))
+        );
+
+        // Le contenu ENSUITE
+        const items = [
+            { text: `## ${em('eagle', '🦅')} ${em('website', '🔗')} ${(t.title || 'CONNECT WITH THE ARCHITECT').replace('🔗', '').trim()}\n*${t.description || 'Connect with the Architect'}*` },
+            { text: `**MEDIA & STREAMS**\n` +
+                    `${em('tiktok_logo', '🎬')} TikTok · Live Streams & Clips\n` +
+                    `${em('instagram', '📸')} Instagram · Gameplay clips` },
+            { text: `**COMMUNITY & SUPPORT**\n` +
+                    `${em('discord', '🎮')} Discord · Join our Server\n` +
+                    `${em('whatsapp', '💬')} WhatsApp · Direct Support\n` +
+                    `${em('facebook', '🔵')} Facebook · Community Hub` },
+            { text: `**OPEN SOURCE**\n` +
+                    `${em('developericon', '💻')} GitHub · Source Code` },
+            { rule: true },
+            { text: `**${em('location', '📍')} NODE STATUS**\n` +
+                    `**BAMAKO, MALI 🇲🇱**\n` +
+                    `${em('ping_ok', '🟢')} Online · ${em('ic_satellite', '📡')} ${ping}ms\n` +
+                    `${em('charts', '📊')} ${totalMembers.toLocaleString()} ${t.members} · ${totalGuilds} ${t.servers} · ${totalCommands} ${t.commands} · ${em('clock', '⏱️')} ${uptimeStr}` },
+            { row: row1 },
+            { row: row2 },
+            { text: `-# ${guildName} • v${version}` }
+        ];
+
+        const reply = await message.reply({ ...v2.card(0x00acee, items) }).catch(() => {});
         if (!reply) return;
-        
-        // ================= BUTTON COLLECTOR =================
+
         const collector = reply.createMessageComponentCollector({ time: 60000 });
-        
+
         collector.on('collect', async (i) => {
             if (i.user.id !== message.author.id) {
-                return i.reply({ 
-                    content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', 
-                    flags: 64 
-                });
+                return i.reply({ content: lang === 'fr' ? '❌ Ce menu ne vous appartient pas.' : '❌ This menu is not yours.', flags: 64 });
             }
-            
+
             if (i.customId === 'socials_stats') {
-                const freshPing = Math.round(client.ws.ping);
-                const freshUptime = process.uptime();
-                const freshDays = Math.floor(freshUptime / 86400);
-                const freshHours = Math.floor((freshUptime % 86400) / 3600);
-                const freshUptimeStr = freshDays > 0 ? `${freshDays}j ${freshHours}h` : `${freshHours}h ${Math.floor((freshUptime % 3600) / 60)}m`;
-                
-                const statsEmbed = new EmbedBuilder()
-                    .setColor('#2ecc71')
-                    .setAuthor({ name: '📊 LIVE SYSTEM STATS', iconURL: client.user.displayAvatarURL() })
-                    .setDescription(
-                        `\`\`\`yaml\n` +
-                        `🏠 Servers: ${(client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size)}\n` +
-                        `👥 Users: ${client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0).toLocaleString()}\n` +
-                        `⚡ Ping: ${freshPing}ms\n` +
-                        `⏱️ Uptime: ${freshUptimeStr}\n` +
-                        `💾 Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB\n` +
-                        `\`\`\``
-                    )
-                    .setFooter({ text: `ARCHON CG-223 • v${version}` })
-                    .setTimestamp();
-                
-                await i.reply({ embeds: [statsEmbed], flags: 64 });
+                const freshPing = Math.max(0, Math.round(client.ws.ping));
+                const freshUptimeStr = Math.floor(process.uptime() / 3600) + 'h';
+                const statsItems = [
+                    { text: `## 📊 LIVE SYSTEM STATS` },
+                    { text: `🏠 Servers: ${totalGuilds}\n👥 Users: ${totalMembers.toLocaleString()}\n⚡ Ping: ${freshPing}ms\n⏱️ Uptime: ${freshUptimeStr}\n💾 Memory: ${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)} MB` },
+                    { text: `-# ARCHON CG-223 • v${version}` }
+                ];
+                await i.reply({ ...v2.card(0x2ecc71, statsItems), flags: 64 });
             }
-            
+
             if (i.customId === 'socials_invite') {
-                const inviteEmbed = new EmbedBuilder()
-                    .setColor('#5865F2')
-                    .setAuthor({ name: '🔗 INVITE ARCHON CG-223', iconURL: client.user.displayAvatarURL() })
-                    .setDescription(
-                        `**Add the bot to your server!**\n\n` +
-                        `🔗 **Invite Link:**\n${require('../lib/invite').inviteUrl(client.user.id)}\n\n` +
-                        `✨ **Features:**\n` +
-                        `• AI Chat (Lydia)\n` +
-                        `• Economy System\n` +
-                        `• Moderation Tools\n` +
-                        `• Gaming Commands\n` +
-                        `• And much more!`
-                    )
-                    .setFooter({ text: `ARCHON CG-223 • v${version}` })
-                    .setTimestamp();
-                
-                await i.reply({ embeds: [inviteEmbed], flags: 64 });
+                const inviteItems = [
+                    { text: `## 🔗 INVITE ARCHON CG-223` },
+                    { text: `**Add the bot to your server!**\n\n🔗 **Invite Link:**\n${require('../lib/invite').inviteUrl(client.user.id)}\n\n✨ **Features:**\n• AI Chat (Lydia)\n• Economy System\n• Moderation Tools\n• Gaming Commands\n• And much more!` },
+                    { text: `-# ARCHON CG-223 • v${version}` }
+                ];
+                await i.reply({ ...v2.card(0x5865F2, inviteItems), flags: 64 });
             }
         });
-
-        console.log(`[SOCIALS] ${message.author.tag} viewed social links | Lang: ${lang}`);
     },
 
-    // ================= SLASH COMMAND EXECUTION (LEGENDARY DM FALLBACK) =================
     execute: async (interaction, client) => {
         const lang = require('../lib/i18n').slashLang(interaction);
         const t = loadT(lang);
         const version = client.version || '1.8.0';
-        
-        // 🔥 LEGENDARY DM FALLBACK - Works perfectly in DMs!
+
         await interaction.deferReply();
-        
-        const ping = Math.round(client.ws.ping);
+
+        const ping = Math.max(0, Math.round(client.ws.ping));
         const totalMembers = client.guilds.cache.reduce((acc, g) => acc + g.memberCount, 0);
         const totalGuilds = (client.db ? (client.db.prepare("SELECT COUNT(DISTINCT guild_id) FROM users WHERE guild_id NOT IN ('DM','telegram')").get()["COUNT(DISTINCT guild_id)"] || client.guilds.cache.size) : client.guilds.cache.size);
         const totalCommands = client.commands?.size || 0;
-        const uptime = process.uptime();
-        const days = Math.floor(uptime / 86400);
-        const hours = Math.floor((uptime % 86400) / 3600);
-        const uptimeStr = days > 0 ? `${days}j ${hours}h` : `${hours}h ${Math.floor((uptime % 3600) / 60)}m`;
-        
+        const uptimeStr = Math.floor(process.uptime() / 3600) + 'h';
+
         const socialLinks = {
             tiktok: 'https://www.tiktok.com/@cloudgaming223',
             facebook: 'https://www.facebook.com/share/17KysmJrtm/',
@@ -264,59 +136,42 @@ module.exports = {
             discord: 'https://discord.gg/NFSMFJajp9',
             github: 'https://github.com/MFOF7310'
         };
-        
-        const socialEmbed = new EmbedBuilder()
-            .setColor('#00acee')
-            .setAuthor({ 
-                name: interaction.guild ? t.author : (lang === 'fr' ? '🦅 EAGLE COMMUNITY | CONNEXION DM' : '🦅 EAGLE COMMUNITY | DM CONNECTION'), 
-                iconURL: client.user.displayAvatarURL() 
-            })
-            .setTitle(t.title)
-            .setThumbnail(client.user.displayAvatarURL({ dynamic: true, size: 512 }))
-            .setDescription(
-                `${t.description}\n\n` +
-                `**${t.tip}:** ${t.tipText}`
-            )
-            .addFields(
-                { name: t.tiktok, value: `\`${t.tiktokDesc}\`\n└─ @cloudgaming223`, inline: true },
-                { name: t.instagram, value: `\`${t.instagramDesc}\`\n└─ @mfof7310`, inline: true },
-                { name: t.facebook, value: `\`${t.facebookDesc}\`\n└─ Eagle Community`, inline: true },
-                { name: t.whatsapp, value: `\`${t.whatsappDesc}\`\n└─ +1 (548) 520-0518`, inline: true },
-                { name: t.discord, value: `\`${t.discordDesc}\`\n└─ discord.gg/eaglecommunity`, inline: true },
-                { name: t.github, value: `\`${t.githubDesc}\`\n└─ github.com/MFOF7310`, inline: true }
-            )
-            .addFields(
-                {
-                    name: t.nodeLocation,
-                    value: t.nodeStatus.replace('{ping}', ping),
-                    inline: false
-                },
-                {
-                    name: `📊 ${t.quickStats}`,
-                    value: `\`\`\`yaml\n${t.members}: ${totalMembers.toLocaleString()}\n${t.servers}: ${totalGuilds}\n${t.commands}: ${totalCommands}\n${t.uptime}: ${uptimeStr}\`\`\``,
-                    inline: true
-                }
-            )
-            .setFooter({ 
-                text: `${interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223'} • ${t.footer} • v${version}`, 
-                iconURL: interaction.guild?.iconURL() || client.user.displayAvatarURL() 
-            })
-            .setTimestamp();
 
+        // Boutons D'ABORD
         const row1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setLabel('TikTok').setURL(socialLinks.tiktok).setStyle(ButtonStyle.Link).setEmoji('🎬'),
-            new ButtonBuilder().setLabel('Instagram').setURL(socialLinks.instagram).setStyle(ButtonStyle.Link).setEmoji('📸'),
-            new ButtonBuilder().setLabel('Facebook').setURL(socialLinks.facebook).setStyle(ButtonStyle.Link).setEmoji('🔵'),
-            new ButtonBuilder().setLabel('GitHub').setURL(socialLinks.github).setStyle(ButtonStyle.Link).setEmoji('💻')
-        );
-        
-        const row2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setLabel('WhatsApp').setURL(socialLinks.whatsapp).setStyle(ButtonStyle.Link).setEmoji('💬'),
-            new ButtonBuilder().setLabel('Discord').setURL(socialLinks.discord).setStyle(ButtonStyle.Link).setEmoji('🎮')
+            new ButtonBuilder().setLabel('TikTok').setURL(socialLinks.tiktok).setStyle(ButtonStyle.Link).setEmoji(iconObj('tiktok_logo', null, '🎬')),
+            new ButtonBuilder().setLabel('Instagram').setURL(socialLinks.instagram).setStyle(ButtonStyle.Link).setEmoji(iconObj('instagram', null, '📸')),
+            new ButtonBuilder().setLabel('Facebook').setURL(socialLinks.facebook).setStyle(ButtonStyle.Link).setEmoji(iconObj('facebook', null, '')),
+            new ButtonBuilder().setLabel('GitHub').setURL(socialLinks.github).setStyle(ButtonStyle.Link).setEmoji(iconObj('developericon', null, '💻'))
         );
 
-        await interaction.editReply({ embeds: [socialEmbed], components: [row1, row2] });
-        
-        console.log(`[SOCIALS] ${interaction.user.tag} viewed social links via slash | Lang: ${lang}`);
+        const row2 = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setLabel('WhatsApp').setURL(socialLinks.whatsapp).setStyle(ButtonStyle.Link).setEmoji(iconObj('whatsapp', null, '💬')),
+            new ButtonBuilder().setLabel('Discord').setURL(socialLinks.discord).setStyle(ButtonStyle.Link).setEmoji(iconObj('discord', null, '🎮'))
+        );
+
+        // Contenu ENSUITE
+        const items = [
+            { text: `## ${em('eagle', '🦅')} ${em('website', '🔗')} ${(t.title || 'CONNECT WITH THE ARCHITECT').replace('🔗', '').trim()}\n*${t.description || 'Connect with the Architect'}*` },
+            { text: `**MEDIA & STREAMS**\n` +
+                    `${em('tiktok_logo', '🎬')} TikTok · Live Streams & Clips\n` +
+                    `${em('instagram', '📸')} Instagram · Gameplay clips` },
+            { text: `**COMMUNITY & SUPPORT**\n` +
+                    `${em('discord', '🎮')} Discord · Join our Server\n` +
+                    `${em('whatsapp', '💬')} WhatsApp · Direct Support\n` +
+                    `${em('facebook', '🔵')} Facebook · Community Hub` },
+            { text: `**OPEN SOURCE**\n` +
+                    `${em('developericon', '💻')} GitHub · Source Code` },
+            { rule: true },
+            { text: `**${em('location', '📍')} NODE STATUS**\n` +
+                    `**BAMAKO, MALI 🇲🇱**\n` +
+                    `${em('ping_ok', '🟢')} Online · ${em('ic_satellite', '📡')} ${ping}ms\n` +
+                    `${em('charts', '📊')} ${totalMembers.toLocaleString()} ${t.members} · ${totalGuilds} ${t.servers} · ${totalCommands} ${t.commands} · ${em('clock', '⏱️')} ${uptimeStr}` },
+            { row: row1 },
+            { row: row2 },
+            { text: `-# ${interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223'} • v${version}` }
+        ];
+
+        await interaction.editReply({ ...v2.card(0x00acee, items) });
     }
 };
