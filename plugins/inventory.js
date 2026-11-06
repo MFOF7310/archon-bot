@@ -226,6 +226,8 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
         if (options.length === 0) {
             return message.reply(t('inventory.noItemsPurchased', lang) || 'You have no valid items to sell.').catch(() => {});
         }
+        
+        if (!message.reply) return; // Sécurité si l'objet message est invalide
 
         const menu = new StringSelectMenuBuilder()
             .setCustomId('sell_menu')
