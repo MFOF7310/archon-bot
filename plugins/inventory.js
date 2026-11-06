@@ -220,6 +220,11 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
             options.push(opt);
         }
 
+        // SÉCURITÉ : Discord refuse les menus vides. Si tous les objets sont corrompus, on arrête.
+        if (options.length === 0) {
+            return message.reply(t('inventory.noItemsPurchased', lang) || 'You have no valid items to sell.').catch(() => {});
+        }
+
         const menu = new StringSelectMenuBuilder()
             .setCustomId('sell_menu')
             .setPlaceholder(t('inventory.selectToSell', lang) || 'Select an item to sell...')
@@ -231,7 +236,7 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
         if (reply && reply.createMessageComponentCollector) {
             const collector = reply.createMessageComponentCollector({ time: 60000 });
             collector.on('collect', async (i) => {
-                if (i.user.id !== userId) return i.reply({ content: '❌ This menu is not yours.', flags: 64 });
+                if (i.user.id !== userId) return i.reply({ content: '❌ This menu is not yours.', flags: 64 }).catch(() => {});
                 const selectedId = i.values[0];
                 const selectedItem = catalog.find(x => x.id === selectedId);
                 await i.deferUpdate();
@@ -254,7 +259,7 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('inventory.sellSuccess', lang) || 'Item Sold!'}\n**${selectedItem.emoji || '📦'} ${selectedItem[lang]?.name || selectedItem.id}** · ${t('inventory.soldFor', lang) || 'Sold for'} ${sellPrice.toLocaleString()} ${em('ic_credit', '🪙')}`))
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang) || 'New balance'} : ${newCredits.toLocaleString()} ${em('ic_credit', '🪙')}`));
                 
-                return i.editReply({ components: [c], flags: MessageFlags.IsComponentsV2 });
+                return i.editReply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(e => console.error('[SELL ERROR]', e));
             });
         }
         return;
