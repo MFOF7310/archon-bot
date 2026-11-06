@@ -156,11 +156,11 @@ module.exports = {
                     db.prepare('UPDATE users SET streak_protections = COALESCE(streak_protections, 0) + 1 WHERE id = ? AND guild_id = ?').run(userId, guildId);
                 }
 
-                const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND item_id = ?').get(userId, selectedId);
+                const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, selectedId);
                 if (ex) {
-                    db.prepare('UPDATE user_inventory SET quantity = quantity + 1 WHERE user_id = ? AND item_id = ?').run(userId, selectedId);
+                    db.prepare('UPDATE user_inventory SET quantity = quantity + 1, active = 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, selectedId);
                 } else {
-                    db.prepare('INSERT INTO user_inventory (user_id, item_id, quantity, active) VALUES (?, ?, 1, 1)').run(userId, selectedId);
+                    db.prepare('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity, active) VALUES (?, ?, ?, 1, 1)').run(userId, guildId, selectedId);
                 }
                 if (client.userDataCache) client.userDataCache.delete(userId + ':' + guildId);
 
@@ -264,11 +264,11 @@ module.exports = {
                     db.prepare('UPDATE users SET streak_protections = COALESCE(streak_protections, 0) + 1 WHERE id = ? AND guild_id = ?').run(userId, guildId);
                 }
 
-                const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND item_id = ?').get(userId, selectedId);
+                const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, selectedId);
                 if (ex) {
-                    db.prepare('UPDATE user_inventory SET quantity = quantity + 1 WHERE user_id = ? AND item_id = ?').run(userId, selectedId);
+                    db.prepare('UPDATE user_inventory SET quantity = quantity + 1, active = 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, selectedId);
                 } else {
-                    db.prepare('INSERT INTO user_inventory (user_id, item_id, quantity, active) VALUES (?, ?, 1, 1)').run(userId, selectedId);
+                    db.prepare('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity, active) VALUES (?, ?, ?, 1, 1)').run(userId, guildId, selectedId);
                 }
                 if (client.userDataCache) client.userDataCache.delete(userId + ':' + guildId);
 
