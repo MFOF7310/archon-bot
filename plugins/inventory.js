@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
+const { icon } = require('../lib/icons');
 const { pickLang } = require('../lib/pick-lang');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { t } = require('../lib/i18n');
@@ -67,8 +68,8 @@ function inventoryView(client, db, userId, lang, guildId, guildName) {
     container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('inventory.purchasedItems', lang)}**\n${list}`));
     container.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('inv_shop').setLabel(t('inventory.viewStore', lang)).setStyle(ButtonStyle.Primary).setEmoji('🛒'),
-        new ButtonBuilder().setCustomId('inv_refresh').setLabel(t('inventory.refresh', lang)).setStyle(ButtonStyle.Secondary).setEmoji('🔄'),
+        new ButtonBuilder().setCustomId('inv_shop').setLabel(t('inventory.viewStore', lang)).setStyle(ButtonStyle.Primary).setEmoji(icon('shop')),
+        new ButtonBuilder().setCustomId('inv_refresh').setLabel(t('inventory.refresh', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('refresh')),
     ));
     container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.footer', lang)} • ${guildName}`));
     return { components: [container], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };

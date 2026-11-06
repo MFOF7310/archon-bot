@@ -5,6 +5,7 @@ const {
     ThumbnailBuilder, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags
 } = require('discord.js');
+const { icon } = require('../lib/icons');
 const { toV2, fit } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const EMOJIS = require('../config/emojis');
 const { t } = require('../lib/i18n');
@@ -295,11 +296,11 @@ function buildControls(q) {
     const isPaused = q.player?.state?.status === AudioPlayerStatus.Paused;
     const hasPrev = q.trackHistory && q.trackHistory.length > 0;
     return new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_prev').setLabel(t('music.btn_prev', L(q))).setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
-        new ButtonBuilder().setCustomId('mc_pause').setLabel(t(isPaused ? 'music.btn_resume' : 'music.btn_pause', L(q))).setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(isPaused ? '▶️' : '⏸️'),
-        new ButtonBuilder().setCustomId('mc_skip').setLabel(t('music.btn_skip', L(q))).setStyle(ButtonStyle.Primary).setEmoji('⏭️'),
-        new ButtonBuilder().setCustomId('mc_stop').setLabel(t('music.btn_stop', L(q))).setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
-        new ButtonBuilder().setCustomId('mc_loop').setLabel(t(q.loop ? 'music.btn_loop_on' : 'music.btn_loop', L(q))).setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
+        new ButtonBuilder().setCustomId('mc_prev').setLabel(t('music.btn_prev', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(icon('mc_prev', q)).setDisabled(!hasPrev),
+        new ButtonBuilder().setCustomId('mc_pause').setLabel(t(isPaused ? 'music.btn_resume' : 'music.btn_pause', L(q))).setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(isPaused ? icon('mc_play', q) : icon('mc_pause', q)),
+        new ButtonBuilder().setCustomId('mc_skip').setLabel(t('music.btn_skip', L(q))).setStyle(ButtonStyle.Primary).setEmoji(icon('mc_skip', q)),
+        new ButtonBuilder().setCustomId('mc_stop').setLabel(t('music.btn_stop', L(q))).setStyle(ButtonStyle.Danger).setEmoji(icon('mc_stop', q)),
+        new ButtonBuilder().setCustomId('mc_loop').setLabel(t(q.loop ? 'music.btn_loop_on' : 'music.btn_loop', L(q))).setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(icon('mc_loop', q)),
     );
 }
 
@@ -365,25 +366,25 @@ function buildPanelRows(q) {
 
     // Row 1 — Core (4 buttons max — no wrapping on mobile CV2)
     const rowTransport = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_pause').setLabel(t(isPaused ? 'music.btn_resume' : 'music.btn_pause', L(q))).setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? '▶️' : '⏸️'),
-        new ButtonBuilder().setCustomId('mc_skip').setLabel(t('music.btn_skip', L(q))).setStyle(ButtonStyle.Primary).setEmoji('⏭️'),
-        new ButtonBuilder().setCustomId('mc_stop').setLabel(t('music.btn_stop', L(q))).setStyle(ButtonStyle.Danger).setEmoji('⏹️'),
-        new ButtonBuilder().setCustomId('mc_autoplay').setLabel(t('music.btn_autoplay', L(q))).setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔄'),
+        new ButtonBuilder().setCustomId('mc_pause').setLabel(t(isPaused ? 'music.btn_resume' : 'music.btn_pause', L(q))).setStyle(isPaused ? ButtonStyle.Success : ButtonStyle.Primary).setEmoji(isPaused ? icon('mc_play', q) : icon('mc_pause', q)),
+        new ButtonBuilder().setCustomId('mc_skip').setLabel(t('music.btn_skip', L(q))).setStyle(ButtonStyle.Primary).setEmoji(icon('mc_skip', q)),
+        new ButtonBuilder().setCustomId('mc_stop').setLabel(t('music.btn_stop', L(q))).setStyle(ButtonStyle.Danger).setEmoji(icon('mc_stop', q)),
+        new ButtonBuilder().setCustomId('mc_autoplay').setLabel(t('music.btn_autoplay', L(q))).setStyle(q.autoplay ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(icon('mc_autoplay', q)),
     );
 
     // Row 2 — Extras (with labels)
     const rowSession = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_voldown').setLabel(t('music.btn_voldown', L(q))).setStyle(ButtonStyle.Secondary).setEmoji('🔉').setDisabled(q.volume <= 0),
-        new ButtonBuilder().setCustomId('mc_prev').setLabel(t('music.btn_previous', L(q))).setStyle(ButtonStyle.Secondary).setEmoji('⏮️').setDisabled(!hasPrev),
-        new ButtonBuilder().setCustomId('mc_loop').setLabel(t(q.loop ? 'music.btn_loop_on' : 'music.btn_loop', L(q))).setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji('🔁'),
-        new ButtonBuilder().setCustomId('mc_volup').setLabel(t('music.btn_volup', L(q))).setStyle(ButtonStyle.Secondary).setEmoji('🔊').setDisabled(q.volume >= 100),
+        new ButtonBuilder().setCustomId('mc_voldown').setLabel(t('music.btn_voldown', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(icon('mc_voldown', q)).setDisabled(q.volume <= 0),
+        new ButtonBuilder().setCustomId('mc_prev').setLabel(t('music.btn_previous', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(icon('mc_prev', q)).setDisabled(!hasPrev),
+        new ButtonBuilder().setCustomId('mc_loop').setLabel(t(q.loop ? 'music.btn_loop_on' : 'music.btn_loop', L(q))).setStyle(q.loop ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(icon('mc_loop', q)),
+        new ButtonBuilder().setCustomId('mc_volup').setLabel(t('music.btn_volup', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(icon('mc_volup', q)).setDisabled(q.volume >= 100),
     );
 
     // Row 3 — Taste + Queue
     const rowTaste = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('mc_like').setLabel(t('music.btn_love', L(q))).setStyle(ButtonStyle.Secondary).setEmoji('❤️'),
-        new ButtonBuilder().setCustomId('mc_dislike').setLabel(t('music.btn_dislike', L(q))).setStyle(ButtonStyle.Secondary).setEmoji('👎'),
-        new ButtonBuilder().setCustomId('mc_queue').setLabel(t('music.btn_queue', L(q))).setStyle(ButtonStyle.Secondary).setEmoji('📋'),
+        new ButtonBuilder().setCustomId('mc_like').setLabel(t('music.btn_love', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(icon('mc_like', q)),
+        new ButtonBuilder().setCustomId('mc_dislike').setLabel(t('music.btn_dislike', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(icon('mc_dislike', q)),
+        new ButtonBuilder().setCustomId('mc_queue').setLabel(t('music.btn_queue', L(q))).setStyle(ButtonStyle.Secondary).setEmoji(icon('mc_queue', q)),
     );
 
     return [rowTransport, rowSession, rowTaste];

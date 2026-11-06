@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
+const { icon } = require('../lib/icons');
 const { pickLang } = require('../lib/pick-lang');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { t } = require('../lib/i18n');
@@ -145,7 +146,7 @@ module.exports = {
                     .setCustomId('use_shop')
                     .setLabel(t('use.shopHint', lang))
                     .setStyle(ButtonStyle.Success)
-                    .setEmoji('🛒')
+                    .setEmoji(icon('shop'))
             );
 
             const reply = await message.reply({ embeds: [noItemsEmbed], components: [row] }).catch(() => {});
@@ -206,7 +207,7 @@ module.exports = {
 
         const actionRow = new ActionRowBuilder().addComponents(selectMenu);
         const backRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`use_cancel_${userId}`).setLabel(t('use.close', lang)).setStyle(ButtonStyle.Danger).setEmoji('❌'),
+            new ButtonBuilder().setCustomId(`use_cancel_${userId}`).setLabel(t('use.close', lang)).setStyle(ButtonStyle.Danger).setEmoji(icon('no')),
             new ButtonBuilder().setCustomId(`use_inventory_${userId}`).setLabel(t('use.backToInventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji('📦')
         );
 
@@ -436,7 +437,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
                 .setCustomId(`badge_keep_${userId}`)
                 .setLabel(t('use.close', lang))
                 .setStyle(ButtonStyle.Secondary)
-                .setEmoji('❌')
+                .setEmoji(icon('no'))
         );
 
         const reply = isSlash
@@ -499,7 +500,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
             .setCustomId(`badge_cancel_${userId}`)
             .setLabel(t('use.close', lang))
             .setStyle(ButtonStyle.Danger)
-            .setEmoji('❌')
+            .setEmoji(icon('no'))
     );
 
     const reply = isSlash

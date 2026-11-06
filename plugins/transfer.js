@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
+const { icon } = require('../lib/icons');
 const { t: i18nT } = require('../lib/i18n');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 
@@ -197,12 +198,12 @@ module.exports = {
                 .setCustomId(`transfer_confirm_${userId}_${Date.now()}`)
                 .setLabel(t('confirmBtn'))
                 .setStyle(ButtonStyle.Success)
-                .setEmoji('✅'),
+                .setEmoji(icon('ok')),
             new ButtonBuilder()
                 .setCustomId(`transfer_cancel_${userId}_${Date.now()}`)
                 .setLabel(t('cancelBtn'))
                 .setStyle(ButtonStyle.Danger)
-                .setEmoji('❌')
+                .setEmoji(icon('no'))
         );
 
         const confirmMsg = await message.reply({ embeds: [confirmEmbed], components: [confirmRow] }).catch(() => {});
@@ -286,7 +287,7 @@ module.exports = {
                     .setCustomId(`transfer_balance_${userId}`)
                     .setLabel(t('checkBalance'))
                     .setStyle(ButtonStyle.Primary)
-                    .setEmoji('💰'),
+                    .setEmoji(icon('coins')),
                 new ButtonBuilder()
                     .setCustomId(`transfer_history_${userId}`)
                     .setLabel(t('viewHistory'))
@@ -528,12 +529,12 @@ module.exports = {
                 .setCustomId(`transfer_confirm_${userId}_${Date.now()}`)
                 .setLabel(t('confirmBtn'))
                 .setStyle(ButtonStyle.Success)
-                .setEmoji('✅'),
+                .setEmoji(icon('ok')),
             new ButtonBuilder()
                 .setCustomId(`transfer_cancel_${userId}_${Date.now()}`)
                 .setLabel(t('cancelBtn'))
                 .setStyle(ButtonStyle.Danger)
-                .setEmoji('❌')
+                .setEmoji(icon('no'))
         );
 
         await interaction.editReply({ embeds: [confirmEmbed], components: [confirmRow] });
@@ -605,7 +606,7 @@ module.exports = {
                     .setCustomId(`transfer_balance_${userId}`)
                     .setLabel(t('checkBalance'))
                     .setStyle(ButtonStyle.Primary)
-                    .setEmoji('💰'),
+                    .setEmoji(icon('coins')),
                 new ButtonBuilder()
                     .setCustomId(`transfer_history_${userId}`)
                     .setLabel(t('viewHistory'))

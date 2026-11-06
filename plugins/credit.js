@@ -1,6 +1,7 @@
 const i18n = require('../lib/i18n');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+const { icon } = require('../lib/icons');
 const { PermissionFlagsBits } = require('discord.js');
 
 // ================= UNIFIED LEVEL CALCULATION =================
@@ -187,9 +188,9 @@ let userData = db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").g
 
     // Button row
     const actionRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('credit_lb').setLabel(t('leaderboardBtn')).setStyle(ButtonStyle.Secondary).setEmoji('🏆'),
+        new ButtonBuilder().setCustomId('credit_lb').setLabel(t('leaderboardBtn')).setStyle(ButtonStyle.Secondary).setEmoji(icon('trophy')),
         new ButtonBuilder().setCustomId('credit_pay').setLabel(t('transferBtn')).setStyle(ButtonStyle.Primary).setEmoji('💸'),
-        new ButtonBuilder().setCustomId('credit_shop').setLabel(t('shopBtn')).setStyle(ButtonStyle.Success).setEmoji('🛒')
+        new ButtonBuilder().setCustomId('credit_shop').setLabel(t('shopBtn')).setStyle(ButtonStyle.Success).setEmoji(icon('shop'))
     );
 
     const sent = await message.reply({ embeds: [embed], components: [actionRow] }).catch(() => null);

@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { icon } = require('../lib/icons');
 const EMOJIS = require('../config/emojis');
 
 /**
@@ -262,7 +263,7 @@ function buildDMEmbed(client, user, result, stats, t, lang) {
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setLabel(t.voteAgain).setStyle(ButtonStyle.Link)
             .setURL(`https://top.gg/bot/${client.user.id}/vote`)
-            .setEmoji('🗳️')
+            .setEmoji(icon('votes'))
     );
 
     return { embed, components: [row], nextVote: nextTs };

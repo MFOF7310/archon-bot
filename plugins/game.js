@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ComponentType } = require('discord.js');
+const { icon } = require('../lib/icons');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { t } = require('../lib/i18n');
 const EMOJIS = require('../config/emojis');
@@ -308,8 +309,8 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
         { rule: true },
         { text: tttFooter() },
         { row: new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('ttt_accept').setLabel(t('game.accept', lang)).setStyle(ButtonStyle.Success).setEmoji('✅'),
-            new ButtonBuilder().setCustomId('ttt_decline').setLabel(t('game.decline', lang)).setStyle(ButtonStyle.Danger).setEmoji('❌'),
+            new ButtonBuilder().setCustomId('ttt_accept').setLabel(t('game.accept', lang)).setStyle(ButtonStyle.Success).setEmoji(icon('ok')),
+            new ButtonBuilder().setCustomId('ttt_decline').setLabel(t('game.decline', lang)).setStyle(ButtonStyle.Danger).setEmoji(icon('no')),
         ) },
     ]);
     challengeCard.allowedMentions = { users: [opponent.id] };

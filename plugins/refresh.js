@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
+const { icon } = require('../lib/icons');
 const fs = require('fs');
 const path = require('path');
 
@@ -115,7 +116,7 @@ const embed = new EmbedBuilder()
 
         const row1 = new ActionRowBuilder().addComponents(select);
         const row2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('wipe_abort').setLabel(t.abort).setStyle(ButtonStyle.Secondary).setEmoji('❌')
+            new ButtonBuilder().setCustomId('wipe_abort').setLabel(t.abort).setStyle(ButtonStyle.Secondary).setEmoji(icon('no'))
         );
 
         const reply = await message.reply({ embeds: [embed], components: [row1, row2] }).catch(() => {});

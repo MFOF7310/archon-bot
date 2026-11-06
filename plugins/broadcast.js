@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ChannelType, ComponentType, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
+const { icon } = require('../lib/icons');
 
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
@@ -303,16 +304,16 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const mentionRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('broadcast_everyone').setLabel(t.mentionEveryone).setStyle(ButtonStyle.Danger).setEmoji('📢'),
             new ButtonBuilder().setCustomId('broadcast_here').setLabel(t.mentionHere).setStyle(ButtonStyle.Primary).setEmoji('📌'),
-            new ButtonBuilder().setCustomId('broadcast_none').setLabel(t.noMention).setStyle(ButtonStyle.Secondary).setEmoji('🔕')
+            new ButtonBuilder().setCustomId('broadcast_none').setLabel(t.noMention).setStyle(ButtonStyle.Secondary).setEmoji(icon('muted'))
         );
         
         const channelMenu = createChannelStrategyMenu(lang);
         const channelRow = new ActionRowBuilder().addComponents(channelMenu);
         
         const actionRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('broadcast_confirm').setLabel(t.confirm).setStyle(ButtonStyle.Success).setEmoji('✅'),
-            new ButtonBuilder().setCustomId('broadcast_schedule').setLabel(t.schedule).setStyle(ButtonStyle.Secondary).setEmoji('⏰'),
-            new ButtonBuilder().setCustomId('broadcast_cancel').setLabel(t.cancel).setStyle(ButtonStyle.Danger).setEmoji('❌')
+            new ButtonBuilder().setCustomId('broadcast_confirm').setLabel(t.confirm).setStyle(ButtonStyle.Success).setEmoji(icon('ok')),
+            new ButtonBuilder().setCustomId('broadcast_schedule').setLabel(t.schedule).setStyle(ButtonStyle.Secondary).setEmoji(icon('clock')),
+            new ButtonBuilder().setCustomId('broadcast_cancel').setLabel(t.cancel).setStyle(ButtonStyle.Danger).setEmoji(icon('no'))
         );
         
         const reply = await message.reply({

@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { icon, iconObj } = require('../lib/icons');
 const axios = require('axios');
 const cmdSlash = require('../lib/cmd').slash;
 const { resolveEmoji } = require('../lib/emoji-resolver');
@@ -522,7 +523,7 @@ async function takeAction(message, violations, client, db) {
             new ButtonBuilder()
                 .setCustomId(`automod_appeal_${uid}_${gid}`)
                 .setLabel(_t('strikeBtnAppeal'))
-                .setEmoji('⚖️')
+                .setEmoji(iconObj('staff', null, '⚖️'))
                 .setStyle(ButtonStyle.Primary),
             new ButtonBuilder()
                 .setLabel(_t('strikeBtnRules'))
@@ -984,8 +985,8 @@ async function handleAppeal(message, client) {
 
             const appealId = `AP-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel(_tA('appeal_btnApprove')).setEmoji('✅').setStyle(ButtonStyle.Success),
-                new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel(_tA('appeal_btnReject')).setEmoji('❌').setStyle(ButtonStyle.Danger),
+                new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel(_tA('appeal_btnApprove')).setEmoji(icon('ok')).setStyle(ButtonStyle.Success),
+                new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel(_tA('appeal_btnReject')).setEmoji(icon('no')).setStyle(ButtonStyle.Danger),
                 new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel(_tA('appeal_btnBan')).setEmoji('🔨').setStyle(ButtonStyle.Secondary)
             );
 
@@ -1131,17 +1132,17 @@ function buildStatusCard(client, guild, ss, opts = {}) {
     ].join('\n');
 
     const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_status_domains').setLabel(_T('admin_btnDomains')).setEmoji('🌐').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_status_channels').setLabel(_T('admin_btnChannels')).setEmoji('📢').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_status_log').setLabel(_T('admin_btnLog')).setEmoji('📋').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_status_domains').setLabel(_T('admin_btnDomains')).setEmoji(icon('globe')).setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_status_channels').setLabel(_T('admin_btnChannels')).setEmoji(iconObj('ic_channel', null, '📢')).setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_status_log').setLabel(_T('admin_btnLog')).setEmoji(iconObj('note', null, '📋')).setStyle(ButtonStyle.Primary),
     );
     const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_status_raid').setLabel(_T('admin_btnRaid')).setEmoji('🛡️').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('automod_status_appeals').setLabel(_T('admin_btnAppeals')).setEmoji('⚖️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_status_raid').setLabel(_T('admin_btnRaid')).setEmoji(iconObj('shield', null, '🛡️')).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_status_appeals').setLabel(_T('admin_btnAppeals')).setEmoji(iconObj('staff', null, '⚖️')).setStyle(ButtonStyle.Secondary),
     );
 
     const view = v2card(on ? 0x2ecc71 : 0x95a5a6, [
-        { text: `## ${ui.em('dashboard', '🛠️')} AutoMod\n*Protection, link filtering and appeals.*` },
+        { text: `## ${ui.em('automod', '🛡️')} AutoMod\n*Protection, link filtering and appeals.*` },
         { rule: true },
         { text: body },
         { rule: true },
@@ -1278,8 +1279,8 @@ async function handleAppealButton(interaction, client) {
 
     // Rebuild the same three buttons, all disabled
     const lockedRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel(_T('appeal_btnApprove')).setEmoji('✅').setStyle(ButtonStyle.Success).setDisabled(true),
-        new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel(_T('appeal_btnReject')).setEmoji('❌').setStyle(ButtonStyle.Danger).setDisabled(true),
+        new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel(_T('appeal_btnApprove')).setEmoji(icon('ok')).setStyle(ButtonStyle.Success).setDisabled(true),
+        new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel(_T('appeal_btnReject')).setEmoji(icon('no')).setStyle(ButtonStyle.Danger).setDisabled(true),
         new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel(_T('appeal_btnBan')).setEmoji('🔨').setStyle(ButtonStyle.Secondary).setDisabled(true)
     );
 
@@ -1351,7 +1352,7 @@ function buildDomainsCard(client, guild, ss) {
     const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('automod_domains_add').setLabel(_T('admin_btnAdd')).setEmoji('➕').setStyle(ButtonStyle.Primary),
         new ButtonBuilder().setCustomId('automod_domains_remove').setLabel(_T('admin_btnRemove')).setEmoji('➖').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('automod_domains_reset').setLabel(_T('admin_btnReset')).setEmoji('🔄').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('automod_domains_reset').setLabel(_T('admin_btnReset')).setEmoji(icon('refresh')).setStyle(ButtonStyle.Danger),
     );
     const row2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
@@ -1421,8 +1422,8 @@ function buildRaidCard(client, guild, db) {
     const s = db.prepare('SELECT raid_enabled, raid_threshold, raid_window, raid_min_age_days FROM server_settings WHERE guild_id = ?').get(guild.id) || {};
     const enabled = !!s.raid_enabled;
     const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_raid_enable').setLabel(_T('admin_btnEnable')).setEmoji('✅').setStyle(ButtonStyle.Success).setDisabled(enabled),
-        new ButtonBuilder().setCustomId('automod_raid_disable').setLabel(_T('admin_btnDisable')).setEmoji('❌').setStyle(ButtonStyle.Danger).setDisabled(!enabled),
+        new ButtonBuilder().setCustomId('automod_raid_enable').setLabel(_T('admin_btnEnable')).setEmoji(icon('ok')).setStyle(ButtonStyle.Success).setDisabled(enabled),
+        new ButtonBuilder().setCustomId('automod_raid_disable').setLabel(_T('admin_btnDisable')).setEmoji(icon('no')).setStyle(ButtonStyle.Danger).setDisabled(!enabled),
     );
     const row2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('automod_raid_threshold').setLabel(_T('admin_btnThreshold')).setEmoji('⚙️').setStyle(ButtonStyle.Primary),

@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { icon } = require('../lib/icons');
 const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 
 // ================= BIRTHDAY INTELLIGENCE DIVISION =================
@@ -417,7 +418,7 @@ async function checkAndAnnounceBirthdays(client) {
 
                 const row = new ActionRowBuilder().addComponents(
                     new ButtonBuilder().setCustomId(`bday_celebrate_${userId}`).setLabel(strings.wishButton).setEmoji('🎉').setStyle(ButtonStyle.Success),
-                    new ButtonBuilder().setCustomId(`bday_gift_${userId}`).setLabel(strings.giftButton).setEmoji('🎁').setStyle(ButtonStyle.Primary)
+                    new ButtonBuilder().setCustomId(`bday_gift_${userId}`).setLabel(strings.giftButton).setEmoji(icon('gift')).setStyle(ButtonStyle.Primary)
                 );
                 const { card } = require('../lib/games/v2');
                 const payload = card(color, [

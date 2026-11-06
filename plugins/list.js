@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ComponentType } = require('discord.js');
+const { icon } = require('../lib/icons');
 
 // ================= TERMINAL COLORS =================
 const green = "\x1b[32m", red = "\x1b[31m", reset = "\x1b[0m";
@@ -369,7 +370,7 @@ module.exports = {
                         .setCustomId(`list_fav_${cmd.name}`)
                         .setLabel(isFav ? t.removeFavorite : t.addFavorite)
                         .setStyle(isFav ? ButtonStyle.Danger : ButtonStyle.Success)
-                        .setEmoji('⭐');
+                        .setEmoji(icon('star'));
                     
                     const backButton = new ButtonBuilder()
                         .setCustomId('list_back')
@@ -414,7 +415,7 @@ module.exports = {
                                 .setCustomId(`list_fav_${cmd.name}`)
                                 .setLabel(newIsFav ? t.removeFavorite : t.addFavorite)
                                 .setStyle(newIsFav ? ButtonStyle.Danger : ButtonStyle.Success)
-                                .setEmoji('⭐');
+                                .setEmoji(icon('star'));
                             
                             const newRow = new ActionRowBuilder().addComponents(newFavButton, backButton);
                             await i.editReply({ embeds: [newEmbed], components: [newRow] });
@@ -473,7 +474,7 @@ module.exports = {
                 
                 const buttonRow = new ActionRowBuilder().addComponents(
                     new ButtonBuilder().setCustomId('list_compact').setLabel(t.compactView).setStyle(ButtonStyle.Secondary).setEmoji('📱'),
-                    new ButtonBuilder().setCustomId('list_refresh').setLabel(t.refresh).setStyle(ButtonStyle.Secondary).setEmoji('🔄')
+                    new ButtonBuilder().setCustomId('list_refresh').setLabel(t.refresh).setStyle(ButtonStyle.Secondary).setEmoji(icon('refresh'))
                 );
                 
                 return [menuRow, buttonRow];
@@ -687,7 +688,7 @@ module.exports = {
                             .setCustomId(`list_fav_${cmdName}`)
                             .setLabel(newIsFav ? t.removeFavorite : t.addFavorite)
                             .setStyle(newIsFav ? ButtonStyle.Danger : ButtonStyle.Success)
-                            .setEmoji('⭐');
+                            .setEmoji(icon('star'));
                         
                         const backButton = new ButtonBuilder()
                             .setCustomId('list_back')

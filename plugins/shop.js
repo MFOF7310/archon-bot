@@ -54,8 +54,8 @@ module.exports = {
 
         const row = new ActionRowBuilder().addComponents(menu);
         const buttonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('shop_inventory').setLabel(t('shop.inventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji('🎒'),
-            new ButtonBuilder().setCustomId('shop_refresh').setLabel(t('shop.refresh', lang)).setStyle(ButtonStyle.Success).setEmoji('🔄')
+            new ButtonBuilder().setCustomId('shop_inventory').setLabel(t('shop.inventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('inventory')),
+            new ButtonBuilder().setCustomId('shop_refresh').setLabel(t('shop.refresh', lang)).setStyle(ButtonStyle.Success).setEmoji(icon('refresh'))
         );
 
         const container = new ContainerBuilder().setAccentColor(0xf1c40f);

@@ -280,9 +280,9 @@ async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false, s=null, iss
     const _v2 = require('../lib/games/v2');
     
     const r = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`ticket_claim_${ch.id}_${u.id}`).setLabel(t('ticket.claim', lang)).setStyle(ButtonStyle.Primary).setEmoji('✋'),
-        new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t('ticket.close', lang)).setStyle(ButtonStyle.Danger).setEmoji('🔒'),
-        new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t('ticket.transcript', lang)).setStyle(ButtonStyle.Secondary).setEmoji('📄')
+        new ButtonBuilder().setCustomId(`ticket_claim_${ch.id}_${u.id}`).setLabel(t('ticket.claim', lang)).setStyle(ButtonStyle.Primary).setEmoji(icon('claimed', ch)),
+        new ButtonBuilder().setCustomId(`ticket_close_${ch.id}_${u.id}`).setLabel(t('ticket.close', lang)).setStyle(ButtonStyle.Danger).setEmoji(icon('lock', ch)),
+        new ButtonBuilder().setCustomId(`ticket_transcript_${ch.id}_${u.id}`).setLabel(t('ticket.transcript', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('file', ch))
     );
     
     const staffPing = s?.ticketStaffRole ? `<@&${s.ticketStaffRole}>` : '';
@@ -622,7 +622,7 @@ module.exports = {
             if(!isC&&!isS)return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6}).catch(()=>{});
             await ix.deferReply({flags:1<<6}).catch(()=>{});
             const e=new EmbedBuilder().setColor('#e74c3c').setTitle(t('ticket.closeQ', lang)).setDescription(t('ticket.closeD', lang));
-            const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t('ticket.closeY', lang)).setStyle(ButtonStyle.Danger).setEmoji('✅'),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t('ticket.closeN', lang)).setStyle(ButtonStyle.Secondary).setEmoji('❌'));
+            const r=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`ticket_confirmclose_${cid}_${crid}_${uid}`).setLabel(t('ticket.closeY', lang)).setStyle(ButtonStyle.Danger).setEmoji(icon('ok')),new ButtonBuilder().setCustomId(`ticket_cancelclose_${cid}_${crid}`).setLabel(t('ticket.closeN', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('no')));
             await ix.editReply(toV2({embeds:[e],components:[r]})).catch(()=>{});
             return true;
         }

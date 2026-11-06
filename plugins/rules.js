@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+const { icon } = require('../lib/icons');
 const { t } = require('../lib/i18n');
 const ui = require('../lib/games/ui');
 const v2 = require('../lib/games/v2');
@@ -77,7 +78,7 @@ function acceptRow(gid, lang) {
         new ButtonBuilder()
             .setCustomId(`rules_accept_${gid}`)
             .setLabel(L('btnAccept') || 'Accept')
-            .setEmoji('✅')
+            .setEmoji(icon('ok'))
             .setStyle(ButtonStyle.Success)
     );
 }

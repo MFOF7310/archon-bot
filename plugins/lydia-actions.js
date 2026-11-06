@@ -3,6 +3,7 @@
 // Security boundary: the model only *proposes* via a JSON intent; this file decides.
 // ═══════════════════════════════════════════════════════════════════════════
 const { EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const { icon } = require('../lib/icons');
 const i18n = require('../lib/i18n');
 // Bambara strings aren't written yet: bm servers get French (Mali's official language)
 const pickLang = (l) => ({ en: 'en', fr: 'fr', zh: 'zh', ar: 'ar', bm: 'fr' })[l] || null;
@@ -127,7 +128,7 @@ async function handleIntent({ reply, message, client, db, isPremium, isElevated,
     .setDescription(`⚙️ ${tr('confirm', { label: lab, from: showVal(spec, current, tr), to: showVal(spec, value, tr), s: CONFIRM_MS / 1000 })}`)
     .setFooter({ text: `${tr('requestedBy', { user: message.author.username, guild: message.guild.name })}` });
   const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId('lydia_confirm').setLabel(tr('confirmBtn')).setStyle(ButtonStyle.Success).setEmoji('✅'),
+    new ButtonBuilder().setCustomId('lydia_confirm').setLabel(tr('confirmBtn')).setStyle(ButtonStyle.Success).setEmoji(icon('ok')),
     new ButtonBuilder().setCustomId('lydia_cancel').setLabel(tr('cancelBtn')).setStyle(ButtonStyle.Secondary),
   );
   const prompt = await message.reply({ embeds: [confirmEmbed], components: [row] });

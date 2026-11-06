@@ -1,4 +1,5 @@
 const { version: discordVersion, SlashCommandBuilder } = require('discord.js');
+const { icon } = require('../lib/icons');
 const os = require('os');
 const { ns } = require('../lib/lang');
 const E = require('../config/emojis');
@@ -106,7 +107,7 @@ function buildCard(client, t, ctx) {
     ];
 
     const row = new (require('discord.js').ActionRowBuilder)().addComponents(
-        new (require('discord.js').ButtonBuilder)().setCustomId('alive_refresh').setLabel(t.refresh || 'Refresh').setStyle(3).setEmoji('🔄'),
+        new (require('discord.js').ButtonBuilder)().setCustomId('alive_refresh').setLabel(t.refresh || 'Refresh').setStyle(3).setEmoji(icon('refresh')),
         new (require('discord.js').ButtonBuilder)().setCustomId('alive_help').setLabel(t.help || 'Help').setStyle(1).setEmoji('❓'),
     );
     items.push({ row });
