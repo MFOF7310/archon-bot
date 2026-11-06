@@ -156,7 +156,7 @@ async function handleBuy(message, args, client, db, lang, guildId) {
     const itemId = String(args[0] || '').trim().toLowerCase();
     if (!itemId) return message.reply(t('inventory.usage', lang)).catch(() => {});
     const item = (client.shopItems || []).find((x) => x.id === itemId);
-    if (!item) return handleSell(message, [], client, db, lang, guildId, guildName);
+    if (!item) return message.reply(t('inventory.itemNotFound', lang) || 'Item not found.').catch(() => {});
 
     const fd = db.prepare('SELECT credits, xp, level FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
     const bal = fd?.credits || 0;
@@ -211,12 +211,14 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
                 .setDescription(`${t('inventory.sellPrice', lang) || 'Sell for'} : ${Math.floor(item.price * 0.5).toLocaleString()} ${t('shop.creditsLabel', lang) || 'credits'}`)
                 .setValue(item.id);
             
-            // Ajout de l'émoji custom
-            if (item.emoji) {
-                const m = /^<(a?):(\w+):(\d+)>$/.exec(item.emoji);
-                if (m) opt.setEmoji({ id: m[3], name: m[2], animated: m[1] === 'a' });
-                else opt.setEmoji(item.emoji);
-            }
+            // Ajout de l'émoji custom (sécurisé)
+            try {
+                if (item.emoji) {
+                    const m = /^<(a?):(\w+):(\d+)>$/.exec(item.emoji);
+                    if (m) opt.setEmoji({ id: m[3], name: m[2], animated: m[1] === 'a' });
+                    else opt.setEmoji(item.emoji);
+                }
+            } catch (e) { /* On ignore si l'émoji est cassé, le texte suffit */ }
             options.push(opt);
         }
 
@@ -256,7 +258,7 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
                 }
                 
                 const c = new ContainerBuilder().setAccentColor(0xe67e22)
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('inventory.sellSuccess', lang) || 'Item Sold!'}\n**${selectedItem.emoji || '📦'} ${selectedItem[lang]?.name || selectedItem.id}** · ${t('inventory.soldFor', lang) || 'Sold for'} ${sellPrice.toLocaleString()} ${em('ic_credit', '🪙')}`))
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('inventory.sellSuccess', lang) || 'Item Sold!'}\n**${em('ic_bag', '📦')} ${selectedItem[lang]?.name || selectedItem.id}** · ${t('inventory.soldFor', lang) || 'Sold for'} ${sellPrice.toLocaleString()} ${em('ic_credit', '🪙')}`))
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang) || 'New balance'} : ${newCredits.toLocaleString()} ${em('ic_credit', '🪙')}`));
                 
                 return i.editReply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(e => console.error('[SELL ERROR]', e));
@@ -267,7 +269,7 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
 
     // ... Garde la logique de vente directe existante (si le mec tape l'ID à la main)
     const item = (client.shopItems || []).find((x) => x.id === itemId);
-    if (!item) return handleSell(message, [], client, db, lang, guildId, guildName);
+    if (!item) return message.reply(t('inventory.itemNotFound', lang) || 'Item not found.').catch(() => {});
 
     let owned = null;
     try { owned = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND active = 1').get(userId, guildId, itemId); } catch (e) {}
@@ -284,7 +286,7 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
 
     const name = item[lang]?.name || item.en?.name || itemId;
     const c = new ContainerBuilder().setAccentColor(0xe67e22)
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('inventory.sellSuccess', lang)}\n**${item.emoji || '📦'} ${name}** · ${t('inventory.soldFor', lang, { price: sellPrice.toLocaleString() })} ${em('ic_credit', '🪙')}`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('inventory.sellSuccess', lang)}\n**${em('ic_bag', '📦')} ${name}** · ${t('inventory.soldFor', lang, { price: sellPrice.toLocaleString() })} ${em('ic_credit', '🪙')}`))
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang)} : ${newCredits.toLocaleString()} ${em('ic_credit', '🪙')} · ${guildName}`));
     return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
 }
