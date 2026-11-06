@@ -201,6 +201,12 @@ module.exports = {
             const name = interaction.options.getString('name');
             const image = interaction.options.getAttachment('image');
             try {
+                // Chercher si l'émoji existe déjà sur Discord pour l'écraser
+                const existing = interaction.client.application.emojis.cache.find(e => e.name === name);
+                if (existing) {
+                    await existing.delete().catch(() => {});
+                }
+
                 // Upload vers Discord
                 const emoji = await interaction.client.application.emojis.create({ attachment: image.url, name });
                 const isAnimated = emoji.animated ? 'a' : '';

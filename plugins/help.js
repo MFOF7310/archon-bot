@@ -11,9 +11,9 @@ const mention = require('../lib/mentions');
 
 const PER_PAGE = 10;
 const CAT_EMOJI = {
-    SYSTEM: 'helpSystem', GAMING: 'gameController', AI: 'ai_assistant', PROFILE: 'myprofile', OWNER: 'eagle', GENERAL: 'general',
-    UTILITY: 'helpUtility', MODERATION: 'shield', ECONOMY: 'coins', FUN: 'helpFun', ADMIN: 'crown', CONFIG: 'ic_settings',
-    MUSIC: 'music', SOCIAL: 'helpSocial', TICKETS: 'ticket', CODM: 'gameCodm', LEVELING: 'level', SUPERCAR: 'gameController',
+    SYSTEM: 'ic_system', GAMING: 'ic_gaming', AI: 'ai_assistant', PROFILE: 'ic_profile', OWNER: 'ic_owner', GENERAL: 'ic_general',
+    UTILITY: 'ic_utility', MODERATION: 'ic_shield', ECONOMY: 'ic_economy', FUN: 'ic_fun', ADMIN: 'ic_admin', CONFIG: 'ic_settings',
+    MUSIC: 'ic_music', SOCIAL: 'ic_social', TICKETS: 'ic_ticket', CODM: 'ic_codm', LEVELING: 'level', SUPERCAR: 'ic_gaming',
 };
 const CAT_FALLBACK = { SYSTEM: '⚙️', GAMING: '🎮', AI: '🤖', PROFILE: '👤', OWNER: '🦅', UTILITY: '🧰', MODERATION: '🛡️', ECONOMY: '🪙', FUN: '🎉', ADMIN: '👑', CONFIG: '⚙️', MUSIC: '🎵', SOCIAL: '💬', TICKETS: '🎫', CODM: '🎯', LEVELING: '📈' };
 const START_HERE = [['daily'], ['profile'], ['game'], ['remind', 'set'], ['bot', 'ping']];

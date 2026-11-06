@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const { icon, iconObj } = require('../lib/icons');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { pickLang } = require('../lib/pick-lang');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { t } = require('../lib/i18n');
@@ -83,7 +84,7 @@ module.exports = {
                 .map(inv => {
                     const item = itemsMap.get(inv.item_id);
                     const itemName = item?.en?.name || item?.name || inv.item_id;
-                    const typeEmoji = item?.type === 'badge' ? iconObj('badge', null, '🎖️') : item?.type === 'consumable' ? '⚡' : '💪';
+                    const typeEmoji = item?.type === 'badge' ? em('badge', '🎖️') : item?.type === 'consumable' ? em('ic_bolt', '⚡') : '💪';
                     return {
                         name: `${typeEmoji} ${itemName} (x${inv.quantity})`,
                         value: inv.item_id
@@ -195,7 +196,7 @@ module.exports = {
             const item = itemsMap.get(inv.item_id);
             if (item) {
                 const itemName = item[lang]?.name || item.en?.name || item.name || inv.item_id;
-                const typeEmoji = item.type === 'badge' ? iconObj('badge', null, '🎖️') : item.type === 'consumable' ? '⚡' : '💪';
+                const typeEmoji = item.type === 'badge' ? em('badge', '🎖️') : item.type === 'consumable' ? em('ic_bolt', '⚡') : '💪';
                 selectMenu.addOptions({
                     label: `${itemName} (x${inv.quantity})`.slice(0, 100),
                     description: `${typeEmoji} ${(item[lang]?.desc || item.en?.desc || item.desc || t('use.neuralItemFallback', lang)).substring(0, 50)}`,
@@ -333,7 +334,7 @@ module.exports = {
             const item = itemsMap.get(inv.item_id);
             if (item) {
                 const itemName = item[lang]?.name || item.en?.name || item.name || inv.item_id;
-                const typeEmoji = item.type === 'badge' ? iconObj('badge', null, '🎖️') : item.type === 'consumable' ? '⚡' : '💪';
+                const typeEmoji = item.type === 'badge' ? em('badge', '🎖️') : item.type === 'consumable' ? em('ic_bolt', '⚡') : '💪';
                 selectMenu.addOptions({
                     label: `${itemName} (x${inv.quantity})`.slice(0, 100),
                     description: `${typeEmoji} ${(item[lang]?.desc || item.en?.desc || item.desc || t('use.neuralItemFallback', lang)).substring(0, 50)}`,
@@ -418,7 +419,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
         const alreadyEmbed = new EmbedBuilder()
             .setColor(ARCHON.gold)
             .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-            .setTitle(`⚠️ ${t('use.badgeAlreadyEquipped', lang)}`)
+            .setTitle(`\${em('ic_warn', '⚠️')} ${t('use.badgeAlreadyEquipped', lang)}`)
             .setDescription(
                 `\`\`\`ansi\n` +
                 `\u001b[1;36m  ${t('use.currentBadge', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n\n` +
@@ -459,7 +460,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
                 const removedEmbed = new EmbedBuilder()
                     .setColor(ARCHON.green)
                     .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-                    .setTitle(`✅ ${t('use.badgeRemoved', lang)}`)
+                    .setTitle(`\${em('ok', '✅')} ${t('use.badgeRemoved', lang)}`)
                     .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('use.badgeRemovedDesc', lang)}\u001b[0m\n\`\`\``)
                     .setFooter({ text: `${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}` });
 
@@ -478,7 +479,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
     const confirmEmbed = new EmbedBuilder()
         .setColor(ARCHON.neural)
         .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.confirmEquip', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-        .setTitle(`🎖️ ${t('use.badgePreview', lang)}`)
+        .setTitle(`\${em('badge', '🎖️')} ${t('use.badgePreview', lang)}`)
         .setDescription(
             `\`\`\`ansi\n` +
             `\u001b[1;36m  ${t('use.badgeField', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n` +
@@ -528,7 +529,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
             const equippedEmbed = new EmbedBuilder()
                 .setColor(ARCHON.green)
                 .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.useSuccess', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-                .setTitle(`✅ ${t('use.badgeEquipped', lang)}`)
+                .setTitle(`\${em('ok', '✅')} ${t('use.badgeEquipped', lang)}`)
                 .setDescription(
                     `\`\`\`ansi\n` +
                     `\u001b[1;36m  🎖️ ${t('use.badgeField', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n` +
