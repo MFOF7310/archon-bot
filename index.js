@@ -2220,105 +2220,7 @@ client.getUserData = getUserData;
 client.cacheUserData = cacheUserData;
 
 // ================= EXPANDED SHOP ITEMS =================
-client.shopItems = [
-    { 
-        id: 'starter_pack', 
-        price: 500, 
-        emoji: '📦', 
-        type: 'consumable', 
-        effect: { xp: 100, credits: 50 }
-    },
-    { 
-        id: 'xp_boost_small', 
-        price: 500, 
-        emoji: '⚡', 
-        type: 'consumable', 
-        effect: { xp: 250 }
-    },
-    { 
-        id: 'xp_boost_large', 
-        price: 2000, 
-        emoji: '⚡', 
-        type: 'consumable', 
-        effect: { xp: 1000 }
-    },
-    { 
-        id: 'credit_boost_small', 
-        price: 300, 
-        emoji: '🪙', 
-        type: 'consumable', 
-        effect: { credits: 200 }
-    },
-    { 
-        id: 'credit_boost_large', 
-        price: 1500, 
-        emoji: '💰', 
-        type: 'consumable', 
-        effect: { credits: 1000 }
-    },
-    { 
-        id: 'vip_role', 
-        price: 10000, 
-        emoji: '💎', 
-        type: 'role',
-        roleId: process.env.VIP_ROLE_ID,
-        requirement: { level: 25 }
-    },
-    // ── BADGES ──
-    {
-        id: 'badge_eagle', price: 5000, emoji: '🦅', type: 'badge', rarity: 'rare'
-    },
-    {
-        id: 'badge_neural', price: 3000, emoji: '🔮', type: 'badge', rarity: 'uncommon'
-    },
-    {
-        id: 'badge_architect', price: 50000, emoji: '👑', type: 'badge', rarity: 'legendary'
-    },
-    {
-        id: 'badge_steel', price: 7500, emoji: '⚙️', type: 'badge', rarity: 'epic'
-    },
-    { 
-        id: 'verified_role', 
-        price: 5000, 
-        emoji: '✅', 
-        type: 'role',
-        roleId: process.env.VERIFIED_ROLE_ID,
-        requirement: { level: 10 }
-    },
-    { 
-        id: 'badge_pioneer', 
-        price: 8000, 
-        emoji: '🏅', 
-        type: 'badge',
-        requirement: { level: 5 }
-    },
-    { 
-        id: 'badge_bamako', 
-        price: 10000, 
-        emoji: '🇲🇱', 
-        type: 'badge',
-        requirement: { level: 15 }
-    },
-    { 
-        id: 'mystery_box_bronze', 
-        price: 1000, 
-        emoji: '🎁', 
-        type: 'consumable',
-        effect: { 
-            random: [
-                { xp: 100 }, { xp: 200 }, { credits: 100 }, 
-                { credits: 200 }, { xp: 50, credits: 50 }
-            ] 
-        }
-    },
-    { 
-        id: 'daily_streak_shield', 
-        price: 2000, 
-        emoji: '🛡️', 
-        type: 'consumable',
-        effect: { streak_protection: true }
-    }
-];
+client.shopItems = require('./lib/shop-items');
 
 // Hydrate per-locale display strings from lang/*.json (shop.items.<id>)
 for (const __item of client.shopItems) {
@@ -3601,8 +3503,8 @@ setInterval(async () => {
                 const _milestones = [
                     { days: 3,   key: 'milestone_3',   emoji: '🔥' },
                     { days: 7,   key: 'milestone_7',   emoji: '⚔️' },
-                    { days: 30,  key: 'milestone_30',  emoji: '🛡️' },
-                    { days: 100, key: 'milestone_100', emoji: '💎' },
+                    { days: 30,  key: 'milestone_30',  emoji: require('./config/emojis').shield || '🛡️' },
+                    { days: 100, key: 'milestone_100', emoji: require('./config/emojis').premium || '💎' },
                     { days: 365, key: 'milestone_365', emoji: '👑' },
                 ];
                 let _curIdx = -1;

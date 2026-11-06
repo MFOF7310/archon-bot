@@ -1,5 +1,10 @@
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
 const { icon } = require('../lib/icons');
+const parseEmoji = (str) => {
+    if (!str) return undefined;
+    const m = /^<(a?):(\w+):(\d+)>$/.exec(str);
+    return m ? { id: m[3], name: m[2], animated: m[1] === 'a' } : str;
+};
 const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
 const { resolveEmoji } = require('../lib/emoji-resolver');
@@ -43,7 +48,7 @@ module.exports = {
             };
             
             // Set the emoji on the option itself if the item has one
-            if (item.emoji) opt.emoji = item.emoji;
+            if (item.emoji) opt.emoji = parseEmoji(item.emoji);
             
             return opt;
         });
@@ -60,7 +65,7 @@ module.exports = {
         );
 
         const container = new ContainerBuilder().setAccentColor(0xf1c40f);
-        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('shop', '🛒')} ${t('shop.title', lang)}`));
+        container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_shop', '🛒')} ${t('shop.title', lang)}`));
         container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
         container.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('shop.desc', lang)));
         container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${em('coins', '💰')} **${t('shop.balance', lang)}:** \`${balance.toLocaleString()}\` ${t('shop.creditsLabel', lang)}\n${em('XP', '📊')} **${t('shop.level', lang)}:** \`${level}\`\n${em('shield', '🛡️')} **${t('shop.streakProtections', lang)}:** \`${userData.streak_protections || 0}\``));
