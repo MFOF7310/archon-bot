@@ -2,6 +2,7 @@ const {
     SlashCommandBuilder, EmbedBuilder, ActionRowBuilder,
     ButtonBuilder, ButtonStyle
 } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const mentions = require('../lib/mentions');
 
 const COLORS = {
@@ -164,7 +165,7 @@ module.exports = {
 
             // Confirmation button
             const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId('ar_confirm_clear').setLabel(`Clear all ${count} replies`).setStyle(ButtonStyle.Danger).setEmoji('🗑️'),
+                new ButtonBuilder().setCustomId('ar_confirm_clear').setLabel(`Clear all ${count} replies`).setStyle(ButtonStyle.Danger).setEmoji(iconObj('ic_trash', null, '🗑️')),
                 new ButtonBuilder().setCustomId('ar_cancel_clear').setLabel('Cancel').setStyle(ButtonStyle.Secondary)
             );
 

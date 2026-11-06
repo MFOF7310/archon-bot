@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ChannelType, ComponentType, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
+const { iconObj } = require('../lib/icons');
 const { icon } = require('../lib/icons');
 
 // ================= BILINGUAL TRANSLATIONS =================
@@ -302,8 +303,8 @@ const prefix = serverSettings?.prefix || process.env.PREFIX || '.';
         const confirmEmbed = createConfirmEmbed(settings, lang, client);
         
         const mentionRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('broadcast_everyone').setLabel(t.mentionEveryone).setStyle(ButtonStyle.Danger).setEmoji('📢'),
-            new ButtonBuilder().setCustomId('broadcast_here').setLabel(t.mentionHere).setStyle(ButtonStyle.Primary).setEmoji('📌'),
+            new ButtonBuilder().setCustomId('broadcast_everyone').setLabel(t.mentionEveryone).setStyle(ButtonStyle.Danger).setEmoji(iconObj('ic_channel', null, '📢')),
+            new ButtonBuilder().setCustomId('broadcast_here').setLabel(t.mentionHere).setStyle(ButtonStyle.Primary).setEmoji(iconObj('ic_pin', null, '📌')),
             new ButtonBuilder().setCustomId('broadcast_none').setLabel(t.noMention).setStyle(ButtonStyle.Secondary).setEmoji(icon('muted'))
         );
         

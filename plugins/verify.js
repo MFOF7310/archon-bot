@@ -14,6 +14,8 @@ const { generateCaptcha, randomCode } = require('./captcha.js');
 const EMOJIS = require('../config/emojis');
 const mentions = require('../lib/mentions');
 const { resolveEmoji } = require('../lib/emoji-resolver');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
+const { iconObj } = require('../lib/icons');
 const { pickLang } = require('../lib/pick-lang');
 const i18nV = require('../lib/i18n');
 
@@ -208,7 +210,7 @@ async function postVerifyPanel(client, db, guild, ch, lang) {
     vContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${vt(lang, 'bamakoFooter')}`));
     vContainer.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('vpanel:start').setLabel(vt(lang, 'v2_panel_btn')).setStyle(ButtonStyle.Success).setEmoji('🛡️')
+        new ButtonBuilder().setCustomId('vpanel:start').setLabel(vt(lang, 'v2_panel_btn')).setStyle(ButtonStyle.Success).setEmoji(iconObj('shield', null, '🛡️'))
     ));
     await ch.send({ components: [vContainer], flags: MessageFlags.IsComponentsV2 });
 
@@ -397,16 +399,16 @@ module.exports = {
             const desc = [
                 `### ${enabled ? `${EMOJIS.online} ${vt(lang, 'gateActive')}` : paused ? `${EMOJIS.offline} ${vt(lang, 'gatePaused')}` : `${EMOJIS.offline} ${vt(lang, 'gateInactive')}`}`,
                 `> ${enabled ? vt(lang, 'gateActiveDesc') : paused ? vt(lang, 'gatePausedDesc') : vt(lang, 'gateInactiveDesc')}`,
-                ``, `### ${EMOJIS.shield} ${vt(lang, 'configuration')}`,
+                ``, `### ${em('ic_config', '⚙️')} ${vt(lang, 'configuration')}`,
                 `**${vt(lang, 'verifiedRoleLabel')}** — ${verifiedRole}`,
                 `**${vt(lang, 'unverifiedRoleLabel')}** — ${unverifiedRole}`,
                 `**${vt(lang, 'autokickLabel')}** — ${autokick}`,
-                ``, `### ${EMOJIS.shield} ${vt(lang, 'quickSetup')}`,
+                ``, `### ${em('ic_setup', '🛠️')} ${vt(lang, 'quickSetup')}`,
                 vt(lang, 'qsSetrole', { id: cmdId }), vt(lang, 'qsSetunverified', { id: cmdId }), vt(lang, 'qsSetkick', { id: cmdId }),
             ].join('\n');
 
             return interaction.reply(toV2({
-                embeds: [new EmbedBuilder().setColor(enabled ? 0x00cc44 : 0x888888).setTitle(vt(lang, 'gateTitle')).setDescription(desc).setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
+                embeds: [new EmbedBuilder().setColor(enabled ? 0x00cc44 : 0x888888).setTitle(`${em('ic_gate', '🛡️')} ${vt(lang, 'gateTitle').replace('🛡️', '').trim()}`).setDescription(desc).setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
                 flags: 64
             }));
         }
@@ -562,7 +564,7 @@ module.exports = {
                     .setImage('attachment://verify.png')],
                 files: [new AttachmentBuilder(generateCaptcha(code), { name: 'verify.png' })],
                 components: [new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId(`vpanel:enter:${n}`).setLabel(vt(lang, 'enterCodeBtn')).setStyle(ButtonStyle.Primary))],
+                    new ButtonBuilder().setCustomId(`vpanel:enter:${n}`).setLabel(vt(lang, 'enterCodeBtn')).setStyle(ButtonStyle.Primary).setEmoji(iconObj('ic_enter', null, '⌨️')))],
                 flags: 64
             };
         };

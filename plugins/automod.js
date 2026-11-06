@@ -987,7 +987,7 @@ async function handleAppeal(message, client) {
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel(_tA('appeal_btnApprove')).setEmoji(icon('ok')).setStyle(ButtonStyle.Success),
                 new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel(_tA('appeal_btnReject')).setEmoji(icon('no')).setStyle(ButtonStyle.Danger),
-                new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel(_tA('appeal_btnBan')).setEmoji('🔨').setStyle(ButtonStyle.Secondary)
+                new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel(_tA('appeal_btnBan')).setEmoji(iconObj('ic_ban', null, '🔨')).setStyle(ButtonStyle.Secondary)
             );
 
             const _tS = (k, v) => require('../lib/i18n').t('automod.' + k, _tGuild(targetGuild), v);
@@ -1281,7 +1281,7 @@ async function handleAppealButton(interaction, client) {
     const lockedRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel(_T('appeal_btnApprove')).setEmoji(icon('ok')).setStyle(ButtonStyle.Success).setDisabled(true),
         new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel(_T('appeal_btnReject')).setEmoji(icon('no')).setStyle(ButtonStyle.Danger).setDisabled(true),
-        new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel(_T('appeal_btnBan')).setEmoji('🔨').setStyle(ButtonStyle.Secondary).setDisabled(true)
+        new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel(_T('appeal_btnBan')).setEmoji(iconObj('ic_ban', null, '🔨')).setStyle(ButtonStyle.Secondary).setDisabled(true)
     );
 
     await interaction.editReply(fit(interaction.message, { embeds: [decided], components: [lockedRow] }))
@@ -1350,12 +1350,12 @@ function buildDomainsCard(client, guild, ss) {
     const list = parseDomainWhitelist(ss?.autoModDomains);
     const customList = list.length > 0 ? list.join(', ') : _T('admin_domainsCustomNone');
     const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_domains_add').setLabel(_T('admin_btnAdd')).setEmoji('➕').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_domains_remove').setLabel(_T('admin_btnRemove')).setEmoji('➖').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_domains_add').setLabel(_T('admin_btnAdd')).setEmoji(iconObj('ic_add', null, '➕')).setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_domains_remove').setLabel(_T('admin_btnRemove')).setEmoji(iconObj('ic_remove', null, '➖')).setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('automod_domains_reset').setLabel(_T('admin_btnReset')).setEmoji(icon('refresh')).setStyle(ButtonStyle.Danger),
     );
     const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(iconObj('ic_back', null, '↩️')).setStyle(ButtonStyle.Secondary),
     );
     const view = v2card(0x2ecc71, [
         { text: `## ${ui.em('globe', '🌐')} ${_T('admin_domainsTitle')}\n*Allowed link destinations for non-moderators.*` },
@@ -1376,12 +1376,12 @@ function buildChannelsCard(client, guild, ss) {
     const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
     const body = list.length ? list.map(c => `<#${c}>`).join(' ') : _T('admin_channelsAllChannels');
     const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_channels_add').setLabel(_T('admin_btnAdd')).setEmoji('➕').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_channels_remove').setLabel(_T('admin_btnRemove')).setEmoji('➖').setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('automod_channels_clear').setLabel(_T('admin_btnClear')).setEmoji('🗑️').setStyle(ButtonStyle.Danger),
+        new ButtonBuilder().setCustomId('automod_channels_add').setLabel(_T('admin_btnAdd')).setEmoji(iconObj('ic_add', null, '➕')).setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_channels_remove').setLabel(_T('admin_btnRemove')).setEmoji(iconObj('ic_remove', null, '➖')).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_channels_clear').setLabel(_T('admin_btnClear')).setEmoji(iconObj('ic_trash', null, '🗑️')).setStyle(ButtonStyle.Danger),
     );
     const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(iconObj('ic_back', null, '↩️')).setStyle(ButtonStyle.Secondary),
     );
     const view = v2card(0x2ecc71, [
         { text: `## 📢 ${_T('admin_channelsTitle')}\n*AutoMod only runs in the channels listed below.*` },
@@ -1399,11 +1399,11 @@ function buildLogCard(client, guild, ss) {
     const _T = (k, v) => _adminT(client, guild, k, v);
     const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
     const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_log_set').setLabel(_T('admin_btnSetLog')).setEmoji('📌').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_log_remove').setLabel(_T('admin_btnRemoveLog')).setEmoji('🗑️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_log_set').setLabel(_T('admin_btnSetLog')).setEmoji(iconObj('ic_pin', null, '📌')).setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_log_remove').setLabel(_T('admin_btnRemoveLog')).setEmoji(iconObj('ic_trash', null, '🗑️')).setStyle(ButtonStyle.Secondary),
     );
     const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(iconObj('ic_back', null, '↩️')).setStyle(ButtonStyle.Secondary),
     );
     const view = v2card(0x2ecc71, [
         { text: `## 📋 ${_T('admin_logTitle')}\n*Where AutoMod sends its action reports.*` },
@@ -1426,11 +1426,11 @@ function buildRaidCard(client, guild, db) {
         new ButtonBuilder().setCustomId('automod_raid_disable').setLabel(_T('admin_btnDisable')).setEmoji(icon('no')).setStyle(ButtonStyle.Danger).setDisabled(!enabled),
     );
     const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_raid_threshold').setLabel(_T('admin_btnThreshold')).setEmoji('⚙️').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_raid_minage').setLabel(_T('admin_btnMinAge')).setEmoji('👶').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_raid_threshold').setLabel(_T('admin_btnThreshold')).setEmoji(iconObj('ic_settings', null, '⚙️')).setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('automod_raid_minage').setLabel(_T('admin_btnMinAge')).setEmoji(iconObj('ic_minage', null, '👶')).setStyle(ButtonStyle.Primary),
     );
     const row3 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(iconObj('ic_back', null, '↩️')).setStyle(ButtonStyle.Secondary),
     );
     const view = v2card(enabled ? 0x2ecc71 : 0x95a5a6, [
         { text: `## ${ui.em('eagle', '🛡️')} ${_T('admin_raidTitle')}\n*High-threshold protection against coordinated joins.*` },
@@ -1617,7 +1617,7 @@ async function handleStatusButton(interaction, client) {
     const _T = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
 
     const backBtn = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_domainsBack')).setEmoji('↩️').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_domainsBack')).setEmoji(iconObj('ic_back', null, '↩️')).setStyle(ButtonStyle.Secondary)
     );
 
     if (id === 'automod_status_back') {

@@ -209,7 +209,7 @@ module.exports = {
         const actionRow = new ActionRowBuilder().addComponents(selectMenu);
         const backRow = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(`use_cancel_${userId}`).setLabel(t('use.close', lang)).setStyle(ButtonStyle.Danger).setEmoji(icon('no')),
-            new ButtonBuilder().setCustomId(`use_inventory_${userId}`).setLabel(t('use.backToInventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji('📦')
+            new ButtonBuilder().setCustomId(`use_inventory_${userId}`).setLabel(t('use.backToInventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji(iconObj('inventory', null, '📦'))
         );
 
         const useEmbed = new EmbedBuilder()
@@ -419,7 +419,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
         const alreadyEmbed = new EmbedBuilder()
             .setColor(ARCHON.gold)
             .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-            .setTitle(`\${em('ic_warn', '⚠️')} ${t('use.badgeAlreadyEquipped', lang)}`)
+            .setTitle(`${em('ic_warn', '⚠️')} ${t('use.badgeAlreadyEquipped', lang)}`)
             .setDescription(
                 `\`\`\`ansi\n` +
                 `\u001b[1;36m  ${t('use.currentBadge', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n\n` +
@@ -460,7 +460,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
                 const removedEmbed = new EmbedBuilder()
                     .setColor(ARCHON.green)
                     .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-                    .setTitle(`\${em('ok', '✅')} ${t('use.badgeRemoved', lang)}`)
+                    .setTitle(`${em('ok', '✅')} ${t('use.badgeRemoved', lang)}`)
                     .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('use.badgeRemovedDesc', lang)}\u001b[0m\n\`\`\``)
                     .setFooter({ text: `${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}` });
 
@@ -479,7 +479,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
     const confirmEmbed = new EmbedBuilder()
         .setColor(ARCHON.neural)
         .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.confirmEquip', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-        .setTitle(`\${em('badge', '🎖️')} ${t('use.badgePreview', lang)}`)
+        .setTitle(`${em('badge', '🎖️')} ${t('use.badgePreview', lang)}`)
         .setDescription(
             `\`\`\`ansi\n` +
             `\u001b[1;36m  ${t('use.badgeField', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n` +
@@ -529,7 +529,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
             const equippedEmbed = new EmbedBuilder()
                 .setColor(ARCHON.green)
                 .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.useSuccess', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-                .setTitle(`\${em('ok', '✅')} ${t('use.badgeEquipped', lang)}`)
+                .setTitle(`${em('ok', '✅')} ${t('use.badgeEquipped', lang)}`)
                 .setDescription(
                     `\`\`\`ansi\n` +
                     `\u001b[1;36m  🎖️ ${t('use.badgeField', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n` +

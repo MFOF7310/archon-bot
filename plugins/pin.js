@@ -1,4 +1,5 @@
 const { EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+const { iconObj } = require('../lib/icons');
 const fs = require('fs');
 const path = require('path');
 
@@ -345,7 +346,7 @@ async function handlePin(client, message, args, db, serverSettings, t, lang) {
     
     const actionRow = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setLabel(t.jumpButton).setStyle(ButtonStyle.Link).setURL(targetMessage.url),
-        new ButtonBuilder().setCustomId(`unpin_${targetMessage.id}`).setLabel(t.unpinButton).setStyle(ButtonStyle.Danger).setEmoji('📌')
+        new ButtonBuilder().setCustomId(`unpin_${targetMessage.id}`).setLabel(t.unpinButton).setStyle(ButtonStyle.Danger).setEmoji(iconObj('ic_pin', null, '📌'))
     );
     
     if (archiveChannel) {

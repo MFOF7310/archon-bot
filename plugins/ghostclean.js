@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const EMOJIS = require('../config/emojis');
 
 const GHOST_DAYS = 50;
@@ -23,7 +24,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#f1c40f')
-                .setTitle(`⚠️ Access Restricted`)
+                .setTitle(`${em('ic_warn', '⚠️')} Access Restricted`)
                 .setDescription(
                     `Hey! ${EMOJIS.wave}\n\n` +
                     `This command is reserved for the **System Architect** only.\n` +
@@ -61,7 +62,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#e67e22')
-                .setTitle(`⚠️ Ghost Servers — ${candidates.length} candidates`)
+                .setTitle(`${em('ic_warn', '⚠️')} Ghost Servers — ${candidates.length} candidates`)
                 .addFields(fields)
                 .setFooter({ text: `Threshold: ${GHOST_DAYS}+ days • /ghostclean leave <id> | /ghostclean leaveall` })],
             flags: 64
@@ -118,7 +119,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
             return reply({
                 embeds: [new EmbedBuilder()
                     .setColor('#e74c3c')
-                    .setTitle(`⚠️ Confirm Mass Leave`)
+                .setTitle(`${em('ic_warn', '⚠️')} Confirm Mass Leave`)
                     .setDescription(`About to leave **${inCache.length}** servers:\n\n${preview}\n\n**Add \`confirm\` to proceed.**`)],
                 flags: 64
             });

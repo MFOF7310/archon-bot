@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+const { iconObj } = require('../lib/icons');
 const { exec } = require('child_process');
 const os = require('os');
 const fs = require('fs');
@@ -163,15 +164,15 @@ module.exports = {
             .setTimestamp();
 
         const row1 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setLabel(t.facebook).setURL(socialLinks.facebook).setStyle(ButtonStyle.Link).setEmoji('🔵'),
-            new ButtonBuilder().setLabel(t.tiktok).setURL(socialLinks.tiktok).setStyle(ButtonStyle.Link).setEmoji('🎬'),
-            new ButtonBuilder().setLabel(t.instagram).setURL(socialLinks.instagram).setStyle(ButtonStyle.Link).setEmoji('📸')
+            new ButtonBuilder().setLabel(t.facebook).setURL(socialLinks.facebook).setStyle(ButtonStyle.Link).setEmoji(iconObj('facebook', null, '🔵')),
+            new ButtonBuilder().setLabel(t.tiktok).setURL(socialLinks.tiktok).setStyle(ButtonStyle.Link).setEmoji(iconObj('tiktok_logo', null, '🎬')),
+            new ButtonBuilder().setLabel(t.instagram).setURL(socialLinks.instagram).setStyle(ButtonStyle.Link).setEmoji(iconObj('instagram', null, '📸'))
         );
 
         const row2 = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setLabel(t.discord).setURL(socialLinks.discord).setStyle(ButtonStyle.Link).setEmoji('🎮'),
-            new ButtonBuilder().setLabel(t.whatsapp).setURL(socialLinks.whatsapp).setStyle(ButtonStyle.Link).setEmoji('💬'),
-            new ButtonBuilder().setLabel(t.github).setURL(socialLinks.github).setStyle(ButtonStyle.Link).setEmoji('💻')
+            new ButtonBuilder().setLabel(t.discord).setURL(socialLinks.discord).setStyle(ButtonStyle.Link).setEmoji(iconObj('discord', null, '🎮')),
+            new ButtonBuilder().setLabel(t.whatsapp).setURL(socialLinks.whatsapp).setStyle(ButtonStyle.Link).setEmoji(iconObj('whatsapp', null, '💬')),
+            new ButtonBuilder().setLabel(t.github).setURL(socialLinks.github).setStyle(ButtonStyle.Link).setEmoji(iconObj('developericon', null, '💻'))
         );
 
         await message.reply({ embeds: [ownerEmbed], components: [row1, row2] }).catch(() => {});

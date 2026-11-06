@@ -5,7 +5,8 @@ const {
     ThumbnailBuilder, SeparatorBuilder, SeparatorSpacingSize,
     MessageFlags
 } = require('discord.js');
-const { icon } = require('../lib/icons');
+const { icon, iconObj } = require('../lib/icons');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { toV2, fit } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const EMOJIS = require('../config/emojis');
 const { t } = require('../lib/i18n');
@@ -266,12 +267,12 @@ function buildNowPlayingEmbed(q, client) {
     return new EmbedBuilder()
         .setColor(ARCHON.cyan)
         .setAuthor({
-            name: '🎵 ARCHON Music',
+            name: `${em('music', '🎵')} ARCHON Music`,
             iconURL: t.spotifyUrl
                 ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/168px-Spotify_logo_without_text.svg.png'
                 : client.user.displayAvatarURL()
         })
-        .setTitle(`${t.spotifyUrl ? '🟢' : '🎵'} NOW PLAYING`)
+        .setTitle(`${t.spotifyUrl ? em('ping_ok', '🟢') : em('music', '🎵')} NOW PLAYING`)
         .setDescription(
             `\`\`\`ansi\n` +
             `\u001b[1;36m▸ TRACK    \u001b[0m ${t.title.substring(0,50)}\n` +
@@ -284,8 +285,8 @@ function buildNowPlayingEmbed(q, client) {
         .addFields(
             { name: '📊 Progress', value: `\`\`\`ansi\n\u001b[1;32m${bar}\u001b[0m ${pct}%\n\u001b[0;37m${formatTime(elapsed)} / ${formatTime(t.duration)}\u001b[0m\n\`\`\``, inline: false },
             { name: '🎚️ VOLUME', value: `\`${q.volume}%\``, inline: true },
-            { name: '📋 QUEUE', value: `\`${q.tracks.length} tracks\``, inline: true },
-            { name: '🔁 LOOP', value: `\`${q.loop ? 'ON' : 'OFF'}\``, inline: true },
+            { name: `${em('mc_queue', '📋')} QUEUE`, value: `\`${q.tracks.length} tracks\``, inline: true },
+            { name: `${em('mc_loop', '🔁')} LOOP`, value: `\`${q.loop ? 'ON' : 'OFF'}\``, inline: true },
         )
         .setThumbnail(t.thumbnail || client.user.displayAvatarURL())
         .setFooter({ text: `BAMAKO_223 🇲🇱 • ARCHON Music` })
@@ -312,7 +313,7 @@ function buildQueueEmbed(q, client) {
     ).join('\n') || '\u001b[0;37m  ' + t('music.queue_empty', lang) + '\u001b[0m';
     return new EmbedBuilder()
         .setColor(ARCHON.purple)
-        .setAuthor({ name: '🎵 ARCHON Music', iconURL: client.user.displayAvatarURL() })
+        .setAuthor({ name: `${em('music', '🎵')} ARCHON Music`, iconURL: client.user.displayAvatarURL() })
         .setTitle(t('music.queue_title', lang))
         .addFields(
             { name: t('music.np_label', lang), value: `\`\`\`ansi\n\u001b[1;32m▸ ${q.currentTrack?.title?.substring(0,50) || 'Nothing'}\u001b[0m\n\`\`\``, inline: false },
@@ -347,7 +348,7 @@ function buildPanelEmbed(q, client) {
         .setDescription(
             `${trackLink}\n\n` +
             `• ${tx('music.added_by', lang)} ${requester}\n` +
-            `• 🔊 ${q.voiceChannel?.name?.substring(0,22) || tx('music.voice_label', lang)}\n\n` +
+            `• ${em('mc_volume_up', '🔊')} ${q.voiceChannel?.name?.substring(0,22) || tx('music.voice_label', lang)}\n\n` +
             `${tx('music.stats_line', lang, { n: q.tracks.length, vol: q.volume, loop: q.loop ? tx('music.on_short', lang) : tx('music.off_short', lang) })}\n\n` +
             `${sliderBar(elapsed, duration)}\n` +
             `\`${formatTime(elapsed)}\` ――― \`${formatTime(duration)}\``
@@ -430,12 +431,12 @@ function buildPanelContainer(q, client) {
 
     const header = new SectionBuilder()
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent((isPaused ? '## ⏸️ ' : `## ${resolveEmoji('music', q._client) || '🎵'} `) + (isPaused ? tx('music.paused_title', lang) : tx('music.now_playing', lang))),
+            new TextDisplayBuilder().setContent((isPaused ? `## ${em('mc_pause', '⏸️')} ` : `## ${resolveEmoji('music', q._client) || em('music', '🎵')} `) + (isPaused ? tx('music.paused_title', lang) : tx('music.now_playing', lang))),
             new TextDisplayBuilder().setContent(
                 `${displayTitle}\n` +
                 `[${tx('music.open_on', lang, { site: t.spotifyUrl ? 'Spotify' : 'YouTube' })}](${sourceUrl})\n\n` +
                 `• ${tx('music.added_by', lang)} ${requester}\n` +
-                `• 🔊 ${q.voiceChannel?.name?.substring(0, 22) || tx('music.voice_label', lang)}`
+                `• ${em('mc_volume_up', '🔊')} ${q.voiceChannel?.name?.substring(0, 22) || tx('music.voice_label', lang)}`
             )
         )
         .setThumbnailAccessory(new ThumbnailBuilder().setURL(t.thumbnail || client.user.displayAvatarURL()));
@@ -1182,7 +1183,7 @@ async function playNext(q) {
         if (q._consecutiveErrors >= 5) {
             q._consecutiveErrors = 0;
             const giveUpEmbed = new EmbedBuilder().setColor(ARCHON.red)
-                .setAuthor({ name: '🎵 ARCHON Music', iconURL: q._client?.user?.displayAvatarURL() })
+                .setAuthor({ name: `${em('music', '🎵')} ARCHON Music`, iconURL: q._client?.user?.displayAvatarURL() })
                 .setDescription(t('music.too_many_errors', lang, { cmd_play: mention(global.client, 'music', 'play') }));
             await q.textChannel?.send(toV2({ embeds: [giveUpEmbed] })).catch(() => {});
             q.autoplay = false;
@@ -1190,7 +1191,7 @@ async function playNext(q) {
         }
 
         const errEmbed = new EmbedBuilder().setColor(ARCHON.red)
-            .setAuthor({ name: '🎵 ARCHON Music', iconURL: q._client?.user?.displayAvatarURL() })
+            .setAuthor({ name: `${em('music', '🎵')} ARCHON Music`, iconURL: q._client?.user?.displayAvatarURL() })
             .setDescription(t('music.track_error', lang, { count: q._consecutiveErrors }));
         if (q.persistentMsg) {
             await q.persistentMsg.delete().catch(() => {});
@@ -1397,7 +1398,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
         const menu = new StringSelectMenuBuilder()
             .setCustomId(`ms_suggest_${Date.now()}`)
             .setPlaceholder(t('music.suggest_placeholder', lang))
-            .addOptions(suggestions.map(s => ({ label: s.title.replace(/^🎵\s*/, '').substring(0,100), value: s.query.substring(0,100), emoji: '🎵' })));
+            .addOptions(suggestions.map(s => ({ label: s.title.replace(/^🎵\s*/, '').substring(0,100), value: s.query.substring(0,100), emoji: iconObj('music') })));
         components.push(new ActionRowBuilder().addComponents(menu));
     }
 
@@ -1714,7 +1715,7 @@ module.exports = {
         if (sub === 'skip') {
             const title = String(q.currentTrack?.title || '').replace(/^🎵\s*/, '').substring(0, 60) || '—';
             q.player.stop();
-            return interaction.editReply({ content: t('music.skipped', lang, { emoji: '⏭️', title }) });
+            return interaction.editReply({ content: t('music.skipped', lang, { emoji: em('mc_skip', '⏭️'), title }) });
         }
 
         // ── STOP ── the live panel becomes a short "stopped" card
@@ -1748,14 +1749,14 @@ module.exports = {
             q.volume = vol;
             try { q.player?.state?.resource?.volume?.setVolume(vol/100); } catch(e) {}
             await updatePersistentPanel(q).catch(() => {});
-            return interaction.editReply({ content: t('music.volume_set', lang, { emoji: vol === 0 ? '🔇' : '🔊', vol }) });
+            return interaction.editReply({ content: t('music.volume_set', lang, { emoji: vol === 0 ? '🔇' : em('mc_volume_up', '🔊'), vol }) });
         }
 
         // ── LOOP ── (the Idle handler replays the track: adding it to the queue here played it twice)
         if (sub === 'loop') {
             q.loop = !q.loop;
             await updatePersistentPanel(q).catch(() => {});
-            return interaction.editReply({ content: t(q.loop ? 'music.loop_on' : 'music.loop_off', lang, { emoji: '🔁' }) });
+            return interaction.editReply({ content: t(q.loop ? 'music.loop_on' : 'music.loop_off', lang, { emoji: em('mc_loop', '🔁') }) });
         }
 
         // ── AUTOPLAY ──
@@ -1823,7 +1824,7 @@ module.exports = {
                     });
                 }
                 folderMenu.addOptions({
-                    label: '🎵 All Tracks', value: '__all__',
+                    label: 'All Tracks', value: '__all__',
                     description: `${lib.length} tracks · full catalog`,
                     default: state.folder === '__all__',
                 });
@@ -1842,7 +1843,7 @@ module.exports = {
                     const overview = folders.map(f => `> ${f} — \`${folderMap.get(f).length} tracks\``).join('\n');
                     embed.setTitle('📚 Music Library')
                         .setDescription(`**${lib.length} curated tracks** across ${folders.length} folders.\nSelect a folder below to browse and queue.\n\n${overview}`)
-                        .addFields({ name: 'Now Playing', value: q?.currentTrack ? `🎵 ${q.currentTrack.title.substring(0, 60)}` : '⏹️ Nothing', inline: false })
+                        .addFields({ name: 'Now Playing', value: q?.currentTrack ? `${em('music', '🎵')} ${q.currentTrack.title.substring(0, 60)}` : `${em('mc_stop', '⏹️')} Nothing`, inline: false })
                         .setFooter({ text: `BAMAKO_223 🇲🇱 • Pick a folder • ${mention(global.client, 'music', 'library')} search:<term> to search` });
                 } else {
                     // Folder view — paginated tracks
@@ -1851,8 +1852,8 @@ module.exports = {
                     const totalPages = Math.max(1, Math.ceil(tracks.length / PER_PAGE));
                     state.page = Math.min(Math.max(1, state.page), totalPages);
                     const slice = tracks.slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE);
-                    const list = slice.map((t, i) => `\`${String((state.page - 1) * PER_PAGE + i + 1).padStart(3, '0')}\` ${t.title.replace(/^🎵\s*/, '🎵 ')}`).join('\n');
-                    const viewTitle = state.folder === '__all__' ? '🎵 All Tracks'
+                    const list = slice.map((t, i) => `\`${String((state.page - 1) * PER_PAGE + i + 1).padStart(3, '0')}\` ${t.title.replace(/^🎵\s*/, em('music', '🎵') + ' ')}`).join('\n');
+                    const viewTitle = state.folder === '__all__' ? `${em('music', '🎵')} All Tracks`
                         : state.folder === '__liked__' ? '❤️ My Liked Songs'
                         : state.folder === '__search__' ? `🔍 "${state.search}" — ${tracks.length} result${tracks.length !== 1 ? 's' : ''}`
                         : state.folder;
@@ -1861,13 +1862,13 @@ module.exports = {
                         .addFields(
                             { name: 'Tracks', value: `\`${tracks.length}\``, inline: true },
                             { name: 'Page', value: `\`${state.page}/${totalPages}\``, inline: true },
-                            { name: 'Now Playing', value: q?.currentTrack ? `🎵 ${q.currentTrack.title.substring(0, 30)}` : '⏹️ Nothing', inline: true },
+                            { name: 'Now Playing', value: q?.currentTrack ? `${em('music', '🎵')} ${q.currentTrack.title.substring(0, 30)}` : `${em('mc_stop', '⏹️')} Nothing`, inline: true },
                         )
                         .setFooter({ text: 'BAMAKO_223 🇲🇱 • Select tracks below to queue them instantly' });
 
                     if (tracks.length) {
                         // Row 2 — track pick (multi-select queues several at once)
-                        const pickMenu = new SSM().setCustomId('mlb_pick').setPlaceholder('🎧 Pick track(s) to queue…')
+                        const pickMenu = new SSM().setCustomId('mlb_pick').setPlaceholder(`${em('music', '🎵')} Pick track(s) to queue…`)
                             .setMinValues(1).setMaxValues(Math.min(slice.length, 10));
                         for (let i = 0; i < slice.length; i++) {
                             const t = slice[i];

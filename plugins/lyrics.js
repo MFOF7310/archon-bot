@@ -1,4 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { iconObj } = require('../lib/icons');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 
@@ -122,7 +124,7 @@ function buildLyricsEmbed(result, pages, page, client) {
     return new EmbedBuilder()
         .setColor(0x9b59b6)
         .setAuthor({
-            name: '🎵 ' + result.title,
+            name: `${em('music', '🎵')} ` + result.title,
             iconURL: client.user.displayAvatarURL()
         })
         .setDescription(description)
@@ -141,13 +143,13 @@ function buildPaginationRow(page, total) {
         new ButtonBuilder()
             .setCustomId('lyrics_prev')
             .setLabel('Back')
-            .setEmoji('⏮️')
+            .setEmoji(iconObj('mc_prev', null, '⏮️'))
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(page === 0),
         new ButtonBuilder()
             .setCustomId('lyrics_next')
             .setLabel('Next')
-            .setEmoji('⏭️')
+            .setEmoji(iconObj('mc_skip', null, '⏭️'))
             .setStyle(ButtonStyle.Primary)
             .setDisabled(page === total - 1),
     );

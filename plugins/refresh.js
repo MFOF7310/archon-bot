@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, AttachmentBuilder, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { icon } = require('../lib/icons');
 const fs = require('fs');
 const path = require('path');
@@ -54,7 +55,7 @@ module.exports = {
 
             const preview = buildGdprPreview(db, targetId);
             const confirmEmbed = new EmbedBuilder().setColor('#ff0000')
-                .setTitle('🗑️ GDPR DATA DELETION')
+                .setTitle(`${em('ic_trash', '🗑️')} GDPR DATA DELETION`)
                 .setDescription(`**Target:** <@${targetId}> (\`${targetId}\`)\n\n${preview}\n\n**⏳ Confirm button unlocks in 5s...**`)
                 .setFooter({ text: 'This is IRREVERSIBLE. All user data will be permanently erased.' });
 
@@ -158,7 +159,7 @@ async function showConfirm(interaction, type, t, client, db, message) {
 
     const confirmEmbed = new EmbedBuilder()
         .setColor('#ff0000')
-        .setTitle(`⚠️ CONFIRM: ${typeName}`)
+        .setTitle(`${em('ic_warn', '⚠️')} CONFIRM: ${typeName}`)
         .setDescription('**THIS IS IRREVERSIBLE!**\n\n⏳ *Confirm button unlocks in 5 seconds...*')
         .setFooter({ text: 'You have 30 seconds to confirm...' });
 
@@ -324,7 +325,7 @@ function buildGdprPreview(db, userId) {
 async function promptGdprUser(interaction, t, client, db, message) {
     // Send a message asking for user ID with a button to cancel
     const promptEmbed = new EmbedBuilder().setColor('#f39c12')
-        .setTitle('🗑️ GDPR DATA DELETION')
+                .setTitle(`${em('ic_trash', '🗑️')} GDPR DATA DELETION`)
         .setDescription('Reply with the **User ID** or **@mention** of the user whose data you want to erase.\n\n*Or click Cancel to abort.*')
         .setFooter({ text: 'You have 60 seconds to respond.' });
 
@@ -367,7 +368,7 @@ async function promptGdprUser(interaction, t, client, db, message) {
         // Show confirmation with preview
         const preview = buildGdprPreview(db, targetId);
         const confirmEmbed = new EmbedBuilder().setColor('#ff0000')
-            .setTitle('🗑️ CONFIRM DATA DELETION')
+            .setTitle(`${em('ic_trash', '🗑️')} CONFIRM DATA DELETION`)
             .setDescription(`**Target:** <@${targetId}> (\`${targetId}\`)\n\n${preview}\n\n**⏳ Confirm button unlocks in 5s...**`)
             .setFooter({ text: 'This is IRREVERSIBLE. All user data will be permanently erased.' });
 
