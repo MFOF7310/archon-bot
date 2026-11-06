@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ComponentType } = require('discord.js');
+const { iconObj } = require('../lib/icons');
 const { icon } = require('../lib/icons');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { t } = require('../lib/i18n');
@@ -167,14 +168,14 @@ function buildHub(client, lang, guildName) {
         .setTimestamp();
 
     const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('game_play_codm').setLabel('CODM').setStyle(ButtonStyle.Primary).setEmoji('🔫'),
-        new ButtonBuilder().setCustomId('game_play_slots').setLabel('SLOTS').setStyle(ButtonStyle.Primary).setEmoji('🎰'),
-        new ButtonBuilder().setCustomId('game_play_tictactoe').setLabel('TIC TAC TOE').setStyle(ButtonStyle.Primary).setEmoji('⭕')
+        new ButtonBuilder().setCustomId('game_play_codm').setLabel('CODM').setStyle(ButtonStyle.Primary).setEmoji(iconObj('gameCodm', null, '🔫')),
+        new ButtonBuilder().setCustomId('game_play_slots').setLabel('SLOTS').setStyle(ButtonStyle.Primary).setEmoji(iconObj('gameSlots', null, '🎰')),
+        new ButtonBuilder().setCustomId('game_play_tictactoe').setLabel('TIC TAC TOE').setStyle(ButtonStyle.Primary).setEmoji(iconObj('gameTicTacToe', null, '⭕'))
     );
     const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('game_play_blackjack').setLabel('BLACKJACK').setStyle(ButtonStyle.Primary).setEmoji('🃏'),
-        new ButtonBuilder().setCustomId('game_play_roulette').setLabel('ROULETTE').setStyle(ButtonStyle.Primary).setEmoji('🎲'),
-        new ButtonBuilder().setCustomId('game_play_trivia').setLabel('TRIVIA').setStyle(ButtonStyle.Secondary).setEmoji('🧠')
+        new ButtonBuilder().setCustomId('game_play_blackjack').setLabel('BLACKJACK').setStyle(ButtonStyle.Primary).setEmoji(iconObj('gameBlackjack', null, '🃏')),
+        new ButtonBuilder().setCustomId('game_play_roulette').setLabel('ROULETTE').setStyle(ButtonStyle.Primary).setEmoji(iconObj('gameRoulette', null, '🎲')),
+        new ButtonBuilder().setCustomId('game_play_trivia').setLabel('TRIVIA').setStyle(ButtonStyle.Secondary).setEmoji(iconObj('gameTrivia', null, '🧠'))
     );
 
     return { embeds: [embed], components: [row1, row2] };
@@ -490,8 +491,8 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
     // v9: blackjack on CV2
     const bjFooter = () => `-# ${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'ARCHON CG-223'} • v${ctx.client.version || '2.0.0'}`;
     const bjRow = () => new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('bj_hit').setLabel(t('game.hit', lang)).setStyle(ButtonStyle.Primary).setEmoji('🃏'),
-        new ButtonBuilder().setCustomId('bj_stand').setLabel(t('game.stand', lang)).setStyle(ButtonStyle.Secondary).setEmoji('⏹️')
+        new ButtonBuilder().setCustomId('bj_hit').setLabel(t('game.hit', lang)).setStyle(ButtonStyle.Primary).setEmoji(iconObj('gameBlackjack', null, '🃏')),
+        new ButtonBuilder().setCustomId('bj_stand').setLabel(t('game.stand', lang)).setStyle(ButtonStyle.Secondary).setEmoji(iconObj('mc_stop', null, '⏹️'))
     );
     const bjCard = ({ reveal = false, withButtons = true } = {}) => v2.card(0x9b59b6, [
         { text: `## ${EMOJIS.gameBlackjack} ${t('game.blackjack', lang)}` },

@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
-const { icon } = require('../lib/icons');
+const { icon, iconObj } = require('../lib/icons');
 const { pickLang } = require('../lib/pick-lang');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { t } = require('../lib/i18n');
@@ -83,7 +83,7 @@ module.exports = {
                 .map(inv => {
                     const item = itemsMap.get(inv.item_id);
                     const itemName = item?.en?.name || item?.name || inv.item_id;
-                    const typeEmoji = item?.type === 'badge' ? '🎖️' : item?.type === 'consumable' ? '⚡' : '💪';
+                    const typeEmoji = item?.type === 'badge' ? iconObj('badge', null, '🎖️') : item?.type === 'consumable' ? '⚡' : '💪';
                     return {
                         name: `${typeEmoji} ${itemName} (x${inv.quantity})`,
                         value: inv.item_id
@@ -195,7 +195,7 @@ module.exports = {
             const item = itemsMap.get(inv.item_id);
             if (item) {
                 const itemName = item[lang]?.name || item.en?.name || item.name || inv.item_id;
-                const typeEmoji = item.type === 'badge' ? '🎖️' : item.type === 'consumable' ? '⚡' : '💪';
+                const typeEmoji = item.type === 'badge' ? iconObj('badge', null, '🎖️') : item.type === 'consumable' ? '⚡' : '💪';
                 selectMenu.addOptions({
                     label: `${itemName} (x${inv.quantity})`.slice(0, 100),
                     description: `${typeEmoji} ${(item[lang]?.desc || item.en?.desc || item.desc || t('use.neuralItemFallback', lang)).substring(0, 50)}`,
@@ -333,7 +333,7 @@ module.exports = {
             const item = itemsMap.get(inv.item_id);
             if (item) {
                 const itemName = item[lang]?.name || item.en?.name || item.name || inv.item_id;
-                const typeEmoji = item.type === 'badge' ? '🎖️' : item.type === 'consumable' ? '⚡' : '💪';
+                const typeEmoji = item.type === 'badge' ? iconObj('badge', null, '🎖️') : item.type === 'consumable' ? '⚡' : '💪';
                 selectMenu.addOptions({
                     label: `${itemName} (x${inv.quantity})`.slice(0, 100),
                     description: `${typeEmoji} ${(item[lang]?.desc || item.en?.desc || item.desc || t('use.neuralItemFallback', lang)).substring(0, 50)}`,
@@ -432,7 +432,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
                 .setCustomId(`badge_unequip_${userId}`)
                 .setLabel(t('use.unequipBadge', lang))
                 .setStyle(ButtonStyle.Danger)
-                .setEmoji('🔓'),
+                .setEmoji(iconObj('unlock', null, '🔓')),
             new ButtonBuilder()
                 .setCustomId(`badge_keep_${userId}`)
                 .setLabel(t('use.close', lang))
@@ -495,7 +495,7 @@ async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, 
             .setCustomId(`badge_confirm_${userId}`)
             .setLabel(t('use.equipBadge', lang))
             .setStyle(ButtonStyle.Success)
-            .setEmoji('🎖️'),
+            .setEmoji(iconObj('trophy', null, iconObj('badge', null, '🎖️'))),
         new ButtonBuilder()
             .setCustomId(`badge_cancel_${userId}`)
             .setLabel(t('use.close', lang))

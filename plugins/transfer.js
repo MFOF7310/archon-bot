@@ -1,5 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionsBitField } = require('discord.js');
-const { icon } = require('../lib/icons');
+const { icon, iconObj } = require('../lib/icons');
 const { t: i18nT } = require('../lib/i18n');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 
@@ -292,7 +292,7 @@ module.exports = {
                     .setCustomId(`transfer_history_${userId}`)
                     .setLabel(t('viewHistory'))
                     .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('📋')
+                    .setEmoji(iconObj('mc_queue', null, '📋'))
             );
 
             await i.editReply({ embeds: [receiptEmbed], components: [buttonRow] }).catch(() => {});
@@ -611,7 +611,7 @@ module.exports = {
                     .setCustomId(`transfer_history_${userId}`)
                     .setLabel(t('viewHistory'))
                     .setStyle(ButtonStyle.Secondary)
-                    .setEmoji('📋')
+                    .setEmoji(iconObj('mc_queue', null, '📋'))
             );
 
             await i.editReply({ embeds: [receiptEmbed], components: [buttonRow] }).catch(() => {});
