@@ -21,9 +21,74 @@
   "creditsLabel": "wari",
   "items": {
     "daily_streak_shield": {
-      "name": "Ladilikan Tangali",
-      "desc": "A b'i ladilikan tanga ni i ma tila don doni kelen.",
-      "perk": "A b'i tanga doni kelen"
+      "name": "Séri Bolo",
+      "desc": "I bɛ i ka siyɔli lakan, ni i yɛrɛ yɔrɔla ka don.",
+      "perk": "A bɛ don 1 lakan"
+    },
+    "starter_pack": {
+      "name": "Daminɛ Furu",
+      "desc": "Furu min bɛ i dɛmɛ ka i taabolo dɔrɔn.",
+      "perk": "Daminɛ dɛmɛ"
+    },
+    "xp_boost_small": {
+      "name": "XP Dɔɔnin",
+      "desc": "XP dɔɔnin, ka i dɛmɛ ka kɔrɔ.",
+      "perk": "+500 XP"
+    },
+    "xp_boost_large": {
+      "name": "XP Caman",
+      "desc": "XP caman, tulonkɛlaw ye.",
+      "perk": "+2500 XP"
+    },
+    "credit_boost_small": {
+      "name": "Wari Dɔɔnin",
+      "desc": "Wari dɔɔnin, min bɛ sɔngɔ kɛ.",
+      "perk": "+1000 Wari"
+    },
+    "credit_boost_large": {
+      "name": "Wari Caman",
+      "desc": "Wari caman, i yɛrɛ ka i di.",
+      "perk": "+5000 Wari"
+    },
+    "vip_role": {
+      "name": "VIP Jɔyɔrɔ",
+      "desc": "VIP jɔyɔrɔ min tɛ yen.",
+      "perk": "VIP Jɔyɔrɔ"
+    },
+    "verified_role": {
+      "name": "Jɔyɔrɔ Sɛbɛnnen",
+      "desc": "Sɛbɛn jɔyɔrɔ, ka i yɛrɛ jira.",
+      "perk": "Jɔyɔrɔ Sɛbɛnnen"
+    },
+    "badge_eagle": {
+      "name": "Kɔnɔnin Ta",
+      "desc": "Aw bɛ aw ka Kɔnɔnin ta jira aw ka kunnafoniw kɔ.",
+      "perk": "Kunnafoni Ta"
+    },
+    "badge_oracle": {
+      "name": "Ɔrakli Ta",
+      "desc": "Aw bɛ aw ka Ɔrakli ta jira aw ka kunnafoniw kɔ.",
+      "perk": "Kunnafoni Ta"
+    },
+    "badge_architect": {
+      "name": "Baŋkɛla Ta",
+      "desc": "Aw bɛ aw ka Baŋkɛla ta jira aw ka kunnafoniw kɔ.",
+      "perk": "Kunnafoni Ta"
+    },
+    "badge_steel": {
+      "name": "Nɛgɛ Ta",
+      "desc": "Aw bɛ aw ka Nɛgɛ ta jira aw ka kunnafoniw kɔ.",
+      "perk": "Kunnafoni Ta"
+    },
+    "badge_pioneer": {
+      "name": "Piyɔnɛri Ta",
+      "desc": "Aw bɛ aw ka Piyɔnɛri ta jira aw ka kunnafoniw kɔ.",
+      "perk": "Kunnafoni Ta"
+    },
+    "badge_bamako": {
+      "name": "Bamako Ta",
+      "desc": "Aw bɛ aw ka Bamako ta jira aw ka kunnafoniw kɔ.",
+      "perk": "Kunnafoni Ta"
     }
   }
 }

@@ -22,42 +22,42 @@
   "items": {
     "daily_streak_shield": {
       "name": "Daily Streak Shield",
-      "desc": "Protects your daily streak from breaking if you miss a day.",
+      "desc": "Saves your daily streak if you forget to check in.",
       "perk": "Protects 1 missed day"
     },
     "starter_pack": {
       "name": "Starter Pack",
-      "desc": "A boost to get you started.",
-      "perk": "Initial boost"
+      "desc": "A handy bundle to kickstart your journey.",
+      "perk": "Starter Boost"
     },
     "xp_boost_small": {
       "name": "Small XP Boost",
-      "desc": "Instantly gain a small amount of XP.",
+      "desc": "A quick XP boost to help you level up faster.",
       "perk": "+500 XP"
     },
     "xp_boost_large": {
       "name": "Large XP Boost",
-      "desc": "Instantly gain a large amount of XP.",
+      "desc": "A massive XP boost for serious players.",
       "perk": "+2500 XP"
     },
     "credit_boost_small": {
       "name": "Small Credit Boost",
-      "desc": "Instantly gain a small amount of credits.",
+      "desc": "A little extra spending money for the shop.",
       "perk": "+1000 Credits"
     },
     "credit_boost_large": {
       "name": "Large Credit Boost",
-      "desc": "Instantly gain a large amount of credits.",
+      "desc": "A heavy pouch of credits to treat yourself.",
       "perk": "+5000 Credits"
     },
     "vip_role": {
       "name": "VIP Role",
-      "desc": "Exclusive VIP role on the server.",
+      "desc": "Stand out with an exclusive VIP role on the server.",
       "perk": "VIP Status"
     },
     "verified_role": {
       "name": "Verified Role",
-      "desc": "Get the verified role on the server.",
+      "desc": "Unlock the verified role to show you're legit.",
       "perk": "Verified Status"
     },
     "badge_eagle": {
@@ -94,6 +94,11 @@
       "name": "Bronze Mystery Box",
       "desc": "Contains a random reward.",
       "perk": "Random loot"
+    },
+    "badge_oracle": {
+      "name": "Oracle Badge",
+      "desc": "Show off your Oracle badge on your profile.",
+      "perk": "Profile Badge"
     }
   }
 }
