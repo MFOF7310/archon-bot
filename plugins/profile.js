@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const https = require('https');
 const fs = require('fs');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');

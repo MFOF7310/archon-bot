@@ -2,6 +2,7 @@ const cmdSlash = require('../lib/cmd').slash;
 const i18n = require('../lib/i18n');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { pickLang } = require('../lib/pick-lang');
 
 module.exports = {
@@ -146,7 +147,7 @@ module.exports = {
         let lastDailyText = t('never');
         if (lastDaily > 0) lastDailyText = `<t:${Math.floor(lastDaily / 1000)}:R>`;
 
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📊 DAILY STATS · @${user.username}`));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('charts', '📊')} DAILY STATS · @${user.username}`));
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
         const ansiBlock = '```ansi\n' +
