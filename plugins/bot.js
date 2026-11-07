@@ -79,10 +79,10 @@ async function pingCard(client, lang, db) {
         { text: `## ${em('ic_satellite', '📡')} ${_('ping_title')}\n${_('ping_' + state, { ms: m.rest })}` },
         { rule: true },
         { text: [
-            `${DOT[tiers[0]]()} **${_('ping_reply')}** · ${val(m.rest)}`,
-            `${DOT[tiers[1]]()} **${_('ping_gateway')}** · ${val(m.api)}`,
-            `${DOT[tiers[2]]()} **${_('ping_db')}** · ${val(m.database)}`,
-            `${em('clock', '🕐')} **${_('uptime')}** · ${uptime(process.uptime())}`,
+            `${DOT[tiers[0]]()} **${_('ping_reply')}** ${em('dot_white', '·')} ${val(m.rest)}`,
+            `${DOT[tiers[1]]()} **${_('ping_gateway')}** ${em('dot_white', '·')} ${val(m.api)}`,
+            `${DOT[tiers[2]]()} **${_('ping_db')}** ${em('dot_white', '·')} ${val(m.database)}`,
+            `${em('clock', '🕐')} **${_('uptime')}** ${uptime(process.uptime())}`,
         ].join('\n') },
         { rule: true },
         { row: new ActionRowBuilder().addComponents(actBtn(_('btn_again'), 'bot:ping', 'ic_refresh', '🔄')) },
@@ -113,7 +113,7 @@ async function statsCard(client, lang, db) {
     } catch (e) { /* columns missing on an old database: show zeros */ }
 
     const state = (!dbOk || !aiOk || (api && api > 300) || lag > 100) ? 'bad' : ((api && api > 120) || lag > 50) ? 'warn' : 'ok';
-    const on = (ok) => ok ? em('online', '🟢') : em('offline', '🔴');
+    const on = (ok) => ok ? em('ic_online', em('online', '🟢')) : em('ic_offline', em('offline', '🔴'));
     const n = (x) => Number(x).toLocaleString();
 
     return v2.card(COLOR[state], [
@@ -122,12 +122,12 @@ async function statsCard(client, lang, db) {
         { text: [
             `**${_('servers')}** · ${n(guilds)}  ·  **${_('members')}** · ${n(members)}`,
             `**${_('commands')}** · ${n(client.commands?.size || 0)}  ·  **${_('memory')}** · ${mem} MB`,
-            `**${_('uptime')}** · ${uptime(process.uptime())}  ·  **${_('ping_gateway')}** · ${api == null ? '—' : api + ' ms'}`,
+            `${em('clock', '🕐')} **${_('uptime')}** ${uptime(process.uptime())}    **${_('ping_gateway')}** ${api == null ? '—' : api + ' ms'}`,
         ].join('\n') },
         { rule: true },
-        { text: `**${_('services')}**\n${on(aiOk)} ${_('svc_ai')}  ·  ${on(dbOk)} ${_('svc_db')}  ·  ${on(lag <= 50)} ${_('svc_loop', { ms: lag })}` },
+        { text: `**${_('services')}**\n${on(aiOk)} ${_('svc_ai')} ${em('dot_white', '·')} ${on(dbOk)} ${_('svc_db')} ${em('dot_white', '·')} ${on(lag <= 50)} ${_('svc_loop', { ms: lag })}` },
         { rule: true },
-        { text: `**${_('global_title')}**\n${_('games')} · ${n(games)}  ·  ${_('win_rate')} · ${games ? Math.round(wins / games * 100) : 0}%\n${_('credits')} · ${n(credits)}` },
+        { text: `**${_('global_title')}**\n${_('games')} ${em('dot_white', '·')} ${n(games)}    ${_('win_rate')} ${em('dot_white', '·')} ${games ? Math.round(wins / games * 100) : 0}%\n${_('credits')} ${em('dot_white', '·')} ${n(credits)}` },
         { row: new ActionRowBuilder().addComponents(actBtn(_('btn_refresh'), 'bot:stats', 'ic_refresh', '🔄')) },
         { text: foot(client) },
     ]);
@@ -152,11 +152,11 @@ function activityCard(client, lang, db, guild) {
         { text: `\`${ui.progressBar(Math.max(0, p.current), p.needed, 12)}\` ${p.percent}%\n-# ${_('activity_xp', { xp: n(s.xp), left: n(Math.max(0, p.toNext)), next: s.level + 1 })}` },
         { rule: true },
         { text: [
-            `**${_('act_commands')}** · ${n(cmds)}`,
-            `**${_('act_top')}** · ${s.top_command ? '`' + s.top_command + '`' : '—'}`,
-            `**${_('act_ai')}** · ${n(s.ai_chats)}  ·  **${_('act_buttons')}** · ${n(s.buttons_clicked)}`,
-            `**${_('act_helped')}** · ${n(Object.keys(s.users_helped || {}).length)}`,
-            `**${_('act_since')}** · ${since}`,
+            `**${_('act_commands')}** ${em('dot_white', '·')} ${n(cmds)}`,
+            `**${_('act_top')}** ${em('dot_white', '·')} ${s.top_command ? '`' + s.top_command + '`' : '—'}`,
+            `**${_('act_ai')}** ${em('dot_white', '·')} ${n(s.ai_chats)}    ${em('dot_white', '·')} **${_('act_buttons')}** ${n(s.buttons_clicked)}`,
+            `**${_('act_helped')}** ${em('dot_white', '·')} ${n(Object.keys(s.users_helped || {}).length)}`,
+            `**${_('act_since').replace(/\*/g, '')}:** ${since}`,
         ].join('\n') },
         { text: foot(client) },
     ]);

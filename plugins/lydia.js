@@ -1430,7 +1430,12 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
     const c = new ContainerBuilder().setAccentColor(0xe74c3c);
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🔴 ${t('lydia.offAuthor', lang)}`));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('lydia.offDesc', lang, { botName, channel: channel.name }) + t('lydia.offBody', lang, { prefix })));
+    
+    // Récupération de l'ID de la commande pour le rendu cliquable
+    const cmdId = client.application.commands.cache.find(cmd => cmd.name === 'lydia')?.id;
+    const cmdMention = cmdId ? `</lydia on:${cmdId}>` : '`/lydia on`';
+    
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('lydia.offDesc', lang, { botName, channel: channel.name }) + t('lydia.offBody', lang, { prefix, cmd: cmdMention })));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# #${channel.name} • ${t('lydia.offFooter', lang)}`));
 
     if (respondFn) await respondFn({ components: [c], flags: MessageFlags.IsComponentsV2 });
