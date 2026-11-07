@@ -36,5 +36,7 @@
   "activateDesc": "تم تطبيق كود premium الخاص بك على **{server}** لمدة **{days}**.",
   "btnManage": "إدارة الاشتراك",
   "statusActiveValue": "نشط",
-  "statusInactiveValue": "غير نشط"
+  "statusInactiveValue": "غير نشط",
+  "daysLabel": "أيام",
+  "grantedTitle": "تم منح Premium"
 }

@@ -36,5 +36,7 @@
   "activateDesc": "您的 premium 代码已应用到 **{server}**，时长为 **{days}**。",
   "btnManage": "管理订阅",
   "statusActiveValue": "已激活",
-  "statusInactiveValue": "未激活"
+  "statusInactiveValue": "未激活",
+  "daysLabel": "天",
+  "grantedTitle": "已授予 Premium"
 }

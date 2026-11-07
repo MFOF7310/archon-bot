@@ -36,5 +36,7 @@
   "activateDesc": "Your premium code has been applied to **{server}** for **{days}**.",
   "btnManage": "Manage Subscription",
   "statusActiveValue": "Active",
-  "statusInactiveValue": "Inactive"
+  "statusInactiveValue": "Inactive",
+  "daysLabel": "days",
+  "grantedTitle": "Premium Granted"
 }

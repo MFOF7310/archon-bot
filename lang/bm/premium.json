@@ -24,5 +24,7 @@
   "runInactive": "🔒 Nin server tɛ Premium. Aw bɛ `/premium status` baara kɛ ka a ɲɛ.",
   "btnManage": "Abonnement Gɛrɛ",
   "statusActiveValue": "A bɛ baara kɛ",
-  "statusInactiveValue": "A tɛ baara kɛ"
+  "statusInactiveValue": "A tɛ baara kɛ",
+  "daysLabel": "don",
+  "grantedTitle": "Premium Dilara"
 }

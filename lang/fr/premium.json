@@ -36,5 +36,7 @@
   "activateDesc": "Votre code premium a été appliqué à **{server}** pour **{days}**.",
   "btnManage": "Gérer l'abonnement",
   "statusActiveValue": "Actif",
-  "statusInactiveValue": "Inactif"
+  "statusInactiveValue": "Inactif",
+  "daysLabel": "jours",
+  "grantedTitle": "Premium Accordé"
 }

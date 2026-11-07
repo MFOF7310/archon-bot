@@ -29,7 +29,7 @@ function buildPremiumCard(client, premium, days, lang, guildName) {
     const statusEmoji = premium ? em('ping_ok', '🟢') : em('ping_bad', '🔴');
     const statusText = premium ? pt('statusActive', lang) : pt('statusInactive', lang);
     const statusValue = premium ? pt('statusActiveValue', lang) : pt('statusInactiveValue', lang);
-    const expiry = days === null ? (premium ? pt('lifetime', lang) : '—') : `${days} days`;
+    const expiry = days === null ? (premium ? pt('lifetime', lang) : '—') : `${days} ${pt('daysLabel', lang)}`;
     const customCheck = em('small_check', em('ic_ok', '✅'));
 
     const c = new ContainerBuilder().setAccentColor(premium ? 0xffd700 : 0x2c2f33);
@@ -112,7 +112,7 @@ module.exports = {
             db.prepare('UPDATE premium_codes SET used = 1, used_by = ?, used_at = ? WHERE code = ?')
                 .run(interaction.user.id, Math.floor(Date.now() / 1000), code);
 
-            const daysTxt = codeRow.days === 0 ? pt('lifetime', lang) : `${codeRow.days} days`;
+            const daysTxt = codeRow.days === 0 ? pt('lifetime', lang) : `${codeRow.days} ${pt('daysLabel', lang)}`;
             const c = new ContainerBuilder().setAccentColor(0x2ecc71);
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_ok', '✅')} ${pt('activatedTitle', lang)}\n\n${pt('activateDesc', lang, { server: interaction.guild.name, days: daysTxt })}`));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON CG-223 • BAMAKO_223 🇲🇱`));
@@ -129,7 +129,7 @@ module.exports = {
                 db.prepare('INSERT OR IGNORE INTO premium_codes (code, days) VALUES (?,?)').run(code, days);
                 codes.push(code);
             }
-            const duration = days === 0 ? pt('lifetime', lang) : `${days} days`;
+            const duration = days === 0 ? pt('lifetime', lang) : `${days} ${pt('daysLabel', lang)}`;
             const c = new ContainerBuilder().setAccentColor(0xffd700);
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_key', '🔑')} ${pt('codesGenTitle', lang)}\n\n${pt('codesGenDesc', lang, { duration, codes: codes.join('\n') })}`));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON CG-223 • BAMAKO_223 🇲🇱`));
@@ -154,9 +154,9 @@ module.exports = {
             const expiresAt = days === 0 ? null : Math.floor(Date.now() / 1000) + (days * 86400);
             db.prepare('INSERT OR REPLACE INTO premium (guild_id, expires_at, plan, payment_method, activated_by) VALUES (?,?,?,?,?)')
                 .run(targetGid, expiresAt, days === 0 ? 'lifetime' : 'monthly', 'manual', interaction.user.id);
-            const daysTxt = days === 0 ? pt('lifetime', lang) : `${days} days`;
+            const daysTxt = days === 0 ? pt('lifetime', lang) : `${days} ${pt('daysLabel', lang)}`;
             const c = new ContainerBuilder().setAccentColor(0x2ecc71);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_ok', '✅')} Premium Granted\n\n${pt('granted', lang, { guild: targetGid, days: daysTxt })}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_ok', '✅')} ${pt('grantedTitle', lang)}\n\n${pt('granted', lang, { guild: targetGid, days: daysTxt })}`));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON CG-223 • BAMAKO_223 🇲🇱`));
             return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
         }
