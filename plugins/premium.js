@@ -1,17 +1,15 @@
+'use strict';
 const {
-    SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle
+    SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
+    ContainerBuilder, TextDisplayBuilder, MessageFlags
 } = require('discord.js');
-const EMOJIS = require('../config/emojis');
 const { t } = require('../lib/i18n');
+const { icon, iconObj } = require('../lib/ui/icons');
 
 const OKL = ['en', 'fr', 'bm', 'zh', 'ar'];
 const pl = (o) => OKL.includes(o?.language) ? o.language : 'en';
-const pt = (k, lang, vars) => t('premium.' + k, lang, vars);
-
-// ═══════════════════════════════════════════════════════
-// ARCHON CG-223 — PREMIUM SYSTEM v1.1 (i18n wired)
-// Per-server subscription • $3.40/month
-// ═══════════════════════════════════════════════════════
+const pt = (k, lang, vars) => t('premium.' + k, lang, vars || {});
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 function isPremium(db, guildId) {
     const row = db.prepare('SELECT expires_at FROM premium WHERE guild_id = ?').get(guildId);
@@ -25,6 +23,30 @@ function daysLeft(db, guildId) {
     if (!row || !row.expires_at) return null;
     const diff = row.expires_at - Math.floor(Date.now() / 1000);
     return Math.max(0, Math.floor(diff / 86400));
+}
+
+function buildPremiumCard(client, premium, days, lang, guildName) {
+    const statusEmoji = premium ? em('ping_ok', '🟢') : em('ping_bad', '🔴');
+    const statusText = premium ? pt('statusActive', lang) : pt('statusInactive', lang);
+    const statusValue = premium ? pt('statusActiveValue', lang) : pt('statusInactiveValue', lang);
+    const expiry = days === null ? (premium ? pt('lifetime', lang) : '—') : `${days} days`;
+    const customCheck = em('small_check', em('ic_ok', '✅'));
+
+    const c = new ContainerBuilder().setAccentColor(premium ? 0xffd700 : 0x2c2f33);
+    
+    // Titre & Statut
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('eagle', '🦅')} ${pt('title', lang)}\n${statusEmoji} **${statusText}**`));
+    
+    // Infos (Prix & Expiration)
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\n${em('ic_credit', '💎')} **${pt('price', lang)}:** $3.40/month ${em('dot_white', '·')} ${em('clock', '📅')} **${pt('expires', lang)}:** ${expiry}`));
+    
+    // Liste des features (avec l'émoji custom injecté)
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\n### ${em('hubSparkle', '✨')} **${pt('includedFeatures', lang)}**\n${pt('featuresList', lang, { check: customCheck })}`));
+    
+    // Footer (corrigé sans doublon)
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\n-# ${pt('featuresFooter', lang, { status: statusValue })} • ${guildName || 'ARCHON CG-223'}`));
+    
+    return c;
 }
 
 module.exports = {
@@ -53,43 +75,30 @@ module.exports = {
         const gid = interaction.guild?.id;
         const sub = interaction.options.getSubcommand();
         const lang = pl(client.getServerSettings?.(gid) || {});
+        const guildName = interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223';
 
         if (sub === 'status') {
             const premium = isPremium(db, gid);
-            const days = daysLeft(db, gid);
-
-            const embed = new EmbedBuilder()
-                .setColor(premium ? 0xffd700 : 0x2c2f33)
-                .setAuthor({ name: `🦅 ARCHON CG-223 // PREMIUM GATE`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(premium ? pt('statusActive', lang, { emoji: '⭐' }) : pt('statusInactive', lang, { emoji: '🔒' }))
-                .setDescription(premium ? pt('descActive', lang) : pt('descInactive', lang))
-                .addFields(
-                    { name: pt('fStatus', lang), value: premium ? pt('vActive', lang) : pt('vInactive', lang), inline: true },
-                    { name: pt('fExpires', lang), value: days === null ? (premium ? pt('lifetime', lang) : '—') : pt('vDays', lang, { days }), inline: true },
-                    { name: pt('fPrice', lang), value: '$3.40/month', inline: true }
-                );
+            const card = buildPremiumCard(client, premium, daysLeft(db, gid), lang, guildName);
 
             if (!premium) {
-                embed.addFields({ name: pt('featuresLabel', lang), value: pt('featuresList', lang), inline: false });
-                const row2 = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setLabel(pt('btnSubscribe', lang)).setStyle(ButtonStyle.Link).setURL('https://bamako-steel-dev.xyz/premium'),
-                    new ButtonBuilder().setCustomId('premium_activate').setLabel(pt('btnHaveCode', lang)).setStyle(ButtonStyle.Secondary)
-                );
-                return interaction.reply({ embeds: [embed], components: [row2], flags: 64 });
+                card.addActionRowComponents(new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setLabel(pt('btnSubscribe', lang)).setStyle(ButtonStyle.Link).setURL('https://bamako-steel-dev.xyz/premium').setEmoji(iconObj('ic_credit', null, '💎')),
+                    new ButtonBuilder().setCustomId('premium_activate').setLabel(pt('btnActivate', lang)).setStyle(ButtonStyle.Secondary).setEmoji(iconObj('ic_key', null, '🔑'))
+                ));
+            } else {
+                card.addActionRowComponents(new ActionRowBuilder().addComponents(
+                    new ButtonBuilder().setLabel(pt('btnManage', lang)).setStyle(ButtonStyle.Link).setURL('https://bamako-steel-dev.xyz/premium').setEmoji(iconObj('ic_settings', null, '⚙️'))
+                ));
             }
-            return interaction.reply({ embeds: [embed], flags: 64 });
+            return interaction.reply({ components: [card], flags: MessageFlags.IsComponentsV2 | 64 });
         }
 
         if (sub === 'features') {
             const premium = isPremium(db, gid);
-            const features = require('../lib/premium-features');
-            const embed = new EmbedBuilder()
-                .setColor(0xffd700)
-                .setTitle(pt('featuresTitle', lang, { emoji: '✨' }))
-                .setDescription(pt('planIncludes', lang))
-                .addFields(features.map(f => ({ name: `${f.emoji} ${f.name}`, value: f.value, inline: true })))
-                .setFooter({ text: pt('featuresFooter', lang, { status: premium ? pt('vActive', lang) : pt('vInactive', lang) }) });
-            return interaction.reply({ embeds: [embed], flags: 64 });
+            const card = buildPremiumCard(client, premium, daysLeft(db, gid), lang, guildName);
+            card.setAccentColor(0xffd700);
+            return interaction.reply({ components: [card], flags: MessageFlags.IsComponentsV2 | 64 });
         }
 
         if (sub === 'activate') {
@@ -103,18 +112,15 @@ module.exports = {
             db.prepare('UPDATE premium_codes SET used = 1, used_by = ?, used_at = ? WHERE code = ?')
                 .run(interaction.user.id, Math.floor(Date.now() / 1000), code);
 
-            const daysTxt = codeRow.days === 0 ? pt('lifetime', lang) : pt('vDays', lang, { days: codeRow.days });
-            return interaction.reply({ embeds: [new EmbedBuilder()
-                .setColor(0xffd700)
-                .setTitle(pt('activatedTitle', lang))
-                .setDescription(pt('activatedDesc', lang, { server: interaction.guild.name, days: daysTxt }))
-                .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
-            ], flags: 64 });
+            const daysTxt = codeRow.days === 0 ? pt('lifetime', lang) : `${codeRow.days} days`;
+            const c = new ContainerBuilder().setAccentColor(0x2ecc71);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_ok', '✅')} ${pt('activatedTitle', lang)}\n\n${pt('activateDesc', lang, { server: interaction.guild.name, days: daysTxt })}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON CG-223 • BAMAKO_223 🇲🇱`));
+            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
         }
 
         if (sub === 'code') {
-            if (interaction.user.id !== process.env.OWNER_ID)
-                return interaction.reply({ content: pt('ownerOnly', lang), flags: 64 });
+            if (interaction.user.id !== process.env.OWNER_ID) return interaction.reply({ content: pt('ownerOnly', lang), flags: 64 });
             const days = interaction.options.getInteger('days');
             const amount = interaction.options.getInteger('amount') || 1;
             const codes = [];
@@ -123,47 +129,43 @@ module.exports = {
                 db.prepare('INSERT OR IGNORE INTO premium_codes (code, days) VALUES (?,?)').run(code, days);
                 codes.push(code);
             }
-            const duration = days === 0 ? pt('lifetime', lang) : pt('vDays', lang, { days });
-            return interaction.reply({ embeds: [new EmbedBuilder()
-                .setColor(0xffd700)
-                .setTitle(pt('codesGenTitle', lang))
-                .setDescription(pt('codesGenDesc', lang, { duration, codes: codes.join('\n') }))
-                .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
-            ], flags: 64 });
+            const duration = days === 0 ? pt('lifetime', lang) : `${days} days`;
+            const c = new ContainerBuilder().setAccentColor(0xffd700);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_key', '🔑')} ${pt('codesGenTitle', lang)}\n\n${pt('codesGenDesc', lang, { duration, codes: codes.join('\n') })}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON CG-223 • BAMAKO_223 🇲🇱`));
+            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
         }
 
         if (sub === 'codes') {
-            if (interaction.user.id !== process.env.OWNER_ID)
-                return interaction.reply({ content: pt('ownerOnly', lang), flags: 64 });
+            if (interaction.user.id !== process.env.OWNER_ID) return interaction.reply({ content: pt('ownerOnly', lang), flags: 64 });
             const codes = db.prepare('SELECT * FROM premium_codes WHERE used = 0 ORDER BY created_at DESC LIMIT 20').all();
             if (!codes.length) return interaction.reply({ content: pt('codesNone', lang), flags: 64 });
             const list = codes.map(c => c.code + ' (' + (c.days === 0 ? pt('lifetime', lang) : c.days + 'd') + ')').join('\n');
-            return interaction.reply({ embeds: [new EmbedBuilder()
-                .setColor(0x00aaff)
-                .setTitle(pt('codesListTitle', lang, { count: codes.length }))
-                .setDescription('```\n' + list + '\n```')
-                .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
-            ], flags: 64 });
+            const c = new ContainerBuilder().setAccentColor(0x00aaff);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_list', '📋')} ${pt('codesListTitle', lang, { count: codes.length })}\n\n\`\`\`\n${list}\n\`\`\``));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON CG-223 • BAMAKO_223 🇲🇱`));
+            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
         }
 
         if (sub === 'grant') {
-            if (interaction.user.id !== process.env.OWNER_ID)
-                return interaction.reply({ content: pt('ownerOnly', lang), flags: 64 });
+            if (interaction.user.id !== process.env.OWNER_ID) return interaction.reply({ content: pt('ownerOnly', lang), flags: 64 });
             const targetGid = interaction.options.getString('guild');
             const days = interaction.options.getInteger('days');
             const expiresAt = days === 0 ? null : Math.floor(Date.now() / 1000) + (days * 86400);
             db.prepare('INSERT OR REPLACE INTO premium (guild_id, expires_at, plan, payment_method, activated_by) VALUES (?,?,?,?,?)')
                 .run(targetGid, expiresAt, days === 0 ? 'lifetime' : 'monthly', 'manual', interaction.user.id);
-            const daysTxt = days === 0 ? pt('lifetime', lang) : pt('vDays', lang, { days });
-            return interaction.reply({ content: pt('granted', lang, { guild: targetGid, days: daysTxt }), flags: 64 });
+            const daysTxt = days === 0 ? pt('lifetime', lang) : `${days} days`;
+            const c = new ContainerBuilder().setAccentColor(0x2ecc71);
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_ok', '✅')} Premium Granted\n\n${pt('granted', lang, { guild: targetGid, days: daysTxt })}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON CG-223 • BAMAKO_223 🇲🇱`));
+            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
         }
     },
 
     run: async (client, message, args, db) => {
         const gid = message.guild?.id ?? 'DM';
-        const premium = isPremium(db, gid);
         const lang = pl(client.getServerSettings?.(gid) || {});
-        return message.reply(premium ? pt('runActive', lang) : pt('runInactive', lang));
+        return message.reply(isPremium(db, gid) ? pt('runActive', lang) : pt('runInactive', lang));
     },
 
     isPremium,
