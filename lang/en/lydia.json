@@ -47,8 +47,8 @@
   "statusStandbyDesc": "I'm taking a quick nap right now. 💤 Use the command below to wake me up!",
   "statusStandbyBody": "**How to wake me:**\n> `{prefix}lydia on` or `/lydia on`",
   "onAuthor": "AI chat is on here",
-  "onDesc": "**{botName}** now answers in #{channel}.\n\n",
-  "onBody": "**Chat methods:**\n• Mention @{botName}\n• Type `{prefix}ai [question]`\n• Say `{botName} [question]`\n\n🧠 Memory: `[MEMORY: key | value]`\n🕐 Reminders: `[REMIND: 5 min | message]`\n🌐 Universal language auto-detection",
+  "onDesc": "Archon is ready to answer your questions in **#{channel}**.\n\n**How to chat with him:**\n• Mention him: `@Archon [your question]`\n• Or just start with his name: `Archon [your question]`",
+  "onBody": "\n**Special tags (inside your message):**\n🧠 **Save a memory:** `[MEMORY: key | value]`\n⏱️ **Set a reminder:** `[REMIND: 5 min | message]`\n\n🌐 *Auto-detects your language.*\n*Example: `Archon what's the weather like?`*",
   "onFooter": "Ready to help",
   "offAuthor": "AI chat is off here",
   "offDesc": "**{botName}** no longer answers in #{channel}.\n\n",
@@ -113,5 +113,6 @@
   "memory_card_title": "🧠 What I remember about {user}",
   "memory_empty_title": "📭 Nothing saved yet",
   "memory_count": "{n} saved",
-  "memory_saved_on": "Saved {date}"
+  "memory_saved_on": "Saved {date}",
+  "onTitle": "AI Chat is active here"
 }

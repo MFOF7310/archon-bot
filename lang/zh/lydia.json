@@ -47,8 +47,8 @@
   "statusStandbyDesc": "我现在正在小睡。💤 使用下面的命令叫醒我！",
   "statusStandbyBody": "**如何叫醒我：**\n> `{prefix}lydia on` 或 `/lydia on`",
   "onAuthor": "AI 聊天已在此开启",
-  "onDesc": "**{botName}** 现在会在 #{channel} 回复。\n\n",
-  "onBody": "**聊天方式：**\n• @ 提及 {botName}\n• 输入 `{prefix}ai [问题]`\n• 直接说 `{botName} [问题]`\n\n🧠 记忆：`[MEMORY: 键 | 值]`\n🕐 提醒：`[REMIND: 5 min | 内容]`\n🌐 全语言自动检测",
+  "onDesc": "Archon 已准备好在这里回答你的问题 **#{channel}**。\n\n**如何与他交流：**\n• 提及他：`@Archon [你的问题]`\n• 或以他的名字开头：`Archon [你的问题]`",
+  "onBody": "\n**特殊标签（在消息中）：**\n🧠 **保存记忆：** `[MEMORY: 键 | 值]`\n⏱️ **设置提醒：** `[REMIND: 5 分钟 | 消息]`\n\n🌐 *自动检测语言已开启。*\n*示例：`Archon 市场是如何运作的？`*",
   "onFooter": "随时待命",
   "offAuthor": "AI 聊天已在此关闭",
   "offDesc": "**{botName}** 不再在 #{channel} 回复。\n\n",
@@ -113,5 +113,6 @@
   "memory_card_title": "🧠 我记得的关于 {user} 的事",
   "memory_empty_title": "📭 还没有保存任何内容",
   "memory_count": "已保存 {n} 条",
-  "memory_saved_on": "保存于 {date}"
+  "memory_saved_on": "保存于 {date}",
+  "onTitle": "AI 聊天已在此处激活"
 }

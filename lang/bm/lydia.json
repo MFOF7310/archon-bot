@@ -15,5 +15,8 @@
   "thinkingEmbed": {
     "label": "Thinking…",
     "text": "One sec, looking at that…"
-  }
+  },
+  "onTitle": "AI chat bɛ baara kɛ yan",
+  "onDesc": "Archon sɔnna ka i ka ɲininkaliw jaabi **#{channel}** kɔnɔ.\n\n**I bɛ kuma ɲɔgɔnya kɛ cogo min na Archon fɛ:**\n• Aw ye a xɔn: `@Archon [i ka ɲininkali]`\n• Walima i bɛ a tɔgɔ fɔ: `Archon [i ka ɲininkali]`",
+  "onBody": "\n**Baarakɛminɛn kɛrɛnkɛrɛnnenw (i ka message kɔnɔ):**\n🧠 **Hakili mara:** `[MEMORY: key | value]`\n⏱️ **Ladonni kɛ:** `[REMIND: miniti 5 | message]`\n\n🌐 *Kan caman dɔnni bɛ baara kɛ.*\n*Misali: `Archon sugu tabiya bɛ baara cogodi ?`*"
 }
