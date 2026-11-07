@@ -1,0 +1,8 @@
+{
+  "loading": "Traduction bɛ kɛ...",
+  "error": "Traduction ma se. Aw ye a lajɛ tuguni!",
+  "translated": "Traduit",
+  "original": "Original",
+  "usage": "❌ Baara: `.translate hello fr` walima `.translate bonjour en fr`",
+  "provideText": "❌ Aw ye texte di min bɛ traduit."
+}

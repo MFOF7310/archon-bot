@@ -1,0 +1,8 @@
+{
+  "loading": "正在翻译...",
+  "error": "翻译失败。请重试！",
+  "translated": "翻译后",
+  "original": "原文",
+  "usage": "❌ 用法：`.translate hello fr` 或 `.translate bonjour en fr`",
+  "provideText": "❌ 请提供要翻译的文本。"
+}

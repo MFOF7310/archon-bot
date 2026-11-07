@@ -1,0 +1,8 @@
+{
+  "loading": "Translating...",
+  "error": "Translation failed. Try again!",
+  "translated": "Translated",
+  "original": "Original",
+  "usage": "❌ Usage: `.translate hello fr` or `.translate bonjour en fr`",
+  "provideText": "❌ Provide text to translate."
+}

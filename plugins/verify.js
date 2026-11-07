@@ -408,7 +408,7 @@ module.exports = {
             ].join('\n');
 
             return interaction.reply(toV2({
-                embeds: [new EmbedBuilder().setColor(enabled ? 0x00cc44 : 0x888888).setTitle(`${em('ic_gate', '🛡️')} ${vt(lang, 'gateTitle').replace('🛡️', '').trim()}`).setDescription(desc).setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
+                embeds: [new EmbedBuilder().setColor(enabled ? 0x00cc44 : 0x888888).setTitle(`${em('ic_gate', '🛡️')} ${vt(lang, 'gateTitle')}`).setDescription(desc).setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })],
                 flags: 64
             }));
         }

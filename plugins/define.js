@@ -46,26 +46,13 @@ const PALETTE = {
     warning: 0xfdcb6e,
 };
 
-function fetchDict(word) {
-    return new Promise((resolve, reject) => {
-        const req = https.get(
-            `https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`,
-            { timeout: 10000 },
-            (res) => {
-                let data = '';
-                res.on('data', chunk => data += chunk);
-                res.on('end', () => {
-                    try {
-                        if (res.statusCode === 404) return resolve([]);
-                        if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
-                        resolve(JSON.parse(data));
-                    } catch (e) { reject(e); }
-                });
-            }
-        );
-        req.on('error', reject);
-        req.on('timeout', () => { req.destroy(); reject(new Error('Timeout')); });
+async function fetchDict(word) {
+    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
     });
+    if (res.status === 404) return [];
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
 }
 
 function getLang(client, interactionOrMessage, usedPrefix, overrideLang) {
@@ -93,36 +80,36 @@ function getLang(client, interactionOrMessage, usedPrefix, overrideLang) {
 
 function buildIntelligenceCard(entry, t, word, timestamp) {
     const c = new ContainerBuilder().setAccentColor(PALETTE.primary);
-    const audioUrl = entry.phonetics?.find(p => p.audio)?.audio;
-    const phoneticTxt = entry.phonetic ? `\` ${entry.phonetic} \`` : '\` N/A \`';
+    
+    // Wiktionary renvoie les données par langue (ex: data.en)
+    const enData = entry.en || [];
+    
+    // Header
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('note', '📖')} ${word.toUpperCase()}`));
 
-    let header = `## ${em('note', '📖')} ${entry.word.toUpperCase()}\n**${t.phonetic}:** ${phoneticTxt}`;
-    if (audioUrl) header += `  •  [${em('mc_volume_up', '🔊')} ${t.audio || 'Play'}](${audioUrl})`;
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(header));
-
-    const meanings = entry.meanings?.slice(0, 4) || [];
-
-    if (meanings.length > 0) {
+    if (enData.length > 0) {
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${em('ic_general', '📚')} ${t.meanings} [${meanings.length}]\n*${t.multipleMeanings(meanings.length)}*`));
-
-        meanings.forEach((meaning, idx) => {
+        
+        enData.forEach((meaning) => {
             const defs = meaning.definitions?.slice(0, 2) || [];
             if (defs.length === 0) return;
 
             let fieldValue = `**${meaning.partOfSpeech ? meaning.partOfSpeech.toUpperCase() : 'DEFINITION'}**\n`;
             defs.forEach((def) => {
                 fieldValue += `${em('dot_white', '•')} ${def.definition}\n`;
-                if (def.example) fieldValue += `> *"${def.example}"*\n`;
-                if (def.synonyms?.length > 0) fieldValue += `> \`SYN:\`  ${def.synonyms.slice(0, 3).join(' · ')}\n`;
+                if (def.examples && def.examples.length > 0) {
+                    fieldValue += `> *"${def.examples[0]}"*\n`;
+                }
                 fieldValue += '\n';
             });
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(fieldValue.trim()));
         });
+    } else {
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t.notFound(word)));
     }
 
     const queryTime = ((Date.now() - timestamp.getTime()) / 1000).toFixed(2);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t.footer(word)}  |  Free Dictionary API  |  ⏱️ ${queryTime}s`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t.footer(word)}  |  Wiktionary API  |  ⏱️ ${queryTime}s`));
 
     return c;
 }
@@ -164,7 +151,7 @@ module.exports = {
 
         try {
             const data = await fetchDict(word);
-            if (!Array.isArray(data) || data.length === 0) {
+            if (!data || !data.en || data.en.length === 0) {
                 const notFoundEmbed = new EmbedBuilder()
                     .setColor(PALETTE.accent)
                     .setTitle('\`[ NOT FOUND ]\`')
@@ -200,7 +187,7 @@ module.exports = {
 
         try {
             const data = await fetchDict(word);
-            if (!Array.isArray(data) || data.length === 0) {
+            if (!data || !data.en || data.en.length === 0) {
                 const notFoundEmbed = new EmbedBuilder()
                     .setColor(PALETTE.accent)
                     .setTitle('\`[ NOT FOUND ]\`')

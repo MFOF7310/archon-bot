@@ -1,0 +1,8 @@
+{
+  "loading": "جاري الترجمة...",
+  "error": "فشلت الترجمة. حاول مرة أخرى!",
+  "translated": "المترجمة",
+  "original": "الأصلية",
+  "usage": "❌ الاستخدام: `.translate hello fr` أو `.translate bonjour en fr`",
+  "provideText": "❌ يرجى تقديم النص المراد ترجمته."
+}

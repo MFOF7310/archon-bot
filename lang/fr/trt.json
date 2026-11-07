@@ -1,0 +1,8 @@
+{
+  "loading": "Traduction en cours...",
+  "error": "Échec de la traduction. Réessayez !",
+  "translated": "Traduit",
+  "original": "Original",
+  "usage": "❌ Utilisation : `.translate hello fr` ou `.translate bonjour en fr`",
+  "provideText": "❌ Fournissez un texte à traduire."
+}
