@@ -26,11 +26,11 @@ const nameOf = (code) => `${EMOJIS[`flag_${code}`] || FLAGS[code] || ''} ${NAMES
 const shown = (word) => String(word || '').replace(/[`*_~|\\<>@#]/g, '').slice(0, 24) || '?';
 
 // Saves what the member typed or picked. Returns 'set', 'reset', 'unknown', 'error', or null when nothing was asked.
-function apply(userId, word) {
+function apply(userId, guildId, word) {
     if (!word) return null;
     try {
-        if (RESET.includes(word)) { memberLang.reset(userId); return 'reset'; }
-        if (WORDS[word]) { memberLang.set(userId, WORDS[word]); return 'set'; }
+        if (RESET.includes(word)) { memberLang.reset(userId, guildId); return 'reset'; }
+        if (WORDS[word]) { memberLang.set(userId, guildId, WORDS[word]); return 'set'; }
         return 'unknown';
     } catch (e) {
         console.error('[MYLANG] save failed:', e.message);
@@ -40,7 +40,7 @@ function apply(userId, word) {
 
 function buildCard(client, userId, guildId, ctx, outcome = null, word = '') {
     const serverLang = (() => { try { return (guildId && client.getServerSettings?.(guildId)?.language) || 'auto'; } catch { return 'auto'; } })();
-    const mine = memberLang.get(userId);
+    const mine = memberLang.get(userId, guildId || 'DM');
     const lang = mine || pickLang(client, guildId, ctx, userId);
     const L = (k, v) => t('mylang.' + k, lang, v);
     const cmd = cmdSlash(client, 'mylang', { guild: null });
@@ -93,13 +93,13 @@ module.exports = {
 
     async run(client, message, args) {
         const word = String((args || [])[0] || '').trim().toLowerCase();
-        const outcome = apply(message.author.id, word);
+        const outcome = apply(message.author.id, message.guild?.id || 'DM', word);
         await message.reply(buildCard(client, message.author.id, message.guild?.id || null, message, outcome, word)).catch(() => {});
     },
 
     async execute(interaction, client) {
         const word = String(interaction.options?.getString('language') || '').trim().toLowerCase();
-        const outcome = apply(interaction.user.id, word);
+        const outcome = apply(interaction.user.id, interaction.guildId || 'DM', word);
         const card = buildCard(client, interaction.user.id, interaction.guildId || null, interaction, outcome, word);
         await interaction.reply({ ...card, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral }).catch(() => {});
     },

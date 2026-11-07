@@ -250,7 +250,7 @@ client.detectLanguage = (usedCommand, guildId = null) => {
     catch { return 'en'; }
 };
 // The language a member chose with /mylang, or null. A reply meant for that one person uses it on Auto servers and in DMs.
-const memberChoice = (userId) => { try { return require('./lib/member-lang').get(userId); } catch { return null; } };
+const memberChoice = (userId, guildId = 'DM') => { try { return require('./lib/member-lang').get(userId, guildId); } catch { return null; } };
 client.calculateLevel = calculateLevel;
 client.formatNumber = formatNumber;
 
@@ -3983,7 +3983,7 @@ if (message.content && message.content.length > 4000) {
     let commandLang = require('./lib/pick-lang').pickLang(client, message.guild?.id, null, message.author.id);
     // A language the member chose with .mylang applies when the server is on Auto (the explicit server language, checked just below, still wins)
     try {
-        const _myLang = require('./lib/member-lang').get(message.author.id);
+        const _myLang = require('./lib/member-lang').get(message.author.id, message.guild?.id || 'DM');
         if (_myLang && (_myLang === 'en' || _myLang === 'fr' || fs.existsSync(path.join(__dirname, 'lang', _myLang, `${command.name}.json`)))) commandLang = _myLang;
     } catch (_) { /* a problem here must never stop a command */ }
     // An explicit server language wins: en/fr for every plugin, other languages only
@@ -4182,7 +4182,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                 // /mylang was ignored here: on Auto servers and in DMs the member's own choice now wins, with the same rule as prefix commands
                 // (older plugins only know en/fr, so another language is used only when the plugin ships lang/<code>/<name>.json)
                 if (!_srvSet) {
-                    const _mine = memberChoice(interaction.user.id);
+                    const _mine = memberChoice(interaction.user.id, interaction.guildId || 'DM');
                     if (_mine && (_mine === 'en' || _mine === 'fr' || fs.existsSync(path.join(__dirname, 'lang', _mine, `${command.name}.json`)))) lang = _mine;
                 }
 
@@ -4472,7 +4472,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         const _ssH = interaction.guild ? (client.getServerSettings?.(interaction.guild.id) || {}) : {};
         const _langH = _ssH.language && _ssH.language !== 'auto'
             ? _ssH.language
-            : (memberChoice(interaction.user.id) || ['fr', 'zh', 'ar'].find((l) => String(interaction.locale || '').toLowerCase().startsWith(l)) || 'en');
+            : (memberChoice(interaction.user.id, interaction.guildId || 'DM') || ['fr', 'zh', 'ar'].find((l) => String(interaction.locale || '').toLowerCase().startsWith(l)) || 'en');
         try {
             await interaction.reply(require('./lib/welcome-help').buildWelcomeHelp({
                 lang: _langH, prefix: _ssH.prefix || process.env.PREFIX || '.', guildName: interaction.guild?.name,
@@ -4526,7 +4526,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     // ================= PROFILE BUTTON HANDLER (COMPOSITE KEY AWARE) =================
     if (interaction.isButton() && interaction.customId.startsWith('welcome_profile_')) {
         const _ssP = interaction.guild ? (client.getServerSettings?.(interaction.guild.id) || {}) : {};
-        const lang = _ssP.language && _ssP.language !== 'auto' ? _ssP.language : (memberChoice(interaction.user.id) || (interaction.locale?.startsWith('fr') ? 'fr' : 'en'));
+        const lang = _ssP.language && _ssP.language !== 'auto' ? _ssP.language : (memberChoice(interaction.user.id, interaction.guildId || 'DM') || (interaction.locale?.startsWith('fr') ? 'fr' : 'en'));
         
         try {
             const clicker = interaction.user;
@@ -4720,7 +4720,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         afkUsers.set(targetId, afkData);
         
         const _ssA = interaction.guild ? (client.getServerSettings?.(interaction.guild.id) || {}) : {};
-        const lang = _ssA.language && _ssA.language !== 'auto' ? _ssA.language : (memberChoice(interaction.user.id) || (interaction.locale?.startsWith('fr') ? 'fr' : 'en'));
+        const lang = _ssA.language && _ssA.language !== 'auto' ? _ssA.language : (memberChoice(interaction.user.id, interaction.guildId || 'DM') || (interaction.locale?.startsWith('fr') ? 'fr' : 'en'));
         const replyMsg = t('index.afk_reminder', lang, { username: afkData.username });
         
         await interaction.reply({ content: replyMsg, flags: 1 << 6 });
