@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits, ChannelType, ComponentType, StringSelectMenuBuilder, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { iconObj } = require('../lib/ui/icons');
 const { icon } = require('../lib/ui/icons');
 
@@ -138,7 +139,7 @@ function createConfirmEmbed(settings, lang, client) {
     const embed = new EmbedBuilder()
         .setColor('#e74c3c')
         .setAuthor({ name: `${t.title} • ${t.confirmationRequired}`, iconURL: client.user.displayAvatarURL() })
-        .setTitle('📡 Broadcast preview')
+        .setTitle(`${em('ic_satellite', '📡')} Broadcast preview`)
         .setDescription(description)
         .setFooter({ text: `${t.footer} • v${version}` })  // ✅ DYNAMIC VERSION
         .setTimestamp();

@@ -50,5 +50,8 @@
   "btn_vote": "Vote",
   "btn_dashboard": "Dashboard",
   "btn_add": "Add to server",
-  "prefix_usage": "Pick one: `ping`, `stats`, `activity`, `about` or `invite`. For example `{prefix}bot ping`."
+  "prefix_usage": "Pick one: `ping`, `stats`, `activity`, `about` or `invite`. For example `{prefix}bot ping`.",
+  "alive_title": "System Status",
+  "alive_status": "Status",
+  "alive_resources": "System Resources"
 }

@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const axios = require('axios');
 
 // Terminal colors for logging
@@ -447,7 +448,7 @@ async function handleVideoInfo(context, input, isSlash) {
                 inline: true
             },
             { 
-                name: '📡 **Channel Information**',
+                name: `${em('ic_satellite', '📡')} **Channel Information**`,
                 value: [
                     `📺 **Channel** ─ [${video.channelName}](${video.channelUrl})`,
                     `📅 **Published** ─ ${formatDate(video.publishedAt)}`,

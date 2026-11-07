@@ -50,5 +50,8 @@
   "btn_vote": "تصويت",
   "btn_dashboard": "لوحة التحكم",
   "btn_add": "إضافة إلى الخادم",
-  "prefix_usage": "اختر واحداً: `ping` أو `stats` أو `activity` أو `about` أو `invite`. مثال: `{prefix}bot ping`."
+  "prefix_usage": "اختر واحداً: `ping` أو `stats` أو `activity` أو `about` أو `invite`. مثال: `{prefix}bot ping`.",
+  "alive_title": "حالة النظام",
+  "alive_status": "الحالة",
+  "alive_resources": "موارد النظام"
 }

@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 // ═══════════════════════════════════════════════════════
 //  📡 CONTACT v2.0 — NEURAL TRANSMISSION SYSTEM
@@ -88,7 +89,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
 
     const priorityEmbed = new EmbedBuilder()
         .setColor('#00f0ff')
-        .setAuthor({ name: `📡 ${t.title}`, iconURL: client.user.displayAvatarURL() })
+        .setAuthor({ name: `${em('ic_satellite', '📡')} ${t.title}`, iconURL: client.user.displayAvatarURL() })
         .setDescription(
             '```ansi\n' +
             '\u001b[1;36m\u25b8 AGENT     \u001b[0m' + user.username + '\n' +
@@ -121,7 +122,7 @@ async function handleContact(client, context, feedback, lang, isSlash) {
 
         const confirmEmbed = new EmbedBuilder()
             .setColor(priority.color)
-            .setAuthor({ name: `📡 ${t.title} \u00b7 ${t.confirmTitle}`, iconURL: user.displayAvatarURL() })
+            .setAuthor({ name: `${em('ic_satellite', '📡')} ${t.title} \u00b7 ${t.confirmTitle}`, iconURL: user.displayAvatarURL() })
             .setDescription(
                 '```ansi\n' +
                 priority.ansi + '\u25b8 PRIORITY  \u001b[0m' + priority.emoji + ' ' + priority.label[lang] + '\n' +

@@ -19,7 +19,7 @@ const CHANNEL_DEFS = {
     daily:     { col: 'dailyChannel',              dbcol: 'daily_channel',              env: 'DAILY_CHANNEL_ID',              emoji: 'yellowcrown', label: 'Daily Channel' },
     shop:      { col: 'shopChannel',               dbcol: 'shop_channel',               env: 'SHOP_CHANNEL_ID',               emoji: 'boostericon', label: 'Shop Channel' },
     rules:     { col: 'rulesChannel',              dbcol: 'rules_channel',              env: 'RULES_CHANNEL_ID',              emoji: 'rules_icon', label: 'Rules Channel' },
-    ticket:    { col: 'ticketTranscriptChannel',   dbcol: 'ticket_transcript_channel',  env: 'TICKET_TRANSCRIPT_CHANNEL_ID',  emoji: 'ownerroleicon', label: 'Ticket Logs Channel' },
+    ticket:    { col: 'ticketTranscriptChannel',   dbcol: 'ticket_transcript_channel',  env: 'TICKET_TRANSCRIPT_CHANNEL_ID',  emoji: 'ticket', label: 'Ticket Logs Channel' },
     levelup:   { col: 'levelupChannel',            dbcol: 'levelup_channel',            env: 'LEVELUP_CHANNEL_ID',            emoji: 'greencrown', label: 'Level-Up Channel' },
     updates:   { col: 'updatesChannel',            dbcol: 'updates_channel',            env: 'UPDATES_CHANNEL_ID',            emoji: 'boostericon', label: 'Bot Updates Channel' },
 };

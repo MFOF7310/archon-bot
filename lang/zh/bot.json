@@ -50,5 +50,8 @@
   "btn_vote": "投票",
   "btn_dashboard": "控制面板",
   "btn_add": "添加到服务器",
-  "prefix_usage": "请选择：`ping`、`stats`、`activity`、`about` 或 `invite`。例如 `{prefix}bot ping`。"
+  "prefix_usage": "请选择：`ping`、`stats`、`activity`、`about` 或 `invite`。例如 `{prefix}bot ping`。",
+  "alive_title": "系统状态",
+  "alive_status": "状态",
+  "alive_resources": "系统资源"
 }

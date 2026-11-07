@@ -4,6 +4,7 @@
 // Refresh buttons use customId "bot:<sub>" and are routed from index.js, so they keep working after a restart.
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { performance } = require('perf_hooks');
+const os = require('os');
 const { t, slashLang, LANGS } = require('../lib/i18n');
 const v2 = require('../lib/games/v2');
 const ui = require('../lib/games/ui');
@@ -19,6 +20,7 @@ const COLOR = { ok: 0x2ecc71, warn: 0xf1c40f, bad: 0xe74c3c, wait: 0x95a5a6, inf
 // Prefix words for each subcommand. Words already used by other plugins (info, link, status, credits…) are left out.
 const SUB_ALIASES = {
     ping: ['ping', 'pong', 'latency', 'lag', 'pongue'],
+    alive: ['alive', 'status', 'health', 'uptime', 'enligne', 'etat', 'sante'],
     stats: ['stats', 'statistiques', 'sysinfo', 'systemstats', 'diagnostics'],
     activity: ['botstats', 'bs', 'bstats', 'archonstats', 'activity', 'activite'],
     about: ['about', 'apropos', 'botinfo'],
@@ -201,9 +203,53 @@ function inviteCard(client, lang) {
     ]);
 }
 
+
+// ─── Alive (System Health) ───
+function aliveCard(client, lang, db, guildName) {
+    const _ = tr(lang);
+    const t0 = performance.now();
+    const uptimeSec = process.uptime();
+    const mem = process.memoryUsage();
+    const heapUsed = Math.round(mem.heapUsed / 1024 / 1024);
+    const heapTotal = Math.round(mem.heapTotal / 1024 / 1024);
+    const sysTotal = Math.round(os.totalmem() / 1024 / 1024);
+    const sysFree = Math.round(os.freemem() / 1024 / 1024);
+    const cpus = os.cpus();
+    const wsPing = Math.round(client.ws?.ping ?? 0);
+    const wsDot = wsPing < 150 ? em('ping_ok', '🟢') : wsPing < 300 ? em('ping_warn', '🟡') : em('ping_bad', '🔴');
+    
+    const statusEmojis = { online: em('ping_ok', '🟢'), idle: em('ping_warn', '🟡'), dnd: em('ping_bad', '🔴'), offline: '⚫' };
+    const botStatus = statusEmojis[client.presence?.status] || em('ping_ok', '🟢');
+
+    let servers = client.guilds.cache.size;
+    try { servers = db.prepare("SELECT COUNT(DISTINCT guild_id) AS c FROM users WHERE guild_id NOT IN ('DM','telegram')").get().c || servers; } catch {}
+
+    return v2.card(0x2ecc71, [
+        { text: `## ${em('ic_alive', '📡')} ${_('alive_title')}\n*${guildName}*` },
+        { rule: true },
+        { text: 
+            `${botStatus} **${_('alive_status')}** · *${(client.presence?.status || 'online').toUpperCase()}*\n` +
+            `${em('clock', '🕐')} **${_('uptime')}** · ${uptime(uptimeSec)}\n` +
+            `${em('ic_satellite', '📡')} **${_('ping_gateway')}** · ${wsPing}ms ${wsDot}\n` +
+            `${em('dashboard', '🌐')} **${_('servers')}** · ${servers}`
+        },
+        { rule: true },
+        { text: 
+            `**${em('developericon', '💻')} ${_('alive_resources')}**\n` +
+            `${em('charts', '📊')} **${_('memory')}** · ${heapUsed}/${heapTotal} MB\n` +
+            `${em('ic_settings', '⚙️')} ${(cpus[0]?.model || 'CPU').split('@')[0].trim().slice(0, 28)} (${cpus.length} cores)\n` +
+            `${em('eagle', '🐧')} ${os.platform()} ${os.arch()} · Node **${process.version}**`
+        },
+        { rule: true },
+        { row: new ActionRowBuilder().addComponents(actBtn(_('btn_refresh'), 'bot:alive', 'ic_refresh', '🔄')) },
+        { text: foot(client) }
+    ]);
+}
+
 async function build(sub, client, lang, db, guild, userId) {
     switch (sub) {
         case 'ping': return pingCard(client, lang, db);
+        case 'alive': return aliveCard(client, lang, db, guild?.name?.toUpperCase() || 'ARCHON');
         case 'stats': return statsCard(client, lang, db);
         case 'activity': return activityCard(client, lang, db, guild);
         case 'about': return aboutCard(client, lang, userId);
@@ -216,7 +262,7 @@ async function build(sub, client, lang, db, guild, userId) {
 const lastRun = new Map();
 async function handleButton(interaction, client) {
     const sub = interaction.customId.split(':')[1];
-    if (!['ping', 'stats'].includes(sub)) return interaction.deferUpdate().catch(() => {});
+    if (!['ping', 'stats', 'alive'].includes(sub)) return interaction.deferUpdate().catch(() => {});
     const key = interaction.message.id;
     if (Date.now() - (lastRun.get(key) || 0) < REFRESH_PAUSE_MS) return interaction.deferUpdate().catch(() => {});
     if (lastRun.size > 500) lastRun.clear();
@@ -229,6 +275,7 @@ async function handleButton(interaction, client) {
 const desc = (en, fr, zh) => ({ en, loc: { fr, 'zh-CN': zh } });
 const SUB_DESC = {
     ping: desc('Check how fast ARCHON is answering', 'Vérifie la vitesse de réponse d’ARCHON', '查看 ARCHON 的响应速度'),
+    alive: desc('System health and resources', 'Santé du système et ressources', '系统健康状况和资源'),
     stats: desc('See how ARCHON is doing across all servers', 'Vois comment va ARCHON sur tous les serveurs', '查看 ARCHON 在所有服务器的状态'),
     activity: desc('ARCHON’s level and activity in this server', 'Le niveau et l’activité d’ARCHON sur ce serveur', 'ARCHON 在本服务器的等级和活跃度'),
     about: desc('What ARCHON is and who made it', 'Ce qu’est ARCHON et qui l’a créé', 'ARCHON 是什么，由谁制作'),
