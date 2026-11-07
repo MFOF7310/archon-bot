@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { t } = require('../lib/i18n');
@@ -118,7 +119,7 @@ module.exports = {
             };
 
             const c = new ContainerBuilder().setAccentColor(0x00f0ff);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📡 ${t('channels.title', lang)}\n${guild.name}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_satellite', '📡')} ${t('channels.title', lang)}\n${guild.name}`));
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.core', lang), ['general', 'welcome', 'goodbye', 'rules'])));
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
@@ -206,7 +207,7 @@ module.exports = {
             };
 
             const c = new ContainerBuilder().setAccentColor(0x00f0ff);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📡 ${t('channels.title', lang)}\n${message.guild.name}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_satellite', '📡')} ${t('channels.title', lang)}\n${message.guild.name}`));
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.core', lang), ['general', 'welcome', 'goodbye', 'rules'])));
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
