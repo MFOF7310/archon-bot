@@ -1692,7 +1692,10 @@ module.exports = {
 
     execute: async (ix, client) => {
         const adm = ix.member.permissions.has(PermissionsBitField.Flags.Administrator);
-        if (!adm) return ix.reply({ content: require('../lib/i18n').t('automod.admin_only', require('../lib/botPerms').langOf({ guild: ix.guild, client })), flags: 1 << 6 });
+        if (!adm) return ix.editReply({ content: require('../lib/i18n').t('automod.admin_only', require('../lib/botPerms').langOf({ guild: ix.guild, client })), flags: 1 << 6 });
+        
+        // On achète 15 minutes de temps à Discord pour éviter le timeout (10062)
+        await ix.deferReply({ flags: 1 << 6 });
         const sc = ix.options.getSubcommand();
         const ss = client.getServerSettings(ix.guild.id);
         const _LA = require('../lib/botPerms').langOf({ guild: ix.guild, client });
@@ -1704,7 +1707,7 @@ module.exports = {
             const _T = (k, v) => require('../lib/i18n').t('automod.' + k, _LG, v);
             const pending = formatPendingAppeals(ix.guild.id);
             if (pending.length === 0) {
-                return ix.reply(toV2({
+                return ix.editReply(toV2({
                     embeds: [new EmbedBuilder()
                         .setColor(C.GREEN)
                         .setTitle(_T('admin_appealsTitle'))
@@ -1726,26 +1729,26 @@ module.exports = {
                 items.push({ text: `**${a.userTag}** — ${a.violationType || '—'}\n${_T(fieldKey, vars)}` });
             }
             items.push({ rule: true }, { text: `-# ${_T('admin_appealsFooterSlash')}` });
-            return ix.reply({ ..._v2.card(C.BLURPLE, items), flags: 1 << 6 });
+            return ix.editReply({ ..._v2.card(C.BLURPLE, items), flags: 1 << 6 });
         }
 
         if (sc === 'status') {
-            return ix.reply(buildStatusCard(client, ix.guild, ss));
+            return ix.editReply(buildStatusCard(client, ix.guild, ss));
         }
 
         if (sc === 'enable' || sc === 'disable') {
             const en = sc === 'enable';
             const cur = ss?.autoModEnabled;
-            if (en === !!cur) return ix.reply({ content: _TA(en ? 'admin_enableAlready' : 'admin_disableAlready'), flags: 1 << 6 });
+            if (en === !!cur) return ix.editReply({ content: _TA(en ? 'admin_enableAlready' : 'admin_disableAlready'), flags: 1 << 6 });
             if (en) {
                 const me = ix.guild.members.me;
                 const missing = ['ManageGuild', 'ManageMessages', 'ModerateMembers'].filter(p => !me.permissions.has(PermissionsBitField.Flags[p]));
-                if (missing.length) return ix.reply({ content: _TA('admin_enableMissing', { list: missing.map(p => '`' + p + '`').join(', ') }), flags: 1 << 6 });
+                if (missing.length) return ix.editReply({ content: _TA('admin_enableMissing', { list: missing.map(p => '`' + p + '`').join(', ') }), flags: 1 << 6 });
             }
             client.db.prepare("UPDATE server_settings SET automod_enabled = ?, updated_at = strftime('%s','now') WHERE guild_id = ?").run(en ? '1' : '0', ix.guild.id);
             client.settings.delete(ix.guild.id);
             const e = new EmbedBuilder().setColor(en ? C.GREEN : C.GREY).setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() }).setDescription(_TA(en ? 'admin_enableOk' : 'admin_disableOk', { cmd: cmdSlash(client, 'automod domains', { guild: ix.guild }) })).setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
-            await ix.reply(toV2({ embeds: [e], flags: 1 << 6 }));
+            await ix.editReply(toV2({ embeds: [e], flags: 1 << 6 }));
             await syncRules(ix.guild, en ? 'create' : 'delete', ss);
             return;
         }
@@ -1754,36 +1757,36 @@ module.exports = {
             const lv = ix.options.getString('level');
             client.updateServerSetting(ix.guild.id, 'automodsensitivity', lv);
             client.settings.delete(ix.guild.id);
-            return ix.reply({ content: '✅ ' + _TA('admin_sensitivitySet', { level: lv.toUpperCase() }), flags: 1 << 6 });
+            return ix.editReply({ content: '✅ ' + _TA('admin_sensitivitySet', { level: lv.toUpperCase() }), flags: 1 << 6 });
         }
         if (sc === 'whitelist') {
             const role = ix.options.getRole('role');
             const cur = ss?.autoModWhitelist;
             if (role) {
-                if (cur?.split(',').includes(role.id)) return ix.reply({ content: _TA('admin_whitelistAlready'), flags: 1 << 6 });
+                if (cur?.split(',').includes(role.id)) return ix.editReply({ content: _TA('admin_whitelistAlready'), flags: 1 << 6 });
                 const nw = cur ? `${cur},${role.id}` : role.id;
                 client.updateServerSetting(ix.guild.id, 'automodwhitelist', nw); client.settings.delete(ix.guild.id);
                 if (ss?.autoModEnabled) { await syncRules(ix.guild, 'delete'); await syncRules(ix.guild, 'create', { ...ss, autoModWhitelist: nw }); }
-                return ix.reply({ content: '✅ ' + _TA('admin_whitelistAdded', { role: role.name }), flags: 1 << 6 });
+                return ix.editReply({ content: '✅ ' + _TA('admin_whitelistAdded', { role: role.name }), flags: 1 << 6 });
             } else {
-                if (!cur) return ix.reply({ content: _TA('admin_whitelistEmpty'), flags: 1 << 6 });
+                if (!cur) return ix.editReply({ content: _TA('admin_whitelistEmpty'), flags: 1 << 6 });
                 client.updateServerSetting(ix.guild.id, 'automodwhitelist', null); client.settings.delete(ix.guild.id);
                 if (ss?.autoModEnabled) { await syncRules(ix.guild, 'delete'); await syncRules(ix.guild, 'create', { ...ss, autoModWhitelist: null }); }
-                return ix.reply({ content: '✅ ' + _TA('admin_whitelistCleared'), flags: 1 << 6 });
+                return ix.editReply({ content: '✅ ' + _TA('admin_whitelistCleared'), flags: 1 << 6 });
             }
         }
         if (sc === 'domains') {
             const out = domainsAction(ix.guild.id, ix.options.getString('action'), ix.options.getString('domain')?.toLowerCase().trim(), ss, client, _TA);
-            return ix.reply(typeof out === 'string' ? { content: out, flags: 64 } : { ...out, flags: out.flags | 64 });
+            return ix.editReply(typeof out === 'string' ? { content: out, flags: 64 } : { ...out, flags: out.flags | 64 });
         }
         if (sc === 'channels') {
             const out = channelsAction(ix.guild.id, ix.options.getString('action'), ix.options.getChannel('channel'), ss, client, _TA);
-            return ix.reply(typeof out === 'string' ? { content: out, flags: 64 } : { ...out, flags: out.flags | 64 });
+            return ix.editReply(typeof out === 'string' ? { content: out, flags: 64 } : { ...out, flags: out.flags | 64 });
         }
         if (sc === 'log') {
             const ch = ix.options.getChannel('channel');
             client.updateServerSetting(ix.guild.id, 'automodlog', ch.id); client.settings.delete(ix.guild.id);
-            return ix.reply({ content: require('../lib/botPerms').channelText(ix.guild, ch, ix), flags: 1 << 6 });
+            return ix.editReply({ content: require('../lib/botPerms').channelText(ix.guild, ch, ix), flags: 1 << 6 });
         }
 
         // ── RAID DETECTION HANDLER (Premium) ──
@@ -1794,18 +1797,18 @@ module.exports = {
             const db = client.db;
             const { isPremium } = require('./premium.js');
             if (!isPremium(db, gid) && action !== 'status') {
-                return ix.reply({ content: _TA('raid_premiumOnly', { cmd: cmdSlash(client, 'premium status', { guild: ix.guild }) }), flags: 64 });
+                return ix.editReply({ content: _TA('raid_premiumOnly', { cmd: cmdSlash(client, 'premium status', { guild: ix.guild }) }), flags: 64 });
             }
             db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(gid);
             if (action === 'enable') db.prepare(`UPDATE server_settings SET raid_enabled = 1 WHERE guild_id = ?`).run(gid);
             if (action === 'disable') db.prepare(`UPDATE server_settings SET raid_enabled = 0 WHERE guild_id = ?`).run(gid);
             if (action === 'threshold') {
-                if (!value) return ix.reply({ content: _TA('raid_needValue'), flags: 64 });
+                if (!value) return ix.editReply({ content: _TA('raid_needValue'), flags: 64 });
                 db.prepare(`UPDATE server_settings SET raid_threshold = ? WHERE guild_id = ?`).run(value, gid);
             }
             if (action === 'minage') db.prepare(`UPDATE server_settings SET raid_min_age_days = ? WHERE guild_id = ?`).run(value || 0, gid);
             const card = raidCard(db, gid, _TA);
-            return ix.reply({ ...card, flags: card.flags | 64 });
+            return ix.editReply({ ...card, flags: card.flags | 64 });
         }
     },
 
