@@ -35,5 +35,8 @@
   "channel_not_found": "❌ Salon ma sɔrɔ.",
   "tracked_success": "A dɔnna! N bɛna **@{username}** kɔ. Notifikasiw bɛna ta <#{channelId}>.",
   "removed_success": "🗑️ **@{username}** bɔra suivi la.",
-  "already_tracked": "I bɛ **@{username}** suivi la kaban <#{channel}> kɔnɔ. Fɛn tɛ yen ka yɛlɛma!"
+  "already_tracked": "I bɛ **@{username}** suivi la kaban <#{channel}> kɔnɔ. Fɛn tɛ yen ka yɛlɛma!",
+  "btnWatchVideo": "Vidéo lajɛ",
+  "newVideoTitle": "{user} ye vidéo kura ci",
+  "posted": "A bɔra"
 }

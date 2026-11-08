@@ -1,16 +1,12 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
+const { iconObj } = require('../lib/ui/icons');
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MediaGalleryBuilder, MediaGalleryItemBuilder, MessageFlags, SectionBuilder, ThumbnailBuilder } = require('discord.js');
-const { toV2, fit } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
+const { toV2, fit } = require('../lib/v2convert');
 const { t } = require('../lib/i18n');
 const mentions = require('../lib/mentions');
 const EMOJIS = require('../config/emojis');
 
-// Fallback Unicode si l'app emoji est mort — jamais de :texte: brut
-function em(key, fb, client) {
-    const found = client?.emojis?.cache?.find(e => e.name === key);
-    if (found) return `<${found.animated ? 'a' : ''}:${found.name}:${found.id}>`;
-    return fb || '';
-}
 const axios = require('axios');
 
 // ═══════════════════════════════════════════════════════════════════
@@ -433,7 +429,7 @@ function buildResult(user, stats, latestVideo, isLive, liveRoomInfo, username, l
  */
 function buildLiveEmbed(data, guild, client, lang = 'en', pingText = null) {
     const tt = em('tiktok_logo', '📱', client);
-    const liveEm = em('livestream', '🔴', client);
+    const liveEm = em('ic_live', '🔴');
     const userEm = em('myprofile', '👤', client);
     const c = new ContainerBuilder().setAccentColor(0xFF0050);
     if (pingText) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(pingText));
@@ -455,8 +451,8 @@ function buildLiveEmbed(data, guild, client, lang = 'en', pingText = null) {
     }
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel(t('tiktok.btnWatchLive', 'en')).setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username + '/live').setEmoji(liveEm),
-        new ButtonBuilder().setLabel(t('tiktok.btnProfile', 'en')).setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username).setEmoji(userEm)
+        new ButtonBuilder().setLabel(t('tiktok.btnWatchLive', lang)).setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username + '/live').setEmoji(iconObj('ic_live', null, '🔴')),
+        new ButtonBuilder().setLabel(t('tiktok.btnProfile', lang)).setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username).setEmoji(iconObj('ic_profile', null, '👤'))
     ));
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2 } };
 }
@@ -464,22 +460,22 @@ function buildLiveEmbed(data, guild, client, lang = 'en', pingText = null) {
 function buildVideoEmbed(data, guild, client, lang = 'en', pingText = null) {
     const video = data.latestVideo;
     if (!video) return null;
-    const liveEm = em('livestream', '🔴', client);
+    const liveEm = em('ic_live', '🔴');
     const videoEm = em('youtube', '🎬', client); // on peut utiliser youtube en fallback visuel
     const c = new ContainerBuilder().setAccentColor(0x00F2FE);
     
     if (video.cover) {
         c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(video.cover)));
     }
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${videoEm} ${data.nickname} a posté une vidéo`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${videoEm} ${t('tiktok.newVideoTitle', lang, { user: data.nickname })}`));
     if (video.desc) {
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*"${video.desc.substring(0, 280)}${video.desc.length > 280 ? '...' : ''}"*`));
     }
     const postedAgo = video.createTime ? `<t:${video.createTime}:R>` : "à l'instant";
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`📅 Postée ${postedAgo}\n▶️ **${Number(video.playCount).toLocaleString()}** vues • ❤️ **${Number(video.likeCount).toLocaleString()}** likes`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`📅 ${t('tiktok.posted', lang)} ${postedAgo}\n▶️ **${Number(video.playCount).toLocaleString()}** vues • ❤️ **${Number(video.likeCount).toLocaleString()}** likes`));
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel('Watch Video').setStyle(ButtonStyle.Link).setURL(video.url).setEmoji(videoEm)
+        new ButtonBuilder().setLabel(t('tiktok.btnWatchVideo', lang)).setStyle(ButtonStyle.Link).setURL(video.url).setEmoji(videoEm)
     ));
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2 } };
 }

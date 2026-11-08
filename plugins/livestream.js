@@ -5,6 +5,7 @@
 //  Priority channels polled every 2 min · Normal every 5 min
 // ═══════════════════════════════════════════════════════════════════
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
+const { iconObj } = require('../lib/ui/icons');
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MediaGalleryBuilder, MediaGalleryItemBuilder } = require('discord.js');
 const { t } = require('../lib/i18n');
 const mentions = require('../lib/mentions');
@@ -243,8 +244,8 @@ function buildLiveEmbed(channelId, live, handle, client, lang = 'en', pingText =
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${title}**\n${body}`));
     c.addSeparatorComponents(rule());
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel(t('livestream.btn_watch_live', lang)).setStyle(ButtonStyle.Link).setURL(watchUrl).setEmoji('🔴'),
-        new ButtonBuilder().setLabel(t('livestream.btn_channel', lang)).setStyle(ButtonStyle.Link).setURL(handle ? `https://youtube.com/@${handle}` : `https://youtube.com/channel/${channelId}`).setEmoji('📺')
+        new ButtonBuilder().setLabel(t('livestream.btn_watch_live', lang)).setStyle(ButtonStyle.Link).setURL(watchUrl).setEmoji(iconObj('ic_live', null, '🔴')),
+        new ButtonBuilder().setLabel(t('livestream.btn_channel', lang)).setStyle(ButtonStyle.Link).setURL(handle ? `https://youtube.com/@${handle}` : `https://youtube.com/channel/${channelId}`).setEmoji(iconObj('ic_youtube', null, '📺'))
     ));
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: ['everyone'] } } };
 }
@@ -258,7 +259,7 @@ function buildVideoEmbed(upload, handle, client, lang = 'en') {
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${upload.title || 'Untitled'}**\n${t('livestream.card_video_body', lang, { name })}`));
     c.addSeparatorComponents(rule());
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel(t('livestream.btn_watch_video', lang)).setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji('🎬')
+        new ButtonBuilder().setLabel(t('livestream.btn_watch_video', lang)).setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji(iconObj('ic_video', null, '🎬'))
     ));
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } } };
 }

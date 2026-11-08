@@ -40,5 +40,8 @@
   "tracked_success": "Got it! I'm keeping an eye on **@{username}**. Alerts will arrive in <#{channelId}>.",
   "removed_success": "🗑️ **@{username}** has been removed from tracking.",
   "already_tracked": "You are already tracking **@{username}** in <#{channel}>. Nothing to change!",
-  "notFoundForce": "❌ I couldn't find **@{username}** on TikTok. Check the name, or use the `force` option to add it anyway."
+  "notFoundForce": "❌ I couldn't find **@{username}** on TikTok. Check the name, or use the `force` option to add it anyway.",
+  "btnWatchVideo": "Watch Video",
+  "newVideoTitle": "{user} posted a new video",
+  "posted": "Posted"
 }
