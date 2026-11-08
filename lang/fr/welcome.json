@@ -27,7 +27,6 @@
   "btn_general": "Général",
   "btn_ai": "Assistant IA",
   "btn_profile": "Mon Profil",
-  "tip_label_en": "💡 **Essential commands :**",
   "tip_label_fr": "💡 **Commandes essentielles :**",
   "tip_label_bm": "💡 **Commandes dɔw :**",
   "tip_label_ar": "💡 **الأوامر الأساسية :**",
@@ -50,5 +49,6 @@
   "card_inviter": " · via {code} ({name})",
   "card_inviter_unknown": " · Inviteur inconnu",
   "card_intro": "Bienvenue dans la famille — n'hésite pas à te présenter et à explorer les salons ! 💜",
-  "card_joined": "Rejoint {date}"
+  "card_joined": "Rejoint {date}",
+  "tip_label": "💡 **Commandes essentielles :**"
 }

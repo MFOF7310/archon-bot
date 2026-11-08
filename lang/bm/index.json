@@ -1,5 +1,10 @@
 {
   "afk_just_now": "sisan yɛrɛ",
   "afk_ping_desc": "{afk} **{user} tɛ yan** ({time})\n**Kun:** {reason}",
-  "afk_return_desc": "{away} **{user} seginna!** I ka kɛnɛ 👋\nA taara miniti {minutes} kɔnɔ"
+  "afk_return_desc": "{away} **{user} seginna!** I ka kɛnɛ 👋\nA taara miniti {minutes} kɔnɔ",
+  "guardian_help": "{prefix}help — I ka kɔmandiw bɛɛ lajɛ",
+  "guardian_profile": "{prefix}profile — I ka profil",
+  "guardian_daily": "{prefix}daily — I ka don o don sara",
+  "guardian_shop": "{prefix}shop — I ka butiki lajɛ",
+  "guardian_lydia": "@Archon [message] — I ka baro kɛ ni an ka AI ye (walima i ka sɛbɛnni daminɛ nin 'Archon' ye ka sen ka baro k'a fɛ)"
 }

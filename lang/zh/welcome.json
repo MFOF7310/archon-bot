@@ -27,7 +27,6 @@
   "btn_general": "综合",
   "btn_ai": "AI 助手",
   "btn_profile": "我的资料",
-  "tip_label_en": "💡 **Essential commands :**",
   "tip_label_fr": "💡 **Commandes essentielles :**",
   "tip_label_bm": "💡 **Commandes dɔw :**",
   "tip_label_ar": "💡 **الأوامر الأساسية :**",
@@ -50,5 +49,6 @@
   "card_inviter": " · 通过 {code} ({name})",
   "card_inviter_unknown": " · 邀请人未知",
   "card_intro": "欢迎加入大家庭——快来介绍你自己，逛逛各个频道吧！💜",
-  "card_joined": "加入于 {date}"
+  "card_joined": "加入于 {date}",
+  "tip_label": "💡 **常用命令：**"
 }

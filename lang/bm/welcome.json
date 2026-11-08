@@ -2,5 +2,6 @@
   "author": "Bisimila Sistɛmu",
   "default_goodbye_msg": "K'an bɛn {user}, i ni ce i ka kɛ {server} mɔgɔ ye!",
   "default_welcome_msg": "I bisimila {user} {server} kan! I ye mɔgɔ #{count} nan ye.",
-  "help_hint": "I bɛ fɛ ka fɛn wɛrɛ lajɛ wa? {help} tap — n bɛna a ɲɛ jira i la."
+  "help_hint": "I bɛ fɛ ka fɛn wɛrɛ lajɛ wa? {help} tap — n bɛna a ɲɛ jira i la.",
+  "tip_label": "💡 **Commandes baarakɛminɛnw:**"
 }

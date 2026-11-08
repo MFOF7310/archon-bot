@@ -27,7 +27,6 @@
   "btn_general": "عام",
   "btn_ai": "المساعد الذكي",
   "btn_profile": "ملفي الشخصي",
-  "tip_label_en": "💡 **Essential commands :**",
   "tip_label_fr": "💡 **Commandes essentielles :**",
   "tip_label_bm": "💡 **Commandes dɔw :**",
   "tip_label_ar": "💡 **الأوامر الأساسية :**",
@@ -50,5 +49,6 @@
   "card_inviter": " · عبر {code} ({name})",
   "card_inviter_unknown": " · الداعي غير معروف",
   "card_intro": "أهلاً بك في العائلة — عرّفنا بنفسك وتجوّل في القنوات! 💜",
-  "card_joined": "انضم في {date}"
+  "card_joined": "انضم في {date}",
+  "tip_label": "💡 **الأوامر الأساسية:**"
 }
