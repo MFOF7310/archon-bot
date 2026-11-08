@@ -4,6 +4,7 @@
 // ╚══════════════════════════════════════════════════════════════════════╝
 
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const EMOJIS = require('../config/emojis');
 const { t } = require('../lib/i18n');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
@@ -478,7 +479,7 @@ function warmWelcomeText(member, count, cfg) {
     // v7: warm tone rewrite — direct address, `-#` info line, REG emojis
     const lang = cfg.lang || 'en';
     const party = cfg.party || EMOJIS.party || '🎉';
-    const wave = cfg.wave || EMOJIS.wave || '👋';
+    const wave = cfg.wave || em('wave', '👋');
     const memberEmoji = cfg.memberEmoji || '📊';
     const u = member.toString();
     const g = member.guild.name;
@@ -530,7 +531,7 @@ function warmWelcomeText(member, count, cfg) {
 // ================= GOODBYE TEXT =================
 function goodbyeText(member, duration, roleCount, lang = 'en') {
     // v7: warm tone rewrite — direct address, `-#` info line, REG emojis
-    const wave = EMOJIS.wave || '👋';
+    const wave = em('wave', '👋');
     const dur = duration || 'a short stay';
     const u = `**${member.user.username}**`;
 

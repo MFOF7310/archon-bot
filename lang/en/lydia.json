@@ -21,7 +21,7 @@
   "memory_error": "❌ Could not retrieve memories. Please try again later.",
   "memory_footer": "Memories persist across conversations",
   "memory_showing": "Showing {count} of {total}",
-  "ai_unavailable": "⚠️ **AI temporarily unavailable.** Please try again in a moment.",
+  "ai_unavailable": "My circuits are a bit fuzzy right now. Give me a minute and try again! 🔧",
   "ai_no_key": "⚠️ **OPENROUTER_API_KEY** not detected in environment variables",
   "ai_error": "Something went wrong. Please try again!",
   "greeting_en": "Hey {user}! I'm here and ready to help. What would you like to know?",

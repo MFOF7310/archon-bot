@@ -21,7 +21,7 @@
   "memory_error": "❌ 无法获取记忆，请稍后再试。",
   "memory_footer": "记忆会跨对话保留",
   "memory_showing": "显示 {total} 条中的 {count} 条",
-  "ai_unavailable": "⚠️ **AI 暂时不可用。** 请稍后再试。",
+  "ai_unavailable": "我的电路现在有点模糊。给我一分钟，然后再试一次！🔧",
   "ai_no_key": "⚠️ 环境变量中未检测到 **OPENROUTER_API_KEY**",
   "ai_error": "出了点问题，请再试一次！",
   "greeting_en": "嘿 {user}！我在呢，随时待命。你想知道什么？",

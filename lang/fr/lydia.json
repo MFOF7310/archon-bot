@@ -21,7 +21,7 @@
   "memory_error": "❌ Impossible de récupérer les souvenirs. Réessaie plus tard.",
   "memory_footer": "Les souvenirs persistent d'une conversation à l'autre",
   "memory_showing": "Affichage de {count} sur {total}",
-  "ai_unavailable": "⚠️ **IA temporairement indisponible.** Veuillez réessayer dans un moment.",
+  "ai_unavailable": "Mes circuits sont un peu embrouillés là. Laisse-moi une minute et réessaie ! 🔧",
   "ai_no_key": "⚠️ **OPENROUTER_API_KEY** non détectée dans les variables d’environnement",
   "ai_error": "Une erreur s'est produite. Réessaie !",
   "greeting_en": "Salut {user} ! Je suis là et prête à aider. Que veux-tu savoir ?",

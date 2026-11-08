@@ -19,5 +19,6 @@
   "onTitle": "AI chat bɛ baara kɛ yan",
   "onDesc": "N sɔnna ka i ka ɲininkaliw jaabi **#{channel}** kɔnɔ.\n\n**I bɛ fɔ cogo min na n ye:**\n• Aw ye n xɔn: `@Archon [i ka ɲininkali]`\n• Walima i bɛ n tɔgɔ fɔ: `Archon [i ka ɲininkali]`",
   "onBody": "\n**Baarakɛminɛn kɛrɛnkɛrɛnnenw (i ka message kɔnɔ):**\n🧠 **Hakili mara:** `[MEMORY: key | value]`\n⏱️ **Ladonni kɛ:** `[REMIND: miniti 5 | message]`\n\n🌐 *Kan caman dɔnni bɛ baara kɛ.*\n*Misali: `Archon sugu tabiya bɛ baara cogodi ?`*",
-  "offBody": "\n💬 A bɛ sɔrɔ salons wɛrɛw kɔnɔ.\n\n**Aw bɛ n segin a kan:** {cmd}"
+  "offBody": "\n💬 A bɛ sɔrɔ salons wɛrɛw kɔnɔ.\n\n**Aw bɛ n segin a kan:** {cmd}",
+  "ai_unavailable": "N ka circuits bɛ gɛlɛn dɔɔnin. Aw ye miniti dɔ kɔnɔ ka a lajɛ tuguni! 🔧"
 }

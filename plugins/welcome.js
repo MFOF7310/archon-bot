@@ -23,6 +23,7 @@ const {
     TextDisplayBuilder,
     ThumbnailBuilder,
 } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { t } = require('../lib/i18n');
 const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const Style = require('./welcome-style.js');
@@ -152,14 +153,28 @@ async function handleWelcome(member, client, db) {
     const rawDefs = Style.getWelcomeButtons(cfg, safeMember) || [];
     // Fix: The 'AI Assistant' button was mistakenly given the 'welcome_help' ID.
     // We rename it to 'welcome_ai_assistant' so it doesn't conflict with the new Help button.
+    const EMOJI_MAP = {
+        '📜': em('rules', '📜'),
+        '💬': em('general', '💬'),
+        '🤖': em('ai_assistant', '🤖'),
+        '👤': em('myprofile', '👤'),
+        '❓': em('help', '❓'),
+        'ℹ️': em('ic_info', 'ℹ️')
+    };
+
     const buttonDefs = rawDefs.map(d => {
-        if (d.customId === 'welcome_help' && d.label !== t('welcome.btn_help', lang)) {
-            return { ...d, customId: 'welcome_ai_assistant' };
+        let newD = { ...d };
+        if (newD.customId === 'welcome_help' && newD.label !== t('welcome.btn_help', lang)) {
+            newD.customId = 'welcome_ai_assistant';
         }
-        return d;
+        // On remplace l'émoji si on a un custom correspondant
+        if (newD.emoji && EMOJI_MAP[newD.emoji]) {
+            newD.emoji = EMOJI_MAP[newD.emoji];
+        }
+        return newD;
     });
     if (!buttonDefs.some((d) => d.customId === 'welcome_help')) {
-        buttonDefs.push({ label: t('welcome.btn_help', lang), emoji: 'ℹ️', style: 'Primary', customId: 'welcome_help' });
+        buttonDefs.push({ label: t('welcome.btn_help', lang), emoji: em('ic_info', 'ℹ️'), style: 'Secondary', customId: 'welcome_help' });
     }
     const rows = [];
     let currentRow = new ActionRowBuilder();
@@ -175,7 +190,12 @@ async function handleWelcome(member, client, db) {
             currentRow.addComponents(
                 new ButtonBuilder()
                     .setLabel(def.label).setEmoji(def.emoji)
-                    .setStyle(def.style === 'Primary' ? ButtonStyle.Primary : ButtonStyle.Success)
+                    .setStyle(
+                        def.style === 'Primary' ? ButtonStyle.Primary :
+                        def.style === 'Secondary' ? ButtonStyle.Secondary :
+                        def.style === 'Danger' ? ButtonStyle.Danger :
+                        ButtonStyle.Success
+                    )
                     .setCustomId(def.customId)
             );
         }
