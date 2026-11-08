@@ -10,11 +10,7 @@ const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacing
 const { t } = require('../lib/i18n');
 const mentions = require('../lib/mentions');
 const EMOJIS = require('../config/emojis');
-const em = (k, fb, client) => {
-    const found = client?.emojis?.cache?.find(e => e.name === k);
-    if (found) return `<${found.animated ? 'a' : ''}:${found.name}:${found.id}>`;
-    return fb || ''; // On utilise le fallback Unicode si l'emoji n'est pas dans le cache
-};
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 // App emojis work on buttons too (tested Nov 2026). This helper only looks up server emojis by name.
 // Look up by name across all guilds the bot is in, fall back to Unicode if missing.
@@ -234,7 +230,7 @@ function buildLiveEmbed(channelId, live, handle, client, lang = 'en', pingText =
     const watchUrl = live.url || (handle ? `https://youtube.com/@${handle}/live` : `https://youtube.com/channel/${channelId}/live`);
     const header = isPreview
         ? t('livestream.card_preview_title', lang, { name })
-        : t('livestream.card_live_title', lang, { icon: EMOJIS.livestream || '🔴', name });
+        : t('livestream.card_live_title', lang, { icon: em('ic_live', '🔴'), name });
     const body = isPreview ? t('livestream.card_preview_body', lang, { name }) : t('livestream.card_live_body', lang, { name });
     const c = new ContainerBuilder().setAccentColor(isPreview ? 0xf39c12 : 0xFF0000);
     if (pingText) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(pingText));
@@ -291,7 +287,7 @@ async function sendNotification(client, db, guildId, channelId, handle, payload,
         const lang = livLang(client, guildId);
         const name = handle ? '@' + handle : channelId;
         let card;
-        if (type === 'live') card = buildLiveEmbed(channelId, payload, handle, client, lang, t('livestream.card_live_ping', lang, { icon: EMOJIS.ic_live || '🔴', name }));
+        if (type === 'live') card = buildLiveEmbed(channelId, payload, handle, client, lang, t('livestream.card_live_ping', lang, { icon: em('ic_live', '🔴'), name }));
         else if (type === 'video') card = buildVideoEmbed(payload, handle, client, lang);
         else card = buildLiveEmbed(channelId, payload, handle, client, lang);
         await require('../lib/safeSend').safeSend('youtube', channel, { ...card._v2 }, { throwOnError: true });
@@ -405,13 +401,13 @@ function toggleButton(kind, row, lang, view = '') {
 
 function statusText(row, client, lang) {
     return row.is_live === 1
-        ? `${EMOJIS.online || '🔴'} ${t('livestream.status_live', lang)}`
-        : `${EMOJIS.offline || '⚫'} ${t('livestream.status_offline', lang)}`;
+        ? `${em('ping_ok', '🟢')} ${t('livestream.status_live', lang)}`
+        : `${em('ping_bad', '🔴')} ${t('livestream.status_offline', lang)}`;
 }
 
 function buildListEmbed(tracks, guild, client, lang = 'en') {
     const c = new ContainerBuilder().setAccentColor(0xFF0000);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${EMOJIS.ic_youtube || '📺'} ${t('livestream.list_title', lang, { server: guild.name })}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_youtube', '📺')} ${t('livestream.list_title', lang, { server: guild.name })}`));
     c.addSeparatorComponents(rule());
     if (!tracks.length) {
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('livestream.list_empty', lang, { mention: mentions(client, 'livestream', 'set') })));
@@ -435,10 +431,10 @@ function buildSetCard(row, client, lang = 'en') {
     const name = row.youtube_handle ? '@' + row.youtube_handle : row.youtube_channel_id;
     const lines = [t('livestream.set_where', lang, { channel: `<#${row.target_channel_id}>` })];
     if (row.priority === 1) lines.push(`-# ${t('livestream.set_priority', lang)}`);
-    if (row.is_live === 1) lines.push(`${EMOJIS.ic_live || '🔴'} ${t('livestream.set_live_now', lang, { name })}`);
-    if (row.last_video_id) lines.push(`${EMOJIS.ic_video || '🎬'} ${t('livestream.set_latest', lang, { url: `https://youtube.com/watch?v=${row.last_video_id}` })}`);
+    if (row.is_live === 1) lines.push(`${em('ic_live', '🔴')} ${t('livestream.set_live_now', lang, { name })}`);
+    if (row.last_video_id) lines.push(`${em('ic_video', '🎬')} ${t('livestream.set_latest', lang, { url: `https://youtube.com/watch?v=${row.last_video_id}` })}`);
     const c = new ContainerBuilder().setAccentColor(0x2ecc71);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${EMOJIS.ic_youtube || '📺'} ${t('livestream.set_title', lang, { name })}\n${lines.join('\n')}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_youtube', '📺')} ${t('livestream.set_title', lang, { name })}\n${lines.join('\n')}`));
     c.addSeparatorComponents(rule());
     c.addActionRowComponents(new ActionRowBuilder().addComponents(toggleButton('live', row, lang, 'set'), toggleButton('up', row, lang, 'set')));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('livestream.set_hint', lang, { mention: mentions(client, 'livestream', 'list') })}`));
