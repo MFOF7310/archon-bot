@@ -98,7 +98,7 @@ function loopLag() {
     return new Promise(r => setTimeout(() => r(Math.max(0, Date.now() - start - 50)), 50));
 }
 
-async function statsCard(client, lang, db) {
+async function statsCard(client, lang, db, guildId) {
     const _ = tr(lang);
     const guilds = client.guilds.cache.size;
     const members = client.guilds.cache.reduce((a, g) => a + (g.memberCount || 0), 0);
@@ -124,6 +124,7 @@ async function statsCard(client, lang, db) {
         { text: [
             `**${_('servers')}** · ${n(guilds)}  ·  **${_('members')}** · ${n(members)}`,
             `**${_('commands')}** · ${n(client.commands?.size || 0)}  ·  **${_('memory')}** · ${mem} MB`,
+            `**Prefix** · \`${(client.getServerSettings?.(guildId)?.prefix) || process.env.PREFIX || '.'}\``,
             `${em('clock', '🕐')} **${_('uptime')}** ${uptime(process.uptime())}    **${_('ping_gateway')}** ${api == null ? '—' : api + ' ms'}`,
         ].join('\n') },
         { rule: true },
@@ -250,7 +251,7 @@ async function build(sub, client, lang, db, guild, userId) {
     switch (sub) {
         case 'ping': return pingCard(client, lang, db);
         case 'alive': return aliveCard(client, lang, db, guild?.name?.toUpperCase() || 'ARCHON');
-        case 'stats': return statsCard(client, lang, db);
+        case 'stats': return statsCard(client, lang, db, guild?.id);
         case 'activity': return activityCard(client, lang, db, guild);
         case 'about': return aboutCard(client, lang, userId);
         case 'invite': return inviteCard(client, lang);

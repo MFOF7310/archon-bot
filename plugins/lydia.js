@@ -1049,7 +1049,7 @@ LIVE CONTEXT:
 - Talking to: ${userName}${ownerTag}
 - Date: ${dateStr} | ${bamakoTime} Bamako time
 - Mode: ${theme.name}
-- Prefix: ${prefix} (or use slash commands)
+- Prefix: ${prefix} (or use slash commands). You ALREADY KNOW the current prefix, it is "${prefix}". Never say you don't know it or tell the user to check it elsewhere.
 - Language: respond in ${langName} — follow the user, always
 ${allCommandsBlock(commands, isOwner)}${(() => { const rc = relevantCommands(userMessage, commands); return rc ? `\nRELEVANT COMMANDS (the signatures of the commands that match this message; every command that exists is named under ALL COMMANDS):\n${rc}` : ''; })()}
 
