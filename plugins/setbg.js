@@ -1,6 +1,7 @@
 const path = require('path');
 const fs = require('fs');
 const { SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 const BG_DIR = path.join(__dirname, '../assets/backgrounds');
 const BG_PRESETS = [
@@ -32,11 +33,11 @@ const RESPONSES = {
         '🖼️ Attach an image, or pick a preset: `.setbg 1` through `.setbg 5`.\nReset anytime with `.setbg reset`.',
     ],
     failed: [
-        '❌ Could not save that image — make sure it\'s a valid jpg, png, or webp.',
+        em('ic_off', em('ic_off', '❌')) + ' Could not save that image — make sure it\'s a valid jpg, png, or webp.',
         '⚠️ Something went wrong grabbing that image. Try again or use a preset.',
     ],
     badUrl: [
-        '❌ That doesn\'t look like a valid image URL.',
+        em('ic_off', em('ic_off', '❌')) + ' That doesn\'t look like a valid image URL.',
         '⚠️ Couldn\'t read that URL. Attach the image directly instead.',
     ],
 };

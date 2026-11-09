@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const axios = require('axios');
 
 const JOKE_API_URL = 'https://icanhazdadjoke.com/';
@@ -18,7 +19,7 @@ module.exports = {
             await message.reply({ embeds: [embed] });
         } catch (err) {
             console.error('Dad joke prefix command error:', err.message);
-            await message.reply('❌ Could not fetch a joke. Try again later!');
+            await message.reply(em('ic_off', em('ic_off', '❌')) + ' Could not fetch a joke. Try again later!');
         }
     },
     
@@ -30,7 +31,7 @@ module.exports = {
             await interaction.editReply({ embeds: [embed] });
         } catch (err) {
             console.error('Dad joke slash command error:', err.message);
-            await interaction.editReply('❌ Could not fetch a joke. Try again later!');
+            await interaction.editReply(em('ic_off', em('ic_off', '❌')) + ' Could not fetch a joke. Try again later!');
         }
     }
 };

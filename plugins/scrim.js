@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, MessageFlags, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { pickLang } = require('../lib/pick-lang');
@@ -71,7 +72,7 @@ function buildScrimCard(scrim, signups, guild, client, disabled = false, lang = 
 
     // Signups with small emojis and subtext
     const checkEm = resolveEmoji('small_check', guild) || '✅';
-    const crossEm = resolveEmoji('small_cross', guild) || '❌';
+    const crossEm = resolveEmoji('small_cross', guild) || em('ic_off', '❌');
     
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${checkEm} ${T('joining', lang, { n: yes.length })}\n${list(yes).slice(0, 900)}`));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${crossEm} ${T('cant_make_it', lang, { n: no.length })}\n${list(no).slice(0, 900)}`));

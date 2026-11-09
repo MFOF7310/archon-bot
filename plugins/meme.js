@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const https = require('https');
 
 // ================= BILINGUAL =================
@@ -6,7 +7,7 @@ const T = {
     en: {
         title: '😂 Fresh Meme',
         loading: 'Fetching a fresh meme for you...',
-        error: '❌ Could not fetch a meme right now. Try again in a moment!',
+        error: em('ic_off', em('ic_off', '❌')) + ' Could not fetch a meme right now. Try again in a moment!',
         errorNsfw: '🛡️ All results were filtered. Try again!',
         errorNetwork: '🌐 Meme sources are temporarily slow. Try again!',
         footer: 'r/{sub} • u/{author} • SFW Only',
@@ -22,7 +23,7 @@ const T = {
     fr: {
         title: '😂 Nouveau Meme',
         loading: 'Récupération d\'un nouveau meme...',
-        error: '❌ Impossible de récupérer un meme pour le moment. Réessayez !',
+        error: em('ic_off', em('ic_off', '❌')) + ' Impossible de récupérer un meme pour le moment. Réessayez !',
         errorNsfw: '🛡️ Tous les résultats ont été filtrés (NSFW). Réessayez !',
         errorNetwork: '🌐 Reddit est lent. Tentative avec source alternative...',
         footer: 'r/{sub} • u/{author} • SFW Uniquement',
@@ -335,7 +336,7 @@ module.exports = {
 
         // Verify it's the same user who clicked
         if (interaction.user.id !== uid) {
-            return interaction.reply({ content: '❌ Not your meme button!', flags: MessageFlags.Ephemeral }).catch(() => {});
+            return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Not your meme button!', flags: MessageFlags.Ephemeral }).catch(() => {});
         }
 
         await interaction.deferUpdate().catch(() => {});

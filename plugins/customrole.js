@@ -1,8 +1,9 @@
 const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 const T = {
-    en: { title: '🎨 Custom Role Shop', balanceCheck: '💰 You need **{cost}** credits. Your balance: **{balance}**', purchased: '🎉 Role created and assigned!', removed: '❌ Role removed.', exists: '❌ You already have a custom role.', notFound: '❌ Role not found.', invalidColor: '❌ Invalid color. Use hex: `#FF5733`', noPermission: '❌ Bot needs Manage Roles permission.', footer: 'Custom Role Shop • v{version}', availableColors: '🎨 Available Colors', presetColors: { red: '#FF0000', blue: '#0000FF', green: '#00FF00', purple: '#9B59B6', gold: '#FFD700', pink: '#FF69B4', cyan: '#00FFFF', orange: '#FFA500' }, cost: 5000 },
-    fr: { title: '🎨 Boutique de Rôles Personnalisés', balanceCheck: '💰 Vous avez besoin de **{cost}** crédits. Votre solde : **{balance}**', purchased: '🎉 Rôle créé et attribué !', removed: '❌ Rôle supprimé.', exists: '❌ Vous avez déjà un rôle personnalisé.', notFound: '❌ Rôle introuvable.', invalidColor: '❌ Couleur invalide. Utilisez un hex : `#FF5733`', noPermission: '❌ Le bot a besoin de la permission Gérer les Rôles.', footer: 'Boutique de Rôles • v{version}', availableColors: '🎨 Couleurs Disponibles', presetColors: { red: '#FF0000', blue: '#0000FF', green: '#00FF00', purple: '#9B59B6', gold: '#FFD700', pink: '#FF69B4', cyan: '#00FFFF', orange: '#FFA500' }, cost: 5000 }
+    en: { title: '🎨 Custom Role Shop', balanceCheck: '💰 You need **{cost}** credits. Your balance: **{balance}**', purchased: '🎉 Role created and assigned!', removed: em('ic_off', em('ic_off', '❌')) + ' Role removed.', exists: em('ic_off', em('ic_off', '❌')) + ' You already have a custom role.', notFound: em('ic_off', em('ic_off', '❌')) + ' Role not found.', invalidColor: em('ic_off', em('ic_off', '❌')) + ' Invalid color. Use hex: `#FF5733`', noPermission: em('ic_off', em('ic_off', '❌')) + ' Bot needs Manage Roles permission.', footer: 'Custom Role Shop • v{version}', availableColors: '🎨 Available Colors', presetColors: { red: '#FF0000', blue: '#0000FF', green: '#00FF00', purple: '#9B59B6', gold: '#FFD700', pink: '#FF69B4', cyan: '#00FFFF', orange: '#FFA500' }, cost: 5000 },
+    fr: { title: '🎨 Boutique de Rôles Personnalisés', balanceCheck: '💰 Vous avez besoin de **{cost}** crédits. Votre solde : **{balance}**', purchased: '🎉 Rôle créé et attribué !', removed: em('ic_off', em('ic_off', '❌')) + ' Rôle supprimé.', exists: em('ic_off', em('ic_off', '❌')) + ' Vous avez déjà un rôle personnalisé.', notFound: em('ic_off', em('ic_off', '❌')) + ' Rôle introuvable.', invalidColor: em('ic_off', em('ic_off', '❌')) + ' Couleur invalide. Utilisez un hex : `#FF5733`', noPermission: em('ic_off', em('ic_off', '❌')) + ' Le bot a besoin de la permission Gérer les Rôles.', footer: 'Boutique de Rôles • v{version}', availableColors: '🎨 Couleurs Disponibles', presetColors: { red: '#FF0000', blue: '#0000FF', green: '#00FF00', purple: '#9B59B6', gold: '#FFD700', pink: '#FF69B4', cyan: '#00FFFF', orange: '#FFA500' }, cost: 5000 }
 };
 
 module.exports = {
@@ -15,7 +16,7 @@ module.exports = {
         if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
         const t = T[lang] || T.en, guild = message.guild, user = message.author;
-        if (!guild) return message.reply('❌ Server only.').catch(() => {});
+        if (!guild) return message.reply(em('ic_off', em('ic_off', '❌')) + ' Server only.').catch(() => {});
         if (!guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) return message.reply(t.noPermission).catch(() => {});
 
         if (args.length < 2) {
@@ -63,7 +64,7 @@ module.exports = {
     execute: async (interaction, client) => {
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = T[lang] || T.en, guild = interaction.guild;
-        if (!guild) return interaction.reply({ content: '❌ Server only.', flags: 64 });
+        if (!guild) return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Server only.', flags: 64 });
         if (!guild.members.me.permissions.has(PermissionFlagsBits.ManageRoles)) return interaction.reply({ content: t.noPermission, flags: 64 });
 
         const colorInputRaw = interaction.options.getString('color');

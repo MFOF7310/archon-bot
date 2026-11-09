@@ -1,5 +1,6 @@
 // plugins/emoji-admin.js — /emojis check + /emojis sync
 const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const fs = require('fs');
 const path = require('path');
 const { card } = require('../lib/games/v2');
@@ -153,7 +154,7 @@ function checkCard(t, { remap, add, missing }, total, appTotal, client) {
     items.push({ text: `✅ ${t('inSync')} : ${total - remap.length - missing.length}` });
     items.push({ text: `🔧 ${t('toRemap')} : ${remap.length}` });
     items.push({ text: `➕ ${t('toAdd')} : ${add.length}` });
-    items.push({ text: `❌ ${t('orphans')} : ${missing.length}` });
+    items.push({ text: `${em('ic_off', '❌')} ${t('orphans')} : ${missing.length}` });
 
     if (add.length) {
         items.push({ rule: true });
@@ -196,7 +197,7 @@ module.exports = {
 
         // Guard : sync = owner uniquement
         if (sub === 'add') {
-            if (interaction.user.id !== process.env.OWNER_ID) return interaction.reply({ content: '❌ Owner only.', flags: 64 });
+            if (interaction.user.id !== process.env.OWNER_ID) return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Owner only.', flags: 64 });
             await interaction.deferReply({ flags: 64 });
             const name = interaction.options.getString('name');
             const image = interaction.options.getAttachment('image');
@@ -229,7 +230,7 @@ module.exports = {
                 return interaction.editReply(`${msg}\n👉 Pense à redémarrer le bot (\`pm2 restart\`).`);
             } catch (e) {
                 console.error('[EMOJIS ADD]', e);
-                return interaction.editReply(`❌ Erreur : ${e.message}`);
+                return interaction.editReply(`${em('ic_off', '❌')} Erreur : ${e.message}`);
             }
         }
         if (sub === 'sync') {
@@ -279,7 +280,7 @@ module.exports = {
             return interaction.editReply({ ...card(0x2ECC71, items), allowedMentions: { parse: [] } });
         } catch (e) {
             console.error('[EMOJIS]', e);
-            return interaction.editReply({ content: `❌ ${e.message}` });
+            return interaction.editReply({ content: `${em('ic_off', '❌')} ${e.message}` });
         }
     },
 };

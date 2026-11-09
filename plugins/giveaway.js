@@ -2,6 +2,7 @@ const { resolveEmoji } = require('../lib/emoji-resolver');
 const i18n = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionsBitField, ContainerBuilder, TextDisplayBuilder, SectionBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, SeparatorBuilder, SeparatorSpacingSize, ChannelSelectMenuBuilder, ChannelType, ThumbnailBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 
 // ═══════════════════════════════════════════════════════
@@ -413,22 +414,22 @@ module.exports = {
         
         const guildId = message.guild?.id ?? 'DM';
         if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-            return message.reply('❌ You need Manage Server permission.').catch(() => {});
+            return message.reply(em('ic_off', em('ic_off', '❌')) + ' You need Manage Server permission.').catch(() => {});
         }
         const usage = '`.giveaway <time> <amount> <winners> <prize>`\nExample: `.giveaway 1h 50000 3 Weekend drop`';
         if (args.length < 4) return message.reply(usage).catch(() => {});
 
         const duration = parseDuration(args[0]);
-        if (!duration) return message.reply('❌ Invalid time. Use: `10s`, `5m`, `2h`, `1d`').catch(() => {});
+        if (!duration) return message.reply(em('ic_off', em('ic_off', '❌')) + ' Invalid time. Use: `10s`, `5m`, `2h`, `1d`').catch(() => {});
         const amount = parseInt(args[1]);
         const winners = parseInt(args[2]);
         const prize = args.slice(3).join(' ');
-        if (isNaN(amount) || amount < 100) return message.reply('❌ Invalid amount (min 100).').catch(() => {});
-        if (isNaN(winners) || winners < 1 || winners > 20) return message.reply('❌ Winners must be 1-20.').catch(() => {});
+        if (isNaN(amount) || amount < 100) return message.reply(em('ic_off', em('ic_off', '❌')) + ' Invalid amount (min 100).').catch(() => {});
+        if (isNaN(winners) || winners < 1 || winners > 20) return message.reply(em('ic_off', em('ic_off', '❌')) + ' Winners must be 1-20.').catch(() => {});
 
         const user = db.prepare('SELECT credits FROM users WHERE id = ? AND guild_id = ?').get(message.author.id, guildId);
         if (!user || user.credits < amount) {
-            return message.reply(`❌ You do not have enough credits to host this giveaway. You have ${user?.credits?.toLocaleString() || 0}, need ${amount.toLocaleString()}.`).catch(() => {});
+            return message.reply(`${em('ic_off', '❌')} You do not have enough credits to host this giveaway. You have ${user?.credits?.toLocaleString() || 0}, need ${amount.toLocaleString()}.`).catch(() => {});
         }
         
         db.prepare('UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?').run(amount, message.author.id, guildId);
@@ -450,7 +451,7 @@ module.exports = {
         const guildId = interaction.guildId;
 
         if (!interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-            return interaction.reply({ content: '❌ You need Manage Server permission.', flags: 64 });
+            return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' You need Manage Server permission.', flags: 64 });
         }
 
         if (sub === 'end') {
@@ -462,9 +463,9 @@ module.exports = {
                 gw = db.prepare('SELECT * FROM giveaways WHERE guild_id = ? AND status = ? ORDER BY end_timestamp ASC LIMIT 1').get(guildId, 'active');
             }
 
-            if (!gw) return interaction.reply({ content: '❌ No active giveaway found.', flags: 64 });
+            if (!gw) return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' No active giveaway found.', flags: 64 });
             if (interaction.user.id !== gw.host_id && !interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-                return interaction.reply({ content: '❌ Only the host or moderators can end this.', flags: 64 });
+                return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Only the host or moderators can end this.', flags: 64 });
             }
 
             await interaction.deferReply({ flags: 64 });
@@ -475,13 +476,13 @@ module.exports = {
             const msgId = interaction.options.getString('message_id');
             const gw = db.prepare('SELECT * FROM giveaways WHERE message_id = ? AND guild_id = ?').get(msgId, guildId);
             if (!gw || gw.status !== 'ended') {
-                return interaction.reply({ content: '❌ Ended giveaway not found.', flags: 64 });
+                return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Ended giveaway not found.', flags: 64 });
             }
             if (gw.amount > 0) {
-                return interaction.reply({ content: '❌ Reroll is only available for custom prizes.', flags: 64 });
+                return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Reroll is only available for custom prizes.', flags: 64 });
             }
             if (interaction.user.id !== gw.host_id && !interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-                return interaction.reply({ content: '❌ Only the host or moderators can reroll.', flags: 64 });
+                return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Only the host or moderators can reroll.', flags: 64 });
             }
 
             await interaction.deferReply({ flags: 64 });
@@ -489,7 +490,7 @@ module.exports = {
             if (newWinners) {
                 await interaction.editReply({ content: '✅ Rerolled successfully!' });
             } else {
-                await interaction.editReply({ content: '❌ Failed to reroll.' });
+                await interaction.editReply({ content: em('ic_off', em('ic_off', '❌')) + ' Failed to reroll.' });
             }
         }
         else if (sub === 'cancel') {
@@ -501,9 +502,9 @@ module.exports = {
                 gw = db.prepare('SELECT * FROM giveaways WHERE guild_id = ? AND status = ? ORDER BY end_timestamp ASC LIMIT 1').get(guildId, 'active');
             }
 
-            if (!gw) return interaction.reply({ content: '❌ No active giveaway found.', flags: 64 });
+            if (!gw) return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' No active giveaway found.', flags: 64 });
             if (interaction.user.id !== gw.host_id && !interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-                return interaction.reply({ content: '❌ Only the host or moderators can cancel this.', flags: 64 });
+                return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Only the host or moderators can cancel this.', flags: 64 });
             }
 
             await interaction.deferReply({ flags: 64 });
@@ -685,7 +686,7 @@ module.exports = {
                         const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
                         if (res) {
                             const val = parseInt(res.fields.getTextInputValue('val'));
-                            if (isNaN(val) || val < 100) { await res.reply({ content: '❌ Invalid amount (min 100).', flags: 64 }); return; }
+                            if (isNaN(val) || val < 100) { await res.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Invalid amount (min 100).', flags: 64 }); return; }
                             session.amount = val;
                             await res.update(buildDashboard());
                         }
@@ -712,7 +713,7 @@ module.exports = {
                         if (res) {
                             const val = res.fields.getTextInputValue('val');
                             const ms = parseDuration(val);
-                            if (!ms) { await res.reply({ content: '❌ Invalid duration. Use 10s, 5m, 2h, 1d.', flags: 64 }); return; }
+                            if (!ms) { await res.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Invalid duration. Use 10s, 5m, 2h, 1d.', flags: 64 }); return; }
                             session.durationStr = val;
                             session.durationMs = ms;
                             await res.update(buildDashboard());
@@ -727,7 +728,7 @@ module.exports = {
                         const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
                         if (res) {
                             const val = parseInt(res.fields.getTextInputValue('val'));
-                            if (isNaN(val) || val < 1 || val > 20) { await res.reply({ content: '❌ Winners must be 1-20.', flags: 64 }); return; }
+                            if (isNaN(val) || val < 1 || val > 20) { await res.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Winners must be 1-20.', flags: 64 }); return; }
                             session.winners = val;
                             await res.update(buildDashboard());
                         }
@@ -756,17 +757,17 @@ module.exports = {
                         if (session.prizeType === 'credits') {
                             const user = db.prepare('SELECT credits FROM users WHERE id = ? AND guild_id = ?').get(interaction.user.id, guild.id);
                             if (!user || user.credits < session.amount) {
-                                return await i.reply({ content: `❌ You don't have enough credits. You have ${user?.credits?.toLocaleString() || 0}, need ${session.amount.toLocaleString()}.`, flags: 64 });
+                                return await i.reply({ content: `${em('ic_off', '❌')} You don't have enough credits. You have ${user?.credits?.toLocaleString() || 0}, need ${session.amount.toLocaleString()}.`, flags: 64 });
                             }
                         } else {
                             if (!session.prizeName) {
-                                return await i.reply({ content: '❌ Please set a custom prize name.', flags: 64 });
+                                return await i.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Please set a custom prize name.', flags: 64 });
                             }
                         }
 
                         const targetChannel = guild.channels.cache.get(session.channelId);
                         if (!targetChannel) {
-                            return await i.reply({ content: '❌ The selected channel no longer exists.', flags: 64 });
+                            return await i.reply({ content: em('ic_off', em('ic_off', '❌')) + ' The selected channel no longer exists.', flags: 64 });
                         }
                         
                         await i.deferUpdate();

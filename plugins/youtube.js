@@ -89,7 +89,7 @@ const sub = args[0]?.toLowerCase();
 // Info mode
 if (sub === 'info') {
             const url = args.slice(1).join(' ');
-            if (!url) return message.reply('❌ Please provide a YouTube URL or video ID.');
+            if (!url) return message.reply(em('ic_off', em('ic_off', '❌')) + ' Please provide a YouTube URL or video ID.');
             return handleVideoInfo(message, url, false);
         }
 
@@ -348,7 +348,7 @@ return safeResults.length > 0 ? safeResults : null;
 async function handleVideoInfo(context, input, isSlash) {
     const videoId = extractVideoId(input);
     if (!videoId) {
-        const msg = '❌ **Invalid YouTube URL or ID**\nPlease provide a valid YouTube link.\nExample: `https://youtube.com/watch?v=dQw4w9WgXcQ`';
+        const msg = em('ic_off', em('ic_off', '❌')) + ' **Invalid YouTube URL or ID**\nPlease provide a valid YouTube link.\nExample: `https://youtube.com/watch?v=dQw4w9WgXcQ`';
         return isSlash ? context.editReply(msg) : context.reply(msg);
     }
 
@@ -359,7 +359,7 @@ async function handleVideoInfo(context, input, isSlash) {
 
     const video = await fetchVideoDetails(videoId);
     if (!video) {
-        const msg = '❌ **Video Not Found**\nThe video may be private, deleted, or the API quota has been exhausted.\nTry again later or use a different link.';
+        const msg = em('ic_off', em('ic_off', '❌')) + ' **Video Not Found**\nThe video may be private, deleted, or the API quota has been exhausted.\nTry again later or use a different link.';
         return isSlash ? context.editReply(msg) : context.reply(msg);
     }
 
@@ -491,7 +491,7 @@ async function handleYouTubeSearch(context, query, maxResults, isSlash) {
     const results = await searchYouTube(query, maxResults);
     
     if (!results || !results.length) {
-        const msg = '❌ **No results found**\nTry a different search query. If the problem persists, the YouTube API quota may be exhausted.';
+        const msg = em('ic_off', em('ic_off', '❌')) + ' **No results found**\nTry a different search query. If the problem persists, the YouTube API quota may be exhausted.';
         return isSlash ? context.editReply(msg) : context.reply(msg);
     }
 

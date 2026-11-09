@@ -15,9 +15,9 @@ const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
 
 function getErrorEmoji(guild) {
-    if (!guild) return '❌';
+    if (!guild) return em('ic_off', '❌');
     const found = guild.emojis.cache.find(e => e.name === 'error');
-    return found ? found.toString() : '❌';
+    return found ? found.toString() : em('ic_off', '❌');
 }
 
 function effectiveSettings(ss, gid) {
@@ -321,7 +321,7 @@ function cfgCard(s, g, c, lang='en') {
                  `**${t('ticket.cfgStaff', lang) || 'Staff Role'}** · ${fr(s?.ticketStaffRole, 'TICKET_STAFF_ROLE_ID')}\n` +
                  `**${t('ticket.cfgTx', lang) || 'Log Channel'}** · ${fch(s?.ticketTranscriptChannel, 'TICKET_TRANSCRIPT_CHANNEL_ID')}\n` +
                  `**${t('ticket.cfgLog', lang) || 'Extra Log'}** · ${fch(s?.ticketLogChannel, 'TICKET_LOG_CHANNEL_ID')}\n` +
-                 `**${t('ticket.cfgAC', lang) || 'Auto-Close'}** · ${ac <= 0 || isNaN(ac) ? `${em('ic_off', '❌')} ${t('ticket.cfgOff', lang) || 'Off'}` : `\`${ac}h\``}\n` +
+                 `**${t('ticket.cfgAC', lang) || 'Auto-Close'}** · ${ac <= 0 || isNaN(ac) ? `${em('ic_off', em('ic_off', '❌'))} ${t('ticket.cfgOff', lang) || 'Off'}` : `\`${ac}h\``}\n` +
                  `**${t('ticket.cfgLim', lang) || 'Limit'}** · \`${lm}\` / user`;
 
     return _v2.card(0x00fbff, [

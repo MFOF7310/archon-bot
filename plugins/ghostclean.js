@@ -92,8 +92,8 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
     // ── LEAVE <guild_id> ──
     if (subcommand === 'leave') {
         const targetId = args[1];
-        if (!targetId) return reply({ content: '❌ Provide a guild ID.', flags: 64 });
-        if (WHITELIST.includes(targetId)) return reply({ content: '❌ That guild is whitelisted.', flags: 64 });
+        if (!targetId) return reply({ content: em('ic_off', em('ic_off', '❌')) + ' Provide a guild ID.', flags: 64 });
+        if (WHITELIST.includes(targetId)) return reply({ content: em('ic_off', em('ic_off', '❌')) + ' That guild is whitelisted.', flags: 64 });
         const guild = client.guilds.cache.get(targetId);
         if (!guild) return reply({ content: `⚠️ Guild \`${targetId}\` not in cache.`, flags: 64 });
         const name = guild.name;
@@ -137,7 +137,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
                 console.log(`[GHOSTCLEAN] Left: ${row.guild_name} (${row.guild_id})`);
             } catch (e) {
                 failed++;
-                results.push(`❌ Failed: **${row.guild_name}**`);
+                results.push(`${em('ic_off', '❌')} Failed: **${row.guild_name}**`);
             }
         }
 

@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, parseEmoji } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 
@@ -186,7 +187,7 @@ module.exports = {
             const currentAfk = afkUsers.get(targetId);
             
             if (!currentAfk) {
-                return i.reply({ content: '❌ This user is no longer AFK.', flags: 64 });
+                return i.reply({ content: em('ic_off', em('ic_off', '❌')) + ' This user is no longer AFK.', flags: 64 });
             }
             
             if (i.customId.startsWith('afk_remind')) {
@@ -232,7 +233,7 @@ module.exports = {
         // Check if AFK system is enabled for this server
         const afkServerSettings = client.getServerSettings?.(interaction.guild?.id);
         if (afkServerSettings?.afk_enabled === 0 || afkServerSettings?.afkEnabled === false) {
-            return interaction.reply({ content: lang === 'fr' ? '❌ Le système AFK est désactivé sur ce serveur.' : '❌ The AFK system is disabled on this server.', flags: 64 });
+            return interaction.reply({ content: lang === 'fr' ? em('ic_off', em('ic_off', '❌')) + ' Le système AFK est désactivé sur ce serveur.' : em('ic_off', em('ic_off', '❌')) + ' The AFK system is disabled on this server.', flags: 64 });
         }
         const t = loadT(lang);
         const version = client.version || '1.8.0';

@@ -1,11 +1,12 @@
 const { EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const https = require('https');
 
 // ================= BILINGUAL =================
 const T = {
     en: {
         loading: (category) => `📸 Fetching an ultra HD ${category} image...`,
-        error: '❌ Failed to fetch image. Try again!',
+        error: em('ic_off', em('ic_off', '❌')) + ' Failed to fetch image. Try again!',
         noApiKey: (cat) => `⚠️ \`${cat}\` images require an Unsplash API key. Set \`UNSPLASH_ACCESS_KEY\` in your .env file.`,
         footer: (cat, total) => `Architect CG-223 • ${cat} • #${total.toLocaleString()} served`,
         categories: {
@@ -32,7 +33,7 @@ const T = {
     },
     fr: {
         loading: (category) => `📸 Récupération d'une image ${category} ultra HD...`,
-        error: '❌ Échec de récupération de l\'image. Réessayez!',
+        error: em('ic_off', em('ic_off', '❌')) + ' Échec de récupération de l\'image. Réessayez!',
         noApiKey: (cat) => `⚠️ Les images \`${cat}\` nécessitent une clé API Unsplash. Définissez \`UNSPLASH_ACCESS_KEY\` dans votre .env.`,
         footer: (cat, total) => `Architect CG-223 • ${cat} • #${total.toLocaleString()} servies`,
         categories: {
@@ -412,8 +413,8 @@ module.exports = {
         if (!validCategories.includes(category)) {
             return message.reply(
                 lang === 'fr'
-                    ? `❌ Catégorie invalide. Choisissez: ${validCategories.map(c => `\`${c}\``).join(', ')}`
-                    : `❌ Invalid category. Choose: ${validCategories.map(c => `\`${c}\``).join(', ')}`
+                    ? `${em('ic_off', '❌')} Catégorie invalide. Choisissez: ${validCategories.map(c => `\`${c}\``).join(', ')}`
+                    : `${em('ic_off', '❌')} Invalid category. Choose: ${validCategories.map(c => `\`${c}\``).join(', ')}`
             ).catch(() => {});
         }
 
@@ -450,7 +451,7 @@ module.exports = {
                 const collector = msg.createMessageComponentCollector({ time: 120000 });
                 collector.on('collect', async (i) => {
                     if (!i.customId.endsWith(`_${message.author.id}`)) {
-                        return i.reply({ content: txt.en.accessDenied || '❌ Only the author can use this.', flags: 64 }).catch(() => {});
+                        return i.reply({ content: txt.en.accessDenied || em('ic_off', em('ic_off', '❌')) + ' Only the author can use this.', flags: 64 }).catch(() => {});
                     }
                     if (i.customId.startsWith('image_next')) {
                         await i.deferUpdate().catch(() => {});
@@ -513,7 +514,7 @@ module.exports = {
             const collector = msg.createMessageComponentCollector({ time: 120000 });
             collector.on('collect', async (i) => {
                 if (!i.customId.endsWith(`_${interaction.user.id}`)) {
-                    return i.reply({ content: txt.en?.accessDenied || '❌ Only the author can use this.', flags: 64 }).catch(() => {});
+                    return i.reply({ content: txt.en?.accessDenied || em('ic_off', em('ic_off', '❌')) + ' Only the author can use this.', flags: 64 }).catch(() => {});
                 }
                 if (i.customId.startsWith('image_slash_next')) {
                     await i.deferUpdate().catch(() => {});

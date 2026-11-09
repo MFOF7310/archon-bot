@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const axios = require('axios');
 
 const FACT_API_URL = 'https://uselessfacts.jsph.pl/api/v2/facts/random?language=en';
@@ -18,7 +19,7 @@ module.exports = {
             await message.reply({ embeds: [embed] });
         } catch (err) {
             console.error('Fact prefix command error:', err.message);
-            await message.reply('❌ Could not fetch a fact. Try again later!');
+            await message.reply(em('ic_off', em('ic_off', '❌')) + ' Could not fetch a fact. Try again later!');
         }
     },
     
@@ -30,7 +31,7 @@ module.exports = {
             await interaction.editReply({ embeds: [embed] });
         } catch (err) {
             console.error('Fact slash command error:', err.message);
-            await interaction.editReply('❌ Could not fetch a fact. Try again later!');
+            await interaction.editReply(em('ic_off', em('ic_off', '❌')) + ' Could not fetch a fact. Try again later!');
         }
     }
 };

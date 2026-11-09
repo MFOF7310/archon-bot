@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { icon } = require('../lib/ui/icons');
 const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 
@@ -10,14 +11,14 @@ const t = {
     en: {
         setTitle: '🎂 Birthday saved',
         setSuccess: (date) => `✅ Your birthday is saved: **${date}**`,
-        setError: '❌ Invalid date. Example: `/birthday set day:15 month:6 year:2000`',
+        setError: em('ic_off', em('ic_off', '❌')) + ' Invalid date. Example: `/birthday set day:15 month:6 year:2000`',
         removeTitle: '🎂 Birthday removed',
         removeSuccess: '✅ Your birthday has been removed.',
-        removeError: '❌ You have no birthday saved.',
+        removeError: em('ic_off', em('ic_off', '❌')) + ' You have no birthday saved.',
         checkTitle: '🎂 Birthday',
         checkUser: (user, date) => `🎉 **${user}**'s birthday is on **${date}**`,
         checkSelf: (date) => `🎂 Your birthday is on **${date}**`,
-        checkNone: '❌ No birthday saved.',
+        checkNone: em('ic_off', em('ic_off', '❌')) + ' No birthday saved.',
         listTitle: '📅 Upcoming birthdays',
         listEmpty: 'No birthdays in the next 90 days.',
         listEntry: (user, date, days) => `• **${user}** — ${date} (in ${days} d)`,
@@ -28,23 +29,23 @@ const t = {
         wishButton: 'Wish happy birthday',
         giftButton: 'Send a gift',
         months: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
-        noPermission: "❌ You don't have permission to change someone else's birthday.",
-        invalidDay: '❌ Day must be between 1 and 31.',
-        invalidMonth: '❌ Month must be between 1 and 12.',
-        invalidYear: '❌ Year must be between 1900 and 2020.',
-        invalidDate: '❌ That date does not exist.'
+        noPermission: em('ic_off', '❌') + " You don't have permission to change someone else's birthday.",
+        invalidDay: em('ic_off', em('ic_off', '❌')) + ' Day must be between 1 and 31.',
+        invalidMonth: em('ic_off', em('ic_off', '❌')) + ' Month must be between 1 and 12.',
+        invalidYear: em('ic_off', em('ic_off', '❌')) + ' Year must be between 1900 and 2020.',
+        invalidDate: em('ic_off', em('ic_off', '❌')) + ' That date does not exist.'
     },
     fr: {
         setTitle: '🎂 Anniversaire enregistré',
         setSuccess: (date) => `✅ Ton anniversaire est enregistré : **${date}**`,
-        setError: '❌ Date invalide. Exemple : `/birthday set jour:15 mois:6 annee:2000`',
+        setError: em('ic_off', em('ic_off', '❌')) + ' Date invalide. Exemple : `/birthday set jour:15 mois:6 annee:2000`',
         removeTitle: '🎂 Anniversaire supprimé',
         removeSuccess: '✅ Ton anniversaire a été supprimé.',
-        removeError: "❌ Tu n'as aucun anniversaire enregistré.",
+        removeError: em('ic_off', '❌') + " Tu n'as aucun anniversaire enregistré.",
         checkTitle: '🎂 Anniversaire',
         checkUser: (user, date) => `🎉 L'anniversaire de **${user}** est le **${date}**`,
         checkSelf: (date) => `🎂 Ton anniversaire est le **${date}**`,
-        checkNone: '❌ Aucun anniversaire enregistré.',
+        checkNone: em('ic_off', em('ic_off', '❌')) + ' Aucun anniversaire enregistré.',
         listTitle: '📅 Anniversaires à venir',
         listEmpty: 'Aucun anniversaire dans les 90 prochains jours.',
         listEntry: (user, date, days) => `• **${user}** — ${date} (dans ${days} j)`,
@@ -55,11 +56,11 @@ const t = {
         wishButton: 'Souhaiter un bon anniversaire',
         giftButton: 'Offrir un cadeau',
         months: ['JAN', 'FÉV', 'MAR', 'AVR', 'MAI', 'JUN', 'JUL', 'AOÛ', 'SEP', 'OCT', 'NOV', 'DÉC'],
-        noPermission: "❌ Tu n'as pas la permission de modifier l'anniversaire d'un autre membre.",
-        invalidDay: '❌ Le jour doit être entre 1 et 31.',
-        invalidMonth: '❌ Le mois doit être entre 1 et 12.',
-        invalidYear: "❌ L'année doit être entre 1900 et 2020.",
-        invalidDate: "❌ Cette date n'existe pas."
+        noPermission: em('ic_off', '❌') + " Tu n'as pas la permission de modifier l'anniversaire d'un autre membre.",
+        invalidDay: em('ic_off', em('ic_off', '❌')) + ' Le jour doit être entre 1 et 31.',
+        invalidMonth: em('ic_off', em('ic_off', '❌')) + ' Le mois doit être entre 1 et 12.',
+        invalidYear: em('ic_off', '❌') + " L'année doit être entre 1900 et 2020.",
+        invalidDate: em('ic_off', '❌') + " Cette date n'existe pas."
     }
 };
 
@@ -617,8 +618,8 @@ module.exports = {
             const timezone = resolveTimezone(timezoneInput);
             if (!timezone) {
                 return interaction.editReply(lang === 'fr'
-                    ? `❌ Fuseau horaire inconnu : **${timezoneInput}**. Choisissez une suggestion dans la liste.`
-                    : `❌ Unknown timezone: **${timezoneInput}**. Pick one of the suggestions.`);
+                    ? `${em('ic_off', '❌')} Fuseau horaire inconnu : **${timezoneInput}**. Choisissez une suggestion dans la liste.`
+                    : `${em('ic_off', '❌')} Unknown timezone: **${timezoneInput}**. Pick one of the suggestions.`);
             }
             if (day < 1 || day > 31) return interaction.editReply(strings.invalidDay);
             if (month < 1 || month > 12) return interaction.editReply(strings.invalidMonth);
@@ -663,8 +664,8 @@ module.exports = {
                     .setColor('#95a5a6')
                     .setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
                     .setDescription(user.id === interaction.user.id 
-                        ? (lang === 'fr' ? '❌ Aucun dossier anniversaire trouve.\nUtilisez `/birthday set` pour l\'ajouter.' : '❌ No birthday record found.\nUse `/birthday set` to register.')
-                        : (lang === 'fr' ? `❌ ${user.username} n'a pas de dossier anniversaire.` : `❌ ${user.username} has no birthday record.`))
+                        ? (lang === 'fr' ? em('ic_off', em('ic_off', '❌')) + ' Aucun dossier anniversaire trouve.\nUtilisez `/birthday set` pour l\'ajouter.' : em('ic_off', em('ic_off', '❌')) + ' No birthday record found.\nUse `/birthday set` to register.')
+                        : (lang === 'fr' ? `${em('ic_off', '❌')} ${user.username} n'a pas de dossier anniversaire.` : `${em('ic_off', '❌')} ${user.username} has no birthday record.`))
                     .setFooter({ text: '🎂 Birthday Intelligence Division' });
                 return interaction.editReply(toV2({ embeds: [noBdayEmbed] }));
             }

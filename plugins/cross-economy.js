@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const EMOJIS = require('../config/emojis');
 
 // ================= BILINGUAL =================
@@ -14,7 +15,7 @@ const T = {
         streak: 'Streak',
         transferSent: '💸 Credits Sent!',
         transferReceived: '💰 You Just Got Paid!',
-        transferError: '❌ Transfer Failed — something went wrong',
+        transferError: em('ic_off', em('ic_off', '❌')) + ' Transfer Failed — something went wrong',
         leaderboard: '🏆 Global Leaderboard',
         network: '🌐 ARCHITECT Network',
         servers: 'Servers',
@@ -27,8 +28,8 @@ const T = {
         emptyInventory: '📭 Empty',
         shop: '🏪 Global Shop',
         footer: 'ARCHON CG-223 • Cross-Server Economy',
-        noFunds: '❌ Not enough credits — check your balance with `/global balance`',
-        invalidAmount: '❌ Invalid amount',
+        noFunds: em('ic_off', em('ic_off', '❌')) + ' Not enough credits — check your balance with `/global balance`',
+        invalidAmount: em('ic_off', em('ic_off', '❌')) + ' Invalid amount',
         selfTransfer: '😅 You can\'t send credits to yourself!',
         tax: 'Network Tax (5%)',
         networkBonus: '🌐 Network Bonus',
@@ -46,7 +47,7 @@ const T = {
         streak: 'Série',
         transferSent: '💸 Crédits Envoyés !',
         transferReceived: '💰 Tu Viens de Recevoir des Crédits !',
-        transferError: '❌ Transfert Échoué',
+        transferError: em('ic_off', em('ic_off', '❌')) + ' Transfert Échoué',
         leaderboard: '🏆 Classement Global',
         network: '🌐 Réseau ARCHITECT',
         servers: 'Serveurs',
@@ -59,8 +60,8 @@ const T = {
         emptyInventory: '📭 Vide',
         shop: '🏪 Boutique Globale',
         footer: 'ARCHON CG-223 • Économie Inter-Serveurs',
-        noFunds: '❌ Pas assez de crédits — vérifie ton solde avec `/global balance`',
-        invalidAmount: '❌ Montant invalide',
+        noFunds: em('ic_off', em('ic_off', '❌')) + ' Pas assez de crédits — vérifie ton solde avec `/global balance`',
+        invalidAmount: em('ic_off', em('ic_off', '❌')) + ' Montant invalide',
         selfTransfer: '😅 Tu ne peux pas t\'envoyer des crédits à toi-même !',
         tax: 'Taxe Réseau (5%)',
         networkBonus: '🌐 Bonus Réseau',

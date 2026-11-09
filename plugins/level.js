@@ -1,8 +1,9 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 const T = {
-    en: { title: '📊 Level Progress', footer: 'Architect CG-223 • v{version}', progress: '🚀 Progress', xp: 'XP', level: 'Level', rank: 'Rank', messages: 'Messages', nextLevel: 'Next Level', xpNeeded: 'XP needed', totalXP: 'Total XP', notFound: '❌ No data found. Start chatting to earn XP!', },
-    fr: { title: '📊 Progression de Niveau', footer: 'Architect CG-223 • v{version}', progress: '🚀 Progression', xp: 'XP', level: 'Niveau', rank: 'Rang', messages: 'Messages', nextLevel: 'Niveau Suivant', xpNeeded: 'XP requis', totalXP: 'XP Total', notFound: '❌ Aucune donnée trouvée. Commencez à discuter pour gagner de l\'XP !', }
+    en: { title: '📊 Level Progress', footer: 'Architect CG-223 • v{version}', progress: '🚀 Progress', xp: 'XP', level: 'Level', rank: 'Rank', messages: 'Messages', nextLevel: 'Next Level', xpNeeded: 'XP needed', totalXP: 'Total XP', notFound: em('ic_off', em('ic_off', '❌')) + ' No data found. Start chatting to earn XP!', },
+    fr: { title: '📊 Progression de Niveau', footer: 'Architect CG-223 • v{version}', progress: '🚀 Progression', xp: 'XP', level: 'Niveau', rank: 'Rang', messages: 'Messages', nextLevel: 'Niveau Suivant', xpNeeded: 'XP requis', totalXP: 'XP Total', notFound: em('ic_off', em('ic_off', '❌')) + ' Aucune donnée trouvée. Commencez à discuter pour gagner de l\'XP !', }
 };
 
 function calcLevel(xp) { return Math.floor(0.1 * Math.sqrt(xp || 0)) + 1; }

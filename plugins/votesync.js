@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { icon } = require('../lib/ui/icons');
 const EMOJIS = require('../config/emojis');
 
@@ -23,8 +24,8 @@ const T = {
         milestone30: '👑 30-DAY LEGENDARY! +5,000 BONUS!', milestone30desc: '```ansi\n\u001b[1;35m+5,000 BONUS CREDITS!\u001b[0m\n```',
         milestone100: '🌟 100-DAY MYTHIC! +10,000 BONUS!', milestone100desc: '```ansi\n\u001b[1;33m+10,000 BONUS + LEGENDARY TITLE!\u001b[0m\n```',
         footer: 'ARCHON CG-223 • Top.gg Certified',
-        voteAgain: 'Vote Again', noVote: '❌ You have not voted yet!',
-        checkError: '❌ Could not check vote status. Try again later.',
+        voteAgain: 'Vote Again', noVote: em('ic_off', em('ic_off', '❌')) + ' You have not voted yet!',
+        checkError: em('ic_off', em('ic_off', '❌')) + ' Could not check vote status. Try again later.',
         alreadyClaimed: '⏰ Already claimed! Next vote: {time}',
         publicTitle: '🗳️ VOTE RECEIVED', publicDesc: '**{user}** voted!\n💰 **Reward:** +{reward} Credits\n🔥 **Streak:** {streak} days\n📊 **Total:** {total} votes',
         publicFooter: 'ARCHON CG-223 • Top.gg Verified'
@@ -42,8 +43,8 @@ const T = {
         milestone30: '👑 LÉGENDAIRE 30 JOURS ! +5 000 BONUS !', milestone30desc: '```ansi\n\u001b[1;35m+5 000 CRÉDITS BONUS !\u001b[0m\n```',
         milestone100: '🌟 MYTHIQUE 100 JOURS ! +10 000 BONUS !', milestone100desc: '```ansi\n\u001b[1;33m+10 000 BONUS + TITRE LÉGENDAIRE !\u001b[0m\n```',
         footer: 'ARCHON CG-223 • Certifié Top.gg',
-        voteAgain: 'Voter à nouveau', noVote: '❌ Vous n\'avez pas encore voté !',
-        checkError: '❌ Impossible de vérifier. Réessayez plus tard.',
+        voteAgain: 'Voter à nouveau', noVote: em('ic_off', em('ic_off', '❌')) + ' Vous n\'avez pas encore voté !',
+        checkError: em('ic_off', em('ic_off', '❌')) + ' Impossible de vérifier. Réessayez plus tard.',
         alreadyClaimed: '⏰ Déjà réclamé ! Prochain vote : {time}',
         publicTitle: '🗳️ VOTE REÇU', publicDesc: '**{user}** a voté !\n💰 **Récompense :** +{reward} Crédits\n🔥 **Série :** {streak} jours\n📊 **Total :** {total} votes',
         publicFooter: 'ARCHON CG-223 • Top.gg Vérifié'
@@ -61,8 +62,8 @@ const T = {
         milestone30: '👑 30 天传奇！+5,000 奖励！', milestone30desc: '```ansi\n\u001b[1;35m+5,000 奖励积分！\u001b[0m\n```',
         milestone100: '🌟 100 天神话！+10,000 奖励！', milestone100desc: '```ansi\n\u001b[1;33m+10,000 奖励 + 传奇称号！\u001b[0m\n```',
         footer: 'ARCHON CG-223 • Top.gg 认证',
-        voteAgain: '再投一票', noVote: '❌ 你还没有投票！',
-        checkError: '❌ 无法检查投票状态，请稍后再试。',
+        voteAgain: '再投一票', noVote: em('ic_off', em('ic_off', '❌')) + ' 你还没有投票！',
+        checkError: em('ic_off', em('ic_off', '❌')) + ' 无法检查投票状态，请稍后再试。',
         alreadyClaimed: '⏰ 已领取！下次可投：{time}',
         publicTitle: '🗳️ 收到投票', publicDesc: '**{user}** 投票了！\n💰 **奖励：** +{reward} 积分\n🔥 **连投：** {streak} 天\n📊 **总计：** {total} 次',
         publicFooter: 'ARCHON CG-223 • Top.gg 已验证'
@@ -80,8 +81,8 @@ const T = {
         milestone30: '👑 أسطورة 30 يومًا! +5,000 مكافأة!', milestone30desc: '```ansi\n\u001b[1;35m+5,000 رصيد مكافأة!\u001b[0m\n```',
         milestone100: '🌟 أسطوري 100 يومًا! +10,000 مكافأة!', milestone100desc: '```ansi\n\u001b[1;33m+10,000 مكافأة + لقب أسطوري!\u001b[0m\n```',
         footer: 'أركون CG-223 • Top.gg معتمد',
-        voteAgain: 'صوّت مجددًا', noVote: '❌ ما صوّيت بعد!',
-        checkError: '❌ ما قدرت أتحقق. حاول بعد لحظات.',
+        voteAgain: 'صوّت مجددًا', noVote: em('ic_off', em('ic_off', '❌')) + ' ما صوّيت بعد!',
+        checkError: em('ic_off', em('ic_off', '❌')) + ' ما قدرت أتحقق. حاول بعد لحظات.',
         alreadyClaimed: '⏰ اناستلمت! التصويت التالي: {time}',
         publicTitle: '🗳️ وصل تصويت', publicDesc: '**{user}** صوّت!\n💰 **المكافأة:** +{reward} رصيد\n🔥 **السلسلة:** {streak} يوم\n📊 **الإجمالي:** {total} تصويت',
         publicFooter: 'أركون CG-223 • Top.gg موثّق'

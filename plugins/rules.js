@@ -163,8 +163,8 @@ function initRulesAccept(client) {
             return i.editReply({ content: t('rules.acceptSuccess', lang, { user: `<@${i.user.id}>` }) }).catch(() => {});
         } catch (e) {
             console.error('[RULES ACCEPT]', e.message);
-            if (i.deferred || i.replied) await i.editReply({ content: '❌ Error' }).catch(() => {});
-            else await i.reply({ content: '❌ Error', flags: 64 }).catch(() => {});
+            if (i.deferred || i.replied) await i.editReply({ content: em('ic_off', em('ic_off', '❌')) + ' Error' }).catch(() => {});
+            else await i.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Error', flags: 64 }).catch(() => {});
         }
     });
 }

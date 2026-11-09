@@ -1,4 +1,5 @@
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 module.exports = {
     name: 'setgiftchannel',
@@ -33,7 +34,7 @@ module.exports = {
         // Permission check
         if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
             return interaction.reply({
-                content: '❌ You need **Manage Server** permission to use this command.',
+                content: em('ic_off', em('ic_off', '❌')) + ' You need **Manage Server** permission to use this command.',
                 flags: 64
             });
         }
@@ -68,16 +69,16 @@ module.exports = {
     async run(client, message, args, db) {
         // Handle prefix command
         if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-            return message.reply('❌ You need **Manage Server** permission.');
+            return message.reply(em('ic_off', em('ic_off', '❌')) + ' You need **Manage Server** permission.');
         }
 
         const channel = message.mentions.channels.first();
         if (!channel) {
-            return message.reply('❌ Please mention a text channel.\nExample: `.setgiftchannel #announcements`');
+            return message.reply(em('ic_off', em('ic_off', '❌')) + ' Please mention a text channel.\nExample: `.setgiftchannel #announcements`');
         }
 
         if (!channel.isTextBased()) {
-            return message.reply('❌ That channel is not a text channel.');
+            return message.reply(em('ic_off', em('ic_off', '❌')) + ' That channel is not a text channel.');
         }
 
         const guildId = message.guild.id;

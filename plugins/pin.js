@@ -1,4 +1,5 @@
 const { EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { iconObj } = require('../lib/ui/icons');
 const fs = require('fs');
 const path = require('path');
@@ -462,7 +463,7 @@ async function handleSlashUnpin(interaction, client, db, t, lang) {
     }
     
     if (!targetMessage.channel) {
-        return interaction.editReply({ content: '❌ Message channel not found.' });
+        return interaction.editReply({ content: em('ic_off', em('ic_off', '❌')) + ' Message channel not found.' });
     }
     
     const pins = await targetMessage.channel.messages.fetchPinned().catch(() => new Map());

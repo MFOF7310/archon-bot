@@ -1,8 +1,9 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 const T = {
-    en: { title: '🧮 CALCULATOR', result: 'Result', expression: 'Expression', error: '❌ Invalid expression.', footer: 'Architect CG-223 • Calculator', modeSci: 'Scientific', modeBasic: 'Basic', usage: '`.calc 2+2` or `.calc sin(45)`', history: '📊 Recent Calculations' },
-    fr: { title: '🧮 CALCULATRICE', result: 'Résultat', expression: 'Expression', error: '❌ Expression invalide.', footer: 'Architect CG-223 • Calculatrice', modeSci: 'Scientifique', modeBasic: 'Basique', usage: '`.calc 2+2` ou `.calc sin(45)`', history: '📊 Calculs Récents' }
+    en: { title: '🧮 CALCULATOR', result: 'Result', expression: 'Expression', error: em('ic_off', em('ic_off', '❌')) + ' Invalid expression.', footer: 'Architect CG-223 • Calculator', modeSci: 'Scientific', modeBasic: 'Basic', usage: '`.calc 2+2` or `.calc sin(45)`', history: '📊 Recent Calculations' },
+    fr: { title: '🧮 CALCULATRICE', result: 'Résultat', expression: 'Expression', error: em('ic_off', em('ic_off', '❌')) + ' Expression invalide.', footer: 'Architect CG-223 • Calculatrice', modeSci: 'Scientifique', modeBasic: 'Basique', usage: '`.calc 2+2` ou `.calc sin(45)`', history: '📊 Calculs Récents' }
 };
 
 function safeCalc(expr) {
@@ -37,7 +38,7 @@ module.exports = {
         if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
         const t = T[lang] || T.en, expr = args.join(' ');
-        if (!expr) return message.reply(`❌ ${t.usage}`).catch(() => {});
+        if (!expr) return message.reply(`${em('ic_off', '❌')} ${t.usage}`).catch(() => {});
         try {
             const result = safeCalc(expr);
             const userHist = history.get(message.author.id) || [];

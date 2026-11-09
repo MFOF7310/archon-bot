@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const axios = require('axios');
 
 const ANIME_API = 'https://api.jikan.moe/v4';
@@ -164,7 +165,7 @@ module.exports = {
             collector.on('collect', async (interaction) => {
                 if (interaction.user.id !== message.author.id) {
                     return interaction.reply({ 
-                        content: '❌ This summon belongs to someone else! Use `.anime` to summon your own!', 
+                        content: em('ic_off', em('ic_off', '❌')) + ' This summon belongs to someone else! Use `.anime` to summon your own!', 
                         flags: 64 
                     });
                 }
@@ -187,7 +188,7 @@ module.exports = {
             
         } catch (err) {
             console.error('Anime prefix command error:', err.message);
-            await message.reply('❌ The summoning ritual failed. Try again later!');
+            await message.reply(em('ic_off', em('ic_off', '❌')) + ' The summoning ritual failed. Try again later!');
         }
     },
     
@@ -206,7 +207,7 @@ module.exports = {
             collector.on('collect', async (btnInteraction) => {
                 if (btnInteraction.user.id !== interaction.user.id) {
                     return btnInteraction.reply({ 
-                        content: '❌ This summon belongs to someone else! Use `/anime` to summon your own!', 
+                        content: em('ic_off', em('ic_off', '❌')) + ' This summon belongs to someone else! Use `/anime` to summon your own!', 
                         flags: 64 
                     });
                 }
@@ -229,7 +230,7 @@ module.exports = {
             
         } catch (err) {
             console.error('Anime slash command error:', err.message);
-            await interaction.editReply('❌ The summoning ritual failed. Try again later!');
+            await interaction.editReply(em('ic_off', em('ic_off', '❌')) + ' The summoning ritual failed. Try again later!');
         }
     }
 };

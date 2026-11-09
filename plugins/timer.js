@@ -1,8 +1,9 @@
 const { EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 const T = {
-    en: { title: '⏱️ Timer', started: '✅ Timer started!', timeLeft: '⏱️ Time Left', timeUp: '🎉 Time\'s up!', cancelled: '❌ Timer cancelled.', footer: (label) => `Timer: ${label || 'Timer'}`, usage: '`.timer 5m Study break` or `.timer 30s`', invalidTime: '❌ Invalid time. Use: `30s`, `5m`, `1h`, `2h30m`' },
-    fr: { title: '⏱️ Minuteur', started: '✅ Minuteur démarré !', timeLeft: '⏱️ Temps Restant', timeUp: '🎉 Temps écoulé !', cancelled: '❌ Minuteur annulé.', footer: (label) => `Minuteur: ${label || 'Minuteur'}`, usage: '`.timer 5m Pause étude` ou `.timer 30s`', invalidTime: '❌ Temps invalide. Formats: `30s`, `5m`, `1h`, `2h30m`' }
+    en: { title: '⏱️ Timer', started: '✅ Timer started!', timeLeft: '⏱️ Time Left', timeUp: '🎉 Time\'s up!', cancelled: em('ic_off', em('ic_off', '❌')) + ' Timer cancelled.', footer: (label) => `Timer: ${label || 'Timer'}`, usage: '`.timer 5m Study break` or `.timer 30s`', invalidTime: em('ic_off', em('ic_off', '❌')) + ' Invalid time. Use: `30s`, `5m`, `1h`, `2h30m`' },
+    fr: { title: '⏱️ Minuteur', started: '✅ Minuteur démarré !', timeLeft: '⏱️ Temps Restant', timeUp: '🎉 Temps écoulé !', cancelled: em('ic_off', em('ic_off', '❌')) + ' Minuteur annulé.', footer: (label) => `Minuteur: ${label || 'Minuteur'}`, usage: '`.timer 5m Pause étude` ou `.timer 30s`', invalidTime: em('ic_off', em('ic_off', '❌')) + ' Temps invalide. Formats: `30s`, `5m`, `1h`, `2h30m`' }
 };
 
 function parseTime(input) {
@@ -33,14 +34,14 @@ module.exports = {
         if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
         const t = T[lang] || T.en;
-        if (args.length < 1) return message.reply(`❌ ${t.usage}`).catch(() => {});
+        if (args.length < 1) return message.reply(`${em('ic_off', '❌')} ${t.usage}`).catch(() => {});
         const durationMs = parseTime(args[0]);
         if (!durationMs) return message.reply(t.invalidTime).catch(() => {});
         const label = args.slice(1).join(' ') || 'Timer';
         const endTime = Date.now() + durationMs;
 
         const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`timer_cancel_${message.author.id}`).setLabel('❌ Cancel').setStyle(ButtonStyle.Danger)
+            new ButtonBuilder().setCustomId(`timer_cancel_${message.author.id}`).setLabel(em('ic_off', em('ic_off', '❌')) + ' Cancel').setStyle(ButtonStyle.Danger)
         );
 
         const embed = new EmbedBuilder().setColor('#00fbff').setTitle(t.title).setDescription(
@@ -51,7 +52,7 @@ module.exports = {
 
         const collector = msg.createMessageComponentCollector({ time: durationMs });
         collector.on('collect', async (i) => {
-            if (i.user.id !== message.author.id) return i.reply({ content: '❌ Not your timer.', flags: 64 }).catch(() => {});
+            if (i.user.id !== message.author.id) return i.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Not your timer.', flags: 64 }).catch(() => {});
             if (i.customId.startsWith('timer_cancel')) {
                 collector.stop('cancelled');
                 await i.update({ content: t.cancelled, embeds: [], components: [] }).catch(() => {});
@@ -89,7 +90,7 @@ module.exports = {
         await interaction.deferReply();
 
         const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`timer_cancel_${interaction.user.id}`).setLabel('❌ Cancel').setStyle(ButtonStyle.Danger)
+            new ButtonBuilder().setCustomId(`timer_cancel_${interaction.user.id}`).setLabel(em('ic_off', em('ic_off', '❌')) + ' Cancel').setStyle(ButtonStyle.Danger)
         );
 
         const embed = new EmbedBuilder().setColor('#00fbff').setTitle(t.title).setDescription(
@@ -100,7 +101,7 @@ module.exports = {
 
         const collector = msg.createMessageComponentCollector({ time: durationMs });
         collector.on('collect', async (i) => {
-            if (i.user.id !== interaction.user.id) return i.reply({ content: '❌ Not your timer.', flags: 64 }).catch(() => {});
+            if (i.user.id !== interaction.user.id) return i.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Not your timer.', flags: 64 }).catch(() => {});
             if (i.customId.startsWith('timer_cancel')) {
                 collector.stop('cancelled');
                 await i.update({ content: t.cancelled, embeds: [], components: [] }).catch(() => {});

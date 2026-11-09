@@ -431,7 +431,7 @@ module.exports = {
                 try { userData = client.getOrCreateUser(userId, guildId, userName); } catch (e) {}
             }
             if (!userData) {
-                return message.reply({ content: `❌ No data found for **${userName}**.`, flags: 64 }).catch(() => {});
+                return message.reply({ content: `${em('ic_off', '❌')} No data found for **${userName}**.`, flags: 64 }).catch(() => {});
             }
 
             let rank = 1, totalUsers = 1;
@@ -446,7 +446,7 @@ module.exports = {
             return message.reply({ files: [{ attachment: imgBuffer, name: 'rank.png' }] }).catch(() => {});
         } catch (err) {
             console.error(`[RANK ERROR]`, err);
-            return message.reply({ content: '❌ Error loading dossier.', flags: 64 }).catch(() => {});
+            return message.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Error loading dossier.', flags: 64 }).catch(() => {});
         }
     },
 
@@ -479,7 +479,7 @@ module.exports = {
             await module.exports.run(client, fakeMessage, [], db, serverSettings, 'rank');
         } catch (err) {
             console.error(`[RANK SLASH ERROR]`, err);
-            await interaction.editReply({ content: '❌ Error loading dossier.' }).catch(() => {});
+            await interaction.editReply({ content: em('ic_off', em('ic_off', '❌')) + ' Error loading dossier.' }).catch(() => {});
         }
     }
 };

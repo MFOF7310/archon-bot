@@ -266,7 +266,7 @@ async execute(interaction, client) {
         const isArchitectServer = guild.id === process.env.GUILD_ID;
         const chM = (id, env) => id ? `<#${id}>` : (isArchitectServer && process.env[env] ? `<#${process.env[env]}> 🔹 .env` : `\`${tr('not_set')}\``);
         const roleM = (id, env) => id ? `<@&${id}>` : (isArchitectServer && process.env[env] ? `<@&${process.env[env]}> 🔹 .env` : `\`${tr('not_set')}\``);
-        const bS = (val) => val ? `${EMOJIS.screaminggreen || '✅'} ${tr('enabled')}` : `${EMOJIS.red_color || '❌'} ${tr('disabled')}`;
+        const bS = (val) => val ? `${EMOJIS.screaminggreen || '✅'} ${tr('enabled')}` : `${EMOJIS.red_color || em('ic_off', '❌')} ${tr('disabled')}`;
         
         const em = (k, fb) => EMOJIS[k] || fb;
 
@@ -401,23 +401,23 @@ async execute(interaction, client) {
             fr: {
                 success: '✅ Paramètre mis à jour',
                 updated: (s, v) => `**${s}** a été défini sur :\n\`${v}\``,
-                invalidChannel: '❌ Salon introuvable. Mentionnez un salon valide.',
-                invalidRole: '❌ Rôle introuvable. Mentionnez un rôle valide.',
-                invalidBool: '❌ Valeur invalide. Utilisez: `true`, `false`, `on`, `off`, `1`, `0`, `enable`, `disable`',
-                invalidNumber: '❌ Nombre invalide. Utilisez une valeur entre 0.5 et 5.0',
-                invalidPrefix: '❌ Le préfixe doit faire entre 1 et 5 caractères.',
-                settingNotFound: '❌ Paramètre inconnu.',
+                invalidChannel: em('ic_off', em('ic_off', '❌')) + ' Salon introuvable. Mentionnez un salon valide.',
+                invalidRole: em('ic_off', em('ic_off', '❌')) + ' Rôle introuvable. Mentionnez un rôle valide.',
+                invalidBool: em('ic_off', em('ic_off', '❌')) + ' Valeur invalide. Utilisez: `true`, `false`, `on`, `off`, `1`, `0`, `enable`, `disable`',
+                invalidNumber: em('ic_off', em('ic_off', '❌')) + ' Nombre invalide. Utilisez une valeur entre 0.5 et 5.0',
+                invalidPrefix: em('ic_off', em('ic_off', '❌')) + ' Le préfixe doit faire entre 1 et 5 caractères.',
+                settingNotFound: em('ic_off', em('ic_off', '❌')) + ' Paramètre inconnu.',
                 viewAll: `💡 Tapez ${mentions(client, 'serversettings', 'view')} pour voir tous les paramètres.\n💬 Utilisez \`default\` comme valeur pour réinitialiser les messages au défaut système.`
             },
             en: {
                 success: '✅ Setting Updated',
                 updated: (s, v) => `**${s}** has been set to:\n\`${v}\``,
-                invalidChannel: '❌ Channel not found. Please mention a valid channel.',
-                invalidRole: '❌ Role not found. Please mention a valid role.',
-                invalidBool: '❌ Invalid value. Use: `true`, `false`, `on`, `off`, `1`, `0`, `enable`, `disable`',
-                invalidNumber: '❌ Invalid number. Use a value between 0.5 and 5.0',
-                invalidPrefix: '❌ Prefix must be 1-5 characters.',
-                settingNotFound: '❌ Unknown setting.',
+                invalidChannel: em('ic_off', em('ic_off', '❌')) + ' Channel not found. Please mention a valid channel.',
+                invalidRole: em('ic_off', em('ic_off', '❌')) + ' Role not found. Please mention a valid role.',
+                invalidBool: em('ic_off', em('ic_off', '❌')) + ' Invalid value. Use: `true`, `false`, `on`, `off`, `1`, `0`, `enable`, `disable`',
+                invalidNumber: em('ic_off', em('ic_off', '❌')) + ' Invalid number. Use a value between 0.5 and 5.0',
+                invalidPrefix: em('ic_off', em('ic_off', '❌')) + ' Prefix must be 1-5 characters.',
+                settingNotFound: em('ic_off', em('ic_off', '❌')) + ' Unknown setting.',
                 viewAll: `💡 Type ${mentions(client, 'serversettings', 'view')} to see all settings.\n💬 Use \`default\` as value to reset messages to system default.`
             }
         }[lang];
@@ -542,7 +542,7 @@ async execute(interaction, client) {
         }
     }
     if (processedValue !== null && rawValue.length > (def.maxLen || 2000)) {
-        return { success: false, error: `❌ Text too long (max ${def.maxLen} characters)` };
+        return { success: false, error: `${em('ic_off', '❌')} Text too long (max ${def.maxLen} characters)` };
     }
     break;
 }
@@ -560,7 +560,7 @@ async execute(interaction, client) {
                 : (processedValue === '1' && def.type === 'bool') 
                     ? (lang === 'fr' ? `${EMOJIS.screaminggreen || '✅'} Activé` : `${EMOJIS.screaminggreen || '✅'} Enabled`)
                     : (processedValue === '0' && def.type === 'bool')
-                        ? (lang === 'fr' ? `${EMOJIS.red_color || '❌'} Désactivé` : `${EMOJIS.red_color || '❌'} Disabled`)
+                        ? (lang === 'fr' ? `${EMOJIS.red_color || em('ic_off', '❌')} Désactivé` : `${EMOJIS.red_color || em('ic_off', '❌')} Disabled`)
                         : processedValue;
 
             return {
@@ -570,7 +570,7 @@ async execute(interaction, client) {
             };
         }
 
-        return { success: false, error: '❌ Database error. Please try again.' };
+        return { success: false, error: em('ic_off', em('ic_off', '❌')) + ' Database error. Please try again.' };
     },
 
     // ================= RESET SETTINGS (SLASH) =================
@@ -579,7 +579,7 @@ async execute(interaction, client) {
         const confirmWord = lang === 'fr' ? 'CONFIRMER' : 'CONFIRM';
         
         if (confirm.toUpperCase() !== confirmWord) {
-            return interaction.reply({ content: (t.resetConfirmError || '❌ Type `{word}` to confirm reset.').replace('{word}', confirmWord), flags: 1 << 6 });
+            return interaction.reply({ content: (t.resetConfirmError || em('ic_off', em('ic_off', '❌')) + ' Type `{word}` to confirm reset.').replace('{word}', confirmWord), flags: 1 << 6 });
         }
 
         this.performReset(interaction.guild.id, client);

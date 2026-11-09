@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { resolveEmoji } = require('../lib/emoji-resolver');
 
 module.exports = {
@@ -17,7 +18,7 @@ module.exports = {
         }
 
         const target = message.mentions.users.first();
-        if (!target) return message.reply('❌ Usage: `.lookup @user`').catch(() => {});
+        if (!target) return message.reply(em('ic_off', em('ic_off', '❌')) + ' Usage: `.lookup @user`').catch(() => {});
 
         const scope = args[1]?.toLowerCase() || 'full';
         const guildId = message.guild?.id;
@@ -27,7 +28,7 @@ module.exports = {
             return message.reply({ embeds: [embed] }).catch(() => {});
         } catch (err) {
             console.error('[LOOKUP]', err.message);
-            return message.reply('❌ Lookup failed: ' + err.message).catch(() => {});
+            return message.reply(em('ic_off', em('ic_off', '❌')) + ' Lookup failed: ' + err.message).catch(() => {});
         }
     },
 
@@ -48,7 +49,7 @@ module.exports = {
             return interaction.editReply({ embeds: [embed] });
         } catch (err) {
             console.error('[LOOKUP]', err.message);
-            return interaction.editReply({ content: '❌ Lookup failed: ' + err.message });
+            return interaction.editReply({ content: em('ic_off', em('ic_off', '❌')) + ' Lookup failed: ' + err.message });
         }
     }
 };
@@ -131,7 +132,7 @@ async function buildLookupEmbed(client, db, target, guildId, scope) {
             '\u001b[1;35m── AI & SUPPORT ──\u001b[0m\n' +
             `\u001b[1;36m▸ LYDIA MEM\u001b[0m ${lydiaMem?.cnt || 0} memories\n` +
             `\u001b[1;36m▸ TICKETS  \u001b[0m${tickets?.cnt || 0} created\n` +
-            `\u001b[1;36m▸ PREMIUM  \u001b[0m${premium?.premium_active ? '✅ Active' : '❌ None'}\n` +
+            `\u001b[1;36m▸ PREMIUM  \u001b[0m${premium?.premium_active ? '✅ Active' : em('ic_off', em('ic_off', '❌')) + ' None'}\n` +
             '```'
         );
     }

@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 // Per-server countdown storage: { guildId: { countdownId: { name, target, createdBy, channelId } } }
 const countdowns = new Map();
@@ -11,8 +12,8 @@ const T = {
         empty: 'No active countdowns. Create one with `/countdown name:Event date:YYYY-MM-DD`',
         ended: (name) => `🎉 Countdown **"${name}"** has ended!`,
         deleted: '✅ Countdown deleted.',
-        notFound: '❌ Countdown not found.',
-        invalidDate: '❌ Invalid date. Use format: `YYYY-MM-DD HH:MM`',
+        notFound: em('ic_off', em('ic_off', '❌')) + ' Countdown not found.',
+        invalidDate: em('ic_off', em('ic_off', '❌')) + ' Invalid date. Use format: `YYYY-MM-DD HH:MM`',
         reminderSet: '🔔 Reminder set! You\'ll be notified when the countdown ends.',
         footer: (guild) => `${guild} • Countdown System`,
     },
@@ -22,8 +23,8 @@ const T = {
         empty: 'Aucun compte à rebours actif. Créez-en un avec `/countdown nom:Événement date:AAAA-MM-JJ`',
         ended: (name) => `🎉 Le compte à rebours **"${name}"** est terminé !`,
         deleted: '✅ Compte à rebours supprimé.',
-        notFound: '❌ Compte à rebours introuvable.',
-        invalidDate: '❌ Date invalide. Format : `AAAA-MM-JJ HH:MM`',
+        notFound: em('ic_off', em('ic_off', '❌')) + ' Compte à rebours introuvable.',
+        invalidDate: em('ic_off', em('ic_off', '❌')) + ' Date invalide. Format : `AAAA-MM-JJ HH:MM`',
         reminderSet: '🔔 Rappel défini ! Vous serez notifié à la fin du compte à rebours.',
         footer: (guild) => `${guild} • Système de Compte à Rebours`,
     }
@@ -79,7 +80,7 @@ module.exports = {
         const t = T[lang];
         const guild = message.guild;
 
-        if (!guild) return message.reply('❌ Server only.').catch(() => {});
+        if (!guild) return message.reply(em('ic_off', em('ic_off', '❌')) + ' Server only.').catch(() => {});
 
         // Subcommand parsing
         const subcommand = args[0]?.toLowerCase();
@@ -168,7 +169,7 @@ module.exports = {
         const t = T[lang];
         const guild = interaction.guild;
 
-        if (!guild) return interaction.reply({ content: '❌ Server only.', flags: 64 });
+        if (!guild) return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Server only.', flags: 64 });
 
         const name = interaction.options.getString('name');
         const dateStr = interaction.options.getString('date');

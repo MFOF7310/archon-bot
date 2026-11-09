@@ -1,4 +1,5 @@
 const { EmbedBuilder, AttachmentBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { t } = require('../lib/i18n');
 const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
@@ -618,8 +619,8 @@ module.exports = {
 
             const data = {};
             const clean = h => h.startsWith('#') ? h : '#' + h;
-            if (type === 'level') { if (bg1) { if (!hexRe.test(bg1)) return ix.reply({ content: '❌ Invalid hex.', flags: 1 << 6 }); data.levelBg1 = clean(bg1); } if (bg2) { if (!hexRe.test(bg2)) return ix.reply({ content: '❌ Invalid hex.', flags: 1 << 6 }); data.levelBg2 = clean(bg2); } if (accent) { if (!hexRe.test(accent)) return ix.reply({ content: '❌ Invalid hex.', flags: 1 << 6 }); data.levelAccent = clean(accent); } }
-            else { if (bg1) { if (!hexRe.test(bg1)) return ix.reply({ content: '❌ Invalid hex.', flags: 1 << 6 }); data.welcomeBg1 = clean(bg1); } if (bg2) { if (!hexRe.test(bg2)) return ix.reply({ content: '❌ Invalid hex.', flags: 1 << 6 }); data.welcomeBg2 = clean(bg2); } if (accent) { if (!hexRe.test(accent)) return ix.reply({ content: '❌ Invalid hex.', flags: 1 << 6 }); data.welcomeAccent = clean(accent); } }
+            if (type === 'level') { if (bg1) { if (!hexRe.test(bg1)) return ix.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Invalid hex.', flags: 1 << 6 }); data.levelBg1 = clean(bg1); } if (bg2) { if (!hexRe.test(bg2)) return ix.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Invalid hex.', flags: 1 << 6 }); data.levelBg2 = clean(bg2); } if (accent) { if (!hexRe.test(accent)) return ix.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Invalid hex.', flags: 1 << 6 }); data.levelAccent = clean(accent); } }
+            else { if (bg1) { if (!hexRe.test(bg1)) return ix.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Invalid hex.', flags: 1 << 6 }); data.welcomeBg1 = clean(bg1); } if (bg2) { if (!hexRe.test(bg2)) return ix.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Invalid hex.', flags: 1 << 6 }); data.welcomeBg2 = clean(bg2); } if (accent) { if (!hexRe.test(accent)) return ix.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Invalid hex.', flags: 1 << 6 }); data.welcomeAccent = clean(accent); } }
 
             if (db) saveThemeDB(db, ix.guild.id, data);
             await ix.reply({ content: t('leveling.theme_updated', lang, { type }), flags: 1 << 6 });

@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const https = require('https');
 const http = require('http');
 
@@ -6,8 +7,8 @@ const http = require('http');
 const T = {
     en: {
         loading: (url) => `🔍 Analyzing **${truncateUrl(url)}**...`,
-        error: '❌ Could not fetch URL. It may be blocked or invalid.',
-        invalid: '❌ Please provide a valid URL starting with `http://` or `https://`',
+        error: em('ic_off', em('ic_off', '❌')) + ' Could not fetch URL. It may be blocked or invalid.',
+        invalid: em('ic_off', em('ic_off', '❌')) + ' Please provide a valid URL starting with `http://` or `https://`',
         title: '🔗 URL Preview',
         siteName: '🌐 Site',
         description: '📝 Description',
@@ -22,8 +23,8 @@ const T = {
     },
     fr: {
         loading: (url) => `🔍 Analyse de **${truncateUrl(url)}**...`,
-        error: '❌ Impossible de récupérer l\'URL. Elle peut être bloquée ou invalide.',
-        invalid: '❌ Veuillez fournir une URL valide commençant par `http://` ou `https://`',
+        error: em('ic_off', em('ic_off', '❌')) + ' Impossible de récupérer l\'URL. Elle peut être bloquée ou invalide.',
+        invalid: em('ic_off', em('ic_off', '❌')) + ' Veuillez fournir une URL valide commençant par `http://` ou `https://`',
         title: '🔗 Aperçu de l\'URL',
         siteName: '🌐 Site',
         description: '📝 Description',

@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const https = require('https');
 
 // ================= BILINGUAL =================
@@ -6,7 +7,7 @@ const T = {
     en: {
         title: '🐶 Random Dog',
         loading: 'Fetching a good boy...',
-        error: '❌ Could not fetch a dog picture right now. Try again!',
+        error: em('ic_off', em('ic_off', '❌')) + ' Could not fetch a dog picture right now. Try again!',
         breedUnknown: 'Good Boy',
         origin: '🌍 Origin',
         temperament: '🎭 Temperament',
@@ -23,7 +24,7 @@ const T = {
     fr: {
         title: '🐶 Chien Aléatoire',
         loading: 'Recherche d\'un bon chien...',
-        error: '❌ Impossible de récupérer une image de chien. Réessayez !',
+        error: em('ic_off', em('ic_off', '❌')) + ' Impossible de récupérer une image de chien. Réessayez !',
         breedUnknown: 'Bon Chien',
         origin: '🌍 Origine',
         temperament: '🎭 Tempérament',
@@ -232,7 +233,7 @@ module.exports = {
         const uid = id.split('_').pop();
 
         if (interaction.user.id !== uid) {
-            return interaction.reply({ content: '❌ Not your dog button!', flags: MessageFlags.Ephemeral }).catch(() => {});
+            return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Not your dog button!', flags: MessageFlags.Ephemeral }).catch(() => {});
         }
 
         await interaction.deferUpdate().catch(() => {});

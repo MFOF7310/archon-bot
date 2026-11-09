@@ -8,6 +8,7 @@
 //   wait   claimed less than 12 hours ago: when the next vote opens
 // One icon per line (lib/icons: ARCHON's own emoji where it may use it), numbers in bold, buttons keep standard emojis.
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, MessageFlags, AttachmentBuilder, escapeMarkdown } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { toV2 } = require('../lib/v2convert');   // the admin repair report (classic embed → card)
 const { card } = require('../lib/games/v2');
 const { icon } = require('../lib/ui/icons');
@@ -415,11 +416,11 @@ module.exports = {
         if (sub === 'fixvotes' && isAdmin) {
             const alreadyRan = db.prepare(`SELECT value FROM bot_meta WHERE key = 'fixvotes_ran'`).get();
             if (alreadyRan) {
-                return message.reply(`❌ fixvotes was already executed on ${alreadyRan.value}. Cannot run again to prevent duplicate credits.`).catch(() => {});
+                return message.reply(`${em('ic_off', '❌')} fixvotes was already executed on ${alreadyRan.value}. Cannot run again to prevent duplicate credits.`).catch(() => {});
             }
             const voteRewards = db.prepare(`SELECT user_id, guild_id, SUM(reward) as total FROM vote_claims GROUP BY user_id, guild_id`).all();
             if (voteRewards.length === 0) {
-                return message.reply('❌ No vote history found.').catch(() => {});
+                return message.reply(em('ic_off', em('ic_off', '❌')) + ' No vote history found.').catch(() => {});
             }
             let report = '';
             let totalFixed = 0;
@@ -459,7 +460,7 @@ module.exports = {
             let msg = `## 🩺 Diagnostic pour <@${targetId}>\n\n`;
             msg += `### 📊 Historique de votes :\n`;
             if (voteHistory.length === 0) {
-                msg += `❌ Aucun historique\n`;
+                msg += `${em('ic_off', '❌')} Aucun historique\n`;
             } else {
                 for (const v of voteHistory) {
                     msg += `- Serveur **${v.guild_id}** : ${v.total_votes} votes, ${v.total_rewards} crédits gagnés\n`;
@@ -467,7 +468,7 @@ module.exports = {
             }
             msg += `\n### 👤 Profils utilisateur :\n`;
             if (profiles.length === 0) {
-                msg += `❌ Aucun profil trouvé\n`;
+                msg += `${em('ic_off', '❌')} Aucun profil trouvé\n`;
             } else {
                 for (const p of profiles) {
                     msg += `- Serveur **${p.guild_id}** : ${p.credits.toLocaleString()} crédits, Niv.${p.level}, ${p.xp} XP\n`;

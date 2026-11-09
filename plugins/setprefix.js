@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 // ================= TRANSLATIONS =================
 const i18n = require('../lib/i18n');
@@ -82,7 +83,7 @@ module.exports = {
             
         } catch (error) {
             console.error('[PREFIX ERROR]', error);
-            return message.reply({ content: '❌ Failed to update prefix. Please try again.', flags: 64 }).catch(() => {});
+            return message.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Failed to update prefix. Please try again.', flags: 64 }).catch(() => {});
         }
     },
 
@@ -132,7 +133,7 @@ module.exports = {
             
         } catch (error) {
             console.error('[PREFIX ERROR]', error);
-            return interaction.reply({ content: '❌ Failed to update prefix. Please try again.', flags: 64 });
+            return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Failed to update prefix. Please try again.', flags: 64 });
         }
     }
 };

@@ -557,7 +557,7 @@ module.exports = {
 
             const typing = await message.channel.sendTyping().catch(() => {});
             const buffer = await buildProfileCard(target, client, db, guildId, guild, language);
-            if (!buffer) return message.reply(`❌ No data found for **${target.username}**.`).catch(() => {});
+            if (!buffer) return message.reply(`${em('ic_off', '❌')} No data found for **${target.username}**.`).catch(() => {});
 
             const attachment = new AttachmentBuilder(buffer, { name: `profile-${target.username}.png` });
             await message.reply({ files: [attachment] }).catch(() => {});
@@ -578,7 +578,7 @@ module.exports = {
 
             await interaction.deferReply();
             const buffer = await buildProfileCard(target, client, db, guildId, guild, lang);
-            if (!buffer) return interaction.editReply(`❌ No data found for **${target.username}**.`);
+            if (!buffer) return interaction.editReply(`${em('ic_off', '❌')} No data found for **${target.username}**.`);
 
             const attachment = new AttachmentBuilder(buffer, { name: `profile-${target.username}.png` });
             await interaction.editReply({ files: [attachment] });

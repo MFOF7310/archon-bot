@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, AttachmentBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 const T = {
     en: { title: '📱 QR Code', generating: '📱 Generating QR code...', usage: '`.qr <text>` or `.qr https://example.com`', footer: 'QR Code • Architect CG-223', download: 'Download PNG' },
@@ -15,7 +16,7 @@ module.exports = {
         if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
 
         const t = T[lang] || T.en, text = args.join(' ');
-        if (!text) return message.reply(`❌ ${t.usage}`).catch(() => {});
+        if (!text) return message.reply(`${em('ic_off', '❌')} ${t.usage}`).catch(() => {});
         const loadingMsg = await message.reply(t.generating).catch(() => null);
         try {
             const size = 500;
@@ -23,7 +24,7 @@ module.exports = {
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}&color=${color}&margin=10`;
             const embed = new EmbedBuilder().setColor('#00fbff').setTitle(t.title).setDescription(`\`\`\`\n${text.length > 200 ? text.substring(0, 200) + '...' : text}\n\`\`\``).setImage(qrUrl).setFooter({ text: `${size}×${size}px • ${t.footer}` }).setTimestamp();
             loadingMsg?.edit({ content: null, embeds: [embed] }).catch(() => {});
-        } catch (e) { loadingMsg?.edit('❌ Failed to generate QR code.').catch(() => {}); }
+        } catch (e) { loadingMsg?.edit(em('ic_off', em('ic_off', '❌')) + ' Failed to generate QR code.').catch(() => {}); }
     },
     execute: async (interaction) => {
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
@@ -36,6 +37,6 @@ module.exports = {
             const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}&color=${color}&margin=10`;
             const embed = new EmbedBuilder().setColor('#00fbff').setTitle(t.title).setDescription(`\`\`\`\n${text.length > 200 ? text.substring(0, 200) + '...' : text}\n\`\`\``).setImage(qrUrl).setFooter({ text: `${size}×${size}px • ${t.footer}` }).setTimestamp();
             await interaction.editReply({ embeds: [embed] });
-        } catch (e) { interaction.editReply('❌ Failed to generate QR code.'); }
+        } catch (e) { interaction.editReply(em('ic_off', em('ic_off', '❌')) + ' Failed to generate QR code.'); }
     }
 };

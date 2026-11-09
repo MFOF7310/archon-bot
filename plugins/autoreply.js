@@ -177,7 +177,7 @@ module.exports = {
 
             const collector = msg.createMessageComponentCollector({ time: 15000 });
             collector.on('collect', async (i) => {
-                if (i.user.id !== interaction.user.id) return i.reply({ content: '❌ Not your button!', flags: 64 });
+                if (i.user.id !== interaction.user.id) return i.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Not your button!', flags: 64 });
                 if (i.customId === 'ar_confirm_clear') {
                     db.prepare('DELETE FROM auto_replies WHERE guild_id = ?').run(guildId);
                     await i.update({
@@ -201,7 +201,7 @@ module.exports = {
 
         const isAdmin = message.member?.permissions?.has('ManageMessages') ||
             message.author.id === process.env.OWNER_ID;
-        if (!isAdmin) return message.reply('❌ You need Manage Messages permission.').catch(() => {});
+        if (!isAdmin) return message.reply(em('ic_off', em('ic_off', '❌')) + ' You need Manage Messages permission.').catch(() => {});
 
         if (sub === 'list' || !sub) {
             const replies = db.prepare('SELECT * FROM auto_replies WHERE guild_id = ? ORDER BY created_at DESC').all(guildId);
