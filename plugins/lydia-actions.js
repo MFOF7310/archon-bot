@@ -159,7 +159,7 @@ async function handleIntent({ reply, message, client, db, isPremium, isElevated,
       const logCard = new ContainerBuilder().setAccentColor(0x00cc66);
       logCard.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${gearEmoji} ${tr('titleLog')}**\n\n**Action :** ${lab}\n**${tr('oldValue')} :** ${showVal(spec, current, tr)}\n**${tr('newValue')} :** ${showVal(spec, value, tr)}`));
       logCard.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-      logCard.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${tr('modlog', { emoji: '', id: message.author.id }).replace(gearEmoji, '').trim()}`));
+      logCard.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${tr('modlog', { id: message.author.id })}`));
       await ch.send({ components: [logCard], flags: MessageFlags.IsComponentsV2 });
     }
   } catch {}

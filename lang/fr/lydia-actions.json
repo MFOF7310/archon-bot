@@ -25,7 +25,7 @@
   "cancelled": "Changement de **{label}** annulé.",
   "failed": "Impossible d'enregistrer le changement pour **{label}**. Réessaie.",
   "done": "**{label}** mis à jour sur {to}.",
-  "modlog": "{emoji} **{label}** : `{from}` → `{to}`\nvia Lydia · demandé par <@{id}>",
+  "modlog": "via Lydia · demandé par <@{id}>",
   "on": "Activé",
   "off": "Désactivé",
   "none": "Aucun",

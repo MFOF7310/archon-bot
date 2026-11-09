@@ -80,8 +80,8 @@ const active = new Map();
 const timers = new Map();
 
 const CATS = [
-    { emoji:'❓', label:'Support', value:'support', desc:'General help & questions' },
-    { emoji:'🛡️', label:'Report', value:'report', desc:'Report users or appeal' },
+    { emoji: em('ic_info', '❓'), label:'Support', value:'support', desc:'General help & questions' },
+    { emoji: em('ic_shield', '🛡️'), label:'Report', value:'report', desc:'Report users or appeal' },
     { emoji:'💰', label:'Billing', value:'billing', desc:'Payments & shop issues' },
 ];
 
@@ -321,7 +321,7 @@ function cfgCard(s, g, c, lang='en') {
                  `**${t('ticket.cfgStaff', lang) || 'Staff Role'}** · ${fr(s?.ticketStaffRole, 'TICKET_STAFF_ROLE_ID')}\n` +
                  `**${t('ticket.cfgTx', lang) || 'Log Channel'}** · ${fch(s?.ticketTranscriptChannel, 'TICKET_TRANSCRIPT_CHANNEL_ID')}\n` +
                  `**${t('ticket.cfgLog', lang) || 'Extra Log'}** · ${fch(s?.ticketLogChannel, 'TICKET_LOG_CHANNEL_ID')}\n` +
-                 `**${t('ticket.cfgAC', lang) || 'Auto-Close'}** · ${ac <= 0 || isNaN(ac) ? `❌ ${t('ticket.cfgOff', lang) || 'Off'}` : `\`${ac}h\``}\n` +
+                 `**${t('ticket.cfgAC', lang) || 'Auto-Close'}** · ${ac <= 0 || isNaN(ac) ? `${em('ic_off', '❌')} ${t('ticket.cfgOff', lang) || 'Off'}` : `\`${ac}h\``}\n` +
                  `**${t('ticket.cfgLim', lang) || 'Limit'}** · \`${lm}\` / user`;
 
     return _v2.card(0x00fbff, [
@@ -503,9 +503,12 @@ module.exports = {
                 const avg = db.prepare('SELECT AVG(stars) as a FROM ticket_ratings WHERE guild_id = ?').get(g.id)?.a || 0;
                 const _v2 = require('../lib/games/v2');
                 const statsCard = _v2.card(0x00f0ff, [
-                    { text: '## 📊 Ticket Analytics' },
+                    { text: `## ${em('charts', '📊')} Ticket Analytics` },
                     { rule: true },
-                    { text: '**🎫 Total Tickets** · `' + total + '`\n**📊 Rated** · `' + rated + '`\n**⭐ Avg Rating** · `' + avg.toFixed(1) + '`\n**🟢 Open** · `' + open + '`' },
+                    { text: `**${em('ticket', '🎫')} Total Tickets** · \`${total}\`
+**${em('charts', '📊')} Rated** · \`${rated}\`
+**${em('star', '⭐')} Avg Rating** · \`${avg.toFixed(1)}\`
+**${em('ping_ok', '🟢')} Open** · \`${open}\`` },
                     { rule: true },
                     { text: '-# ' + (t('ticket.stats_footer', lang) || 'Ticket System Analytics') }
                 ]);

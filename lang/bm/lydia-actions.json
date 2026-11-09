@@ -25,7 +25,7 @@
   "cancelled": "Falen kɛra **{label}** la, a bɔra.",
   "failed": "Falen ma se ka **{label}** mara. Aw ye a lajɛ tuguni.",
   "done": "**{label}** falenna {to} la.",
-  "modlog": "{emoji} **{label}** : `{from}` → `{to}`\nvia Lydia · ɲininen <@{id}> bolo",
+  "modlog": "via Lydia · ɲininen <@{id}> bolo",
   "on": "A bɛ baara kɛ",
   "off": "A tɛ baara kɛ",
   "none": "Foyi",

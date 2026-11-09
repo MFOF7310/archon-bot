@@ -283,7 +283,7 @@ function buildNowPlayingEmbed(q, client) {
             `\`\`\``
         )
         .addFields(
-            { name: '📊 Progress', value: `\`\`\`ansi\n\u001b[1;32m${bar}\u001b[0m ${pct}%\n\u001b[0;37m${formatTime(elapsed)} / ${formatTime(t.duration)}\u001b[0m\n\`\`\``, inline: false },
+            { name: `${em('charts', '📊')} Progress`, value: `\`\`\`ansi\n\u001b[1;32m${bar}\u001b[0m ${pct}%\n\u001b[0;37m${formatTime(elapsed)} / ${formatTime(t.duration)}\u001b[0m\n\`\`\``, inline: false },
             { name: '🎚️ VOLUME', value: `\`${q.volume}%\``, inline: true },
             { name: `${em('mc_queue', '📋')} QUEUE`, value: `\`${q.tracks.length} tracks\``, inline: true },
             { name: `${em('mc_loop', '🔁')} LOOP`, value: `\`${q.loop ? 'ON' : 'OFF'}\``, inline: true },
@@ -420,7 +420,7 @@ function buildPanelContainer(q, client) {
     const autoGenre = t.requestedBy?.split('•')[1]?.trim();
     const requester = t.requestedById
         ? `<@${t.requestedById}>`
-        : `🤖 ${botName} • AutoPlay${autoGenre ? ` • ${autoGenre}` : ''}`;
+        : `${em('ai_assistant', '🤖')} ${botName} • AutoPlay${autoGenre ? ` • ${autoGenre}` : ''}`;
 
     // CV2 TextDisplay doesn't render markdown hyperlinks — use plain bold title
     const fullTitle = (t.artist && t.artist !== 'Unknown' && !t.title.includes(t.artist))
@@ -816,7 +816,7 @@ const FILTER_MAP = {
     vaporwave: 'asetrate=48000*0.8,atempo=0.8,aecho=0.8:0.9:1000:0.3',
     normalize: 'loudnorm=I=-14:TP=-2:LRA=11',
 };
-const FILTER_EMOJI = { bassboost: '🔊', nightcore: '🐰', vaporwave: '🌴', normalize: '📊', '': '🎵' };
+const FILTER_EMOJI = { bassboost: em('mc_volume_up', '🔊'), nightcore: '🐰', vaporwave: '🌴', normalize: em('charts', '📊'), '': em('music', '🎵') };
 
 function createFilteredResource(input, q) {
     const filterStr = FILTER_MAP[q?.audioFilter] || '';
@@ -1295,7 +1295,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             }
         } catch(e) {
             console.error('[MUSIC FOLDER]', e.message);
-            replyFn({ content: `❌ Could not load folder: ${e.message}` });
+            replyFn({ content: `${em('ic_off', '❌')} Could not load folder: ${e.message}` });
         }
         return;
     }
@@ -1442,7 +1442,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
 
     if (!isPlaying) {
         try { await ensureConnection(q); await playNext(q); }
-        catch(err) { destroyQueue(guildId); replyFn({ content: `❌ ${err.message}`, embeds: [], components: [] }).catch(() => {}); }
+        catch(err) { destroyQueue(guildId); replyFn({ content: `${em('ic_off', '❌')} ${err.message}`, embeds: [], components: [] }).catch(() => {}); }
     }
 }
 
@@ -1486,8 +1486,8 @@ module.exports = {
                     {name: '🔊 Bass Boost', value: 'bassboost'},
                     {name: '🐰 Nightcore', value: 'nightcore'},
                     {name: '🌴 Vaporwave', value: 'vaporwave'},
-                    {name: '📊 Normalize (default)', value: 'normalize'},
-                    {name: '❌ Off', value: 'off'}
+                    {name: `${em('charts', '📊')} Normalize (default)`, value: 'normalize'},
+                    {name: `${em('ic_off', '❌')} Off`, value: 'off'}
                 )))
         .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library — interactive browser')
             .addStringOption(o => o.setName('search').setDescription('🔍 Search inside the library (optional)').setRequired(false).setAutocomplete(true))),
@@ -1577,7 +1577,7 @@ module.exports = {
                             }
                             for (const pl of data.playlists?.items?.slice(0, 3) || []) {
                                 if (!pl) continue;
-                                push(`📁 ${pl.name} (${pl.tracks?.total ?? '?'} tracks) by ${pl.owner?.display_name || 'Spotify'}`, pl.name);
+                                push(`${em('ic_folder', '📁')} ${pl.name} (${pl.tracks?.total ?? '?'} tracks) by ${pl.owner?.display_name || 'Spotify'}`, pl.name);
                             }
                         }
                     } catch(e) {}

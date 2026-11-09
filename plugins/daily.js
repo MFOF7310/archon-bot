@@ -65,7 +65,7 @@ module.exports = {
         const c = new ContainerBuilder().setAccentColor(0xf1c40f);
 
         if (!userData) {
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('error', context) || '❌'} ${t('noAccount')}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('error', context) || em('ic_off', '❌')} ${t('noAccount')}`));
             return reply({ components: [c], flags: MessageFlags.IsComponentsV2 });
         }
 
@@ -133,7 +133,7 @@ module.exports = {
         const c = new ContainerBuilder().setAccentColor(0x3498db);
 
         if (!userData) {
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('error', context) || '❌'} ${t('noAccount')}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('error', context) || em('ic_off', '❌')} ${t('noAccount')}`));
             return reply({ components: [c], flags: MessageFlags.IsComponentsV2 });
         }
 
@@ -154,7 +154,7 @@ module.exports = {
             '\u001b[1;36m▸ TOTAL    \u001b[0m' + totalDailies + ' dailies\n' +
             '\u001b[1;33m▸ STREAK   \u001b[0m' + streakDays + ' ' + (streakDays === 1 ? t('day') : t('days')) + ' 🔥\n' +
             '\u001b[1;33m▸ BEST     \u001b[0m' + highestStreak + ' ' + (highestStreak === 1 ? t('day') : t('days')) + '\n' +
-            '\u001b[1;35m▸ SHIELDS  \u001b[0m' + streakProtections + ' 🛡️\n' +
+            '\u001b[1;35m▸ SHIELDS  \u001b[0m' + streakProtections + ' ' + em('ic_shield', '🛡️') + '\n' +
             '```\n' +
             `📅 **Last claim:** ${lastDailyText}`;
         

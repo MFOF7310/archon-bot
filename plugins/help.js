@@ -126,7 +126,7 @@ function categoryCard(client, lang, userId, guildId, key, page = 0) {
         { text: `## ${catEmoji(key)} ${catName(_, key)}${pages > 1 ? ` · ${page + 1}/${pages}` : ''}${desc.startsWith('help.') ? '' : `\n-# ${desc}`}` },
         { rule: true },
     ];
-    if (moduleOff(client, guildId, key)) items.push({ text: `${E.ic_warn || '⚠️'} ${_('module_off')}` });
+    if (moduleOff(client, guildId, key)) items.push({ text: `${em('ic_warn', '⚠️')} ${_('module_off')}` });
     items.push({ text: shown.map(c => line(client, c, lang, prefix)).join('\n') || _('no_commands') });
     items.push({ text: `-# ${_('cat_foot', { prefix })}` });
     const nav = [btn(`help:home:${userId}`, _('btn_home'))];

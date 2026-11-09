@@ -25,7 +25,7 @@
   "cancelled": "对 **{label}** 的更改已取消。",
   "failed": "无法保存对 **{label}** 的更改。请重试。",
   "done": "**{label}** 已更新为 {to}。",
-  "modlog": "{emoji} **{label}** : `{from}` → `{to}`\n通过 Lydia · 由 <@{id}> 请求",
+  "modlog": "通过 Lydia · 由 <@{id}> 请求",
   "on": "开",
   "off": "关",
   "none": "无",
