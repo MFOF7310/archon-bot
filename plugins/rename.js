@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
@@ -112,7 +113,7 @@ module.exports = {
                     name: t.updated, 
                     iconURL: message.author.displayAvatarURL() 
                 })
-                .setTitle(`✅ ${t.title}`)
+                .setTitle(`${em('ic_ok', '✅')} ${t.title}`)
                 .setDescription(i18n.t('rename.success', lang, { old: oldName, newName }))
                 .addFields(
                     { name: t.oldDesignation, value: `\`\`\`\n${oldName}\`\`\``, inline: true },

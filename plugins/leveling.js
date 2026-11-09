@@ -549,7 +549,7 @@ module.exports = {
             if (!adm) return message.reply(t('leveling.admin_only', lang)).catch(() => { });
             const type = args[1]?.toLowerCase();
             if (type === 'reset') { if (db) db.prepare(`DELETE FROM leveling_themes WHERE guild_id = ?`).run(message.guild.id); return message.reply(t('leveling.theme_reset', lang)).catch(() => { }); }
-            if (!type || !['level', 'welcome'].includes(type)) return message.reply('⚠️ Usage: `.leveling theme <level|welcome> [#bg1] [#bg2] [#accent]`').catch(() => { });
+            if (!type || !['level', 'welcome'].includes(type)) return message.reply(em('ic_warn', em('ic_warn', '⚠️')) + ' Usage: `.leveling theme <level|welcome> [#bg1] [#bg2] [#accent]`').catch(() => { });
             const hexRegex = /^#?[0-9A-Fa-f]{6}$/;
             const bg1 = args[2], bg2 = args[3], accent = args[4];
             if (bg1 && !hexRegex.test(bg1)) return message.reply(t('leveling.invalid_hex', lang)).catch(() => { });

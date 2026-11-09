@@ -170,7 +170,7 @@ const td = (content) => new TextDisplayBuilder().setContent(String(content));
 const divider = () => new SeparatorBuilder().setDivider(true);
 const v2 = (container, extra = {}) => ({ components: [container], flags: MessageFlags.IsComponentsV2, ...extra });
 
-const BUTTON_ICONS = { small_check: '✅', small_cross: em('ic_off', '❌'), duel_sword: '⚔️', shield: '🛡️', duel_heal: '💚', duel_bolt: '⚡' };
+const BUTTON_ICONS = { small_check: em('ic_ok', '✅'), small_cross: em('ic_off', '❌'), duel_sword: '⚔️', shield: '🛡️', duel_heal: '💚', duel_bolt: '⚡' };
 function button(id, label, style, emojiKey) {
     const b = new ButtonBuilder().setCustomId(id).setLabel(label).setStyle(style);
     const e = emojiKey ? toEmoji(BUTTON_ICONS[emojiKey] || '') : undefined;

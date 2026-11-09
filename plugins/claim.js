@@ -3,6 +3,7 @@ const { resolveEmoji } = require('../lib/emoji-resolver');
 const v2 = require('../lib/games/v2');
 const { t: it } = require('../lib/i18n');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { icon } = require('../lib/ui/icons');
 const EMOJIS = require('../config/emojis');
 function parseEmoji(str) {

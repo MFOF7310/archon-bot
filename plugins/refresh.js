@@ -74,7 +74,7 @@ module.exports = {
             collector.on('collect', async (i) => {
                 if (i.user.id !== message.author.id) return;
                 if (i.customId === 'gdpr_cancel') {
-                    return i.update({ embeds: [new EmbedBuilder().setColor('#2ecc71').setDescription('✅ Deletion cancelled.')], components: [] }).catch(() => {});
+                    return i.update({ embeds: [new EmbedBuilder().setColor('#2ecc71').setDescription(em('ic_ok', '✅') + ' Deletion cancelled.')], components: [] }).catch(() => {});
                 }
                 if (i.customId === 'gdpr_confirm') {
                     await i.deferUpdate().catch(() => {});
@@ -159,7 +159,7 @@ async function showConfirm(interaction, type, t, client, db, message) {
 
     const confirmEmbed = new EmbedBuilder()
         .setColor('#ff0000')
-        .setTitle(`${em('ic_warn', '⚠️')} CONFIRM: ${typeName}`)
+        .setTitle(`${em('ic_warn', em('ic_warn', '⚠️'))} CONFIRM: ${typeName}`)
         .setDescription('**THIS IS IRREVERSIBLE!**\n\n⏳ *Confirm button unlocks in 5 seconds...*')
         .setFooter({ text: 'You have 30 seconds to confirm...' });
 
@@ -255,7 +255,7 @@ if (type === 'light' && client.getDatabaseHealth) {
 
 const successEmbed = new EmbedBuilder()
     .setColor('#2ecc71')
-    .setTitle('✅ PURGE COMPLETE')
+    .setTitle(em('ic_ok', '✅') + ' PURGE COMPLETE')
     .setDescription(description)
     .setTimestamp();
 
@@ -282,7 +282,7 @@ function buildGdprPreview(db, userId) {
         { name: '💬 lydia_conversations', query: 'SELECT COUNT(*) as c FROM lydia_conversations WHERE user_id = ?' },
         { name: '📝 lydia_introductions', query: 'SELECT COUNT(*) as c FROM lydia_introductions WHERE user_id = ?' },
         { name: '⏰ reminders', query: 'SELECT COUNT(*) as c FROM reminders WHERE user_id = ?' },
-        { name: '⚠️ warnings', query: 'SELECT COUNT(*) as c FROM warnings WHERE user_id = ?' },
+        { name: em('ic_warn', em('ic_warn', '⚠️')) + ' warnings', query: 'SELECT COUNT(*) as c FROM warnings WHERE user_id = ?' },
         { name: '📋 moderation_logs', query: 'SELECT COUNT(*) as c FROM moderation_logs WHERE user_id = ?' },
         { name: '📈 investments', query: 'SELECT COUNT(*) as c FROM investments WHERE user_id = ?' },
         { name: '🎂 birthdays', query: 'SELECT COUNT(*) as c FROM birthdays WHERE user_id = ?' },
@@ -350,7 +350,7 @@ async function promptGdprUser(interaction, t, client, db, message) {
     // Handle button cancel
     btnCollector.on('collect', async (i) => {
         msgCollector.stop();
-        await i.update({ embeds: [new EmbedBuilder().setColor('#2ecc71').setDescription('✅ Cancelled.')], components: [] }).catch(() => {});
+        await i.update({ embeds: [new EmbedBuilder().setColor('#2ecc71').setDescription(em('ic_ok', '✅') + ' Cancelled.')], components: [] }).catch(() => {});
     });
 
     // Handle message reply
@@ -387,7 +387,7 @@ async function promptGdprUser(interaction, t, client, db, message) {
         confirmCollector.on('collect', async (i) => {
             if (i.user.id !== message.author.id) return;
             if (i.customId === 'gdpr_cancel') {
-                return i.update({ embeds: [new EmbedBuilder().setColor('#2ecc71').setDescription('✅ Deletion cancelled.')], components: [] }).catch(() => {});
+                return i.update({ embeds: [new EmbedBuilder().setColor('#2ecc71').setDescription(em('ic_ok', '✅') + ' Deletion cancelled.')], components: [] }).catch(() => {});
             }
             if (i.customId === 'gdpr_confirm') {
                 await i.deferUpdate().catch(() => {});
@@ -438,7 +438,7 @@ async function executeGdprDelete(interaction, userId, t, client, db) {
             try {
                 const result = db.prepare(del.query).run(userId);
                 if (result.changes > 0) {
-                    results.push(`✅ ${del.table}: ${result.changes}`);
+                    results.push(`${em('ic_ok', '✅')} ${del.table}: ${result.changes}`);
                     totalDeleted += result.changes;
                 }
             } catch (e) {
@@ -457,10 +457,10 @@ async function executeGdprDelete(interaction, userId, t, client, db) {
 
         const desc = totalDeleted > 0
             ? `🗑️ **GDPR Deletion Complete**\n\`\`\`yaml\nTarget: ${userId}\nRecords Erased: ${totalDeleted}\nTables Affected: ${results.length}\nStatus: ✅ PERMANENTLY DELETED\nTimestamp: ${new Date().toISOString()}\n\`\`\`\n\n${results.join('\n')}`
-            : `⚠️ **No data found** for user \`${userId}\`.\nNothing was deleted.`;
+            : `${em('ic_warn', '⚠️')} **No data found** for user \`${userId}\`.\nNothing was deleted.`;
 
         const embed = new EmbedBuilder().setColor(totalDeleted > 0 ? '#2ecc71' : '#f39c12')
-            .setTitle(totalDeleted > 0 ? '✅ DATA PERMANENTLY ERASED' : '⚠️ NO DATA FOUND')
+            .setTitle(totalDeleted > 0 ? em('ic_ok', '✅') + ' DATA PERMANENTLY ERASED' : em('ic_warn', em('ic_warn', '⚠️')) + ' NO DATA FOUND')
             .setDescription(desc)
             .setFooter({ text: 'ARCHON CG-223 • GDPR Compliance' })
             .setTimestamp();

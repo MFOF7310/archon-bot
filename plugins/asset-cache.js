@@ -1,3 +1,4 @@
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 // plugins/asset-cache.js - RAM-based icon cache for Mali users
 class AssetCache {
     constructor() {
@@ -22,9 +23,9 @@ class AssetCache {
             'icon_profile': '👤',
             'icon_help': '❓',
             'icon_alert': '🔔',
-            'icon_check': '✅',
+            'icon_check': em('ic_ok', '✅'),
             'icon_error': '❌',
-            'icon_warning': '⚠️',
+            'icon_warning': em('ic_warn', '⚠️'),
             'icon_bamako': '🇲🇱',
             'icon_server': '🌍',
             'icon_levelup': '⬆️',

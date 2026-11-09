@@ -23,7 +23,7 @@ const T = {
         totalEconomy: 'Total Economy',
         richestUser: 'Richest Member',
         avgLevel: 'Avg Level',
-        itemBought: '✅ Purchased',
+        itemBought: em('ic_ok', '✅') + ' Purchased',
         inventory: '🎒 Global Inventory',
         emptyInventory: '📭 Empty',
         shop: '🏪 Global Shop',
@@ -33,7 +33,7 @@ const T = {
         selfTransfer: '😅 You can\'t send credits to yourself!',
         tax: 'Network Tax (5%)',
         networkBonus: '🌐 Network Bonus',
-        levelSync: '✅ Level synced to global network',
+        levelSync: em('ic_ok', '✅') + ' Level synced to global network',
         firstTimeWelcome: '🎉 Welcome to the ARCHON Global Economy! You\'ve been gifted **500** starter credits — claim your daily bonus to start stacking!'
     },
     fr: {
@@ -55,7 +55,7 @@ const T = {
         totalEconomy: 'Économie Totale',
         richestUser: 'Membre le Plus Riche',
         avgLevel: 'Niveau Moyen',
-        itemBought: '✅ Acheté',
+        itemBought: em('ic_ok', '✅') + ' Acheté',
         inventory: '🎒 Inventaire Global',
         emptyInventory: '📭 Vide',
         shop: '🏪 Boutique Globale',
@@ -65,7 +65,7 @@ const T = {
         selfTransfer: '😅 Tu ne peux pas t\'envoyer des crédits à toi-même !',
         tax: 'Taxe Réseau (5%)',
         networkBonus: '🌐 Bonus Réseau',
-        levelSync: '✅ Niveau synchronisé au réseau global',
+        levelSync: em('ic_ok', '✅') + ' Niveau synchronisé au réseau global',
         firstTimeWelcome: '🎉 Bienvenue dans l\'Économie Globale ! Tu as reçu **500** crédits de départ.'
     }
 };

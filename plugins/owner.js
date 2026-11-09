@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { iconObj } = require('../lib/ui/icons');
 const { exec } = require('child_process');
 const os = require('os');
@@ -39,7 +40,7 @@ async function handleSystemCommand(client, interaction, subcommand, args, lang) 
                 { name: '🏓 Ping', value: `${Math.round(client.ws.ping)}ms`, inline: true },
                 { name: '💾 Memory', value: `${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1)} MB`, inline: true },
                 { name: '🖥️ System', value: `${os.platform()} | Node ${process.version}`, inline: true },
-                { name: '🔐 Database', value: client.db ? '✅ Connected' : '❌ Disconnected', inline: true },
+                { name: '🔐 Database', value: client.db ? em('ic_ok', '✅') + ' Connected' : '❌ Disconnected', inline: true },
                 { name: '🌐 Dashboard', value: 'Port 3000', inline: true }
             )
             .setTimestamp()

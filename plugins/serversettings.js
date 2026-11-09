@@ -173,8 +173,8 @@ async execute(interaction, client) {
             const value = args.slice(2).join(' ');
             if (!setting || !value) {
                 const msg = lang === 'fr'
-                    ? '⚠️ **Usage:** `.serversettings set <paramètre> <valeur>`\nTapez `.serversettings view` pour voir tous les paramètres.'
-                    : '⚠️ **Usage:** `.serversettings set <setting> <value>`\nType `.serversettings view` to see all settings.';
+                    ? em('ic_warn', em('ic_warn', '⚠️')) + ' **Usage:** `.serversettings set <paramètre> <valeur>`\nTapez `.serversettings view` pour voir tous les paramètres.'
+                    : em('ic_warn', em('ic_warn', '⚠️')) + ' **Usage:** `.serversettings set <setting> <value>`\nType `.serversettings view` to see all settings.';
                 return message.reply(msg);
             }
             return module.exports.setSettingPrefix(message, client, settings, setting, value, lang);
@@ -184,8 +184,8 @@ async execute(interaction, client) {
             const confirm = args[1];
             if (confirm?.toUpperCase() !== 'CONFIRM') {
                 const msg = lang === 'fr'
-                    ? '⚠️ **Confirmation requise:** `.serversettings reset CONFIRM`'
-                    : '⚠️ **Confirmation required:** `.serversettings reset CONFIRM`';
+                    ? em('ic_warn', em('ic_warn', '⚠️')) + ' **Confirmation requise:** `.serversettings reset CONFIRM`'
+                    : em('ic_warn', em('ic_warn', '⚠️')) + ' **Confirmation required:** `.serversettings reset CONFIRM`';
                 return message.reply(msg);
             }
             return module.exports.resetSettingsPrefix(message, client, lang);
@@ -217,8 +217,8 @@ async execute(interaction, client) {
                 return null;
             };
 
-            const checkEmoji = EMOJIS.screaminggreen || '✅';
-            const crossEmoji = EMOJIS.red_color || '⚠️';
+            const checkEmoji = EMOJIS.screaminggreen || em('ic_ok', '✅');
+            const crossEmoji = EMOJIS.red_color || em('ic_warn', '⚠️');
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
@@ -266,7 +266,7 @@ async execute(interaction, client) {
         const isArchitectServer = guild.id === process.env.GUILD_ID;
         const chM = (id, env) => id ? `<#${id}>` : (isArchitectServer && process.env[env] ? `<#${process.env[env]}> 🔹 .env` : `\`${tr('not_set')}\``);
         const roleM = (id, env) => id ? `<@&${id}>` : (isArchitectServer && process.env[env] ? `<@&${process.env[env]}> 🔹 .env` : `\`${tr('not_set')}\``);
-        const bS = (val) => val ? `${EMOJIS.screaminggreen || '✅'} ${tr('enabled')}` : `${EMOJIS.red_color || em('ic_off', '❌')} ${tr('disabled')}`;
+        const bS = (val) => val ? `${EMOJIS.screaminggreen || em('ic_ok', '✅')} ${tr('enabled')}` : `${EMOJIS.red_color || em('ic_off', '❌')} ${tr('disabled')}`;
         
         const em = (k, fb) => EMOJIS[k] || fb;
 
@@ -399,7 +399,7 @@ async execute(interaction, client) {
     async processSetSetting(guild, client, setting, rawValue, lang, actor = null) {
         const t = {
             fr: {
-                success: '✅ Paramètre mis à jour',
+                success: em('ic_ok', '✅') + ' Paramètre mis à jour',
                 updated: (s, v) => `**${s}** a été défini sur :\n\`${v}\``,
                 invalidChannel: em('ic_off', em('ic_off', '❌')) + ' Salon introuvable. Mentionnez un salon valide.',
                 invalidRole: em('ic_off', em('ic_off', '❌')) + ' Rôle introuvable. Mentionnez un rôle valide.',
@@ -410,7 +410,7 @@ async execute(interaction, client) {
                 viewAll: `💡 Tapez ${mentions(client, 'serversettings', 'view')} pour voir tous les paramètres.\n💬 Utilisez \`default\` comme valeur pour réinitialiser les messages au défaut système.`
             },
             en: {
-                success: '✅ Setting Updated',
+                success: em('ic_ok', '✅') + ' Setting Updated',
                 updated: (s, v) => `**${s}** has been set to:\n\`${v}\``,
                 invalidChannel: em('ic_off', em('ic_off', '❌')) + ' Channel not found. Please mention a valid channel.',
                 invalidRole: em('ic_off', em('ic_off', '❌')) + ' Role not found. Please mention a valid role.',
@@ -558,7 +558,7 @@ async execute(interaction, client) {
             const displayValue = processedValue === null 
                 ? (lang === 'fr' ? '📋 Défaut Système' : '📋 System Default')
                 : (processedValue === '1' && def.type === 'bool') 
-                    ? (lang === 'fr' ? `${EMOJIS.screaminggreen || '✅'} Activé` : `${EMOJIS.screaminggreen || '✅'} Enabled`)
+                    ? (lang === 'fr' ? `${EMOJIS.screaminggreen || em('ic_ok', '✅')} Activé` : `${EMOJIS.screaminggreen || em('ic_ok', '✅')} Enabled`)
                     : (processedValue === '0' && def.type === 'bool')
                         ? (lang === 'fr' ? `${EMOJIS.red_color || em('ic_off', '❌')} Désactivé` : `${EMOJIS.red_color || em('ic_off', '❌')} Disabled`)
                         : processedValue;

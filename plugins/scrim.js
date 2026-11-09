@@ -71,7 +71,7 @@ function buildScrimCard(scrim, signups, guild, client, disabled = false, lang = 
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
     // Signups with small emojis and subtext
-    const checkEm = resolveEmoji('small_check', guild) || '✅';
+    const checkEm = resolveEmoji('small_check', guild) || em('ic_ok', '✅');
     const crossEm = resolveEmoji('small_cross', guild) || em('ic_off', '❌');
     
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${checkEm} ${T('joining', lang, { n: yes.length })}\n${list(yes).slice(0, 900)}`));
@@ -297,7 +297,7 @@ module.exports = {
                 return await interaction.editReply({ components: [lc], flags: MessageFlags.IsComponentsV2 });
             } catch (err) {
                 console.error('[SCRIM LIST ERROR]', err);
-                return interaction.editReply({ content: '⚠️ Failed to load scrims. Please try again later.' });
+                return interaction.editReply({ content: em('ic_warn', em('ic_warn', '⚠️')) + ' Failed to load scrims. Please try again later.' });
             }
         }
 
@@ -314,7 +314,7 @@ module.exports = {
             if (yes.length) {
                 const ch = await client.channels.fetch(scrim.channel_id).catch(() => null);
                 if (ch) {
-                    const warnEm = resolveEmoji('warning', ch.guild) || '⚠️';
+                    const warnEm = resolveEmoji('warning', ch.guild) || em('ic_warn', '⚠️');
                     const xc = new ContainerBuilder().setAccentColor(0xe74c3c);
                     xc.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${warnEm} ${T('scrim_cancelled', lang)}`));
                     xc.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));

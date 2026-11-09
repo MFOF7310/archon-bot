@@ -105,7 +105,7 @@ async function buildLookupEmbed(client, db, target, guildId, scope) {
         if (investments.length > 0) {
             const invLines = investments.map(i => {
                 const age = Math.floor((Date.now() - i.invested_at) / 3600000);
-                return `\u001b[1;36m▸\u001b[0m ${i.amount.toLocaleString()} 🪙 · ${age}h ago · ${i.claimed ? '✅' : '⏳'}`;
+                return `\u001b[1;36m▸\u001b[0m ${i.amount.toLocaleString()} 🪙 · ${age}h ago · ${i.claimed ? em('ic_ok', '✅') : '⏳'}`;
             }).join('\n');
             lines.push('```ansi\n\u001b[1;33m── INVESTMENTS ──\u001b[0m\n' + invLines + '\n```');
         }
@@ -121,7 +121,7 @@ async function buildLookupEmbed(client, db, target, guildId, scope) {
             }).join('\n');
             lines.push(`**⚠️ Warnings (${activeWarns} active)**\n${warnLines}`);
         } else {
-            lines.push('✅ No warnings on record');
+            lines.push(em('ic_ok', '✅') + ' No warnings on record');
         }
     }
 
@@ -132,7 +132,7 @@ async function buildLookupEmbed(client, db, target, guildId, scope) {
             '\u001b[1;35m── AI & SUPPORT ──\u001b[0m\n' +
             `\u001b[1;36m▸ LYDIA MEM\u001b[0m ${lydiaMem?.cnt || 0} memories\n` +
             `\u001b[1;36m▸ TICKETS  \u001b[0m${tickets?.cnt || 0} created\n` +
-            `\u001b[1;36m▸ PREMIUM  \u001b[0m${premium?.premium_active ? '✅ Active' : em('ic_off', em('ic_off', '❌')) + ' None'}\n` +
+            `\u001b[1;36m▸ PREMIUM  \u001b[0m${premium?.premium_active ? em('ic_ok', '✅') + ' Active' : em('ic_off', em('ic_off', '❌')) + ' None'}\n` +
             '```'
         );
     }

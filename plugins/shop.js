@@ -39,7 +39,7 @@ module.exports = {
 
             let description = `${item.price.toLocaleString()} ${t('shop.creditsLabel', lang)} - ${itemDesc}`;
             // Use Unicode emojis for descriptions (custom emojis are not supported here)
-            if (ownedSet.has(item.id)) description = `✅ ${t('shop.owned', lang)} - ${description}`;
+            if (ownedSet.has(item.id)) description = `${em('ic_ok', '✅')} ${t('shop.owned', lang)} - ${description}`;
             if (item.requirement?.level && currentLevel < item.requirement.level) description = `🔒 ${t('shop.locked', lang)} ${item.requirement.level} - ${description}`;
 
             const opt = {
@@ -166,7 +166,7 @@ module.exports = {
 
                 const itemName = selectedItem[lang]?.name || selectedItem.en.name;
                 const successContainer = new ContainerBuilder().setAccentColor(0x2ecc71);
-                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji} ${itemName}**`));
+                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', em('ic_ok', '✅'))} ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji} ${itemName}**`));
                 successContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
                 successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('shop.pricePaid', lang)}:** \`-${selectedItem.price.toLocaleString()}\` ${em('coins', '🪙')}\n` + (bonusCredits > 0 ? `**${t('shop.bonusReceived', lang)}:** \`+${bonusCredits.toLocaleString()}\` ${em('coins', '🪙')}\n` : '') + (selectedItem.effect?.streak_protection ? `**${em('shield', '🛡️')} ${t('shop.streakProtectionLine', lang)}**\n` : '') + (bonusXP > 0 ? `**${em('XP', '✨')} ${t('shop.xpBonusLine', lang, { amount: bonusXP })}**\n` : '') + `**${t('shop.newBalance', lang)}:** \`${newCredits.toLocaleString()}\` ${em('coins', '🪙')}`));
                 
@@ -274,7 +274,7 @@ module.exports = {
 
                 const itemName = selectedItem[lang]?.name || selectedItem.en.name;
                 const successContainer = new ContainerBuilder().setAccentColor(0x2ecc71);
-                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji} ${itemName}**`));
+                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', em('ic_ok', '✅'))} ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji} ${itemName}**`));
                 successContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
                 successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('shop.pricePaid', lang)}:** \`-${selectedItem.price.toLocaleString()}\` ${em('coins', '🪙')}\n` + (bonusCredits > 0 ? `**${t('shop.bonusReceived', lang)}:** \`+${bonusCredits.toLocaleString()}\` ${em('coins', '🪙')}\n` : '') + (selectedItem.effect?.streak_protection ? `**${em('shield', '🛡️')} ${t('shop.streakProtectionLine', lang)}**\n` : '') + (bonusXP > 0 ? `**${em('XP', '✨')} ${t('shop.xpBonusLine', lang, { amount: bonusXP })}**\n` : '') + `**${t('shop.newBalance', lang)}:** \`${newCredits.toLocaleString()}\` ${em('coins', '🪙')}`));
                 

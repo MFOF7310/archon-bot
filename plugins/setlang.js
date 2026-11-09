@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const EMOJIS = require('../config/emojis');
 const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
@@ -35,8 +36,8 @@ function buildEmbed(code, guild = null, isAlreadySet = false) {
     const L = code === 'auto' ? resolveAuto(guild) : textLang(code);
     
     // Résolution des emojis custom avec fallback
-    const checkEmoji = EMOJIS.small_check || EMOJIS.check || '✅';
-    const warnEmoji = EMOJIS.warning || EMOJIS.error || '⚠️';
+    const checkEmoji = EMOJIS.small_check || EMOJIS.check || em('ic_ok', '✅');
+    const warnEmoji = EMOJIS.warning || EMOJIS.error || em('ic_warn', '⚠️');
     const customFlag = EMOJIS[`flag_${code}`] || entry.flag; // Si un emoji custom existe (ex: flag_fr)
 
     const c = new ContainerBuilder().setAccentColor(isAlreadySet ? 0xf1c40f : 0x2ecc71);

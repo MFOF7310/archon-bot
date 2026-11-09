@@ -146,14 +146,14 @@ module.exports = {
             const _bot = guild.members.me.roles.botRole?.name || guild.members.me.displayName;
 
             const c = new ContainerBuilder().setAccentColor(_d.ok ? 0x2ecc71 : 0xf1c40f);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('screaminggreen', interaction) || '✅'} ${t('channels.set_success', lang)}\n${getEmoji(def.emoji, '📌')} **${def.label}** → <#${channel.id}>`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('screaminggreen', interaction) || em('ic_ok', '✅')} ${t('channels.set_success', lang)}\n${getEmoji(def.emoji, '📌')} **${def.label}** → <#${channel.id}>`));
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
             
             if (_d.ok) {
                 c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${resolveEmoji('screaminggreen', interaction) || '🟢'} ${t('channels.can_post', lang)}`));
             } else {
                 const reason = _d.reason === 'private' ? t('channels.private_warn', lang) : t('channels.role_block', lang, { role: _d.role || 'A role', missing: _d.missing.join(', ') });
-                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`⚠️ **${t('channels.set_warning', lang)}**\n${reason}\n\n-# ${t('channels.fix_warn', lang, { bot: _bot, missing: _d.missing.join(', ') })}`));
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${em('ic_warn', '⚠️')} **${t('channels.set_warning', lang)}**\n${reason}\n\n-# ${t('channels.fix_warn', lang, { bot: _bot, missing: _d.missing.join(', ') })}`));
             }
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${guild.name}`));
             
@@ -172,7 +172,7 @@ module.exports = {
             client.settings?.delete(guildId);
 
             const c = new ContainerBuilder().setAccentColor(0xe74c3c);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('red_color', interaction) || '✅'} ${t('channels.removed_title', lang)}\n${getEmoji(def.emoji, '📌')} ${t('channels.removed_desc', lang, { label: def.label })}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('red_color', interaction) || em('ic_ok', '✅')} ${t('channels.removed_title', lang)}\n${getEmoji(def.emoji, '📌')} ${t('channels.removed_desc', lang, { label: def.label })}`));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${t('channels.removed_footer', lang)}`));
             return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
         }
@@ -236,14 +236,14 @@ module.exports = {
             const _bot = message.guild.members.me.roles.botRole?.name || message.guild.members.me.displayName;
 
             const c = new ContainerBuilder().setAccentColor(_d.ok ? 0x2ecc71 : 0xf1c40f);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('screaminggreen', message) || '✅'} ${t('channels.set_success', lang)}\n${getEmoji(def.emoji, '📌')} **${def.label}** → <#${channelId}>`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('screaminggreen', message) || em('ic_ok', '✅')} ${t('channels.set_success', lang)}\n${getEmoji(def.emoji, '📌')} **${def.label}** → <#${channelId}>`));
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
             
             if (_d.ok) {
                 c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${resolveEmoji('screaminggreen', message) || '🟢'} ${t('channels.can_post', lang)}`));
             } else {
                 const reason = _d.reason === 'private' ? t('channels.private_warn', lang) : t('channels.role_block', lang, { role: _d.role || 'A role', missing: _d.missing.join(', ') });
-                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`⚠️ **${t('channels.set_warning', lang)}**\n${reason}\n\n-# ${t('channels.fix_warn', lang, { bot: _bot, missing: _d.missing.join(', ') })}`));
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${em('ic_warn', '⚠️')} **${t('channels.set_warning', lang)}**\n${reason}\n\n-# ${t('channels.fix_warn', lang, { bot: _bot, missing: _d.missing.join(', ') })}`));
             }
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${message.guild.name}`));
             
@@ -262,7 +262,7 @@ module.exports = {
             client.settings?.delete(guildId);
 
             const c = new ContainerBuilder().setAccentColor(0xe74c3c);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('red_color', message) || '✅'} ${t('channels.removed_title', lang)}\n${getEmoji(def.emoji, '📌')} ${t('channels.removed_desc', lang, { label: def.label })}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('red_color', message) || em('ic_ok', '✅')} ${t('channels.removed_title', lang)}\n${getEmoji(def.emoji, '📌')} ${t('channels.removed_desc', lang, { label: def.label })}`));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${t('channels.removed_footer', lang)}`));
             return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
         }

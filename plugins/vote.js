@@ -447,7 +447,7 @@ module.exports = {
             const embed = new EmbedBuilder()
                 .setColor('#2ecc71')
                 .setTitle('🔧 VOTE REPAIR COMPLETE')
-                .setDescription(report.substring(0, 2000) || '✅ Done')
+                .setDescription(report.substring(0, 2000) || em('ic_ok', '✅') + ' Done')
                 .setFooter({ text: `${totalFixed} entries fixed • Locked permanently` });
             return message.reply(toV2({ embeds: [embed] })).catch(() => {});
         }

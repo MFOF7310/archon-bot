@@ -14,19 +14,19 @@ const BG_PRESETS = [
 
 const RESPONSES = {
     saved: [
-        '✅ Looking sharp! Background saved — run `.profile` to see it.',
+        em('ic_ok', '✅') + ' Looking sharp! Background saved — run `.profile` to see it.',
         '🎨 Done! Your profile just got an upgrade. Try `.profile`.',
         '💾 Saved. Run `.profile` and see the magic.',
-        '✅ Background locked in. `.profile` to preview.',
+        em('ic_ok', '✅') + ' Background locked in. `.profile` to preview.',
     ],
     preset: (name) => [
-        `✅ Preset **${name}** set as your background!`,
+        `${em('ic_ok', '✅')} Preset **${name}** set as your background!`,
         `🖼️ **${name}** looks clean — check it with \`.profile\`.`,
         `💠 Background switched to **${name}**. Run \`.profile\` to see it.`,
     ],
     reset: [
         '🔄 Background cleared — back to your default.',
-        '✅ Reset done. Your profile is back to its original look.',
+        em('ic_ok', '✅') + ' Reset done. Your profile is back to its original look.',
     ],
     noInput: [
         '📎 Send an image with this command to set it as your background.',
@@ -34,11 +34,11 @@ const RESPONSES = {
     ],
     failed: [
         em('ic_off', em('ic_off', '❌')) + ' Could not save that image — make sure it\'s a valid jpg, png, or webp.',
-        '⚠️ Something went wrong grabbing that image. Try again or use a preset.',
+        em('ic_warn', em('ic_warn', '⚠️')) + ' Something went wrong grabbing that image. Try again or use a preset.',
     ],
     badUrl: [
         em('ic_off', em('ic_off', '❌')) + ' That doesn\'t look like a valid image URL.',
-        '⚠️ Couldn\'t read that URL. Attach the image directly instead.',
+        em('ic_warn', em('ic_warn', '⚠️')) + ' Couldn\'t read that URL. Attach the image directly instead.',
     ],
 };
 

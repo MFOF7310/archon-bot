@@ -563,7 +563,7 @@ module.exports = {
             await message.reply({ files: [attachment] }).catch(() => {});
         } catch(err) {
             console.error('[PROFILE]', err);
-            message.reply("⚠️ Couldn't load the profile. Please try again in a moment.").catch(() => {});
+            message.reply(em('ic_warn', '⚠️') + " Couldn't load the profile. Please try again in a moment.").catch(() => {});
         }
     },
 
@@ -584,7 +584,7 @@ module.exports = {
             await interaction.editReply({ files: [attachment] });
         } catch(err) {
             console.error('[PROFILE SLASH]', err);
-            interaction.editReply("⚠️ Couldn't load the profile. Please try again in a moment.").catch(() => {});
+            interaction.editReply(em('ic_warn', '⚠️') + " Couldn't load the profile. Please try again in a moment.").catch(() => {});
         }
     }
 };

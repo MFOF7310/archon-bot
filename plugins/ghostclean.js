@@ -24,7 +24,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#f1c40f')
-                .setTitle(`${em('ic_warn', '⚠️')} Access Restricted`)
+                .setTitle(`${em('ic_warn', em('ic_warn', '⚠️'))} Access Restricted`)
                 .setDescription(
                     `Hey! ${EMOJIS.wave}\n\n` +
                     `This command is reserved for the **System Architect** only.\n` +
@@ -62,7 +62,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         return reply({
             embeds: [new EmbedBuilder()
                 .setColor('#e67e22')
-                .setTitle(`${em('ic_warn', '⚠️')} Ghost Servers — ${candidates.length} candidates`)
+                .setTitle(`${em('ic_warn', em('ic_warn', '⚠️'))} Ghost Servers — ${candidates.length} candidates`)
                 .addFields(fields)
                 .setFooter({ text: `Threshold: ${GHOST_DAYS}+ days • /ghostclean leave <id> | /ghostclean leaveall` })],
             flags: 64
@@ -95,7 +95,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
         if (!targetId) return reply({ content: em('ic_off', em('ic_off', '❌')) + ' Provide a guild ID.', flags: 64 });
         if (WHITELIST.includes(targetId)) return reply({ content: em('ic_off', em('ic_off', '❌')) + ' That guild is whitelisted.', flags: 64 });
         const guild = client.guilds.cache.get(targetId);
-        if (!guild) return reply({ content: `⚠️ Guild \`${targetId}\` not in cache.`, flags: 64 });
+        if (!guild) return reply({ content: `${em('ic_warn', '⚠️')} Guild \`${targetId}\` not in cache.`, flags: 64 });
         const name = guild.name;
         await guild.leave();
         console.log(`[GHOSTCLEAN] Left: ${name} (${targetId})`);
@@ -112,14 +112,14 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
     // ── LEAVEALL ──
     if (subcommand === 'leaveall') {
         const inCache = candidates.filter(r => client.guilds.cache.has(r.guild_id));
-        if (inCache.length === 0) return reply({ content: '⚠️ No ghost candidates in cache.', flags: 64 });
+        if (inCache.length === 0) return reply({ content: em('ic_warn', em('ic_warn', '⚠️')) + ' No ghost candidates in cache.', flags: 64 });
 
         if (args[1] !== 'confirm') {
-            const preview = inCache.map(r => `⚠️ **${r.guild_name}** — ${r.days_inactive}d`).join('\n');
+            const preview = inCache.map(r => `${em('ic_warn', '⚠️')} **${r.guild_name}** — ${r.days_inactive}d`).join('\n');
             return reply({
                 embeds: [new EmbedBuilder()
                     .setColor('#e74c3c')
-                .setTitle(`${em('ic_warn', '⚠️')} Confirm Mass Leave`)
+                .setTitle(`${em('ic_warn', em('ic_warn', '⚠️'))} Confirm Mass Leave`)
                     .setDescription(`About to leave **${inCache.length}** servers:\n\n${preview}\n\n**Add \`confirm\` to proceed.**`)],
                 flags: 64
             });
@@ -146,7 +146,7 @@ async function handleGhostClean(client, reply, args, db, isOwner) {
                 .setColor('#2ecc71')
                 .setTitle(`${EMOJIS.eagle} Ghost Clean Complete`)
                 .setDescription(results.join('\n'))
-                .addFields({ name: 'Summary', value: `✅ Left: ${left} • ❌ Failed: ${failed}` })
+                .addFields({ name: 'Summary', value: `${em('ic_ok', '✅')} Left: ${left} • ❌ Failed: ${failed}` })
                 .setTimestamp()],
             flags: 64
         });

@@ -12,6 +12,7 @@ const {
     EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
     ChannelSelectMenuBuilder, RoleSelectMenuBuilder, ChannelType
 } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const { icon } = require('../lib/ui/icons');
 const i18n = require('../lib/i18n');

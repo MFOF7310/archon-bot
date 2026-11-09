@@ -100,7 +100,7 @@ async function logVerify(guild, db, color, title, userId, detail = '', lang = 'e
                 db.prepare('CREATE INDEX IF NOT EXISTS idx_verify_events ON verify_events (guild_id, ts)').run();
                 _evReady = true;
             }
-            const kind = title.startsWith('✅') ? 'passed' : title.startsWith('👢') ? 'kicked' : title.startsWith('❌') ? 'failed' : 'spam';
+            const kind = title.startsWith(em('ic_ok', '✅')) ? 'passed' : title.startsWith('👢') ? 'kicked' : title.startsWith('❌') ? 'failed' : 'spam';
             db.prepare('INSERT INTO verify_events VALUES (?, ?, ?, ?)').run(guild.id, String(userId), kind, Math.floor(Date.now() / 1000));
         } catch (e) { console.error('[VERIFY] event store:', e.message); }
         
@@ -199,8 +199,8 @@ async function storedInviteRow(db, guild, lang) {
 // closes the other channels to the unverified role. Throws if Discord refuses the message.
 async function postVerifyPanel(client, db, guild, ch, lang) {
     const vContainer = new ContainerBuilder().setAccentColor(0x00aaff);
-    const checkEm = resolveEmoji('small_check', client) || '✅';
-    const warnEm = resolveEmoji('warning', client) || '⚠️';
+    const checkEm = resolveEmoji('small_check', client) || em('ic_ok', '✅');
+    const warnEm = resolveEmoji('warning', client) || em('ic_warn', '⚠️');
 
     vContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('shield', client) || '🛡️'} ${vt(lang, 'v2_panel_title')}`));
     vContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
@@ -323,7 +323,7 @@ module.exports = {
 
         if (sub === 'disable') {
             db.prepare(`UPDATE server_settings SET verify_enabled = 0 WHERE guild_id = ?`).run(gid);
-            return interaction.reply(toV2({ embeds: [new EmbedBuilder().setColor(0xff3311).setDescription(`⚠️ ${vt(lang, 'disableDesc')}`)], flags: 64 }));
+            return interaction.reply(toV2({ embeds: [new EmbedBuilder().setColor(0xff3311).setDescription(`${em('ic_warn', '⚠️')} ${vt(lang, 'disableDesc')}`)], flags: 64 }));
         }
 
         if (sub === 'setrole') {
@@ -340,7 +340,7 @@ module.exports = {
             const mins = interaction.options.getInteger('minutes');
             db.prepare(`UPDATE server_settings SET verify_kick_days = ? WHERE guild_id = ?`).run(mins, gid);
             return interaction.reply(toV2({
-                embeds: [new EmbedBuilder().setColor(0x00aaff).setDescription(mins === 0 ? `${EMOJIS.check} ${vt(lang, 'setkickDisabled')}` : `⚠️ ${vt(lang, 'setkickEnabled', { mins })}`)],
+                embeds: [new EmbedBuilder().setColor(0x00aaff).setDescription(mins === 0 ? `${EMOJIS.check} ${vt(lang, 'setkickDisabled')}` : `${em('ic_warn', '⚠️')} ${vt(lang, 'setkickEnabled', { mins })}`)],
                 flags: 64
             }));
         }
@@ -466,7 +466,7 @@ module.exports = {
             .setTitle(vt(lang, 'dmTitle', { server: member.guild.name }).replace('👋 ', '').replace('👋', ''))
             .setDescription(
                 `${resolveEmoji('ducky_hey', client) || '👋'} ` + vt(lang, 'dmInstructions') +
-                `⚠️ ${vt(lang, 'dmCaseNote')} • **${vt(lang, 'dmAttempts')}** • ${vt(lang, 'dmExpires', { mins: (settings.verify_kick_days || 0) > 0 ? settings.verify_kick_days : 10 })}\n\n` +
+                `${em('ic_warn', '⚠️')} ${vt(lang, 'dmCaseNote')} • **${vt(lang, 'dmAttempts')}** • ${vt(lang, 'dmExpires', { mins: (settings.verify_kick_days || 0) > 0 ? settings.verify_kick_days : 10 })}\n\n` +
                 (pl ? `*${vt(lang, 'dmTroublePanel')}*` : `*${vt(lang, 'dmTroubleRejoin')}*`)
             )
             .setImage('attachment://verify.png')

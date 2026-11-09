@@ -17,7 +17,7 @@ const T = {
         comments: '💬 Comments',
         subreddit: '📍 Posted in',
         postedAgo: '⏰ Posted',
-        sfwBadge: '✅ SFW Verified',
+        sfwBadge: em('ic_ok', '✅') + ' SFW Verified',
         noResults: '📭 No memes found in r/{sub}, trying another...'
     },
     fr: {
@@ -33,7 +33,7 @@ const T = {
         comments: '💬 Commentaires',
         subreddit: '📍 Posté dans',
         postedAgo: '⏰ Posté',
-        sfwBadge: '✅ SFW Vérifié',
+        sfwBadge: em('ic_ok', '✅') + ' SFW Vérifié',
         noResults: '📭 Aucun meme dans r/{sub}, essai avec un autre...'
     }
 };

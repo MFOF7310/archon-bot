@@ -10,10 +10,10 @@ const birthdays = new Map();
 const t = {
     en: {
         setTitle: '🎂 Birthday saved',
-        setSuccess: (date) => `✅ Your birthday is saved: **${date}**`,
+        setSuccess: (date) => `${em('ic_ok', '✅')} Your birthday is saved: **${date}**`,
         setError: em('ic_off', em('ic_off', '❌')) + ' Invalid date. Example: `/birthday set day:15 month:6 year:2000`',
         removeTitle: '🎂 Birthday removed',
-        removeSuccess: '✅ Your birthday has been removed.',
+        removeSuccess: em('ic_ok', '✅') + ' Your birthday has been removed.',
         removeError: em('ic_off', em('ic_off', '❌')) + ' You have no birthday saved.',
         checkTitle: '🎂 Birthday',
         checkUser: (user, date) => `🎉 **${user}**'s birthday is on **${date}**`,
@@ -37,10 +37,10 @@ const t = {
     },
     fr: {
         setTitle: '🎂 Anniversaire enregistré',
-        setSuccess: (date) => `✅ Ton anniversaire est enregistré : **${date}**`,
+        setSuccess: (date) => `${em('ic_ok', '✅')} Ton anniversaire est enregistré : **${date}**`,
         setError: em('ic_off', em('ic_off', '❌')) + ' Date invalide. Exemple : `/birthday set jour:15 mois:6 annee:2000`',
         removeTitle: '🎂 Anniversaire supprimé',
-        removeSuccess: '✅ Ton anniversaire a été supprimé.',
+        removeSuccess: em('ic_ok', '✅') + ' Ton anniversaire a été supprimé.',
         removeError: em('ic_off', '❌') + " Tu n'as aucun anniversaire enregistré.",
         checkTitle: '🎂 Anniversaire',
         checkUser: (user, date) => `🎉 L'anniversaire de **${user}** est le **${date}**`,

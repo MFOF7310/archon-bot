@@ -4,6 +4,7 @@
 // The menu and buttons use customIds "help:<action>:<ownerId>:…" routed from index.js, so they keep working after a restart.
 // Someone other than the person who opened the menu gets their own private copy instead of changing it.
 const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { t, slashLang, LANGS } = require('../lib/i18n');
 const v2 = require('../lib/games/v2');
 const E = require('../config/emojis');
@@ -126,7 +127,7 @@ function categoryCard(client, lang, userId, guildId, key, page = 0) {
         { text: `## ${catEmoji(key)} ${catName(_, key)}${pages > 1 ? ` · ${page + 1}/${pages}` : ''}${desc.startsWith('help.') ? '' : `\n-# ${desc}`}` },
         { rule: true },
     ];
-    if (moduleOff(client, guildId, key)) items.push({ text: `${em('ic_warn', '⚠️')} ${_('module_off')}` });
+    if (moduleOff(client, guildId, key)) items.push({ text: `${em('ic_warn', em('ic_warn', '⚠️'))} ${_('module_off')}` });
     items.push({ text: shown.map(c => line(client, c, lang, prefix)).join('\n') || _('no_commands') });
     items.push({ text: `-# ${_('cat_foot', { prefix })}` });
     const nav = [btn(`help:home:${userId}`, _('btn_home'))];

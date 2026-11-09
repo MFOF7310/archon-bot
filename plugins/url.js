@@ -18,7 +18,7 @@ const T = {
         locale: '🌍 Language',
         footer: (domain) => `${domain} • URL Preview`,
         visit: '🔗 Visit',
-        safe: '✅ Safe',
+        safe: em('ic_ok', '✅') + ' Safe',
         unknown: '❓ Unknown',
     },
     fr: {
@@ -34,7 +34,7 @@ const T = {
         locale: '🌍 Langue',
         footer: (domain) => `${domain} • Aperçu URL`,
         visit: '🔗 Visiter',
-        safe: '✅ Sûr',
+        safe: em('ic_ok', '✅') + ' Sûr',
         unknown: '❓ Inconnu',
     }
 };

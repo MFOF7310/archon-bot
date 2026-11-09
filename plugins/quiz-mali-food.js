@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, Collection } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 // ================= ACTIVE QUIZZES =================
 const activeQuizzes = new Collection();
@@ -242,7 +243,7 @@ async function runQuiz(msg, userId, username, lang) {
                 .setColor(isCorrect ? '#2ecc71' : '#e74c3c')
                 .setAuthor({ name: `🍚 ${t[lang].title} • ${username}` })
                 .setDescription(
-                    `### ${isCorrect ? '✅ ' + t[lang].correct : '❌ ' + t[lang].wrong}\n\n` +
+                    `### ${isCorrect ? em('ic_ok', '✅') + ' ' + t[lang].correct : '❌ ' + t[lang].wrong}\n\n` +
                     (!isCorrect ? `**${t[lang].correctAnswer}:** ${emojis[q.correct]} ${data.options[q.correct]}\n\n` : '') +
                     `**🍽️ ${t[lang].fact}:** ${q.fact[lang]}\n\n` +
                     `⭐ ${t[lang].score}: **${score}/${i + 1}**`

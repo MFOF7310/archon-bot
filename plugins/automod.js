@@ -498,7 +498,7 @@ async function takeAction(message, violations, client, db) {
     try {
         const guildOwner = await message.guild.fetchOwner().catch(() => null);
         const appealContact = guildOwner ? `<@${guildOwner.id}>` : _t('strikeContactFallback');
-        const actionEmoji = outcome === 'ban' ? (resolveEmoji('banAlert', client) || '🔨') : outcome === 'timeout' ? (resolveEmoji('lock', client) || '⏳') : (resolveEmoji('warning', client) || '⚠️');
+        const actionEmoji = outcome === 'ban' ? (resolveEmoji('banAlert', client) || '🔨') : outcome === 'timeout' ? (resolveEmoji('lock', client) || '⏳') : (resolveEmoji('warning', client) || em('ic_warn', '⚠️'));
         const strikeNext = _next(displayWc);
         const _v2 = require('../lib/games/v2');
         const _E  = require('../config/emojis');
@@ -1089,7 +1089,7 @@ async function handleAppeal(message, client) {
                 embeds: [new EmbedBuilder()
                     .setColor(deliveryMethod === 'queued' ? C.YELLOW : C.GREEN)
                     .setTitle(_tU(deliveryMethod === 'queued' ? 'appeal_queuedTitle' : 'appeal_submittedTitle',
-                        deliveryMethod === 'queued' ? {} : { emoji: require('../config/emojis').success || '✅' }))
+                        deliveryMethod === 'queued' ? {} : { emoji: require('../config/emojis').success || em('ic_ok', '✅') }))
                     .setDescription(confirmDesc + '\n\n' + _tU('appeal_submittedFooter'))
                     .setFooter({ text: 'ARCHON CG-223' })]
             })).catch(() => {});
@@ -1155,7 +1155,7 @@ function buildStatusCard(client, guild, ss, opts = {}) {
 }
 
 
-// Split a lang string like "✅ Approved by X\nBody" into emoji + title + body.
+// Split a lang string like em('ic_ok', '✅') + " Approved by X\nBody" into emoji + title + body.
 function _splitOutcome(s) {
     const raw = String(s || '').trim();
     const nl = raw.indexOf('\n');
@@ -1181,10 +1181,10 @@ async function handleAppealButton(interaction, client) {
     if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate().catch(() => {});
 
     if (!vote) {
-        return interaction.editReply(fit(interaction.message, { content: `⚠️ ${_TA('appeal_expired')}`, embeds: [], components: [] })).catch(() => {});
+        return interaction.editReply(fit(interaction.message, { content: `${em('ic_warn', '⚠️')} ${_TA('appeal_expired')}`, embeds: [], components: [] })).catch(() => {});
     }
     if (vote.status !== 'pending') {
-        return interaction.editReply(fit(interaction.message, { content: `⚠️ ${_TA('decisionRejected')}`, embeds: [], components: [] })).catch(() => {});
+        return interaction.editReply(fit(interaction.message, { content: `${em('ic_warn', '⚠️')} ${_TA('decisionRejected')}`, embeds: [], components: [] })).catch(() => {});
     }
 
     // ── Permission guard: owner OR admin/mod ──
@@ -1237,7 +1237,7 @@ async function handleAppealButton(interaction, client) {
             const lifted = timeoutLifted ? _tU('appeal_approvedTimeoutLifted') : _tU('appeal_approvedTimeoutExpired');
             await targetUser.send(toV2({ embeds: [new EmbedBuilder()
                 .setColor(C.GREEN)
-                .setTitle(`${_E.verified || '✅'} ${_tU('appeal_approvedTitle')}`)
+                .setTitle(`${_E.verified || em('ic_ok', '✅')} ${_tU('appeal_approvedTitle')}`)
                 .setDescription(_tU('appeal_approvedDesc', { server: guild?.name || 'the server' }) + lifted)
                 .setFooter({ text: 'ARCHON CG-223' })] })).catch(() => {});
         }
@@ -1683,7 +1683,7 @@ module.exports = {
         addSubcommand(s => s.setName('channels').setDescription('Restrict AutoMod to specific channels').addStringOption(o => o.setName('action').setDescription('add, remove, list, or clear').setRequired(true).addChoices({name:'📋 List restricted channels',value:'list'},{name:'➕ Add channel',value:'add'},{name:'➖ Remove channel',value:'remove'},{name:'🔄 Clear all',value:'clear'})).addChannelOption(o => o.setName('channel').setDescription('Channel to add/remove').setRequired(false))).
         addSubcommand(s => s.setName('raid').setDescription('🛡️ Configure raid detection').
             addStringOption(o => o.setName('action').setDescription('Action').setRequired(true).addChoices(
-                {name:'✅ Enable', value:'enable'},
+                {name:em('ic_ok', '✅') + ' Enable', value:'enable'},
                 {name:em('ic_off', '❌') + ' Disable', value:'disable'},
                 {name:'📊 Status', value:'status'},
                 {name:'⚙️ Set threshold', value:'threshold'},
@@ -1758,7 +1758,7 @@ module.exports = {
             const lv = ix.options.getString('level');
             client.updateServerSetting(ix.guild.id, 'automodsensitivity', lv);
             client.settings.delete(ix.guild.id);
-            return ix.editReply({ content: '✅ ' + _TA('admin_sensitivitySet', { level: lv.toUpperCase() }), flags: 1 << 6 });
+            return ix.editReply({ content: em('ic_ok', '✅') + ' ' + _TA('admin_sensitivitySet', { level: lv.toUpperCase() }), flags: 1 << 6 });
         }
         if (sc === 'whitelist') {
             const role = ix.options.getRole('role');
@@ -1768,12 +1768,12 @@ module.exports = {
                 const nw = cur ? `${cur},${role.id}` : role.id;
                 client.updateServerSetting(ix.guild.id, 'automodwhitelist', nw); client.settings.delete(ix.guild.id);
                 if (ss?.autoModEnabled) { await syncRules(ix.guild, 'delete'); await syncRules(ix.guild, 'create', { ...ss, autoModWhitelist: nw }); }
-                return ix.editReply({ content: '✅ ' + _TA('admin_whitelistAdded', { role: role.name }), flags: 1 << 6 });
+                return ix.editReply({ content: em('ic_ok', '✅') + ' ' + _TA('admin_whitelistAdded', { role: role.name }), flags: 1 << 6 });
             } else {
                 if (!cur) return ix.editReply({ content: _TA('admin_whitelistEmpty'), flags: 1 << 6 });
                 client.updateServerSetting(ix.guild.id, 'automodwhitelist', null); client.settings.delete(ix.guild.id);
                 if (ss?.autoModEnabled) { await syncRules(ix.guild, 'delete'); await syncRules(ix.guild, 'create', { ...ss, autoModWhitelist: null }); }
-                return ix.editReply({ content: '✅ ' + _TA('admin_whitelistCleared'), flags: 1 << 6 });
+                return ix.editReply({ content: em('ic_ok', '✅') + ' ' + _TA('admin_whitelistCleared'), flags: 1 << 6 });
             }
         }
         if (sc === 'domains') {
@@ -1873,7 +1873,7 @@ module.exports = {
             const lv = args[1]?.toLowerCase();
             if (!['low', 'medium', 'high'].includes(lv)) return msg.reply(_TP('sens_usage'));
             client.updateServerSetting(msg.guild.id, 'automodsensitivity', lv); client.settings.delete(msg.guild.id);
-            return msg.reply('✅ ' + _TP('admin_sensitivitySet', { level: lv.toUpperCase() }));
+            return msg.reply(em('ic_ok', '✅') + ' ' + _TP('admin_sensitivitySet', { level: lv.toUpperCase() }));
         }
         if (action === 'whitelist') {
             const role = msg.mentions.roles.first();
@@ -1883,12 +1883,12 @@ module.exports = {
                 const nw = cur ? `${cur},${role.id}` : role.id;
                 client.updateServerSetting(msg.guild.id, 'automodwhitelist', nw); client.settings.delete(msg.guild.id);
                 if (settings?.autoModEnabled) { await syncRules(msg.guild, 'delete'); await syncRules(msg.guild, 'create', { ...settings, autoModWhitelist: nw }); }
-                return msg.reply('✅ ' + _TP('admin_whitelistAdded', { role: role.name }));
+                return msg.reply(em('ic_ok', '✅') + ' ' + _TP('admin_whitelistAdded', { role: role.name }));
             } else {
                 if (!cur) return msg.reply(_TP('admin_whitelistEmpty'));
                 client.updateServerSetting(msg.guild.id, 'automodwhitelist', null); client.settings.delete(msg.guild.id);
                 if (settings?.autoModEnabled) { await syncRules(msg.guild, 'delete'); await syncRules(msg.guild, 'create', { ...settings, autoModWhitelist: null }); }
-                return msg.reply('✅ ' + _TP('admin_whitelistCleared'));
+                return msg.reply(em('ic_ok', '✅') + ' ' + _TP('admin_whitelistCleared'));
             }
         }
         if (action === 'domains') {

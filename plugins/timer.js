@@ -2,8 +2,8 @@ const { EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder, Butt
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 const T = {
-    en: { title: '⏱️ Timer', started: '✅ Timer started!', timeLeft: '⏱️ Time Left', timeUp: '🎉 Time\'s up!', cancelled: em('ic_off', em('ic_off', '❌')) + ' Timer cancelled.', footer: (label) => `Timer: ${label || 'Timer'}`, usage: '`.timer 5m Study break` or `.timer 30s`', invalidTime: em('ic_off', em('ic_off', '❌')) + ' Invalid time. Use: `30s`, `5m`, `1h`, `2h30m`' },
-    fr: { title: '⏱️ Minuteur', started: '✅ Minuteur démarré !', timeLeft: '⏱️ Temps Restant', timeUp: '🎉 Temps écoulé !', cancelled: em('ic_off', em('ic_off', '❌')) + ' Minuteur annulé.', footer: (label) => `Minuteur: ${label || 'Minuteur'}`, usage: '`.timer 5m Pause étude` ou `.timer 30s`', invalidTime: em('ic_off', em('ic_off', '❌')) + ' Temps invalide. Formats: `30s`, `5m`, `1h`, `2h30m`' }
+    en: { title: '⏱️ Timer', started: em('ic_ok', '✅') + ' Timer started!', timeLeft: '⏱️ Time Left', timeUp: '🎉 Time\'s up!', cancelled: em('ic_off', em('ic_off', '❌')) + ' Timer cancelled.', footer: (label) => `Timer: ${label || 'Timer'}`, usage: '`.timer 5m Study break` or `.timer 30s`', invalidTime: em('ic_off', em('ic_off', '❌')) + ' Invalid time. Use: `30s`, `5m`, `1h`, `2h30m`' },
+    fr: { title: '⏱️ Minuteur', started: em('ic_ok', '✅') + ' Minuteur démarré !', timeLeft: '⏱️ Temps Restant', timeUp: '🎉 Temps écoulé !', cancelled: em('ic_off', em('ic_off', '❌')) + ' Minuteur annulé.', footer: (label) => `Minuteur: ${label || 'Minuteur'}`, usage: '`.timer 5m Pause étude` ou `.timer 30s`', invalidTime: em('ic_off', em('ic_off', '❌')) + ' Temps invalide. Formats: `30s`, `5m`, `1h`, `2h30m`' }
 };
 
 function parseTime(input) {

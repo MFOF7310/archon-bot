@@ -359,7 +359,7 @@ async function handlePin(client, message, args, db, serverSettings, t, lang) {
     
     const successEmbed = new EmbedBuilder()
         .setColor('#00fbff')
-        .setDescription(`✅ **${archiveChannel ? t.pinnedAndArchived : t.pinned}**\n\n📊 **${t.pinCount}:** ${pinCount}/50\n📂 **${t.archivedCount}:** ${totalArchived} messages\n\n${t.cleanupTip}`)
+        .setDescription(`${em('ic_ok', '✅')} **${archiveChannel ? t.pinnedAndArchived : t.pinned}**\n\n📊 **${t.pinCount}:** ${pinCount}/50\n📂 **${t.archivedCount}:** ${totalArchived} messages\n\n${t.cleanupTip}`)
         .setFooter({ text: `${message.author.tag} • ${t.neuralArchive} • v${version}`, iconURL: message.author.displayAvatarURL() })
         .setTimestamp();
     
@@ -398,7 +398,7 @@ async function handleUnpin(client, message, args, db, t, lang) {
         deletePinFromDatabase(db, targetMessage.id);
         const successEmbed = new EmbedBuilder()
             .setColor('#00fbff')
-            .setDescription(`✅ **${t.unpinned}**`)
+            .setDescription(`${em('ic_ok', '✅')} **${t.unpinned}**`)
             .setFooter({ text: `${t.neuralArchive} • v${version}` });
         await message.reply({ embeds: [successEmbed], flags: 64 }).catch(() => {});
         console.log(`[UNPIN] ${message.author.tag} unpinned message ${targetMessage.id}`);
@@ -477,7 +477,7 @@ async function handleSlashUnpin(interaction, client, db, t, lang) {
         deletePinFromDatabase(db, targetMessage.id);
         const successEmbed = new EmbedBuilder()
             .setColor('#00fbff')
-            .setDescription(`✅ ${t.unpinned}`)
+            .setDescription(`${em('ic_ok', '✅')} ${t.unpinned}`)
             .setFooter({ text: `${t.neuralArchive} • v${version}` });
         await interaction.editReply({ embeds: [successEmbed] });
         console.log(`[SLASH UNPIN] ${interaction.user.tag} unpinned message ${targetMessage.id}`);

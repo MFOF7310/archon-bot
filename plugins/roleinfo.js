@@ -1,4 +1,5 @@
 const { EmbedBuilder, PermissionsBitField } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 module.exports = {
     name: 'roleinfo',
@@ -87,9 +88,9 @@ module.exports = {
                 `${t.color}: ${role.hexColor}\n` +
                 `${t.position}: ${role.position} / ${message.guild.roles.cache.size}\n` +
                 `${t.members}: ${role.members.size}\n` +
-                `${t.hoisted}: ${role.hoist ? '✅' : '❌'}\n` +
-                `${t.mentionable}: ${role.mentionable ? '✅' : '❌'}\n` +
-                `${t.managed}: ${role.managed ? '✅' : '❌'}\n` +
+                `${t.hoisted}: ${role.hoist ? em('ic_ok', '✅') : '❌'}\n` +
+                `${t.mentionable}: ${role.mentionable ? em('ic_ok', '✅') : '❌'}\n` +
+                `${t.managed}: ${role.managed ? em('ic_ok', '✅') : '❌'}\n` +
                 `${t.created}: ${role.createdAt.toLocaleDateString()}\n` +
                 `\`\`\``
             )

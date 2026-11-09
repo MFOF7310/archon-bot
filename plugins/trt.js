@@ -37,7 +37,7 @@ module.exports = {
             const c = new ContainerBuilder().setAccentColor(0x00fbff);
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('globe', '🌐')} ${t('trt.translated', lang)}`));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${em('file', '📝')} ${t('trt.original', lang)}**\n>>> ${text}`));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${em('ping_ok', '✅')} ${t('trt.translated', lang)}**\n>>> ${translated}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${em('ping_ok', em('ic_ok', '✅'))} ${t('trt.translated', lang)}**\n>>> ${translated}`));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${from.toUpperCase()} ➔ ${to.toUpperCase()}`));
             
             loadingMsg?.edit({ content: null, components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
@@ -58,7 +58,7 @@ module.exports = {
             const c = new ContainerBuilder().setAccentColor(0x00fbff);
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('globe', '🌐')} ${t('trt.translated', lang)}`));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${em('file', '📝')} ${t('trt.original', lang)}**\n>>> ${text}`));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${em('ping_ok', '✅')} ${t('trt.translated', lang)}**\n>>> ${translated}`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${em('ping_ok', em('ic_ok', '✅'))} ${t('trt.translated', lang)}**\n>>> ${translated}`));
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${from.toUpperCase()} ➔ ${to.toUpperCase()}`));
             
             await interaction.editReply({ components: [c], flags: MessageFlags.IsComponentsV2 });

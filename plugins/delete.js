@@ -198,7 +198,7 @@ module.exports = {
                 case 'bulk': {
                     const amount = interaction.options.getInteger('amount');
                     await bulkDeleteMessages(interaction.channel, interaction.user, amount, t, lang, client);
-                    await interaction.editReply({ content: `✅ Bulk deleted **${amount}** messages.`, flags: 64 });
+                    await interaction.editReply({ content: `${em('ic_ok', '✅')} Bulk deleted **${amount}** messages.`, flags: 64 });
                     break;
                 }
                 case 'user': {

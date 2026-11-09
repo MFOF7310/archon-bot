@@ -151,7 +151,7 @@ function checkCard(t, { remap, add, missing }, total, appTotal, client) {
     items.push({ text: `## 📊 ${t('title')}` });
     items.push({ text: t('summary', { reg: total, app: appTotal }) });
     items.push({ rule: true });
-    items.push({ text: `✅ ${t('inSync')} : ${total - remap.length - missing.length}` });
+    items.push({ text: `${em('ic_ok', '✅')} ${t('inSync')} : ${total - remap.length - missing.length}` });
     items.push({ text: `🔧 ${t('toRemap')} : ${remap.length}` });
     items.push({ text: `➕ ${t('toAdd')} : ${add.length}` });
     items.push({ text: `${em('ic_off', '❌')} ${t('orphans')} : ${missing.length}` });

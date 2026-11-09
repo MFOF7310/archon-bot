@@ -81,12 +81,12 @@ module.exports = {
 
         let statusEmoji, statusText, timeInfo;
         if (canClaim) {
-            statusEmoji = '✅';
+            statusEmoji = em('ic_ok', '✅');
             statusText = t('readyToClaim');
             timeInfo = t('useClaim');
             c.setAccentColor(0x2ecc71);
         } else {
-            statusEmoji = '✅';
+            statusEmoji = em('ic_ok', '✅');
             statusText = t('onCooldown');
             const timeLeft = oneDay - (now - lastDaily);
             const hours = Math.floor(timeLeft / (60 * 60 * 1000));

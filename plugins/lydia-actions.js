@@ -71,7 +71,7 @@ function salvageIntent(reply, userMsg) {
 
 async function handleIntent({ reply, message, client, db, isPremium, isElevated, lang: langIn }) {
   const gearEmoji = em('ic_settings', '⚙️');
-  const checkEmoji = em('small_check', '✅');
+  const checkEmoji = em('small_check', em('ic_ok', '✅'));
   
   let { text, intent } = extractIntent(reply);
   if (!intent) {

@@ -583,7 +583,7 @@ module.exports = {
                 
                 const _v2 = require('../lib/games/v2');
                 const e = _v2.card(0x2ecc71, [
-                    { text: t('ticket.modal_created_title', lang) || '✅ **All set!**' },
+                    { text: t('ticket.modal_created_title', lang) || em('ic_ok', '✅') + ' **All set!**' },
                     { text: t('ticket.modal_created_desc', lang, { channel: `<#${tc.id}>` }) || `Your private support channel is ready: <#${tc.id}>.` }
                 ]);
                 await ix.editReply(e).catch(()=>{});

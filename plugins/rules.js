@@ -98,7 +98,7 @@ function buildCard(client, guild, rulesText, lang, custom, style, accepted) {
     items.push({ text: `## ${title}` });
     items.push({ rule: true });
     if (!custom || !text) {
-        items.push({ text: `⚠️ ${L('notConfigured')}` });
+        items.push({ text: `${em('ic_warn', '⚠️')} ${L('notConfigured')}` });
         items.push({ text: `-# ${L('notConfiguredHint')}` });
         items.push({ text: `-# ${guild.name} · ARCHON CG-223 · BAMAKO_223 🇲🇱` });
         return v2.card(0x95a5a6, items);
@@ -107,7 +107,7 @@ function buildCard(client, guild, rulesText, lang, custom, style, accepted) {
     items.push({ rule: true });
 
     if (accepted) {
-        items.push({ text: `✅ ${L('alreadyAccepted')}` });
+        items.push({ text: `${em('ic_ok', '✅')} ${L('alreadyAccepted')}` });
     } else {
         items.push({ text: `-# ${L('acceptNote')}` });
         const row = acceptRow(guild.id, lang);

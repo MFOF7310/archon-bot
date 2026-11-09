@@ -729,27 +729,27 @@ module.exports = {
             try {
                 const start = Date.now();
                 const d = await fetchViaWebApi(username);
-                results.push(`✅ **Web API:** ${d ? `Found! (${Date.now() - start}ms)` : 'No data'}${d?.isLive ? ' 🔴 LIVE' : ''}`);
+                results.push(`${em('ic_ok', '✅')} **Web API:** ${d ? `Found! (${Date.now() - start}ms)` : 'No data'}${d?.isLive ? ' 🔴 LIVE' : ''}`);
             } catch (e) { results.push(`${em('ic_off', '❌')} **Web API:** ${e.message.substring(0, 80)}`); }
 
             // Layer 2
             try {
                 const start = Date.now();
                 const d = await fetchViaOembed(username);
-                results.push(`✅ **oEmbed:** ${d ? `Found! (${Date.now() - start}ms)` : 'No data'}`);
+                results.push(`${em('ic_ok', '✅')} **oEmbed:** ${d ? `Found! (${Date.now() - start}ms)` : 'No data'}`);
             } catch (e) { results.push(`${em('ic_off', '❌')} **oEmbed:** ${e.message.substring(0, 80)}`); }
 
             // Layer 3
             try {
                 const start = Date.now();
                 const d = await fetchViaHtmlScrape(username);
-                results.push(`✅ **HTML Scrape:** ${d ? `Found! (${Date.now() - start}ms)` : 'No data'}${d?.isLive ? ' 🔴 LIVE' : ''}`);
+                results.push(`${em('ic_ok', '✅')} **HTML Scrape:** ${d ? `Found! (${Date.now() - start}ms)` : 'No data'}${d?.isLive ? ' 🔴 LIVE' : ''}`);
             } catch (e) { results.push(`${em('ic_off', '❌')} **HTML Scrape:** ${e.message.substring(0, 80)}`); }
 
             // Layer 4
             try {
                 const d = await fetchLiveStatus(username);
-                results.push(`✅ **Live Check:** ${d.isLive ? '🔴 LIVE!' : 'Not live'}`);
+                results.push(`${em('ic_ok', '✅')} **Live Check:** ${d.isLive ? '🔴 LIVE!' : 'Not live'}`);
             } catch (e) { results.push(`${em('ic_off', '❌')} **Live Check:** ${e.message.substring(0, 80)}`); }
 
             const fullData = await fetchTikTokUser(username);
@@ -759,7 +759,7 @@ module.exports = {
                 .setTitle(`@${username}`)
                 .setDescription(results.join('\n'))
                 .addFields(
-                    { name: '📊 Combined Result', value: fullData ? `✅ All layers resolved\n👤 **${fullData.nickname}**\n🔴 **Live:** ${fullData.isLive ? 'YES' : 'No'}\n🎬 **Latest Video:** ${fullData.latestVideo ? fullData.latestVideo.desc.substring(0, 50) + '...' : 'None'}` : `${em('ic_off', '❌')} All layers failed.\n\n⚠️ TikTok is likely blocking this server's IP.\nTry: \`.tiktok set ${username} #channel --force\``, inline: false }
+                    { name: '📊 Combined Result', value: fullData ? `${em('ic_ok', '✅')} All layers resolved\n👤 **${fullData.nickname}**\n🔴 **Live:** ${fullData.isLive ? 'YES' : 'No'}\n🎬 **Latest Video:** ${fullData.latestVideo ? fullData.latestVideo.desc.substring(0, 50) + '...' : 'None'}` : `${em('ic_off', '❌')} All layers failed.\n\n⚠️ TikTok is likely blocking this server's IP.\nTry: \`.tiktok set ${username} #channel --force\``, inline: false }
                 )
                 .setFooter({ text: 'ARCHON CG-223 • TikTok Debug', iconURL: guildIcon })
                 .setTimestamp();
@@ -861,8 +861,8 @@ if (action === 'test' || action === 'simulate') {
             `).run(guildId, username.toLowerCase(), channelId, lastVideoId, testData?.isLive ? 1 : 0, forceMode ? 1 : 0);
 
             const c = new ContainerBuilder().setAccentColor(forceMode ? 0xf39c12 : 0x2ecc71);
-            const checkEmoji = EMOJIS.small_check || '✅';
-            const warnEmoji = EMOJIS.warning || '⚠️';
+            const checkEmoji = EMOJIS.small_check || em('ic_ok', '✅');
+            const warnEmoji = EMOJIS.warning || em('ic_warn', '⚠️');
             const header = `## ${forceMode ? warnEmoji : checkEmoji} ${testData?.nickname || '@' + username}`;
             const desc = forceMode
                 ? t('tiktok.trackedForceDesc', lang).replace('{username}', username).replace('{channelId}', channelId)
@@ -954,7 +954,7 @@ if (action === 'test' || action === 'simulate') {
             const fullData = await fetchTikTokUser(username);
             return interaction.editReply({
                 content: fullData
-                    ? `✅ @${username} — ${fullData.nickname} — 🔴 Live: ${fullData.isLive ? 'YES' : 'No'}${fullData.latestVideo ? ` — 🎬 Latest: ${fullData.latestVideo.desc.substring(0, 50)}...` : ''}`
+                    ? `${em('ic_ok', '✅')} @${username} — ${fullData.nickname} — 🔴 Live: ${fullData.isLive ? 'YES' : 'No'}${fullData.latestVideo ? ` — 🎬 Latest: ${fullData.latestVideo.desc.substring(0, 50)}...` : ''}`
                     : `${em('ic_off', '❌')} @${username} — All fetch layers failed. TikTok likely blocking this IP.`
             });
         }
@@ -1019,8 +1019,8 @@ if (action === 'test' || action === 'simulate') {
             const desc = forceMode
                 ? t('tiktok.trackedForceDesc', lang).replace('{username}', username).replace('{channelId}', channelId)
                 : t('tiktok.trackedDesc', lang).replace('{username}', username).replace('{channelId}', channelId);
-            const checkEmoji = EMOJIS.small_check || '✅';
-            const warnEmoji = EMOJIS.warning || '⚠️';
+            const checkEmoji = EMOJIS.small_check || em('ic_ok', '✅');
+            const warnEmoji = EMOJIS.warning || em('ic_warn', '⚠️');
             const header = `## ${forceMode ? warnEmoji : checkEmoji} ${testData?.nickname || '@' + username}`;
             
             if (testData?.avatar) {

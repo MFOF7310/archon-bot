@@ -260,7 +260,7 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
                 }
                 
                 const c = new ContainerBuilder().setAccentColor(0xe67e22)
-                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('inventory.sellSuccess', lang) || 'Item Sold!'}\n**${em('ic_bag', '📦')} ${selectedItem[lang]?.name || selectedItem.id}** · ${t('inventory.soldFor', lang) || 'Sold for'} ${sellPrice.toLocaleString()} ${em('ic_credit', '🪙')}`))
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', em('ic_ok', '✅'))} ${t('inventory.sellSuccess', lang) || 'Item Sold!'}\n**${em('ic_bag', '📦')} ${selectedItem[lang]?.name || selectedItem.id}** · ${t('inventory.soldFor', lang) || 'Sold for'} ${sellPrice.toLocaleString()} ${em('ic_credit', '🪙')}`))
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang) || 'New balance'} : ${newCredits.toLocaleString()} ${em('ic_credit', '🪙')}`));
                 
                 return i.editReply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(e => console.error('[SELL ERROR]', e));
@@ -288,7 +288,7 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
 
     const name = item[lang]?.name || item.en?.name || itemId;
     const c = new ContainerBuilder().setAccentColor(0xe67e22)
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', '✅')} ${t('inventory.sellSuccess', lang)}\n**${em('ic_bag', '📦')} ${name}** · ${t('inventory.soldFor', lang, { price: sellPrice.toLocaleString() })} ${em('ic_credit', '🪙')}`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', em('ic_ok', '✅'))} ${t('inventory.sellSuccess', lang)}\n**${em('ic_bag', '📦')} ${name}** · ${t('inventory.soldFor', lang, { price: sellPrice.toLocaleString() })} ${em('ic_credit', '🪙')}`))
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang)} : ${newCredits.toLocaleString()} ${em('ic_credit', '🪙')} · ${guildName}`));
     return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
 }

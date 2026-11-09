@@ -55,7 +55,7 @@ module.exports = {
         const embed = new EmbedBuilder()
             .setColor('#2ecc71')
             .setAuthor({ name: '🎁 GIFT CHANNEL SET', iconURL: client.user.displayAvatarURL() })
-            .setDescription(`✅ Giveaway winners will now be announced in ${channel}.`)
+            .setDescription(`${em('ic_ok', '✅')} Giveaway winners will now be announced in ${channel}.`)
             .addFields(
                 { name: 'Channel', value: `${channel}`, inline: true },
                 { name: 'Server', value: interaction.guild.name, inline: true }
@@ -97,7 +97,7 @@ module.exports = {
         const embed = new EmbedBuilder()
             .setColor('#2ecc71')
             .setAuthor({ name: '🎁 GIFT CHANNEL SET', iconURL: client.user.displayAvatarURL() })
-            .setDescription(`✅ Giveaway winners will now be announced in ${channel}.`)
+            .setDescription(`${em('ic_ok', '✅')} Giveaway winners will now be announced in ${channel}.`)
             .addFields(
                 { name: 'Channel', value: `${channel}`, inline: true },
                 { name: 'Server', value: message.guild.name, inline: true }

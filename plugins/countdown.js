@@ -7,22 +7,22 @@ let countdownId = 0;
 
 const T = {
     en: {
-        created: (name, target) => `✅ Countdown **"${name}"** set for <t:${Math.floor(target / 1000)}:F>`,
+        created: (name, target) => `${em('ic_ok', '✅')} Countdown **"${name}"** set for <t:${Math.floor(target / 1000)}:F>`,
         listTitle: '⏰ Active Countdowns',
         empty: 'No active countdowns. Create one with `/countdown name:Event date:YYYY-MM-DD`',
         ended: (name) => `🎉 Countdown **"${name}"** has ended!`,
-        deleted: '✅ Countdown deleted.',
+        deleted: em('ic_ok', '✅') + ' Countdown deleted.',
         notFound: em('ic_off', em('ic_off', '❌')) + ' Countdown not found.',
         invalidDate: em('ic_off', em('ic_off', '❌')) + ' Invalid date. Use format: `YYYY-MM-DD HH:MM`',
         reminderSet: '🔔 Reminder set! You\'ll be notified when the countdown ends.',
         footer: (guild) => `${guild} • Countdown System`,
     },
     fr: {
-        created: (name, target) => `✅ Compte à rebours **"${name}"** défini pour <t:${Math.floor(target / 1000)}:F>`,
+        created: (name, target) => `${em('ic_ok', '✅')} Compte à rebours **"${name}"** défini pour <t:${Math.floor(target / 1000)}:F>`,
         listTitle: '⏰ Comptes à Rebours Actifs',
         empty: 'Aucun compte à rebours actif. Créez-en un avec `/countdown nom:Événement date:AAAA-MM-JJ`',
         ended: (name) => `🎉 Le compte à rebours **"${name}"** est terminé !`,
-        deleted: '✅ Compte à rebours supprimé.',
+        deleted: em('ic_ok', '✅') + ' Compte à rebours supprimé.',
         notFound: em('ic_off', em('ic_off', '❌')) + ' Compte à rebours introuvable.',
         invalidDate: em('ic_off', em('ic_off', '❌')) + ' Date invalide. Format : `AAAA-MM-JJ HH:MM`',
         reminderSet: '🔔 Rappel défini ! Vous serez notifié à la fin du compte à rebours.',

@@ -7,7 +7,7 @@ const T = {
     en: {
         loading: (category) => `📸 Fetching an ultra HD ${category} image...`,
         error: em('ic_off', em('ic_off', '❌')) + ' Failed to fetch image. Try again!',
-        noApiKey: (cat) => `⚠️ \`${cat}\` images require an Unsplash API key. Set \`UNSPLASH_ACCESS_KEY\` in your .env file.`,
+        noApiKey: (cat) => `${em('ic_warn', '⚠️')} \`${cat}\` images require an Unsplash API key. Set \`UNSPLASH_ACCESS_KEY\` in your .env file.`,
         footer: (cat, total) => `Architect CG-223 • ${cat} • #${total.toLocaleString()} served`,
         categories: {
             dog: '🐕 Dogs',
@@ -34,7 +34,7 @@ const T = {
     fr: {
         loading: (category) => `📸 Récupération d'une image ${category} ultra HD...`,
         error: em('ic_off', em('ic_off', '❌')) + ' Échec de récupération de l\'image. Réessayez!',
-        noApiKey: (cat) => `⚠️ Les images \`${cat}\` nécessitent une clé API Unsplash. Définissez \`UNSPLASH_ACCESS_KEY\` dans votre .env.`,
+        noApiKey: (cat) => `${em('ic_warn', '⚠️')} Les images \`${cat}\` nécessitent une clé API Unsplash. Définissez \`UNSPLASH_ACCESS_KEY\` dans votre .env.`,
         footer: (cat, total) => `Architect CG-223 • ${cat} • #${total.toLocaleString()} servies`,
         categories: {
             dog: '🐕 Chiens',

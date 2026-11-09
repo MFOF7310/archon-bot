@@ -157,7 +157,7 @@ function init(client, db) {
             } catch (e) {
                 console.error('[GIVEAWAY BUTTON]', e);
                 if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({ content: '⚠️ Error.', flags: 64 }).catch(() => {});
+                    await interaction.reply({ content: em('ic_warn', em('ic_warn', '⚠️')) + ' Error.', flags: 64 }).catch(() => {});
                 }
             }
         });
@@ -470,7 +470,7 @@ module.exports = {
 
             await interaction.deferReply({ flags: 64 });
             await endGiveawayDb(gw.id, client, db);
-            await interaction.editReply({ content: '✅ Giveaway ended.' });
+            await interaction.editReply({ content: em('ic_ok', '✅') + ' Giveaway ended.' });
         }
         else if (sub === 'reroll') {
             const msgId = interaction.options.getString('message_id');
@@ -488,7 +488,7 @@ module.exports = {
             await interaction.deferReply({ flags: 64 });
             const newWinners = await rerollGiveaway(gw.id, client, db);
             if (newWinners) {
-                await interaction.editReply({ content: '✅ Rerolled successfully!' });
+                await interaction.editReply({ content: em('ic_ok', '✅') + ' Rerolled successfully!' });
             } else {
                 await interaction.editReply({ content: em('ic_off', em('ic_off', '❌')) + ' Failed to reroll.' });
             }
@@ -527,7 +527,7 @@ module.exports = {
                 await msg.edit({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
             }
 
-            await interaction.editReply({ content: '✅ Giveaway cancelled and credits refunded.' });
+            await interaction.editReply({ content: em('ic_ok', '✅') + ' Giveaway cancelled and credits refunded.' });
         }
         else if (sub === 'start') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
@@ -673,7 +673,7 @@ module.exports = {
 
                         if (res) {
                             session.channelId = res.values[0];
-                            await res.update({ content: '✅ Channel updated!', components: [] });
+                            await res.update({ content: em('ic_ok', '✅') + ' Channel updated!', components: [] });
                             await msg.edit(buildDashboard());
                         }
                         return;
@@ -792,12 +792,12 @@ module.exports = {
                             boosterBonus: session.boosterBonus
                         });
 
-                        const c = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent('✅ Giveaway launched!'));
+                        const c = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(em('ic_ok', '✅') + ' Giveaway launched!'));
                         await i.editReply({ components: [c], flags: MessageFlags.IsComponentsV2 });
                     }
                 } catch (err) {
                     console.error('[DASHBOARD ERROR]', err);
-                    if (!i.replied && !i.deferred) await i.reply({ content: '⚠️ Error.', flags: 64 }).catch(() => {});
+                    if (!i.replied && !i.deferred) await i.reply({ content: em('ic_warn', em('ic_warn', '⚠️')) + ' Error.', flags: 64 }).catch(() => {});
                 }
             });
         }
