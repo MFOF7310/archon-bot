@@ -4493,8 +4493,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             }
             
             // Use custom emoji if available, fallback to default robot emoji
-            const aiEmojiObj = client.emojis.cache.find(e => e.name === 'ai_assistant' || e.name === 'ai_assitant');
-            const aiEmoji = aiEmojiObj ? `<:${aiEmojiObj.name}:${aiEmojiObj.id}>` : '🤖';
+            const aiEmoji = require('./config/emojis').ai_assistant || require('./config/emojis').ai_assitant || '🤖';
             
             const card = new ContainerBuilder()
                 .setAccentColor(0x9b59b6) // Purple accent
@@ -4587,53 +4586,43 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             const emptyBars = barLength - filledBars;
             const progressBar = '🟦'.repeat(filledBars) + '⬜'.repeat(emptyBars);
             
-            const profileEmbed = new EmbedBuilder()
-                .setColor('#3498db')
-                .setAuthor({ 
-                    name: t('index.profile_title', lang, { username: clicker.username }),
-                    iconURL: clicker.displayAvatarURL() 
-                })
-                .setDescription(
-                    `${t('index.profile_stats_header', lang)}\n` +
-                    `\`\`\`yaml\n` +
-                    `${t('index.stat_level', lang)}: ${level}\n` +
-                    `XP: ${xp.toLocaleString()} / ${Math.floor(nextLevelXP).toLocaleString()}\n` +
-                    `${t('index.stat_progress', lang)}: ${progressBar} ${progressPercent}%\n` +
-                    `${t('index.stat_credits', lang)}: ${credits.toLocaleString()} 🪙\n` +
-                    `${t('index.stat_daily_streak', lang)}: ${streakDays} ${em('ic_streak', '🔥')}\n` +
-                    `${t('index.stat_best_streak', lang)}: ${highestStreak} 💎\n` +
-                    `${t('index.stat_total_dailies', lang)}: ${totalDailies}\n` +
-                    `${t('index.stat_messages', lang)}: ${totalMessages.toLocaleString()}\n` +
-                    `${t('index.stat_games_played', lang)}: ${gamesPlayed}\n` +
-                    `${t('index.stat_wins', lang)}: ${gamesWon}\n` +
-                    `\`\`\``
-                )
-                .addFields(
-                    {
-                        name: t('index.stat_account_created', lang),
-                        value: `<t:${creationUnix}:D> (${ageDays} ${t('index.stat_days', lang)})`,
-                        inline: true
-                    },
-                    {
-                        name: t('index.stat_joined_server', lang),
-                        value: joinUnix 
-                            ? `<t:${joinUnix}:D> (${joinDays} ${t('index.stat_days', lang)})` 
-                            : t('index.stat_na', lang),
-                        inline: true
-                    },
-                    {
-                        name: `🎮 **Gaming**`,
-                        value: gamingInfo,
-                        inline: true
-                    }
-                )
-                .setThumbnail(clicker.displayAvatarURL({ dynamic: true, size: 256 }))
-                .setFooter({ 
-                    text: `🏗️ Architect CG-223 • ${interaction.guild?.name || 'DM'}` 
-                })
-                .setTimestamp();
+            // --- V2 CARD PROFILE ---
+            const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, SectionBuilder, ThumbnailBuilder, MessageFlags } = require('discord.js');
             
-            await interaction.reply({ embeds: [profileEmbed], flags: 1 << 6 });
+            const c = new ContainerBuilder().setAccentColor(0x3498db);
+            
+            const pTitle = t('index.profile_title', lang, { username: clicker.username }).replace('👤', '').trim();
+            const pStats = t('index.profile_stats_header', lang).replace('📊', '').replace('###', '').trim();
+            
+            const section = new SectionBuilder()
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('myprofile', '👤')} ${pTitle}\n### ${em('ic_chart', '📊')} ${pStats}`))
+                .setThumbnailAccessory(new ThumbnailBuilder().setURL(clicker.displayAvatarURL({ size: 256 })));
+            c.addSectionComponents(section);
+            
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+            
+            const cleanBar = progressBar.replace(/🟦/g, '█').replace(/⬜/g, '░');
+            const statsText = 
+                `**${t('index.stat_level', lang)}:** ${level}  ·  **XP:** ${xp.toLocaleString()} / ${Math.floor(nextLevelXP).toLocaleString()}\n` +
+                `\`${cleanBar}\` **${progressPercent}%**\n\n` +
+                `${em('ic_credit', '🪙')} **${t('index.stat_credits', lang)}:** ${credits.toLocaleString()}\n` +
+                `${em('ic_streak', '🔥')} **${t('index.stat_daily_streak', lang)}:** ${streakDays}  ·  ${em('trophy', '💎')} **${t('index.stat_best_streak', lang)}:** ${highestStreak}\n` +
+                `${em('ic_chart', '📊')} **${t('index.stat_total_dailies', lang)}:** ${totalDailies}\n\n` +
+                `${em('ic_general', '💬')} **${t('index.stat_messages', lang)}:** ${totalMessages.toLocaleString()}\n` +
+                `${em('gameController', '🎮')} **${t('index.stat_games_played', lang)}:** ${gamesPlayed}  ·  🥇 **${t('index.stat_wins', lang)}:** ${gamesWon}`;
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(statsText));
+            
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+            
+            const footerText = 
+                `${em('ic_calendar', '📅')} **${t('index.stat_account_created', lang)}:** <t:${creationUnix}:D> *(${ageDays} ${t('index.stat_days', lang)})*\n` +
+                `${em('role', '🏛️')} **${t('index.stat_joined_server', lang)}:** ` + (joinUnix ? `<t:${joinUnix}:D> *(${joinDays} ${t('index.stat_days', lang)})*` : t('index.stat_na', lang)) + `\n` +
+                `${em('gameController', '🎮')} **Gaming:** ${gamingInfo.replace('🎮 ', '')}`;
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(footerText));
+            
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${em('developericon', '🏗️')} Architect CG-223 • ${interaction.guild?.name || 'DM'}`));
+            
+            await interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 1 << 6 });
             
         } catch (err) {
             console.error('[PROFILE BUTTON ERROR]', err);

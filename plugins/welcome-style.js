@@ -603,7 +603,7 @@ function getWelcomeButtons(cfg, member) {
         customId: null
     });
 
-    buttons.push({ label: t('welcome.btn_ai', lang), emoji: '🤖', style: 'Primary', url: null, customId: 'welcome_help' });
+    buttons.push({ label: t('welcome.btn_ai', lang), emoji: em('ai_assistant', '🤖'), style: 'Primary', url: null, customId: 'welcome_help' });
     buttons.push({ label: t('welcome.btn_profile', lang), emoji: '👤', style: 'Success', url: null, customId: `welcome_profile_${member.user.id}` });
 
     return buttons;
