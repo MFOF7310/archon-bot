@@ -32,7 +32,7 @@ module.exports = {
     },
 
     execute: async (interaction, client) => {
-        await interaction.deferReply().catch(() => {});
+        await interaction.deferReply({ flags: 64 }).catch(() => {});
         const lang = pickLang(client, interaction.guildId, interaction, interaction.user.id);
         const t = (k, v) => i18n.t('daily.' + k, lang, v);
         const prefix = interaction.guild ? (client.getServerSettings(interaction.guild.id)?.prefix || '.') : '.';
@@ -97,19 +97,22 @@ module.exports = {
 
         const statusAnsi = canClaim ? '\u001b[1;32m' : '\u001b[1;31m';
         
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 📅 Daily reward · @${user.username}`));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_chart', '📅')} Daily reward · @${user.username}`));
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
         
-        const ansiBlock = '```ansi\n' +
-            statusAnsi + '▸ STATUS   \u001b[0m' + statusEmoji + ' ' + statusText + '\n' +
-            '\u001b[1;36m▸ STREAK   \u001b[0m' + streakDays + ' ' + (streakDays === 1 ? t('day') : t('days')) + ' 🔥\n' +
-            '\u001b[1;36m▸ DAILIES  \u001b[0m' + totalDailies + '\n' +
-            '\u001b[1;36m▸ BALANCE  \u001b[0m' + balance.toLocaleString() + ' 🪙\n' +
-            '\u001b[1;36m▸ SHIELDS  \u001b[0m' + streakProtections + '\n' +
-            '```';
+        const statusLine = canClaim 
+            ? `${em('ic_ok', '✅')} **${statusText}**` 
+            : `${em('ic_off', '❌')} **${statusText}** - ${timeInfo}`;
+
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
+            `${statusLine}\n\n` +
+            `${em('ic_streak', '🔥')} **${t('streak') || 'Streak'}:** ${streakDays} ${streakDays === 1 ? t('day') : t('days')}\n` +
+            `${em('ic_calendar', '🗓️')} **${t('totalDailies') || 'Total'}:** ${totalDailies}\n` +
+            `${em('ic_credit', '🪙')} **${t('balance') || 'Balance'}:** ${balance.toLocaleString()}\n` +
+            `${em('ic_shield', '🛡️')} **${t('shields') || 'Shields'}:** ${streakProtections}`
+        ));
         
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(ansiBlock));
-        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+                c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Ready to claim?** Use ${cmdSlash(client, 'claim', { guild: context.guild })}\n-# ${guild?.name?.toUpperCase() || 'DM'} · Daily reward · BAMAKO_223 🇲🇱`));
 
         await reply({ components: [c], flags: MessageFlags.IsComponentsV2 });
@@ -150,16 +153,15 @@ module.exports = {
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('charts', '📊')} DAILY STATS · @${user.username}`));
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
-        const ansiBlock = '```ansi\n' +
-            '\u001b[1;36m▸ TOTAL    \u001b[0m' + totalDailies + ' dailies\n' +
-            '\u001b[1;33m▸ STREAK   \u001b[0m' + streakDays + ' ' + (streakDays === 1 ? t('day') : t('days')) + ' 🔥\n' +
-            '\u001b[1;33m▸ BEST     \u001b[0m' + highestStreak + ' ' + (highestStreak === 1 ? t('day') : t('days')) + '\n' +
-            '\u001b[1;35m▸ SHIELDS  \u001b[0m' + streakProtections + ' ' + em('ic_shield', '🛡️') + '\n' +
-            '```\n' +
-            `📅 **Last claim:** ${lastDailyText}`;
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
+            `${em('ic_calendar', '🗓️')} **${t('totalDailies') || 'Total Dailies'}:** ${totalDailies}\n` +
+            `${em('ic_streak', '🔥')} **${t('streak') || 'Streak'}:** ${streakDays} ${streakDays === 1 ? t('day') : t('days')}\n` +
+            `🏆 **${t('bestStreak') || 'Best Streak'}:** ${highestStreak} ${highestStreak === 1 ? t('day') : t('days')}\n` +
+            `${em('ic_shield', '🛡️')} **${t('shields') || 'Shields'}:** ${streakProtections}\n\n` +
+            `📅 **${t('lastClaim') || 'Last claim'}:** ${lastDailyText}`
+        ));
         
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(ansiBlock));
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guild?.name?.toUpperCase() || 'DM'} · Daily reward · BAMAKO_223 🇲🇱`));
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${guild?.name?.toUpperCase() || 'DM'} · Daily reward · BAMAKO_223 🇲🇱`));
 
         await reply({ components: [c], flags: MessageFlags.IsComponentsV2 });
     }

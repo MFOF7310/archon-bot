@@ -24,7 +24,7 @@
   "readyToClaim": "准备好领取了！",
   "onCooldown": "已经领过了！",
   "useClaim": "使用 `/claim` 获取你的奖励。",
-  "totalDailies": "Total Dailies",
+  "totalDailies": "总计",
   "lastDaily": "Last Daily",
   "highestStreak": "Highest Streak",
   "streakProtections": "Streak Protections",
@@ -35,5 +35,10 @@
   "memory_empty": "你的记忆库是空的。告诉我一些要记住的事情吧！",
   "memory_empty_hint": "如何保存记忆：",
   "memory_example": "直接说：“记住我最喜欢的颜色是蓝色”",
-  "channelRestricted": "🤷‍♂️ 这里不行哦！你只能在 {channel} 领取每日奖励。"
+  "channelRestricted": "🤷‍♂️ 这里不行哦！你只能在 {channel} 领取每日奖励。",
+  "streak": "连击",
+  "balance": "余额",
+  "shields": "护盾",
+  "bestStreak": "最高连击",
+  "lastClaim": "上次领取"
 }

@@ -24,7 +24,7 @@
   "readyToClaim": "Prêt à réclamer !",
   "onCooldown": "Déjà réclamé !",
   "useClaim": "Utilise `/claim` pour récupérer ta récompense.",
-  "totalDailies": "Total Quotidiens",
+  "totalDailies": "Total",
   "lastDaily": "Dernier Quotidien",
   "highestStreak": "Série Maximale",
   "streakProtections": "Protections de Série",
@@ -35,5 +35,10 @@
   "memory_empty": "Ton coffre à souvenirs est vide. Dis-moi quelque chose à retenir !",
   "memory_empty_hint": "Comment sauvegarder un souvenir :",
   "memory_example": "Dis simplement : « Retiens que ma couleur préférée est le bleu »",
-  "channelRestricted": "🤷‍♂️ Pas ici ! Tu peux récupérer ta récompense quotidienne dans {channel}."
+  "channelRestricted": "🤷‍♂️ Pas ici ! Tu peux récupérer ta récompense quotidienne dans {channel}.",
+  "streak": "Série",
+  "balance": "Solde",
+  "shields": "Boucliers",
+  "bestStreak": "Meilleure Série",
+  "lastClaim": "Dernière réclamation"
 }

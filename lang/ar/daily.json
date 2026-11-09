@@ -24,7 +24,7 @@
   "readyToClaim": "جاهز للمطالبة!",
   "onCooldown": "تمت المطالبة بالفعل!",
   "useClaim": "استخدم `/claim` للحصول على مكافأتك.",
-  "totalDailies": "Total Dailies",
+  "totalDailies": "الإجمالي",
   "lastDaily": "Last Daily",
   "highestStreak": "Highest Streak",
   "streakProtections": "Streak Protections",
@@ -35,5 +35,10 @@
   "memory_empty": "خزانة ذكرياتك فارغة. أخبرني بشيء لأتذكره!",
   "memory_empty_hint": "كيفية حفظ ذكرى:",
   "memory_example": "فقط قل: \"تذكر أن لوني المفضل هو الأزرق\"",
-  "channelRestricted": "🤷‍♂️ ليس هنا! يمكنك المطالبة بمكافأتك اليومية فقط في {channel}."
+  "channelRestricted": "🤷‍♂️ ليس هنا! يمكنك المطالبة بمكافأتك اليومية فقط في {channel}.",
+  "streak": "السلسلة",
+  "balance": "الرصيد",
+  "shields": "الدروع",
+  "bestStreak": "أفضل سلسلة",
+  "lastClaim": "آخر مطالبة"
 }

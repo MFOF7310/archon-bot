@@ -2,5 +2,11 @@
   "noAccount": "❌ No data found — use `/claim` to get started!",
   "onCooldown": "On cooldown",
   "useClaim": "Use `/claim`",
-  "channelRestricted": "🤷‍♂️ A tɛ se ka kɛ yan n'teri! I bɛ se ka i ka  sara minɛ {channel} dɔrɔn de kɔnɔ."
+  "channelRestricted": "🤷‍♂️ A tɛ se ka kɛ yan n'teri! I bɛ se ka i ka  sara minɛ {channel} dɔrɔn de kɔnɔ.",
+  "streak": "Séri",
+  "totalDailies": "Bɛɛ",
+  "balance": "Wari",
+  "shields": "Bolo",
+  "bestStreak": "Séri ɲuman",
+  "lastClaim": "Lakan mara"
 }

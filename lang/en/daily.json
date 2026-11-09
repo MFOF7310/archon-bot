@@ -24,7 +24,7 @@
   "readyToClaim": "Ready to claim!",
   "onCooldown": "Already claimed!",
   "useClaim": "Use `/claim` to grab your reward.",
-  "totalDailies": "Total Dailies",
+  "totalDailies": "Total",
   "lastDaily": "Last Daily",
   "highestStreak": "Highest Streak",
   "streakProtections": "Streak Protections",
@@ -35,5 +35,10 @@
   "memory_empty": "Your memory vault is empty. Tell me something to remember!",
   "memory_empty_hint": "How to save a memory:",
   "memory_example": "Just say: \"Remember my favorite color is blue\"",
-  "channelRestricted": "🤷‍♂️ Not here! You can only claim your daily rewards in {channel}."
+  "channelRestricted": "🤷‍♂️ Not here! You can only claim your daily rewards in {channel}.",
+  "streak": "Streak",
+  "balance": "Balance",
+  "shields": "Shields",
+  "bestStreak": "Best Streak",
+  "lastClaim": "Last claim"
 }
