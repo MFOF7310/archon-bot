@@ -6,5 +6,22 @@
   "guardian_profile": "{prefix}profile — I ka profil",
   "guardian_daily": "{prefix}daily — I ka don o don sara",
   "guardian_shop": "{prefix}shop — I ka butiki lajɛ",
-  "guardian_lydia": "@Archon [message] — I ka baro kɛ ni an ka AI ye (walima i ka sɛbɛnni daminɛ nin 'Archon' ye ka sen ka baro k'a fɛ)"
+  "guardian_lydia": "@Archon [message] — I ka baro kɛ ni an ka AI ye (walima i ka sɛbɛnni daminɛ nin 'Archon' ye ka sen ka baro k'a fɛ)",
+  "slash_only": "Nin commande bɛ slash dɔrɔn. Aw ye `/` baara kɛ.",
+  "inside_server": "Aw ye nin baara kɛ server kɔnɔ.",
+  "need_manage_guild": "I bɛ **Gérer le serveur** permission ɲini walima premium baara.",
+  "invalid_code": "Kode man ɲi walima a baara tuma banna. Aw ye **@cloudgaming223** wele ni aw bɛ a miiri ko filen bɛ.",
+  "lifetime_already": "Nin server in bɛ premium taabolo la. I ka kode ma baara.",
+  "owner_only": "Bot tigi dɔrɔn.",
+  "user_not_found": "An ma se ka nin baarakɛla ye.",
+  "reply_sent": "Jaabi ciraw **{user}** ma MP la.",
+  "reply_failed": "Jaabi ci ma se.",
+  "ticket_failed": "Ticket baara ma se.",
+  "vote_failed": "Vote baara ma se.",
+  "meme_failed": "Meme bouton ma se.",
+  "cat_failed": "Cat bouton ma se.",
+  "dog_failed": "Dog bouton ma se.",
+  "car_failed": "Car bouton ma se.",
+  "insufficient_credits": "Wari man ca",
+  "afford_yes": "I bɛ se ka nin sɔngɔ!"
 }

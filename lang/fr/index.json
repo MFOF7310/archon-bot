@@ -37,5 +37,22 @@
   "afk_ping_desc": "{afk} **{user} est AFK** ({time})\n**Raison :** {reason}",
   "afk_return_desc": "{away} **{user} est de retour !** Bon retour 👋\nAbsent depuis {minutes} min",
   "footer": "ARCHON CG-223",
-  "need_perms": "Il te faut la permission {perms} pour utiliser cette commande."
+  "need_perms": "Il te faut la permission {perms} pour utiliser cette commande.",
+  "slash_only": "Cette commande est réservée aux slash commands. Utilise `/` à la place.",
+  "inside_server": "Utilise cette commande dans un serveur.",
+  "need_manage_guild": "Tu as besoin de la permission **Gérer le serveur** pour activer le premium.",
+  "invalid_code": "Code invalide ou déjà utilisé. Contacte **@cloudgaming223** si tu penses que c'est une erreur.",
+  "lifetime_already": "Ce serveur a déjà un premium à vie. Ton code n'a pas été utilisé.",
+  "owner_only": "Réservé au propriétaire.",
+  "user_not_found": "Impossible de trouver cet utilisateur.",
+  "reply_sent": "Réponse envoyée à **{user}** en MP.",
+  "reply_failed": "Échec de l'envoi de la réponse.",
+  "ticket_failed": "Échec de l'action sur le ticket.",
+  "vote_failed": "Échec de l'action sur le vote.",
+  "meme_failed": "Échec du bouton meme.",
+  "cat_failed": "Échec du bouton chat.",
+  "dog_failed": "Échec du bouton chien.",
+  "car_failed": "Échec du bouton voiture.",
+  "insufficient_credits": "Crédits insuffisants",
+  "afford_yes": "Tu peux te le permettre !"
 }

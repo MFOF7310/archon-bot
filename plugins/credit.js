@@ -1,6 +1,7 @@
 const i18n = require('../lib/i18n');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { icon } = require('../lib/ui/icons');
 const { PermissionFlagsBits } = require('discord.js');
 
@@ -233,7 +234,7 @@ async function handlePay(message, args, client, db, serverSettings, lang, t, pre
     }
 
     const target = message.mentions.users.first();
-    if (!target) return message.reply(`❌ ${t('mentionUser')}. ${t('transferPrompt')}`).catch(() => {});
+    if (!target) return message.reply(`${em('ic_off', '❌')} ${t('mentionUser')}. ${t('transferPrompt')}`).catch(() => {});
     if (target.id === senderId) return message.reply(t('selfTransfer')).catch(() => {});
 
     const amount = parseInt(args[1]) || parseInt(args[2]);

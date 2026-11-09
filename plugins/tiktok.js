@@ -730,27 +730,27 @@ module.exports = {
                 const start = Date.now();
                 const d = await fetchViaWebApi(username);
                 results.push(`✅ **Web API:** ${d ? `Found! (${Date.now() - start}ms)` : 'No data'}${d?.isLive ? ' 🔴 LIVE' : ''}`);
-            } catch (e) { results.push(`❌ **Web API:** ${e.message.substring(0, 80)}`); }
+            } catch (e) { results.push(`${em('ic_off', '❌')} **Web API:** ${e.message.substring(0, 80)}`); }
 
             // Layer 2
             try {
                 const start = Date.now();
                 const d = await fetchViaOembed(username);
                 results.push(`✅ **oEmbed:** ${d ? `Found! (${Date.now() - start}ms)` : 'No data'}`);
-            } catch (e) { results.push(`❌ **oEmbed:** ${e.message.substring(0, 80)}`); }
+            } catch (e) { results.push(`${em('ic_off', '❌')} **oEmbed:** ${e.message.substring(0, 80)}`); }
 
             // Layer 3
             try {
                 const start = Date.now();
                 const d = await fetchViaHtmlScrape(username);
                 results.push(`✅ **HTML Scrape:** ${d ? `Found! (${Date.now() - start}ms)` : 'No data'}${d?.isLive ? ' 🔴 LIVE' : ''}`);
-            } catch (e) { results.push(`❌ **HTML Scrape:** ${e.message.substring(0, 80)}`); }
+            } catch (e) { results.push(`${em('ic_off', '❌')} **HTML Scrape:** ${e.message.substring(0, 80)}`); }
 
             // Layer 4
             try {
                 const d = await fetchLiveStatus(username);
                 results.push(`✅ **Live Check:** ${d.isLive ? '🔴 LIVE!' : 'Not live'}`);
-            } catch (e) { results.push(`❌ **Live Check:** ${e.message.substring(0, 80)}`); }
+            } catch (e) { results.push(`${em('ic_off', '❌')} **Live Check:** ${e.message.substring(0, 80)}`); }
 
             const fullData = await fetchTikTokUser(username);
 
@@ -759,7 +759,7 @@ module.exports = {
                 .setTitle(`@${username}`)
                 .setDescription(results.join('\n'))
                 .addFields(
-                    { name: '📊 Combined Result', value: fullData ? `✅ All layers resolved\n👤 **${fullData.nickname}**\n🔴 **Live:** ${fullData.isLive ? 'YES' : 'No'}\n🎬 **Latest Video:** ${fullData.latestVideo ? fullData.latestVideo.desc.substring(0, 50) + '...' : 'None'}` : `❌ All layers failed.\n\n⚠️ TikTok is likely blocking this server's IP.\nTry: \`.tiktok set ${username} #channel --force\``, inline: false }
+                    { name: '📊 Combined Result', value: fullData ? `✅ All layers resolved\n👤 **${fullData.nickname}**\n🔴 **Live:** ${fullData.isLive ? 'YES' : 'No'}\n🎬 **Latest Video:** ${fullData.latestVideo ? fullData.latestVideo.desc.substring(0, 50) + '...' : 'None'}` : `${em('ic_off', '❌')} All layers failed.\n\n⚠️ TikTok is likely blocking this server's IP.\nTry: \`.tiktok set ${username} #channel --force\``, inline: false }
                 )
                 .setFooter({ text: 'ARCHON CG-223 • TikTok Debug', iconURL: guildIcon })
                 .setTimestamp();
@@ -776,7 +776,7 @@ if (action === 'test' || action === 'simulate') {
     if (!username) return message.reply(t('tiktok.test_usage', lang));
 
     const track = db.prepare('SELECT * FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(guildId, username);
-    if (!track) return message.reply(`❌ **${username}** is not being tracked. Run \`.tiktok set ${username} #channel --force\` first.`);
+    if (!track) return message.reply(`${em('ic_off', '❌')} **${username}** is not being tracked. Run \`.tiktok set ${username} #channel --force\` first.`);
 
     const statusMsg = await message.reply(t('tiktok.test_fetching', lang, { username }));
     
@@ -889,7 +889,7 @@ if (action === 'test' || action === 'simulate') {
             if (!username) return message.reply(t('tiktok.remove_usage', lang));
 
             const result = db.prepare('DELETE FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').run(guildId, username);
-            if (result.changes === 0) return message.reply(`❌ **${username}** not tracked.`);
+            if (result.changes === 0) return message.reply(`${em('ic_off', '❌')} **${username}** not tracked.`);
 
             const embed = new EmbedBuilder().setColor('#e74c3c')
                 .setAuthor({ name: '📱 Tracking Removed', iconURL: guildIcon })
@@ -955,7 +955,7 @@ if (action === 'test' || action === 'simulate') {
             return interaction.editReply({
                 content: fullData
                     ? `✅ @${username} — ${fullData.nickname} — 🔴 Live: ${fullData.isLive ? 'YES' : 'No'}${fullData.latestVideo ? ` — 🎬 Latest: ${fullData.latestVideo.desc.substring(0, 50)}...` : ''}`
-                    : `❌ @${username} — All fetch layers failed. TikTok likely blocking this IP.`
+                    : `${em('ic_off', '❌')} @${username} — All fetch layers failed. TikTok likely blocking this IP.`
             });
         }
 

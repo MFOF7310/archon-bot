@@ -1,4 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, ComponentType } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { icon } = require('../lib/ui/icons');
 
 // ================= TERMINAL COLORS =================
@@ -727,7 +728,7 @@ module.exports = {
             
         } catch (error) {
             console.error(`${red}[LIST FATAL]${reset}`, error);
-            return message.reply({ content: "❌ Command failed." }).catch(() => {});
+            return message.reply({ content: `${em('ic_off', '❌')} Command failed.` }).catch(() => {});
         }
     },
 

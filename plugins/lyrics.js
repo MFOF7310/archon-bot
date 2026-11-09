@@ -17,11 +17,11 @@ module.exports = {
         const q = musicPlugin?.getQueue?.(message.guild?.id);
         const searchQuery = query || (q?.currentTrack ? `${q.currentTrack.title} ${q.currentTrack.artist || ''}` : null);
 
-        if (!searchQuery) return message.reply('❌ No song playing and no query provided. Usage: `.lyrics <song name>`').catch(() => {});
+        if (!searchQuery) return message.reply(em('ic_off', '❌') + ' No song playing and no query provided. Usage: `.lyrics <song name>`').catch(() => {});
 
         const msg = await message.reply('🔍 Searching lyrics...').catch(() => {});
         const result = await fetchLyrics(searchQuery);
-        if (!result) return msg?.edit('❌ Lyrics not found for: **' + searchQuery + '**').catch(() => {});
+        if (!result) return msg?.edit(em('ic_off', '❌') + ' Lyrics not found for: **' + searchQuery + '**').catch(() => {});
 
         const pages = paginateLyrics(result.lyrics);
         await sendLyricsEmbed(message.channel, result, pages, 0, client, msg);
@@ -33,11 +33,11 @@ module.exports = {
         const q = musicPlugin?.getQueue?.(interaction.guild?.id);
         const searchQuery = query || (q?.currentTrack ? `${q.currentTrack.title} ${q.currentTrack.artist || ''}` : null);
 
-        if (!searchQuery) return interaction.reply({ content: '❌ No song playing! Provide a song name or play something first.', flags: 64 });
+        if (!searchQuery) return interaction.reply({ content: em('ic_off', '❌') + ' No song playing! Provide a song name or play something first.', flags: 64 });
 
         await interaction.deferReply();
         const result = await fetchLyrics(searchQuery);
-        if (!result) return interaction.editReply({ content: `❌ Lyrics not found for: **${searchQuery}**` });
+        if (!result) return interaction.editReply({ content: `${em('ic_off', '❌')} Lyrics not found for: **${searchQuery}**` });
 
         const pages = paginateLyrics(result.lyrics);
         const embed = buildLyricsEmbed(result, pages, 0, client);
@@ -48,7 +48,7 @@ module.exports = {
             let page = 0;
             const collector = reply.createMessageComponentCollector({ time: 120000 });
             collector.on('collect', async i => {
-                if (i.user.id !== interaction.user.id) return i.reply({ content: '❌ Not your session', flags: 64 }).catch(() => {});
+                if (i.user.id !== interaction.user.id) return i.reply({ content: em('ic_off', '❌') + ' Not your session', flags: 64 }).catch(() => {});
                 await i.deferUpdate().catch(() => {});
                 if (i.customId === 'lyrics_prev') page = Math.max(0, page - 1);
                 if (i.customId === 'lyrics_next') page = Math.min(pages.length - 1, page + 1);

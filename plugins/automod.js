@@ -1,4 +1,5 @@
 const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { icon, iconObj } = require('../lib/ui/icons');
 const axios = require('axios');
 const cmdSlash = require('../lib/cmd').slash;
@@ -1245,7 +1246,7 @@ async function handleAppealButton(interaction, client) {
             const _tU = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
             await targetUser.send(toV2({ embeds: [new EmbedBuilder()
                 .setColor(C.RED)
-                .setTitle(`${_E.error || '❌'} ${_tU('appeal_rejectedTitle')}`)
+                .setTitle(`${_E.ic_off || _E.error || '❌'} ${_tU('appeal_rejectedTitle')}`)
                 .setDescription(_tU('appeal_rejectedDesc', { server: guild?.name || 'the server' }))
                 .setFooter({ text: 'ARCHON CG-223' })] })).catch(() => {});
         }
@@ -1548,7 +1549,7 @@ async function handleAdminModal(interaction, client) {
 
     if (id === 'automod_modal_raid_threshold' || id === 'automod_modal_raid_minage') {
         const n = parseInt(raw('value'), 10);
-        if (!Number.isFinite(n) || n < 0 || n > 999) return interaction.reply({ content: '❌ 0–999', flags: 64 });
+        if (!Number.isFinite(n) || n < 0 || n > 999) return interaction.reply({ content: em('ic_off', '❌') + ' 0–999', flags: 64 });
         if (id === 'automod_modal_raid_threshold') {
             client.db.prepare('UPDATE server_settings SET raid_threshold = ? WHERE guild_id = ?').run(n, interaction.guild.id);
         } else {
@@ -1683,7 +1684,7 @@ module.exports = {
         addSubcommand(s => s.setName('raid').setDescription('🛡️ Configure raid detection').
             addStringOption(o => o.setName('action').setDescription('Action').setRequired(true).addChoices(
                 {name:'✅ Enable', value:'enable'},
-                {name:'❌ Disable', value:'disable'},
+                {name:em('ic_off', '❌') + ' Disable', value:'disable'},
                 {name:'📊 Status', value:'status'},
                 {name:'⚙️ Set threshold', value:'threshold'},
                 {name:'👶 Min account age', value:'minage'}
@@ -1899,7 +1900,7 @@ module.exports = {
         }
         if (action === 'log') {
             const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[1]);
-            if (!ch) return msg.reply('❌ Mention a channel.');
+            if (!ch) return msg.reply(em('ic_off', '❌') + ' Mention a channel.');
             client.updateServerSetting(msg.guild.id, 'automodlog', ch.id); client.settings.delete(msg.guild.id);
             return msg.reply(require('../lib/botPerms').channelText(msg.guild, ch, msg));
         }

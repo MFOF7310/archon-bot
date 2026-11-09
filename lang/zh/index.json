@@ -36,5 +36,22 @@
   "afk_just_now": "刚刚",
   "afk_ping_desc": "{afk} **{user} 正在 AFK**（{time}）\n**原因：** {reason}",
   "afk_return_desc": "{away} **{user} 回来了！** 欢迎 👋\n离开了 {minutes} 分钟",
-  "footer": "ARCHON CG-223"
+  "footer": "ARCHON CG-223",
+  "slash_only": "此命令仅限斜杠命令。请使用 `/` 命令。",
+  "inside_server": "请在服务器内使用此命令。",
+  "need_manage_guild": "你需要 **管理服务器** 权限来激活 Premium。",
+  "invalid_code": "无效或已使用的代码。如果你认为这是个错误，请联系 **@cloudgaming223**。",
+  "lifetime_already": "此服务器已拥有永久 Premium。你的代码未被使用。",
+  "owner_only": "仅限所有者。",
+  "user_not_found": "找不到该用户。",
+  "reply_sent": "回复已通过私信发送给 **{user}**。",
+  "reply_failed": "回复发送失败。",
+  "ticket_failed": "工单操作失败。",
+  "vote_failed": "投票操作失败。",
+  "meme_failed": "梗图按钮失败。",
+  "cat_failed": "猫咪按钮失败。",
+  "dog_failed": "狗狗按钮失败。",
+  "car_failed": "汽车按钮失败。",
+  "insufficient_credits": "积分不足",
+  "afford_yes": "你买得起！"
 }

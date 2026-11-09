@@ -125,7 +125,7 @@ module.exports = {
                     return await i.editReply(freshView.view);
                 } catch (e) {
                     console.error('[SHOP REFRESH ERROR]', e);
-                    return i.followUp({ content: '❌ Failed to refresh shop.', flags: 64 }).catch(() => {});
+                    return i.followUp({ content: em('ic_off', '❌') + ' Failed to refresh shop.', flags: 64 }).catch(() => {});
                 }
             }
 

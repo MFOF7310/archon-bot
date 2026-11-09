@@ -36,5 +36,22 @@
   "afk_just_now": "الآن",
   "afk_ping_desc": "{afk} **{user} في وضع AFK** ({time})\n**السبب:** {reason}",
   "afk_return_desc": "{away} **{user} رجع!** أهلًا 👋\nغاب {minutes} دقيقة",
-  "footer": "ARCHON CG-223"
+  "footer": "ARCHON CG-223",
+  "slash_only": "هذا الأمر مخصص للشرطة المائلة فقط. يرجى استخدام الأمر المائل بدلاً من ذلك.",
+  "inside_server": "استخدم هذا داخل خادم.",
+  "need_manage_guild": "تحتاج إلى إذن **إدارة الخادم** لتفعيل Premium.",
+  "invalid_code": "رمز غير صالح أو مستخدم بالفعل. اتصل بـ **@cloudgaming223** إذا كنت تعتقد أن هذا خطأ.",
+  "lifetime_already": "هذا الخادم لديه بالفعل Premium مدى الحياة. لم يتم استخدام الرمز الخاص بك.",
+  "owner_only": "للمالك فقط.",
+  "user_not_found": "تعذر العثور على المستخدم.",
+  "reply_sent": "تم إرسال الرد إلى **{user}** عبر الرسائل الخاصة.",
+  "reply_failed": "فشل إرسال الرد.",
+  "ticket_failed": "فشل إجراء التذكرة.",
+  "vote_failed": "فشل إجراء التصويت.",
+  "meme_failed": "فشل زر الميم.",
+  "cat_failed": "فشل زر القط.",
+  "dog_failed": "فشل زر الكلب.",
+  "car_failed": "فشل زر السيارة.",
+  "insufficient_credits": "رصيد غير كافٍ",
+  "afford_yes": "يمكنك تحمل تكلفة هذا!"
 }

@@ -2,6 +2,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, REST, Routes, MessageFlags } = require('discord.js');
+const em = (k, fb) => { try { return require('./config/emojis')[k] || fb; } catch { return fb; } };
 const { t } = require('./lib/i18n');
 
 // ================= MALI-OPTIMIZED ASSET CACHE =================
@@ -20,7 +21,7 @@ const { afkUsers } = require('./plugins/afk.js');
 let getMarketState = null;
 let updateMarketTrend = null;
 let TRENDS = {
-    STEADY: { name: 'Steady Market', emoji: '📊', color: '#f1c40f' },
+    STEADY: { name: 'Steady Market', emoji: em('ic_chart', '📊'), color: '#f1c40f' },
     BULL:   { name: 'Bull Market',   emoji: '📈', color: '#2ecc71' },
     BEAR:   { name: 'Bear Market',   emoji: '📉', color: '#e74c3c' },
 };
@@ -2157,9 +2158,9 @@ client.getItem = (itemId) => client.shopItems.find(item => item.id === itemId);
 // ================= CATEGORY EMOJI HELPER =================
 function getCategoryEmoji(category) {
     const emojiMap = {
-        'SYSTEM': '⚙️', 'GAMING': '🎮', 'AI': '🧠', 'PROFILE': '👤',
-        'OWNER': '👑', 'GENERAL': '📁', 'UTILITY': '🛠️', 'MODERATION': '🛡️',
-        'ECONOMY': '💰', 'FUN': '🎉'
+        'SYSTEM': em('ic_settings', '⚙️'), 'GAMING': em('ic_gaming', '🎮'), 'AI': em('ai_assistant', '🧠'), 'PROFILE': em('ic_profile', '👤'),
+        'OWNER': em('crown', '👑'), 'GENERAL': em('ic_general', '📁'), 'UTILITY': em('ic_setup', '🛠️'), 'MODERATION': em('ic_shield', '🛡️'),
+        'ECONOMY': em('coins', '💰'), 'FUN': em('party', '🎉')
     };
     return emojiMap[category.toUpperCase()] || '📦';
 }
@@ -2390,7 +2391,7 @@ async function executePluginCommand(command, client, message, args, db, usedComm
     
     if (!command.run) {
         const reply = message?.reply || message?.editReply;
-        if (reply) await reply.call(message, { content: '❌ This command is slash-only. Please use the slash command instead.' }).catch(() => {});
+        if (reply) await reply.call(message, { content: (require('./config/emojis').ic_off || '❌') + require('./lib/i18n').t('index.slash_only', require('./lib/botPerms').langOf({ guild: message.guild || interaction.guild, client }) || 'en') }).catch(() => {});
         return;
     }
     const result = await command.run(...filteredArgs);
@@ -3361,7 +3362,7 @@ setInterval(async () => {
                 const guildName = guild?.name || 'ARCHON CG-223';
                 const guildIcon = guild?.iconURL({ size: 128 }) || client.user.displayAvatarURL();
 
-                let marketMultiplier = 1.0, marketTrend = 'STEADY', trendEmoji = '📊';
+                let marketMultiplier = 1.0, marketTrend = 'STEADY', trendEmoji = em('ic_chart', '📊');
                 try {
                     if (typeof getMarketState === 'function') {
                         const ms = getMarketState(user.guild_id);
@@ -3382,9 +3383,9 @@ setInterval(async () => {
                 let streakStatus, streakEmoji, streakColor;
                 if (streakDays >= 365)       { streakStatus = '  LEGENDARY'; streakEmoji = '👑'; streakColor = '#ffd700'; }
                 else if (streakDays >= 100)  { streakStatus = '  MYTHIC';    streakEmoji = '💎'; streakColor = '#e91e63'; }
-                else if (streakDays >= 30)   { streakStatus = '  ELITE';     streakEmoji = '🛡️'; streakColor = '#9b59b6'; }
+                else if (streakDays >= 30)   { streakStatus = '  ELITE';     streakEmoji = em('ic_shield', '🛡️'); streakColor = '#9b59b6'; }
                 else if (streakDays >= 7)    { streakStatus = '  VETERAN';   streakEmoji = '⚔️'; streakColor = '#3498db'; }
-                else if (streakDays >= 3)    { streakStatus = '  ACTIVE';    streakEmoji = '🔥'; streakColor = '#2ecc71'; }
+                else if (streakDays >= 3)    { streakStatus = '  ACTIVE';    streakEmoji = em('ic_streak', '🔥'); streakColor = '#2ecc71'; }
                 else                         { streakStatus = '  INITIATE';  streakEmoji = '🌱'; streakColor = '#95a5a6'; }
 
                 const bamakoHour = new Date().getUTCHours();
@@ -3420,9 +3421,9 @@ setInterval(async () => {
 
                 // Streak milestone ladder — names come from i18n
                 const _milestones = [
-                    { days: 3,   key: 'milestone_3',   emoji: '🔥' },
+                    { days: 3,   key: 'milestone_3',   emoji: em('ic_streak', '🔥') },
                     { days: 7,   key: 'milestone_7',   emoji: '⚔️' },
-                    { days: 30,  key: 'milestone_30',  emoji: require('./config/emojis').shield || '🛡️' },
+                    { days: 30,  key: 'milestone_30',  emoji: em('ic_shield', '🛡️') },
                     { days: 100, key: 'milestone_100', emoji: require('./config/emojis').premium || '💎' },
                     { days: 365, key: 'milestone_365', emoji: '👑' },
                 ];
@@ -3477,7 +3478,7 @@ setInterval(async () => {
                     { rule: true },
                     { text: `**${_S('stats_label')}**\n${_S('stats_line1', { level: user.level || 1, msgs: (user.total_messages || 0).toLocaleString() })}\n${_S('stats_line2', { best: user.highest_streak || 0, shields: user.streak_protections || 0, claims: user.total_dailies || 0 })}` },
                     { rule: true },
-                    { text: `📌 ${_S('claim_hint', { prefix, guild: guildName })}` },
+                    { text: `${em('ic_pin', '📌')} ${_S('claim_hint', { prefix, guild: guildName })}` },
                     { text: `-# ${_E.website || '🌐'} [${_S('profile_link')}](${_profileUrl}) · BAMAKO-223 · v${client.version || '3.1.1'}` },
                 ]);
 
@@ -3485,7 +3486,7 @@ setInterval(async () => {
                     .addComponents(
                         new ButtonBuilder().setLabel(_S('btn_claim', { guild: guildName.substring(0, 20) })).setStyle(ButtonStyle.Link).setURL(guild ? `https://discord.com/channels/${guild.id}/${settings?.dailyChannel || guild.systemChannelId || guild.id}` : 'https://discord.com').setEmoji(parseEmoji(_E.eagle) || '🏛️'),
                         new ButtonBuilder().setCustomId(`dm_streak_info_${user.id}`).setLabel(_S('btn_streak')).setStyle(ButtonStyle.Primary).setEmoji(parseEmoji(_E.streak) || '🔥'),
-                        new ButtonBuilder().setCustomId(`dm_shop_${user.id}`).setLabel(_S('btn_shield')).setStyle(ButtonStyle.Success).setEmoji('🛡️'),
+                        new ButtonBuilder().setCustomId(`dm_shop_${user.id}`).setLabel(_S('btn_shield')).setStyle(ButtonStyle.Success).setEmoji(iconObj('ic_shield', null, '🛡️')),
                         new ButtonBuilder().setLabel(_S('btn_dashboard')).setStyle(ButtonStyle.Link).setURL(_profileUrl).setEmoji(parseEmoji(_E.website) || '🌐')
                     );
 
@@ -3504,7 +3505,7 @@ setInterval(async () => {
                             if (fallbackChannel) {
                                 const fallbackEmbed = new EmbedBuilder()
                                     .setColor('#f39c12')
-                                    .setAuthor({ name: '🔔 DAILY REWARD AVAILABLE', iconURL: client.user.displayAvatarURL() })
+                                    .setAuthor({ name: `${em('notification', '🔔')} DAILY REWARD AVAILABLE`, iconURL: client.user.displayAvatarURL() })
                                     .setDescription(`<@${user.id}>, your daily injection is ready!\n\n> 💰 **Estimated Reward:** ${estimatedReward} 🪙\n> 🔥 **Streak:** ${streakDays} day${streakDays !== 1 ? 's' : ''}\n> 📊 **Market:** ${trendEmoji} ${marketTrend}\n\n📌 Use \`${prefix}daily\` to claim!\n\n⚠️ *Enable Direct Messages to receive premium reminders with detailed stats & quick-action buttons!*`)
                                     .setThumbnail(discordUser.displayAvatarURL({ dynamic: true, size: 128 }))
                                     .setFooter({ text: `${guildName} • Enable DMs for better experience` });
@@ -3595,7 +3596,7 @@ setInterval(async () => {
     try {
         const owner = await client.users.fetch(process.env.OWNER_ID).catch(() => null);
         if (owner) {
-            let trend = TRENDS?.STEADY || { name: 'Steady Market', emoji: '📊', color: '#f1c40f' };
+            let trend = TRENDS?.STEADY || { name: 'Steady Market', emoji: em('ic_chart', '📊'), color: '#f1c40f' };
             let marketState = { trend: 'STEADY', multiplier: 1.0 };
             try {
                 if (getMarketState) {
@@ -3909,7 +3910,7 @@ if (message.content && message.content.length > 4000) {
                     // ================= SIMPLE LEVEL-UP =================
                     // One line like the big bots; a second one only on a real tier promotion
                     const i18nT = require('./lib/i18n').t;
-                    const lines = [`🎉 ${i18nT('leveling.levelUpLine', userLang, { user: `<@${message.author.id}>`, level: newLevel })}`];
+                    const lines = [`${em('party', '🎉')} ${i18nT('leveling.levelUpLine', userLang, { user: `<@${message.author.id}>`, level: newLevel })}`];
                     if (tierChanged && roleResult?.ok && roleResult.role?.name)
                         lines.push(`${tierEmoji} ${i18nT('leveling.levelUpRole', userLang, { role: roleResult.role.name })}`);
                     await targetChannel.send({ content: lines.join('\n') }).catch((e) => console.log(`[LEVELUP] could not post the level-up line: ${e.message}`));
@@ -3962,14 +3963,14 @@ if (message.content && message.content.length > 4000) {
                 .setAuthor({ name: '💾 DATABASE HEALTH MONITOR', iconURL: client.user.displayAvatarURL() })
                 .addFields(
                     { name: '📦 DB Size', value: health.size, inline: true },
-                    { name: '📝 WAL Size', value: health.walSize, inline: true },
-                    { name: '📊 Fragmentation', value: `${health.fragmentation} ${health.fragmentationStatus || ''}`, inline: true },
+                    { name: `${em('note', '📝')} WAL Size`, value: health.walSize, inline: true },
+                    { name: `${em('ic_chart', '📊')} Fragmentation`, value: `${health.fragmentation} ${health.fragmentationStatus || ''}`, inline: true },
                     { name: '💾 Wasted', value: health.wastedMB || 'N/A', inline: true },
                     { name: '🕒 Next Auto-Purge', value: `${health.nextAutoPurge}\n*${health.nextAutoPurgeFull}*`, inline: false },
                     { name: '🧼 Maintenance', value: health.autoPurgeStatus, inline: true },
-                    { name: '⏳ Pending Writes', value: String(health.pendingWrites), inline: true },
+                    { name: `${em('ic_clock', '⏳')} Pending Writes`, value: String(health.pendingWrites), inline: true },
                     { name: '👥 Cached Users', value: String(health.cachedUsers), inline: true },
-                    { name: '🛡️ Circuit Breaker', value: health.circuitBreaker, inline: true },
+                    { name: `${em('ic_shield', '🛡️')} Circuit Breaker`, value: health.circuitBreaker, inline: true },
                     { name: '💀 Dead Letters', value: String(health.deadLetters), inline: true }
                 )
                 .setFooter({ text: '🦅 ARCHON CG-223 • Database Health • bamako-steel-dev.xyz' })
@@ -4290,7 +4291,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
 
         const modal = new ModalBuilder()
             .setCustomId(`appeal_modal_${userId}_${guildId}`)
-            .setTitle('📝 Appeal AutoMod Action');
+            .setTitle(`${em('note', '📝')} Appeal AutoMod Action`);
 
         const reasonInput = new TextInputBuilder()
             .setCustomId('appeal_reason')
@@ -4310,21 +4311,21 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isModalSubmit() && interaction.customId === 'premium_code_modal') {
         const code = interaction.fields.getTextInputValue('premium_code').trim().toUpperCase();
         const gid = interaction.guild?.id;
-        if (!gid) return interaction.reply({ content: '❌ Use this inside a server.', flags: 64 });
-        if (!interaction.memberPermissions?.has('ManageGuild')) return interaction.reply({ content: '❌ You need the Manage Server permission to activate premium.', flags: 64 });
+        if (!gid) return interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.inside_server', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: 64 });
+        if (!interaction.memberPermissions?.has('ManageGuild')) return interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.need_manage_guild', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: 64 });
         const { EmbedBuilder } = require('discord.js');
 
         const codeRow = db.prepare('SELECT * FROM premium_codes WHERE code = ? AND used = 0').get(code);
         if (!codeRow) {
             return interaction.reply({ embeds: [new EmbedBuilder()
                 .setColor(0xff3311)
-                .setDescription('❌ Invalid or already used code. Contact **@cloudgaming223** if you think this is a mistake.')
+                .setDescription(em('ic_off', '❌') + require('./lib/i18n').t('index.invalid_code', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'))
             ], flags: 64 });
         }
 
         const nowS = Math.floor(Date.now()/1000);
         const cur = db.prepare('SELECT expires_at FROM premium WHERE guild_id = ?').get(String(gid));
-        if (cur && cur.expires_at === null) return interaction.reply({ content: '❌ This server already has lifetime premium. Your code was not used.', flags: 64 });
+        if (cur && cur.expires_at === null) return interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.lifetime_already', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: 64 });
         const baseS = cur && cur.expires_at > nowS ? cur.expires_at : nowS;
         const expiresAt = codeRow.days === 0 ? null : baseS + (codeRow.days * 86400);
         db.prepare('INSERT OR REPLACE INTO premium (guild_id, expires_at, plan, payment_method, transaction_id, activated_by) VALUES (?,?,?,?,?,?)').run(
@@ -4371,7 +4372,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     // ================= WELCOME BUTTON HANDLER =================
     // ── PREMIUM ACTIVATE BUTTON ──
     if (interaction.isButton() && interaction.customId === 'premium_activate') {
-        if (!interaction.memberPermissions?.has('ManageGuild')) return interaction.reply({ content: '❌ You need the Manage Server permission to activate premium.', flags: 64 });
+        if (!interaction.memberPermissions?.has('ManageGuild')) return interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.need_manage_guild', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: 64 });
         const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder } = require('discord.js');
         const modal = new ModalBuilder()
             .setCustomId('premium_code_modal')
@@ -4599,7 +4600,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                     `XP: ${xp.toLocaleString()} / ${Math.floor(nextLevelXP).toLocaleString()}\n` +
                     `${t('index.stat_progress', lang)}: ${progressBar} ${progressPercent}%\n` +
                     `${t('index.stat_credits', lang)}: ${credits.toLocaleString()} 🪙\n` +
-                    `${t('index.stat_daily_streak', lang)}: ${streakDays} 🔥\n` +
+                    `${t('index.stat_daily_streak', lang)}: ${streakDays} ${em('ic_streak', '🔥')}\n` +
                     `${t('index.stat_best_streak', lang)}: ${highestStreak} 💎\n` +
                     `${t('index.stat_total_dailies', lang)}: ${totalDailies}\n` +
                     `${t('index.stat_messages', lang)}: ${totalMessages.toLocaleString()}\n` +
@@ -4655,14 +4656,14 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         
         const messages = {
             en: [
-                `🎉 **${interaction.user.username}** celebrates **${user.username}**'s birthday! 🎂`,
-                `🎈 **${interaction.user.username}** sends birthday wishes to **${user.username}**! 🎁`,
-                `🎊 **${interaction.user.username}** joins the birthday celebration for **${user.username}**! 🎉`
+                `${em('party', '🎉')} **${interaction.user.username}** celebrates **${user.username}**'s birthday! ${em('cake', '🎂')}`,
+                `${em('party', '🎈')} **${interaction.user.username}** sends birthday wishes to **${user.username}**! ${em('ic_gift', '🎁')}`,
+                `${em('party', '🎊')} **${interaction.user.username}** joins the birthday celebration for **${user.username}**! ${em('party', '🎉')}`
             ],
             fr: [
-                `🎉 **${interaction.user.username}** celebre l'anniversaire de **${user.username}**! 🎂`,
-                `🎈 **${interaction.user.username}** envoie ses veux a **${user.username}**! 🎁`,
-                `🎊 **${interaction.user.username}** se joint a la fete de **${user.username}**! 🎉`
+                `${em('party', '🎉')} **${interaction.user.username}** celebre l'anniversaire de **${user.username}**! ${em('cake', '🎂')}`,
+                `${em('party', '🎈')} **${interaction.user.username}** envoie ses veux a **${user.username}**! ${em('ic_gift', '🎁')}`,
+                `${em('party', '🎊')} **${interaction.user.username}** se joint a la fete de **${user.username}**! ${em('party', '🎉')}`
             ]
         };
         
@@ -4684,14 +4685,14 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         
         const messages = {
             en: [
-                `🎁 **${interaction.user.username}** sends a virtual gift to **${user.username}**! 🎂`,
+                `🎁 **${interaction.user.username}** sends a virtual gift to **${user.username}**! ${em('cake', '🎂')}`,
                 `💝 **${interaction.user.username}** sends birthday love to **${user.username}**! 🎈`,
-                `🌟 **${interaction.user.username}** celebrates with **${user.username}**! Happy Birthday! 🎉`
+                `${em('star', '🌟')} **${interaction.user.username}** celebrates with **${user.username}**! Happy Birthday! ${em('party', '🎉')}`
             ],
             fr: [
-                `🎁 **${interaction.user.username}** envoie un cadeau virtuel a **${user.username}**! 🎂`,
+                `🎁 **${interaction.user.username}** envoie un cadeau virtuel a **${user.username}**! ${em('cake', '🎂')}`,
                 `💝 **${interaction.user.username}** envoie de l'amour a **${user.username}**! 🎈`,
-                `🌟 **${interaction.user.username}** fait la fete avec **${user.username}**! Joyeux anniversaire! 🎉`
+                `${em('star', '🌟')} **${interaction.user.username}** fait la fete avec **${user.username}**! Joyeux anniversaire! ${em('party', '🎉')}`
             ]
         };
         
@@ -4731,14 +4732,14 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId.startsWith('dm_streak_info_')) {
         const rewardTiers = [
             '🌱 **3 Days:** +15 bonus credits',
-            '🔥 **7 Days:** +50% bonus + role unlock',
+            `${em('ic_streak', '🔥')} **7 Days:** +50% bonus + role unlock`,
             '⚔️ **30 Days:** Exclusive elite role',
             '💎 **100 Days:** Premium rewards tier',
             '👑 **365 Days:** Legendary status + custom role'
         ];
         
         await interaction.reply({ 
-            content: `**🔥 STREAK REWARDS:**\n${rewardTiers.join('\n')}\n\n*Use \`.daily\` every 24h to build your streak!*`,
+            content: `**${em('ic_streak', '🔥')} STREAK REWARDS:**\n${rewardTiers.join('\n')}\n\n*Use \`.daily\` every 24h to build your streak!*`,
             flags: 1 << 6 
         });
         return;
@@ -4755,14 +4756,14 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         
         const shopEmbed = new EmbedBuilder()
             .setColor(canAfford ? '#2ecc71' : '#e74c3c')
-            .setTitle('🛡️ Streak Protection Shield')
+            .setTitle(`${em('ic_shield', '🛡️')} Streak Protection Shield`)
             .setDescription(
                 `**Price:** 2,000 🪙\n` +
                 `**Your Balance:** ${credits.toLocaleString()} 🪙\n\n` +
                 `*Protects your streak if you miss a daily claim.*`
             )
             .addFields({
-                name: canAfford ? '✅ You can afford this!' : '❌ Insufficient credits',
+                name: canAfford ? `${em('ic_ok', '✅')} You can afford this!` : em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.insufficient_credits', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'),
                 value: canAfford 
                     ? 'Use `.buy streak_shield` in any server!'
                     : `Need ${(2000 - credits).toLocaleString()} more 🪙. Use \`.daily\` to earn!`
@@ -4795,7 +4796,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             // Only owner can use reply button
             const OWNER_ID = process.env.OWNER_ID;
             if (interaction.user.id !== OWNER_ID) {
-                return interaction.reply({ content: '❌ Owner only.', flags: 64 }).catch(() => {});
+                return interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.owner_only', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: 64 }).catch(() => {});
             }
 
             // Ask owner for reply text via a follow-up
@@ -4814,7 +4815,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             // DM the target user
             const targetUser = await client.users.fetch(targetUserId).catch(() => null);
             if (!targetUser) {
-                return interaction.followUp({ content: '❌ Could not find user.', flags: 64 }).catch(() => {});
+                return interaction.followUp({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.user_not_found', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: 64 }).catch(() => {});
             }
 
             await targetUser.send({
@@ -4833,12 +4834,12 @@ safeOn(Events.InteractionCreate, async (interaction) => {
                 ]
             });
 
-            await interaction.followUp({ content: `✅ Reply sent to **${targetUser.username}** via DM.`, flags: 64 }).catch(() => {});
+            await interaction.followUp({ content: `${em('ic_ok', '✅')} Reply sent to **${targetUser.username}** via DM.`, flags: 64 }).catch(() => {});
             console.log(`[CONTACT REPLY] Architect → ${targetUser.tag}: ${replyText.substring(0,80)}`);
 
         } catch(err) {
             console.error('[CONTACT REPLY]', err.message);
-            interaction.followUp({ content: '❌ Reply failed.', flags: 64 }).catch(() => {});
+            interaction.followUp({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.reply_failed', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: 64 }).catch(() => {});
         }
         return;
     }
@@ -4868,7 +4869,7 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
             }
         } catch (err) {
             console.error(`${red}[TICKET COMPONENT]${reset}`, err.message);
-            await interaction.reply({ content: '❌ Ticket action failed.', flags: 1 << 6 }).catch(() => {});
+            await interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.ticket_failed', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: 1 << 6 }).catch(() => {});
         }
         return;
     }
@@ -4883,7 +4884,7 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
             }
         } catch (err) {
             console.error(`${red}[VOTE BUTTON]${reset}`, err.message);
-            await interaction.reply({ content: '❌ Vote action failed.', flags: 1 << 6 }).catch(() => {});
+            await interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.vote_failed', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: 1 << 6 }).catch(() => {});
         }
         return;
     }
@@ -4898,7 +4899,7 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
             }
         } catch (err) {
             console.error(`${red}[MEME BUTTON]${reset}`, err.message);
-            await interaction.reply({ content: '❌ Meme button failed.', flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.meme_failed', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: MessageFlags.Ephemeral }).catch(() => {});
         }
         return;
     }
@@ -4913,7 +4914,7 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
             }
         } catch (err) {
             console.error(`${red}[CAT BUTTON]${reset}`, err.message);
-            await interaction.reply({ content: '❌ Cat button failed.', flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.cat_failed', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: MessageFlags.Ephemeral }).catch(() => {});
         }
         return;
     }
@@ -4928,7 +4929,7 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
             }
         } catch (err) {
             console.error(`${red}[DOG BUTTON]${reset}`, err.message);
-            await interaction.reply({ content: '❌ Dog button failed.', flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.dog_failed', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: MessageFlags.Ephemeral }).catch(() => {});
         }
         return;
     }
@@ -4943,7 +4944,7 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
             }
         } catch (err) {
             console.error(`${red}[CAR BUTTON]${reset}`, err.message);
-            await interaction.reply({ content: '❌ Car button failed.', flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.car_failed', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: MessageFlags.Ephemeral }).catch(() => {});
         }
         return;
     }
@@ -5509,9 +5510,9 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
                             const { EmbedBuilder } = require('discord.js');
                             await owner.send({ embeds: [new EmbedBuilder()
                                 .setColor(0xffaa00)
-                                .setTitle('⚠️ Payment Failed — Grace Period Active')
+                                .setTitle(`${em('ic_warn', '⚠️')} Payment Failed — Grace Period Active`)
                                 .setDescription(`A payment for **${guild.name}** failed.\n\nYou have **${GRACE_DAYS} days** to update your payment method before premium is removed.`)
-                                .addFields({ name: '🔗 Update payment', value: 'bamako-steel-dev.xyz/premium', inline: true })
+                                .addFields({ name: `${em('ic_link', '🔗')} Update payment`, value: 'bamako-steel-dev.xyz/premium', inline: true })
                                 .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                             ]});
                         }
@@ -5891,7 +5892,7 @@ apiApp.get('/api/user/:userId', (req, res) => {
         if (maxLevel >= 5) badges.push('⭐ Level 5+');
         if (maxLevel >= 10) badges.push('🌟 Level 10+');
         if (maxLevel >= 25) badges.push('💎 Level 25+');
-        if (maxStreak >= 7) badges.push('🔥 Week Streak');
+        if (maxStreak >= 7) badges.push(`${em('ic_streak', '🔥')} Week Streak`);
         if (maxStreak >= 30) badges.push('💫 Month Streak');
         if (totalClaims >= 50) badges.push('🎯 Dedicated');
         if (totalClaims >= 100) badges.push('👑 Legend');
@@ -6950,13 +6951,13 @@ apiApp.post('/api/ticket-config/:guildId/create-channels', requireAdmin, async (
         if (!me?.permissions.has(P.Flags.ManageChannels)) return res.status(403).json({ error: 'bot_missing_manage_channels' });
 
         const category = await g.channels.create({
-            name: '🛠️ STAFF & SUPPORT', type: ChannelType.GuildCategory,
+            name: `${em('ic_setup', '🛠️')} STAFF & SUPPORT`, type: ChannelType.GuildCategory,
         });
         const supportCh = await g.channels.create({
             name: '🎫-・support-tickets', type: ChannelType.GuildText, parent: category.id,
         });
         const transcriptCh = await g.channels.create({
-            name: '📝-・transcript-logs', type: ChannelType.GuildText, parent: category.id,
+            name: `${em('note', '📝')}-・transcript-logs`, type: ChannelType.GuildText, parent: category.id,
             permissionOverwrites: [
                 { id: g.roles.everyone.id, deny: [P.Flags.ViewChannel] },
                 { id: me.id, allow: [P.Flags.ViewChannel, P.Flags.SendMessages] },

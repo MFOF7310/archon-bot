@@ -1,4 +1,5 @@
 const { PermissionFlagsBits, EmbedBuilder, SlashCommandBuilder, Colors } = require('discord.js');
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 // ================= BILINGUAL TRANSLATIONS =================
 const i18n = require('../lib/i18n');
@@ -58,7 +59,7 @@ async function checkDeletePermission(context, t, lang) {
                 { name: '🏛️ Server', value: `**${guild.name}**`, inline: true },
                 { name: '👤 User', value: `<@${user.id}>`, inline: true },
                 { name: '🛡️ Required', value: '`ManageMessages`', inline: true },
-                { name: '❌ Your Status', value: t.permYourRole, inline: false },
+                { name: em('ic_off', '❌') + ' Your Status', value: t.permYourRole, inline: false },
                 { name: '🤖 Bot Status', value: t.permBotRole, inline: false }
             )
             .setFooter({ text: `${t.dmFallbackNote} • ARCHON CG-223` })
@@ -211,7 +212,7 @@ module.exports = {
                     const messageId = interaction.options.getString('message_id');
                     const targetMsg = await interaction.channel.messages.fetch(messageId).catch(() => null);
                     if (!targetMsg) {
-                        return interaction.editReply({ content: '❌ Message not found.', flags: 64 });
+                        return interaction.editReply({ content: em('ic_off', '❌') + ' Message not found.', flags: 64 });
                     }
                     await deleteSingleMessage(interaction.channel, interaction.user, targetMsg, t, lang, client);
                     await interaction.editReply({ content: t.targetErased, flags: 64 });
