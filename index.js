@@ -4526,7 +4526,9 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
 });
 
 // ── PREMIUM API ──────────────────────────────────────
-apiApp.post('/api/premium/activate', (req, res) => {
+// Activation, payment links and payment-to-server links are only for the dashboard, which sends the API key:
+// nginx forwards /api/premium/* from the internet, and these routes write data or create payments.
+apiApp.post('/api/premium/activate', requireAdmin, (req, res) => {
     try {
         const { code, guildId } = req.body;
         if (!code || !guildId) return res.json({ success: false, error: 'Missing code or guild ID' });
@@ -4662,7 +4664,7 @@ apiApp.get('/api/premium/info', (req, res) => {
 });
 
 // Store checkout session → guild_id mapping
-apiApp.post('/api/premium/store-session', (req, res) => {
+apiApp.post('/api/premium/store-session', requireAdmin, (req, res) => {
     try {
         const { guildId, checkoutSessionId } = req.body;
         if (!guildId || !checkoutSessionId) {
@@ -4682,7 +4684,7 @@ apiApp.post('/api/premium/store-session', (req, res) => {
     }
 });
 
-apiApp.get('/api/premium/checkout-url', async (req, res) => {
+apiApp.get('/api/premium/checkout-url', requireAdmin, async (req, res) => {
     try {
         const guildId = req.query.guildId || '';
         const plan = req.query.plan === 'yearly' ? 'yearly' : 'monthly';
