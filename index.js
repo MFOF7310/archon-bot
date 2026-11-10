@@ -3605,37 +3605,41 @@ setInterval(async () => {
                 }
             } catch (err) {}
             
-            const bootEmbed = new EmbedBuilder()
-                .setColor(trend.color || '#2ecc71')
-                .setAuthor({ name: '🦅 ARCHON CG-223 is online', iconURL: client.user.displayAvatarURL() })
-                .setTitle('⚡ Started')
-                .setDescription(
-                    `\`\`\`ansi\n` +
-                    `\u001b[1;32m${"━".repeat(30)}\u001b[0m\n` +
-                    `\u001b[1;36mSystem:\u001b[0m reboot complete\n` +
-                    `\u001b[1;34mModules:\u001b[0m ${client.commands.size} plugins synced\n` +
-                    `\u001b[1;35mVersion:\u001b[0m v${client.version}\n` +
-                    `\u001b[1;33mNode:\u001b[0m BAMAKO_223 🇲🇱\n` +
-                    `\u001b[1;36mListeners:\u001b[0m ${client.listenerCount('messageCreate')} active\n` +
-                    `\u001b[1;32mDatabase:\u001b[0m WAL Mode + Per-Server Partitioning\n` +
-                    `\u001b[1;35mAFK System:\u001b[0m ACTIVE\n` +
-                    `\u001b[1;33mCircuit Breaker:\u001b[0m READY\n` +
-                    `\u001b[1;36mLydia AI:\u001b[0m MULTI-AGENT ACTIVE\n` +
-                    `\u001b[1;36mTelegram:\u001b[0m ${client.telegramBridge?.enabled ? 'ACTIVE' : 'STANDBY'}\n` +
-                    `\u001b[1;33mMarket:\u001b[0m ${trend.emoji} ${trend.name} (${(marketState.multiplier * 100).toFixed(1)}%)\n` +
-                    `\u001b[1;32m${"━".repeat(30)}\u001b[0m\n` +
-                    `\`\`\``
-                )
-                .addFields(
-                    { name: '🌐 Dashboard', value: '[**bamako-steel-dev.xyz**](https://bamako-steel-dev.xyz)', inline: true },
-                    { name: '🏗️ Architect', value: '```ansi\n\u001b[1;33mMFOF7310\u001b[0m\n```', inline: true },
-                    { name: '⚡ Slash Commands', value: `\`\`\`ansi\n\u001b[1;32m${commands.length} commands registered\u001b[0m\n\`\`\``, inline: true },
-                    { name: '🕐 Boot Time', value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: false }
-                )
-                .setFooter({ text: `🦅 ARCHON CG-223 v${client.version} • bamako-steel-dev.xyz`, iconURL: client.user.displayAvatarURL() })
-                .setTimestamp();
+            const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
+            
+            const bootCard = new ContainerBuilder()
+                .setAccentColor(trend.color ? parseInt(trend.color.replace('#', ''), 16) : 0x2ecc71)
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('eagle', '🦅')} ARCHON CG-223 is online\n${em('ic_ok', '✅')} **Started**`))
+                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                    `**System:** reboot complete\n` +
+                    `**Modules:** ${client.commands.size} plugins synced\n` +
+                    `**Version:** v${client.version}\n` +
+                    `**Node:** BAMAKO_223 🇲🇱\n` +
+                    `**Listeners:** ${client.listenerCount('messageCreate')} active`
+                ))
+                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                    `**Database:** WAL Mode + Per-Server Partitioning\n` +
+                    `**AFK System:** ACTIVE\n` +
+                    `**Circuit Breaker:** READY`
+                ))
+                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                    `**Lydia AI:** MULTI-AGENT ACTIVE\n` +
+                    `**Telegram:** ${client.telegramBridge?.enabled ? 'ACTIVE' : 'STANDBY'}\n` +
+                    `**Market:** ${trend.emoji || em('ic_chart', '📊')} ${trend.name} (${(marketState.multiplier * 100).toFixed(1)}%)`
+                ))
+                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+                    `${em('globe', '🌐')} **Dashboard:** [bamako-steel-dev.xyz](https://bamako-steel-dev.xyz)\n` +
+                    `${em('developericon', '🏗️')} **Architect:** \`MFOF7310\`\n` +
+                    `⚡ **Slash Commands:** ${commands.length} commands registered\n` +
+                    `${em('clock', '🕐')} **Boot Time:** <t:${Math.floor(Date.now() / 1000)}:F>`
+                ))
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${em('eagle', '🦅')} ARCHON CG-223 v${client.version} • bamako-steel-dev.xyz`));
 
-            await owner.send({ embeds: [bootEmbed] }).catch(() => {});
+            await owner.send({ components: [bootCard], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
             console.log(`${green}[DM]${reset}   Boot DM sent successfully to ${owner.tag}`);
         }
     } catch (err) {
