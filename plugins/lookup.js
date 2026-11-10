@@ -107,7 +107,7 @@ async function buildLookupEmbed(client, db, target, guildId, scope) {
                 const age = Math.floor((Date.now() - i.invested_at) / 3600000);
                 return `\u001b[1;36m▸\u001b[0m ${i.amount.toLocaleString()} 🪙 · ${age}h ago · ${i.claimed ? em('ic_ok', '✅') : '⏳'}`;
             }).join('\n');
-            lines.push('```ansi\n\u001b[1;33m── INVESTMENTS ──\u001b[0m\n' + invLines + '\n```');
+            lines.push(`**── INVESTMENTS ──**\n` + invLines);
         }
     }
 
