@@ -4,7 +4,8 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const M = require('../lib/mod-core');
 
-const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000 - 60 * 1000; // a minute of margin: Discord refuses bulk delete past 14 days
+const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000 - 60 * 1000;
+const CLEAR_LOG_THRESHOLD = 50; // Nombre minimum de messages pour envoyer un log dans le salon mod-log // a minute of margin: Discord refuses bulk delete past 14 days
 
 async function purge(client, channel, actor, amount, targetUser, reason, lang, ctx, skipId) {
     const guild = channel.guild;
@@ -29,8 +30,13 @@ async function purge(client, channel, actor, amount, targetUser, reason, lang, c
         [M.T('l_reason', lang), M.safe(reason)],
     ];
     const make = () => M.card({ look: 'clear', title: M.T('clear_done', lang, { count }), lines, footer: M.footerFor(caseId, lang), ctx });
-    await M.toModLog(guild, client.db, make());
-    console.log(`[CLEAR] guild=${guild.id} channel=${channel.id} by=${actor.id} deleted=${count}`);
+    
+    // On envoie dans le salon mod-log seulement si on dépasse le seuil
+    if (count >= CLEAR_LOG_THRESHOLD) {
+        await M.toModLog(guild, client.db, make());
+    }
+    
+    console.log(`[CLEAR] guild=${guild.id} channel=${channel.id} by=${actor.id} deleted=${count} (logged: ${count >= CLEAR_LOG_THRESHOLD})`);
     return { card: make(), count };
 }
 
