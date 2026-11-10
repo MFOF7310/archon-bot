@@ -5746,7 +5746,15 @@ function getToggles(guildId) {
     let t = _toggleCache.get(guildId);
     if (!t) {
         const row = db.prepare('SELECT disabled_commands, disabled_categories FROM server_settings WHERE guild_id = ?').get(guildId) || {};
-        t = { cmds: new Set(parseJSONSafe(row.disabled_commands, [])), cats: new Set(parseJSONSafe(row.disabled_categories, []).map(c => String(c).toUpperCase())) };
+        
+        // SÉCURITÉ : On s'assure que c'est toujours un tableau, même si la DB contient "null" ou une chaîne
+        const safeCmds = parseJSONSafe(row.disabled_commands, []);
+        const safeCats = parseJSONSafe(row.disabled_categories, []);
+        
+        t = { 
+            cmds: new Set(Array.isArray(safeCmds) ? safeCmds : []), 
+            cats: new Set((Array.isArray(safeCats) ? safeCats : []).map(c => String(c).toUpperCase())) 
+        };
         _toggleCache.set(guildId, t);
     }
     return t;
