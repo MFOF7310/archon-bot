@@ -1,5 +1,5 @@
 {
-  "cooldown": "⏳ 慢一点！{remaining} 秒后再试",
+  "cooldown": "{ic_wait} 哎呀，慢一点！休息一下，{remaining} 秒后再试。",
   "cmd_error": "⚠️ **指令执行失败。**",
   "restricted_title": "🦅 受限访问 — 仅限服务器的指令",
   "restricted_desc": "```ansi\n\u001b[1;33m⚠️ 无效指令区域\u001b[0m\n\n该指令需要 \u001b[1;36m服务器环境\u001b[0m 才能访问服务器数据。\n```",

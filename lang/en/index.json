@@ -1,5 +1,5 @@
 {
-  "cooldown": "⏳ Slow down! Try again in {remaining}s",
+  "cooldown": "{ic_wait} Whoa there! Take a breather and try again in {remaining}s.",
   "cmd_error": "⚠️ **Command execution failed.**",
   "restricted_title": "🦅 RESTRICTED ACCESS — SERVER-ONLY COMMAND",
   "restricted_desc": "```ansi\n\u001b[1;33m⚠️ INVALID COMMAND ZONE\u001b[0m\n\nThis command requires a \u001b[1;36mserver context\u001b[0m to access guild-specific data.\n```",

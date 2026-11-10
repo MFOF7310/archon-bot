@@ -23,5 +23,6 @@
   "dog_failed": "Dog bouton ma se.",
   "car_failed": "Car bouton ma se.",
   "insufficient_credits": "Wari man ca",
-  "afford_yes": "I bɛ se ka nin sɔngɔ!"
+  "afford_yes": "I bɛ se ka nin sɔngɔ!",
+  "cooldown": "{ic_wait} A tɛ mɔsɔ n'teri! Fiyɛn dɔnni saama fɔlɔ ka bɛn nin sanga {remaining} ye."
 }

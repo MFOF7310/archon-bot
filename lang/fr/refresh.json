@@ -2,7 +2,7 @@
   "title": "☢️ Réinitialisation des données",
   "desc": "Choisis ce qu'il faut réinitialiser.",
   "confirm": "⚠️ CONFIRMER",
-  "abort": "❌ ANNULER",
+  "abort": "ANNULER",
   "security": "⛔ Accès restreint à l'Architecte.",
   "aborted": "✅ Annulé. Rien n'a été supprimé.",
   "timeout": "⏰ Autorisation expirée.",
