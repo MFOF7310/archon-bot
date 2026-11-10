@@ -197,5 +197,6 @@
     "btn_streak": "Streak rewards",
     "btn_shield": "Buy shield",
     "btn_dashboard": "Dashboard"
-  }
+  },
+  "error": "⚠️ **Oops, something went wrong on my end.**\n> Give it another try in a moment!"
 }

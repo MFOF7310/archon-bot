@@ -1,4 +1,10 @@
 require('dotenv').config();
+
+// Helper to safely parse JSON without crashing
+function parseJSONSafe(str, fallback = {}) {
+    try { return JSON.parse(str); } catch { return fallback; }
+}
+
 const fs = require('fs');
 const path = require('path');
 const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, REST, Routes, MessageFlags } = require('discord.js');
@@ -654,6 +660,226 @@ client.prependListener('messageCreate', (message) => {
 // ================= MESSAGE CREATE HANDLER =================
 require('./lib/handlers/message')(client, db);
 
+// ================= PERFORMANCE INDEXES =================
+const performanceIndexes = [
+    "CREATE INDEX IF NOT EXISTS idx_lydia_timestamp ON lydia_conversations(timestamp)",
+    "CREATE INDEX IF NOT EXISTS idx_moderation_timestamp ON moderation_logs(timestamp)",
+    "CREATE INDEX IF NOT EXISTS idx_reminders_status ON reminders(status)",
+    "CREATE INDEX IF NOT EXISTS idx_reminders_execute ON reminders(execute_at)",
+    "CREATE INDEX IF NOT EXISTS idx_warnings_active ON warnings(active, guild_id)",
+    "CREATE INDEX IF NOT EXISTS idx_users_guild ON users(guild_id)",
+    "CREATE INDEX IF NOT EXISTS idx_transfers_timestamp ON transfers(timestamp)",
+    "CREATE INDEX IF NOT EXISTS idx_investments_user ON investments(user_id, claimed)",
+    "CREATE INDEX IF NOT EXISTS idx_lydia_guild ON lydia_conversations(guild_id)"
+];
+
+console.log(`${cyan}[INDEX]${reset} Creating performance indexes...`);
+let indexesCreated = 0;
+for (const indexSQL of performanceIndexes) {
+    try {
+        db.exec(indexSQL);
+        indexesCreated++;
+    } catch (err) {
+        console.log(`${yellow}[INDEX]${reset} Skipped: ${err.message}`);
+    }
+}
+console.log(`${green}[INDEX]${reset} ${indexesCreated} indexes verified`);
+
+// ================= MIGRATE: Add ALL missing columns =================
+console.log(`${cyan}[MIGRATION]${reset} Checking database schema...`);
+try {
+    const existingColumns = db.prepare("PRAGMA table_info(server_settings)").all().map(c => c.name);
+    
+    const allColumns = [
+        { name: 'gift_channel', type: 'TEXT' },
+        { name: 'prefix', type: "TEXT DEFAULT '.'" },
+        { name: 'welcome_channel', type: 'TEXT' },
+        { name: 'log_channel', type: 'TEXT' },
+        { name: 'daily_channel', type: 'TEXT' },
+        { name: 'shop_channel', type: 'TEXT' },
+        { name: 'rules_channel', type: 'TEXT' },
+        { name: 'general_channel', type: 'TEXT' },
+        { name: 'member_role', type: 'TEXT' },
+        { name: 'welcome_message', type: 'TEXT' },
+        { name: 'updated_at', type: "INTEGER DEFAULT (strftime('%s', 'now'))" },
+        { name: 'goodbye_channel', type: 'TEXT' },
+        { name: 'goodbye_message', type: 'TEXT' },
+        { name: 'mute_role_id', type: 'TEXT' },
+        { name: 'mod_log_channel', type: 'TEXT' },
+        { name: 'auto_role_id', type: 'TEXT' },
+        { name: 'xp_multiplier', type: 'REAL DEFAULT 1.0' },
+        { name: 'level_channel', type: 'TEXT' },
+        { name: 'afk_enabled', type: 'INTEGER DEFAULT 1' },
+        { name: 'market_enabled', type: 'INTEGER DEFAULT 1' },
+        { name: 'daily_initiate_role', type: 'TEXT' },
+        { name: 'daily_warrior_role', type: 'TEXT' },
+        { name: 'daily_champion_role', type: 'TEXT' },
+        { name: 'daily_legend_role', type: 'TEXT' },
+        { name: 'market_channel', type: 'TEXT' },
+        { name: 'ai_enabled', type: 'INTEGER DEFAULT 1' },
+        { name: 'automod_enabled', type: 'INTEGER DEFAULT 0' },
+        { name: 'automod_whitelist', type: 'TEXT' },
+        { name: 'automod_sensitivity', type: "TEXT DEFAULT 'medium'" },
+        { name: 'automod_log_channel', type: 'TEXT' },
+        { name: 'language', type: "TEXT DEFAULT 'auto'" },
+        { name: 'welcome_enabled', type: 'INTEGER DEFAULT 1' },
+        { name: 'goodbye_enabled', type: 'INTEGER DEFAULT 1' },
+        { name: 'levelup_channel', type: 'TEXT' },
+        { name: 'xp_cooldown', type: 'INTEGER DEFAULT 60' },
+        { name: 'xp_min_gain', type: 'INTEGER DEFAULT 15' },
+        { name: 'xp_max_gain', type: 'INTEGER DEFAULT 35' },
+        { name: 'starting_balance', type: 'INTEGER DEFAULT 0' },
+        { name: 'max_daily_streak', type: 'INTEGER DEFAULT 365' },
+        { name: 'levelup_message', type: 'TEXT' },
+        { name: 'join_role_id', type: 'TEXT' },
+        { name: 'disabled_commands', type: 'TEXT' },
+        { name: 'disabled_categories', type: 'TEXT' },
+        { name: 'spam_threshold', type: 'INTEGER DEFAULT 5' },
+        { name: 'spam_window', type: 'INTEGER DEFAULT 5' },
+        { name: 'link_filter_enabled', type: 'INTEGER DEFAULT 0' },
+        { name: 'invite_filter_enabled', type: 'INTEGER DEFAULT 0' },
+        { name: 'mention_limit', type: 'INTEGER DEFAULT 10' },
+        { name: 'max_warnings', type: 'INTEGER DEFAULT 3' },
+        { name: 'warning_action', type: "TEXT DEFAULT 'mute'" },
+        { name: 'timezone', type: "TEXT DEFAULT 'UTC'" },
+        { name: 'custom_categories', type: 'TEXT' },
+        { name: 'investor_role', type: 'TEXT' },
+        { name: 'gamer_role', type: 'TEXT' },
+        { name: 'quiz_master_role', type: 'TEXT' },
+        { name: 'duelist_role', type: 'TEXT' },
+        { name: 'ticket_category', type: 'TEXT' },
+        { name: 'ticket_staff_role', type: 'TEXT' },
+        { name: 'ticket_transcript_channel', type: 'TEXT' },
+        { name: 'ticket_panel_channel', type: 'TEXT' },
+        { name: 'ticket_log_channel', type: 'TEXT' },
+        { name: 'ticket_auto_close_hours', type: 'INTEGER DEFAULT 24' },
+        { name: 'ticket_categories_config', type: 'TEXT' },
+        { name: 'ticket_limit_per_user', type: 'INTEGER DEFAULT 1' },
+        { name: 'ticket_panel_message_id', type: 'TEXT' },
+        { name: 'automod_channels', type: 'TEXT' },
+    ];
+    
+    let addedCount = 0;
+    for (const col of allColumns) {
+        if (!existingColumns.includes(col.name)) {
+            db.exec(`ALTER TABLE server_settings ADD COLUMN ${col.name} ${col.type}`);
+            console.log(`${green}[MIGRATION]${reset} Added: ${col.name}`);
+            addedCount++;
+        }
+    }
+    
+    if (addedCount === 0) {
+        console.log(`${green}[MIGRATION]${reset} All columns present — no migration needed`);
+    } else {
+        console.log(`${green}[MIGRATION]${reset} Added ${addedCount} missing columns`);
+    }
+} catch (err) {
+    console.log(`${red}[MIGRATION]${reset} ${err.message}`);
+}
+
+// ================= MIGRATE: lydia_conversations.guild_id (Privacy Isolation) =================
+console.log(`${cyan}[MIGRATION]${reset} Checking lydia_conversations schema...`);
+try {
+    const lydiaCols = db.prepare("PRAGMA table_info(lydia_conversations)").all().map(c => c.name);
+    if (!lydiaCols.includes('guild_id')) {
+        db.exec("ALTER TABLE lydia_conversations ADD COLUMN guild_id TEXT");
+        console.log(`${green}[MIGRATION]${reset} Added lydia_conversations.guild_id for per-server AI privacy isolation`);
+    } else {
+        console.log(`${green}[MIGRATION]${reset} lydia_conversations.guild_id already present`);
+    }
+} catch (err) {
+    console.log(`${yellow}[MIGRATION]${reset} lydia_conversations check: ${err.message}`);
+}
+
+// ================= AUTO-REPAIR: Fix invalid XP multipliers =================
+try {
+    const brokenRows = db.prepare(
+        "SELECT guild_id, xp_multiplier FROM server_settings WHERE xp_multiplier IS NOT NULL"
+    ).all();
+    
+    let fixed = 0;
+    for (const row of brokenRows) {
+        const num = parseFloat(row.xp_multiplier);
+        if (isNaN(num) || num < 0.1 || num > 10.0) {
+            db.prepare("UPDATE server_settings SET xp_multiplier = '1.0' WHERE guild_id = ?").run(row.guild_id);
+            fixed++;
+        }
+    }
+    if (fixed > 0) console.log(`${green}[REPAIR XP]${reset} Repaired ${fixed} invalid XP multipliers`);
+} catch(e) {}
+
+// ================= UNIVERSAL AUTO-REPAIR: Auto-add missing columns to ALL tables =================
+console.log(`${cyan}[AUTO-REPAIR]${reset} Scanning all tables for missing columns...`);
+
+// Define expected columns for each table (name, type, default)
+const TABLE_SCHEMAS = {
+    bot_state: [
+        { name: 'value', type: 'TEXT', default: 'NULL' },
+        { name: 'updated_at', type: 'INTEGER', default: "(strftime('%s', 'now'))" }
+    ],
+    users: [
+        { name: 'last_reminder', type: 'INTEGER', default: '0' },
+        { name: 'streak_protections', type: 'INTEGER', default: '0' },
+        { name: 'highest_streak', type: 'INTEGER', default: '0' },
+        { name: 'total_dailies', type: 'INTEGER', default: '0' },
+        { name: 'last_daily', type: 'INTEGER', default: '0' },
+        { name: 'gaming', type: 'TEXT', default: "'{\"game\":\"CODM\",\"rank\":\"Unranked\"}'" },
+        { name: 'credits', type: 'INTEGER', default: '0' },
+        { name: 'streak_days', type: 'INTEGER', default: '0' },
+        { name: 'total_messages', type: 'INTEGER', default: '0' },
+        { name: 'last_xp_gain', type: 'INTEGER', default: '0' }
+    ],
+    member_builds: [
+        { name: 'image_path', type: 'TEXT', default: 'NULL' }
+    ],
+    server_settings: [
+        { name: 'prefix', type: 'TEXT', default: "'.'" },
+        { name: 'language', type: 'TEXT', default: "'auto'" },
+        { name: 'timezone', type: 'TEXT', default: "'UTC'" },
+        { name: 'welcome_enabled', type: 'INTEGER', default: '1' },
+        { name: 'goodbye_enabled', type: 'INTEGER', default: '1' },
+        { name: 'xp_multiplier', type: 'REAL', default: '1.0' },
+        { name: 'xp_cooldown', type: 'INTEGER', default: '60' },
+        { name: 'xp_min_gain', type: 'INTEGER', default: '15' },
+        { name: 'xp_max_gain', type: 'INTEGER', default: '35' },
+        { name: 'starting_balance', type: 'INTEGER', default: '0' },
+        { name: 'max_daily_streak', type: 'INTEGER', default: '365' },
+        { name: 'automod_enabled', type: 'INTEGER', default: '0' },
+        { name: 'automod_sensitivity', type: 'TEXT', default: "'medium'" },
+        { name: 'spam_threshold', type: 'INTEGER', default: '5' },
+        { name: 'spam_window', type: 'INTEGER', default: '5' },
+        { name: 'mention_limit', type: 'INTEGER', default: '10' },
+        { name: 'max_warnings', type: 'INTEGER', default: '3' },
+        { name: 'warning_action', type: 'TEXT', default: "'mute'" },
+        { name: 'economy_enabled', type: 'INTEGER', default: '1' },
+        { name: 'leveling_enabled', type: 'INTEGER', default: '1' },
+        { name: 'music_enabled', type: 'INTEGER', default: '1' },
+        { name: 'tickets_enabled', type: 'INTEGER', default: '1' },
+        { name: 'moderation_enabled', type: 'INTEGER', default: '1' },
+        { name: 'codm_enabled', type: 'INTEGER', default: '1' }
+    ],
+    lydia_conversations: [
+        { name: 'guild_id', type: 'TEXT', default: 'NULL' }
+    ],
+    reminders: [
+        { name: 'status', type: 'TEXT', default: "'pending'" },
+        { name: 'delivered', type: 'INTEGER', default: '0' }
+    ],
+    user_premium: [
+        { name: 'notified', type: 'INTEGER', default: '0' }
+    ]
+    // Add more tables as needed
+};
+
+// ✅ SECURE: Whitelist of allowed table names
+const ALLOWED_TABLES = ['bot_state', 'users', 'shop_items', 'server_settings', 
+    'lydia_memory', 'lydia_agents', 'user_inventory', 'lydia_introductions',
+    'lydia_conversations', 'reminders', 'tiktok_notifications', 'warnings',
+    'moderation_logs', 'server_backups', 'auto_backup_settings', 'user_links',
+    'investments', 'birthdays', 'transfers', 'server_command_settings', 'scrims', 'scrim_signups', 'member_builds', 'clan_wars',
+    'server_economy_settings', 'bot_roles', 'user_premium'];
+
+
 function ensureTableColumns(db, tableName, expectedColumns) {
     // ✅ SECURE: Validate table name against whitelist
     if (!ALLOWED_TABLES.includes(tableName)) {
@@ -721,427 +947,10 @@ if (totalAdded > 0) {
 // ================= SERVER SETTINGS UTILITY =================
 const DEFAULT_SETTINGS = { prefix: PREFIX, welcomeChannel: null, logChannel: null, dailyChannel: null, shopChannel: null };
 
-function getServerSettings(guildId) {
-    if (client.settings.has(guildId)) return client.settings.get(guildId);
-    
-    try {
-        let settings = db.prepare(`SELECT * FROM server_settings WHERE guild_id = ?`).get(guildId);
-        if (!settings) {
-            // only a real server gets a row: a direct message ("DM"), a language code or nothing at all must never create one
-            if (/^[0-9]{15,25}$/.test(String(guildId))) db.prepare(`INSERT INTO server_settings (guild_id, prefix) VALUES (?, ?)`).run(guildId, DEFAULT_SETTINGS.prefix);
-            settings = { guild_id: guildId, prefix: DEFAULT_SETTINGS.prefix };
-        }
-        
-        // Env var fallback helpers — ONLY for owner server, never leak credentials to other guilds
-        const isOwnerServer = guildId === process.env.GUILD_ID;
-        const env = (dbCol, envKey) => {
-            if (settings[dbCol] !== null && settings[dbCol] !== undefined) return settings[dbCol];
-            // Only read env vars for the owner's server — prevents credential leakage to other guilds
-            if (isOwnerServer) return process.env[envKey] || null;
-            return null;
-        };
-        const envNum = (dbCol, envKey, fallback) => {
-            if (settings[dbCol] !== null && settings[dbCol] !== undefined) return settings[dbCol];
-            // Only read env vars for the owner's server — prevents credential leakage to other guilds
-            if (isOwnerServer) {
-                const v = process.env[envKey];
-                return v ? parseInt(v) : fallback;
-            }
-            return fallback;
-        };
-
-        const result = {
-            prefix: settings.prefix || DEFAULT_SETTINGS.prefix,
-            language: settings.language || 'auto',
-            timezone: settings.timezone || 'UTC',
-            
-            welcomeChannel: settings.welcome_channel,
-            logChannel: settings.log_channel,
-            dailyChannel: settings.daily_channel,
-            shopChannel: env('shop_channel', 'SHOP_CHANNEL_ID'),
-            marketChannel: settings.market_channel || null,
-            rulesChannel: settings.rules_channel,
-            generalChannel: settings.general_channel,
-            goodbyeChannel: settings.goodbye_channel,
-            levelChannel: settings.level_channel,
-            updatesChannel: settings.updates_channel || env('updates_channel', 'UPDATES_CHANNEL_ID'),
-            modLogChannel: settings.mod_log_channel,
-            autoModLogChannel: settings.automod_log_channel || null,
-            
-            welcomeMessage: settings.welcome_message,
-            goodbyeMessage: settings.goodbye_message,
-            levelUpMessage: settings.levelup_message,
-            levelupMessage: settings.levelup_message,   // the level-up code and the dashboard read this spelling
-            levelupChannel: settings.levelup_channel,   // and this one: it was missing, so a saved level-up channel was never used
-            
-            memberRole: settings.member_role,
-            autoRoleId: settings.auto_role_id,
-            muteRoleId: settings.mute_role_id,
-            joinRoleId: settings.join_role_id,
-            investorRoleId: settings.investor_role,
-            gamerRoleId: settings.gamer_role,
-            quizMasterRoleId: settings.quiz_master_role,
-            duelistRoleId: settings.duelist_role,
-            
-            // Ticket system — with env var fallback
-            ticketCategory: env('ticket_category', 'TICKET_CATEGORY_ID'),
-            ticketStaffRole: env('ticket_staff_role', 'TICKET_STAFF_ROLE_ID'),
-            ticketTranscriptChannel: env('ticket_transcript_channel', 'TICKET_TRANSCRIPT_CHANNEL_ID'),
-            ticketPanelChannel: env('ticket_panel_channel', 'TICKET_PANEL_CHANNEL_ID'),
-            ticketLogChannel: env('ticket_log_channel', 'TICKET_LOG_CHANNEL_ID'),
-            ticketAutoCloseHours: envNum('ticket_auto_close_hours', 'TICKET_AUTO_CLOSE_HOURS', 24),
-            ticketCategoriesConfig: parseJSONSafe(settings.ticket_categories_config, null),
-            ticketLimitPerUser: envNum('ticket_limit_per_user', 'TICKET_LIMIT_PER_USER', 1),
-            dailyInitiateRoleId: settings.daily_initiate_role,
-            dailyWarriorRoleId: settings.daily_warrior_role,
-            dailyChampionRoleId: settings.daily_champion_role,
-            dailyLegendRoleId: settings.daily_legend_role,
-            
-            welcomeEnabled: settings.welcome_enabled !== 0,
-            goodbyeEnabled: settings.goodbye_enabled !== 0,
-            afkEnabled: settings.afk_enabled !== 0,
-
-            // Currency name and emoji. The Economy page needs these to show what is saved:
-            // without them it always started from "credits" / the default emoji, and Save replaced your choice.
-            currencyName: settings.currency_name || null,
-            currencyEmoji: settings.currency_emoji || null,
-
-            // Raid protection and Advanced AutoMod. The dashboard needs these to show what is saved:
-            // without them its switches always started from the defaults, and Save could overwrite your choices.
-            // The fallbacks are what the raid engine itself uses when nothing is stored.
-            raidEnabled: settings.raid_enabled === 1 || settings.raid_enabled === '1',
-            raidThreshold: settings.raid_threshold ?? 5,
-            raidWindow: settings.raid_window ?? 30,
-            raidAction: settings.raid_action || 'alert',
-            raidMinAgeDays: settings.raid_min_age_days ?? 0,
-            advancedAutomod: settings.advanced_automod === 1 || settings.advanced_automod === '1',
-            marketEnabled: settings.market_enabled !== 0,
-            economy_enabled: settings.economy_enabled !== 0 ? 1 : 0,
-            leveling_enabled: settings.leveling_enabled !== 0 ? 1 : 0,
-            music_enabled: settings.music_enabled !== 0 ? 1 : 0,
-            tickets_enabled: settings.tickets_enabled !== 0 ? 1 : 0,
-            moderation_enabled: settings.moderation_enabled !== 0 ? 1 : 0,
-            codm_enabled: settings.codm_enabled !== 0 ? 1 : 0,
-            ai_enabled: settings.ai_enabled !== 0 ? 1 : 0,
-            aiEnabled: settings.ai_enabled !== 0,
-            autoModEnabled: settings.automod_enabled === 1,
-            autoModWhitelist: settings.automod_whitelist || null,
-            autoModSensitivity: settings.automod_sensitivity || 'medium',
-            autoModDomains: settings.automod_domains || null,
-            autoModLogChannel: settings.automod_log_channel || null,
-            linkFilterEnabled: settings.link_filter_enabled === 1,
-            inviteFilterEnabled: settings.invite_filter_enabled === 1,
-            
-            xpMultiplier: settings.xp_multiplier || 1.0,
-            xpCooldown: settings.xp_cooldown || 60,
-            xpMinGain: settings.xp_min_gain || 15,
-            xpMaxGain: settings.xp_max_gain || 35,
-            
-            startingBalance: settings.starting_balance || 0,
-            dailyBonus: settings.daily_bonus || 200,
-            maxDailyStreak: settings.max_daily_streak || 365,
-            
-            automodChannels: settings.automod_channels,
-            automod_whitelist: settings.automod_whitelist || null,
-            automod_log_channel: settings.automod_log_channel || null,
-            autoModSensitivity: settings.automod_sensitivity || 'medium',
-            spamThreshold: settings.spam_threshold || 5,
-            spamWindow: settings.spam_window || 5,
-            mentionLimit: settings.mention_limit || 10,
-            maxWarnings: settings.max_warnings || 3,
-            warningAction: settings.warning_action || 'mute',
-            
-            disabledCommands: parseJSONSafe(settings.disabled_commands, []),
-            disabledCategories: parseJSONSafe(settings.disabled_categories, []),
-            customCategories: parseJSONSafe(settings.custom_categories, {}),
-            
-            lydia_model: settings.lydia_model || 'auto',
-            lydiaModel: settings.lydia_model || 'auto',
-            openrouter: settings.lydia_model || 'auto',
-        };
-        
-        client.settings.set(guildId, result);
-        return result;
-    } catch (err) {
-        console.error(`[SETTINGS] Error for ${guildId}:`, err.message);
-        return { ...DEFAULT_SETTINGS };
-    }
-}
-
-function parseJSONSafe(str, fallback) {
-    // ✅ SECURE: Length check to prevent memory exhaustion
-    const MAX_JSON_LENGTH = 100000; // 100KB max
-    
-    if (!str) return fallback;
-    if (typeof str !== 'string') return fallback;
-    if (str.length > MAX_JSON_LENGTH) {
-        console.error(`[SECURITY] JSON string too long: ${str.length} chars (max ${MAX_JSON_LENGTH})`);
-        return fallback;
-    }
-    
-    // ✅ SECURE: Check for prototype pollution patterns
-    if (str.includes('__proto__') || str.includes('constructor') || str.includes('prototype')) {
-        console.error(`[SECURITY] Blocked JSON with prototype pollution pattern`);
-        return fallback;
-    }
-    
-    try {
-        return JSON.parse(str);
-    } catch (e) {
-        return fallback;
-    }
-}
-
-function updateServerSetting(guildId, setting, value) {
-    // Handle null/undefined — store as NULL in SQLite
-    if (value === null || value === undefined || value === 'null' || value === 'undefined') {
-        value = null;
-    }
-
-    if (setting === 'xpboost' && value !== null) {
-        const num = parseFloat(value);
-        if (isNaN(num) || num < 0.1 || num > 10.0) {
-            value = '1.0';
-        }
-    }
-
-    // Ensure row exists (upsert) before updating
-    try {
-        const exists = db.prepare('SELECT 1 FROM server_settings WHERE guild_id = ?').get(guildId);
-        if (!exists && /^[0-9]{15,25}$/.test(String(guildId))) {
-            db.prepare('INSERT OR IGNORE INTO server_settings (guild_id, prefix) VALUES (?, ?)').run(guildId, '.');
-        }
-    } catch (e) {}
-    
-    const columnMap = { 
-        prefix: 'prefix', 
-        welcome: 'welcome_channel', 
-        log: 'log_channel', 
-        daily: 'daily_channel', 
-        shop: 'shop_channel',
-        rules: 'rules_channel',
-        general: 'general_channel',
-        member: 'member_role',
-        message: 'welcome_message',
-        goodbye: 'goodbye_channel',
-        goodbyemsg: 'goodbye_message',
-        welcomeChannel: 'welcome_channel',
-        goodbyeChannel: 'goodbye_channel',
-        updates: 'updates_channel',
-        updatesChannel: 'updates_channel',
-        updates_channel: 'updates_channel',
-        logChannel: 'log_channel',
-        modLogChannel: 'mod_log_channel',
-        dailyChannel: 'daily_channel',
-        shopChannel: 'shop_channel',
-        marketChannel: 'market_channel',
-        rulesChannel: 'rules_channel',
-        generalChannel: 'general_channel',
-        levelupChannel: 'levelup_channel',
-        levelChannel: 'level_channel',
-        ticketTranscriptChannel: 'ticket_transcript_channel',
-        welcomeMessage: 'welcome_message',
-        welcomeEnabled: 'welcome_enabled',
-        goodbyeChannel: 'goodbye_channel',
-        goodbyeMessage: 'goodbye_message',
-        goodbyeEnabled: 'goodbye_enabled',
-        autoRoleId: 'auto_role_id',
-        joinRoleId: 'join_role_id',
-        muteRoleId: 'mute_role_id',
-        memberRole: 'member_role',
-        automodEnabled: 'automod_enabled',
-        automodSensitivity: 'automod_sensitivity',
-        spamThreshold: 'spam_threshold',
-        mentionLimit: 'mention_limit',
-        maxWarnings: 'max_warnings',
-        warningAction: 'warning_action',
-        linkFilterEnabled: 'link_filter_enabled',
-        inviteFilterEnabled: 'invite_filter_enabled',
-        currencyName: 'currency_name',
-        currencyEmoji: 'currency_emoji',
-        dailyBonus: 'daily_bonus',
-        startingBalance: 'starting_balance',
-        transferTax: 'transfer_tax',
-        xpMultiplier: 'xp_multiplier',
-        xpCooldown: 'xp_cooldown',
-        xpMinGain: 'xp_min_gain',
-        xpMaxGain: 'xp_max_gain',
-        aiEnabled: 'ai_enabled',
-        afkEnabled: 'afk_enabled',
-        marketEnabled: 'market_enabled',
-        economy_enabled: 'economy_enabled',
-        leveling_enabled: 'leveling_enabled',
-        music_enabled: 'music_enabled',
-        tickets_enabled: 'tickets_enabled',
-        moderation_enabled: 'moderation_enabled',
-        codm_enabled: 'codm_enabled',
-        ai_enabled: 'ai_enabled',
-        muterole: 'mute_role_id',
-        modlog: 'mod_log_channel',
-        autorole: 'auto_role_id',
-        xpboost: 'xp_multiplier',
-        levelchan: 'level_channel',
-        levelupchan: 'levelup_channel',
-        afk: 'afk_enabled',
-        market: 'market_channel',
-        marketenabled: 'market_enabled',
-        ai: 'ai_enabled',
-        automod: 'automod_enabled',
-        automodsensitivity: 'automod_sensitivity',
-        automodwhitelist: 'automod_whitelist',
-        automodchannels: 'automod_channels',
-        automodlog: 'automod_log_channel',
-        language: 'language',
-        // snake_case passthrough — channels.js uses full column names
-        welcome_channel: 'welcome_channel',
-        goodbye_channel: 'goodbye_channel',
-        log_channel: 'log_channel',
-        mod_log_channel: 'mod_log_channel',
-        daily_channel: 'daily_channel',
-        shop_channel: 'shop_channel',
-        market_channel: 'market_channel',
-        rules_channel: 'rules_channel',
-        general_channel: 'general_channel',
-        levelup_channel: 'levelup_channel',
-        level_channel: 'level_channel',
-        ticket_transcript_channel: 'ticket_transcript_channel',
-        // role keys — roles.js
-        investorRoleId: 'investor_role',
-        gamerRoleId: 'gamer_role',
-        quizMasterRoleId: 'quiz_master_role',
-        duelistRoleId: 'duelist_role',
-        ticketStaffRole: 'ticket_staff_role',
-        dailyInitiateRoleId: 'daily_initiate_role',
-        dailyWarriorRoleId: 'daily_warrior_role',
-        dailyChampionRoleId: 'daily_champion_role',
-        dailyLegendRoleId: 'daily_legend_role',
-        timezone: 'timezone',
-        welcome_enabled: 'welcome_enabled',
-        goodbye_enabled: 'goodbye_enabled',
-        xp_multiplier: 'xp_multiplier',
-        lydia_model: 'lydia_model',
-        raid_enabled: 'raid_enabled',
-        raid_threshold: 'raid_threshold',
-        raid_window: 'raid_window',
-        raid_action: 'raid_action',
-        raid_min_age_days: 'raid_min_age_days',
-        advanced_automod: 'advanced_automod',
-        raidEnabled: 'raid_enabled',
-        raidThreshold: 'raid_threshold',
-        raidWindow: 'raid_window',
-        raidAction: 'raid_action',
-        raidMinAgeDays: 'raid_min_age_days',
-        advancedAutomod: 'advanced_automod',
-        lydiaModel: 'lydia_model',
-        openrouter: 'lydia_model',
-        daily_bonus: 'daily_bonus',
-        link_filter_enabled: 'link_filter_enabled',
-        invite_filter_enabled: 'invite_filter_enabled',
-        market_enabled: 'market_enabled',
-        ai_enabled: 'ai_enabled',
-        xp_cooldown: 'xp_cooldown',
-        xp_min_gain: 'xp_min_gain',
-        xp_max_gain: 'xp_max_gain',
-        starting_balance: 'starting_balance',
-        max_daily_streak: 'max_daily_streak',
-        levelup_message: 'levelup_message',
-        join_role_id: 'join_role_id',
-        disabled_commands: 'disabled_commands',
-        disabled_categories: 'disabled_categories',
-        spam_threshold: 'spam_threshold',
-        spam_window: 'spam_window',
-        link_filter: 'link_filter_enabled',
-        invite_filter: 'invite_filter_enabled',
-        mention_limit: 'mention_limit',
-        max_warnings: 'max_warnings',
-        warning_action: 'warning_action',
-        investorrole: 'investor_role',
-        gamerrole: 'gamer_role',
-        quizmasterrole: 'quiz_master_role',
-        duelistrole: 'duelist_role',
-        dailyinitiaterole: 'daily_initiate_role',
-        dailywarriorrole: 'daily_warrior_role',
-        dailychampionrole: 'daily_champion_role',
-        dailylegendrole: 'daily_legend_role',
-        xpMinGain: 'xp_min_gain',
-        xpMaxGain: 'xp_max_gain',
-        startingBalance: 'starting_balance',
-        modLogChannel: 'mod_log_channel',
-        logChannel: 'log_channel',
-        dailyChannel: 'daily_channel',
-        shopChannel: 'shop_channel',
-        levelupMessage: 'levelup_message',
-        levelupChannel: 'levelup_channel',
-        automodLogChannel: 'automod_log_channel',
-        automodWhitelist: 'automod_whitelist',
-        spamWindow: 'spam_window',
-        levelChannel: 'level_channel',
-        currencyEmoji: 'currency_emoji',
-        ticketCategory: 'ticket_category',
-        ticketStaffRole: 'ticket_staff_role',
-        ticketTranscriptChannel: 'ticket_transcript_channel',
-        ticketPanelChannel: 'ticket_panel_channel',
-        ticketPanelChannelName: 'ticket_panel_channel_name',
-        ticketLogChannel: 'ticket_log_channel',
-        ticketAutoCloseHours: 'ticket_auto_close_hours',
-        ticketCategoriesConfig: 'ticket_categories_config',
-        ticketLimitPerUser: 'ticket_limit_per_user',
-        ticketcategory: 'ticket_category',
-        ticketstaffrole: 'ticket_staff_role',
-        tickettranscriptchannel: 'ticket_transcript_channel',
-        ticketpanelchannel: 'ticket_panel_channel',
-        ticketlogchannel: 'ticket_log_channel',
-        ticketautoclose: 'ticket_auto_close_hours',
-        ticketcategories: 'ticket_categories_config',
-        ticketlimit: 'ticket_limit_per_user',
-        // ── AutoMod + Raid (lowercase + snake_case aliases) ──
-        automoddomains:      'automod_domains',
-        automod_domains:     'automod_domains',
-        automodwhitelist:    'automod_whitelist',
-        automod_whitelist:   'automod_whitelist',
-        automodsensitivity:  'automod_sensitivity',
-        automod_sensitivity: 'automod_sensitivity',
-        automodchannels:     'automod_channels',
-        automod_channels:    'automod_channels',
-        automodlog:          'automod_log_channel',
-        automod_log_channel: 'automod_log_channel',
-        automodenabled:      'automod_enabled',
-        advancedautomod:     'advanced_automod',
-        linkfilterenabled:   'link_filter_enabled',
-        invitefilterenabled: 'invite_filter_enabled',
-        raidenabled:         'raid_enabled',
-        raidthreshold:       'raid_threshold',
-        raidwindow:          'raid_window',
-        raidaction:          'raid_action',
-        raidminagedays:      'raid_min_age_days',
-    };
-    
-    // ✅ SECURE: Strict whitelist validation
-    if (!columnMap.hasOwnProperty(setting)) {
-        console.error(`[SETTINGS] Rejected invalid setting: ${setting}`);
-        return false;
-    }
-    
-    const column = columnMap[setting];
-    
-    // ✅ SECURE: Additional column name sanitization (defense in depth)
-    if (!column || !/^[a-z_][a-z0-9_]*$/.test(column)) {
-        console.error(`[SETTINGS] Invalid column name pattern: ${column}`);
-        return false;
-    }
-    
-    try {
-        db.prepare(`UPDATE server_settings SET ${column} = ?, updated_at = strftime('%s', 'now') WHERE guild_id = ?`).run(value, guildId);
-        client.settings.delete(guildId);
-        return true;
-    } catch (err) {
-        console.error(`[SETTINGS] Update error:`, err.message);
-        return false;
-    }
-}
-
-client.getServerSettings = getServerSettings;
-client.updateServerSetting = updateServerSetting;
+// ================= SERVER SETTINGS =================
+const settingsManager = require('./lib/core/settings')(client, db, DEFAULT_SETTINGS);
+const getServerSettings = settingsManager.getServerSettings;
+const updateServerSetting = settingsManager.updateServerSetting;
 
 // ================= PER-SERVER COMMAND CONTROL =================
 function getServerCommandSettings(guildId, commandName) {
@@ -4022,7 +3831,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
 
     // ================= APPEAL MODAL SUBMIT =================
     // ================= PREMIUM ACTIVATION & MODAL =================
-    const premiumHandler = require('./lib/handlers/premium.js');
+    const premiumHandler = require('./lib/handlers/premium');
     if (await premiumHandler(interaction, client)) return;
 
     // ── VERIFY BUTTON ──
@@ -4105,11 +3914,11 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     }
 
     // ================= WELCOME & BIRTHDAY BUTTONS =================
-    const welcomeHandler = require('./lib/handlers/welcome.js');
+    const welcomeHandler = require('./lib/handlers/welcome');
     if (await welcomeHandler(interaction, client, memberChoice, initializeUser, cacheUserData)) return;
 
     // ================= DM & AFK BUTTONS =================
-    const dmHandler = require('./lib/handlers/dm.js');
+    const dmHandler = require('./lib/handlers/dm');
     if (await dmHandler(interaction, client, memberChoice, afkUsers)) return;
 
     // ================= GAME CENTER HUB BUTTONS =================
@@ -4621,7 +4430,7 @@ async function gracefulShutdown(signal) {
     }
     
     if (client.userTimeouts) { for (const [id, timeout] of client.userTimeouts) clearTimeout(timeout); client.userTimeouts.clear(); }
-    client.userDataCache.clear(); client.settings.clear(); client.pendingUserUpdates.clear();
+    if (client.userDataCache) client.userDataCache.clear(); if (client.settings) client.settings.clear(); if (client.pendingUserUpdates) client.pendingUserUpdates.clear();
     
     try { db.exec("PRAGMA wal_checkpoint(TRUNCATE);"); db.close(); console.log(`${green}[SHUTDOWN]${reset} Database closed`); } catch (err) {}
     if (client.heapGuardian) client.heapGuardian.stop();

@@ -782,7 +782,7 @@ const { resolveEmoji } = require('../lib/emoji-resolver');
         } catch (error) {
             console.error(`[CLAIM SLASH] FATAL ERROR:`, error);
             const _lang = client.detectLanguage ? client.detectLanguage('claim', interaction.guild?.id || 'DM') : 'en';
-            const errorMsg = { content: ns('daily', _lang).error || `${em('ic_off', '❌')} An error occurred during claim processing.`, flags: 64 };
+            const errorMsg = { content: ns('daily', _lang).error || `${em('ic_off', '❌')} Oops, something went wrong while claiming your daily. Try again!`, flags: 64 };
             if (interaction.deferred || interaction.replied) {
                 return interaction.editReply(errorMsg).catch(() => {});
             }

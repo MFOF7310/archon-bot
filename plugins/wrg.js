@@ -535,7 +535,7 @@ async function runGame(client, message, args, db, lang) {
     } catch(err) {
         console.error('[WRG v3] Fatal:', err.message);
         activeGames.delete(message.channel?.id);
-        message.reply(card(0xED4245, [{ text: `## ${ui.em('error', '❌')} Game Error\nAn error occurred. Please try again.` }])).catch(() => {});
+        message.reply(card(0xED4245, [{ text: `## ${ui.em('error', '❌')} Oops!\nSomething went wrong in the game. Give it another try!` }])).catch(() => {});
     }
 }
 

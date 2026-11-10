@@ -27,14 +27,14 @@
     "ai": "IA / Archon",
     "codm": "CODM"
   },
-  "globalError": "⚠️ **Une erreur est survenue.**\n> Je n'ai pas pu exécuter cette commande. Réessaie dans un instant.",
+  "globalError": "⚠️ **Oups, un petit souci est survenu de mon côté.**\n> Je n'ai pas pu exécuter cette commande. Réessaie dans un instant !",
   "accessDenied": "🚫 Tu n'as pas la permission de faire ça.",
   "pushKeyExpired": "🔐 **Clé Push Expirée.** Utilisez `/authorize` sur Telegram pour un nouveau jeton.",
   "tokenProtection": "⏳ **Protection du Jeton :** Attendez {waitTime}s",
   "commandDisabled": "🔒 Cette commande est désactivée sur ce serveur.",
   "lydiaFailed": "❌ Échec de l'exécution de la commande Archon.",
-  "genericError": "⚠️ **Une erreur est survenue.**\n> Réessaie dans un instant.",
-  "commandNotFound": "❌ Commande introuvable.",
+  "genericError": "⚠️ **Oups, un petit souci est survenu de mon côté.**\n> Réessaie dans un instant !",
+  "commandNotFound": "🤔 **Oups, je ne connais pas cette commande.** Tu as fait une faute de frappe ?",
   "commandExecuted": "✅ Commande exécutée.",
   "noHandler": "❌ Cette commande n'a pas de gestionnaire d'exécution.",
   "appealNotYours": "🔒 Ce bouton d'appel ne vous est pas destiné."

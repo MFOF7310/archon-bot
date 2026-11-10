@@ -197,5 +197,6 @@
     "btn_streak": "Récompenses de série",
     "btn_shield": "Acheter un bouclier",
     "btn_dashboard": "Tableau de bord"
-  }
+  },
+  "error": "⚠️ **Oups, un petit souci est survenu de mon côté.**\n> Réessaie dans un instant !"
 }
