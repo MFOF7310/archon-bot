@@ -193,7 +193,7 @@ function activityCard(client, lang, db, guild) {
     items.push(
         { rule: true },
         { text: `-# ${_('act_totals', { cmds: n(cmds), ai: n(s.ai_chats), people: n(Object.keys(s.users_helped || {}).length), buttons: n(s.buttons_clicked) })}\n-# ${_('act_level', { level: s.level, rank: r.rank, total: r.total })}` },
-        { row: new ActionRowBuilder().addComponents(linkBtn(_('btn_insights'), `${DASHBOARD_URL}/dashboard/${guild.id}`, 'ic_chart', '📊')) },
+        { row: new ActionRowBuilder().addComponents(linkBtn(_('btn_insights'), `${DASHBOARD_URL}/dashboard/${guild.id}/insights`, 'ic_chart', '📊')) },
         { text: foot(client) },
     );
     return v2.card(0x7f77dd, items);
