@@ -1,66 +1,37 @@
 const { storeUrl } = require('./ytv.js');
 const { shq } = require('../safe');
 
+const { progress, esc } = require('../ui');
+const { tr } = require('../lang/media');
+
 module.exports = {
     name: 'yts',
     aliases: ['ytsearch', 'ysearch', 'ys'],
-    description: 'Search YouTube',
+    description: 'Search YouTube and download a result',
     category: 'Media',
-    usage: '/yts <query>',
+    usage: '/yts <search>',
 
     handler: async (ctx) => {
-        const query = ctx.args.join(' ');
-        if (!query) return ctx.replyHTML(
-            `🔍 <b>YouTube Search</b>\n\n` +
-            `<code>/yts &lt;song or video name&gt;</code>\n\n` +
-            `<i>I'll find the top results and let you pick what to download!</i>`
-        );
+        const T = tr(ctx);
+        const query = ctx.args.join(' ').trim();
+        if (!query) return ctx.replyHTML(T('usage_yts'));
 
         await ctx.action('typing');
-        const proc = await ctx.replyHTML(`🔍 <i>Searching for "${query.substring(0, 40)}"...</i>`);
-
+        const st = await progress(ctx, T('looking'));
         try {
-            const { exec } = require('child_process');
-            const results = await new Promise((res, rej) =>
-                exec(
-                    `yt-dlp --cookies /opt/youtube_cookies.txt ${shq('ytsearch5:' + query)} --print "%(title)s|||%(webpage_url)s|||%(duration>%M:%S)s|||%(uploader)s" --no-playlist --flat-playlist`,
-                    { timeout: 30000 }, (err, stdout) => err ? rej(err) : res(stdout)
-                )
-            );
+            const out = await new Promise((res, rej) => require('child_process').exec(
+                `yt-dlp --cookies /opt/youtube_cookies.txt ${shq('ytsearch5:' + query)} --print "%(title)s|||%(webpage_url)s|||%(duration_string)s|||%(uploader)s" --no-playlist --flat-playlist`,
+                { timeout: 30000 }, (err, stdout) => err ? rej(err) : res(stdout)));
+            const rows = String(out).trim().split('\n').filter(Boolean).map((l) => l.split('|||')).filter((r) => r[1]);
+            if (!rows.length) return st.end(T('no_results', { q: query.slice(0, 40) }));
 
-            const lines = results.trim().split('\n').filter(Boolean);
-            if (!lines.length) throw new Error('No results');
-
-            let msg = `🔍 <b>Results for "${query.substring(0, 30)}"</b>\n\n`;
-            const buttons = [];
-
-            lines.forEach((line, i) => {
-                const [title, url, duration, uploader] = line.split('|||');
-                const clean = (title || '?').substring(0, 55);
-                msg += `<b>${i + 1}.</b> <a href="${url}">${clean}</a>\n`;
-                msg += `   👤 ${uploader || '?'} • ⏱ ${duration || '?'}\n\n`;
-                const key = storeUrl(url);
-                buttons.push([
-                    { text: `🎬 ${i + 1}. Video`, callback_data: `ytdl:v::${key}` },
-                    { text: `🎵 ${i + 1}. Audio`, callback_data: `ytdl:a::${key}` }
-                ]);
-            });
-
-            msg += `<i>Tap a button below to download directly!</i>`;
-
-            await ctx.bridge.editMessage(ctx.chatId, proc?.data?.message_id, msg, {
-                parse_mode: 'HTML',
-                extra: { reply_markup: { inline_keyboard: buttons } }
-            }).catch(async () => {
-                await ctx.replyHTML(msg, { extra: { reply_markup: { inline_keyboard: buttons } } });
-            });
-
-        } catch(e) {
+            // One line per result; its button opens the quality choice in this same message
+            const lines = rows.map(([title, , dur, who], i) => `<b>${i + 1}.</b> ${esc((title || '?').slice(0, 60))}\n<i>${esc([who, dur].filter(Boolean).join(' · '))}</i>`);
+            const kb = rows.map(([title, url], i) => [{ text: `${i + 1}. ${String(title || '?').slice(0, 40)}`, callback_data: `ytdl:v::${storeUrl(url)}` }]);
+            return st.end(`${T('results', { q: query.slice(0, 40) })}\n\n${lines.join('\n\n')}\n\n<i>${T('pick_result')}</i>`, { inline_keyboard: kb });
+        } catch (e) {
             console.error('[YTS]', e.message);
-            await ctx.bridge.editMessage(ctx.chatId, proc?.data?.message_id,
-                `😔 <b>Search came up empty!</b>\n\nTry different keywords — be more specific or check the spelling.`,
-                { parse_mode: 'HTML' }
-            ).catch(() => {});
+            return st.end(T('no_results', { q: query.slice(0, 40) }));
         }
-    }
+    },
 };

@@ -1,38 +1,18 @@
-const { dlVideo, getInfo } = require('./_media.js');
-const fs = require('fs');
+const { grab } = require('./_media.js');
+const { tr } = require('../lang/media');
 
 module.exports = {
     name: 'twitter',
     aliases: ['tw', 'xdl', 'tweet'],
-    description: 'Download Twitter/X videos',
+    description: 'Download a video from X (Twitter)',
     category: 'Media',
-    usage: '/tw <url>',
+    usage: '/tw <link>',
 
     handler: async (ctx) => {
-        const url = ctx.args[0];
-        if (!url || (!url.includes('twitter') && !url.includes('x.com')))
-            return ctx.replyHTML(`🐦 <b>Twitter/X Downloader</b>\n\nDrop a tweet link with a video!\n\n<code>/tw &lt;url&gt;</code>`);
-
-        await ctx.action('upload_video');
-        const proc = await ctx.replyHTML(ctx.t('media_fetching_tw', {}));
-
-        try {
-            const normalizedUrl = url.replace('x.com', 'twitter.com');
-            const [info, filePath] = await Promise.all([
-                getInfo(normalizedUrl).catch(() => ({})),
-                dlVideo(normalizedUrl, '720')
-            ]);
-            const buf = fs.readFileSync(filePath);
-            const caption = [
-                info.title ? `🐦 ${info.title.substring(0, 100)}` : `🐦 <b>Twitter/X</b>`,
-                info.uploader ? `👤 @${info.uploader}` : '',
-                `🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`
-            ].filter(Boolean).join('\n');
-            await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
-            await ctx.sendVideoBuffer(buf, { caption, parse_mode: 'HTML' });
-        } catch(e) {
-            console.error('[TW]', e.message);
-            await ctx.replyHTML(ctx.t('media_failed_tw', {}));
-        }
-    }
+        const T = tr(ctx);
+        const url = String(ctx.args[0] || '');
+        if (!url) return ctx.replyHTML(T('usage', { cmd: '/tw', example: '/tw https://x.com/…/status/…' }));
+        if (!/(twitter\.com|x\.com)\//.test(url)) return ctx.replyHTML(T('wrong_site', { site: 'X' }));
+        return grab(ctx, url.replace(/\/\/(www\.)?x\.com\//, '//twitter.com/'), 'X', '720');
+    },
 };

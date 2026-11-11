@@ -91,31 +91,30 @@ async function dlInstagramMetaRetry(url, tries = 3) {
     return null;
 }
 
+const { progress, caption: uiCaption } = require('../ui');
+const { tr } = require('../lang/media');
+
 module.exports = {
     name: 'instagram',
     aliases: ['ig', 'insta', 'reel'],
-    description: 'Download Instagram reels & posts',
+    description: 'Download an Instagram reel, post or album',
     category: 'Media',
     usage: '/ig <url>',
 
     handler: async (ctx) => {
+        const T = tr(ctx);
         let url = ctx.args[0];
-        if (!url || !url.includes('instagram'))
-            return ctx.replyHTML(
-                '📸 <b>Instagram Downloader</b>\n\n' +
-                'Send me a public Instagram reel or post link!\n\n' +
-                '<code>/ig https://instagram.com/reel/...</code>\n\n' +
-                '<i>⚠️ Only public posts can be downloaded.</i>'
-            );
+        if (!url) return ctx.replyHTML(T('usage', { cmd: '/ig', example: '/ig https://www.instagram.com/reel/…' }));
+        if (!url.includes('instagram.com')) return ctx.replyHTML(T('wrong_site', { site: 'Instagram' }));
 
         // Clean URL: remove query parameters like ?img_index=... that trigger Instagram's bot detection
         url = url.split('?')[0];
         if (!url.endsWith('/')) url += '/';
 
         await ctx.action('upload_video');
-        const proc = await ctx.bridge.sendTo(ctx.chatId, '⏳ <b>Fetching Instagram content...</b>', { parse_mode: 'HTML' });
-        const statusId = proc?.data?.message_id;
-        const edit = (t) => ctx.bridge.editMessage(ctx.chatId, statusId, t, { parse_mode: 'HTML' }).catch(() => {});
+        // One message for the whole download (see ../ui.js)
+        const st = await progress(ctx, T('getting', { what: T('what_video') }));
+        const edit = (t) => st.set(t);
 
         const uid = Date.now() + '_' + Math.floor(Math.random() * 10000);
         const rawPath = path.join(TMP, 'ig_' + uid + '_raw.mp4');
@@ -123,7 +122,6 @@ module.exports = {
         const normPath = path.join(TMP, 'ig_' + uid + '_norm.mp4');
 
         try {
-            await edit('📸 <i>Downloading... hang tight!</i>');
 
         // 1. Try ultra-igdl for carousels/images
         try {
@@ -158,8 +156,8 @@ module.exports = {
                     if (result.code === 200 && result.media && result.media.length > 0) {
                         const isVideo = result.media.some(m => m.type === 'video');
                         if (!isVideo || result.media.length > 1) {
-                            await edit(`📤 <b>Sending album (${result.media.length} items)...</b>`);
-                            const caption = '📸 <b>Instagram</b>' + String.fromCharCode(10) + '👤 @' + (result.username || 'user') + String.fromCharCode(10, 10) + '🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱';
+                            await edit(T('sending'));
+                            const caption = uiCaption('Instagram', result.username ? '@' + result.username : '', T('album', { n: result.media.length }));
                             // Telegram accepts max 10 items per album. We chunk the media.
                     const mediaList = result.media.map(m => m.type === 'video' ? { type: 'video', media: m.url } : { type: 'photo', media: m.url });
                     const chunks = [];
@@ -176,7 +174,7 @@ module.exports = {
                         }
                         await ctx.bridge.sendMediaGroup(ctx.chatId, group);
                     }
-                            await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});
+                            await st.done();
                             return; // Done!
                         }
                     }
@@ -201,7 +199,7 @@ module.exports = {
 
             let sendPath = rawPath;
             if (sizeMB >= 48) {
-                await edit('🗜️ <b>Compressing...</b> (' + sizeMB.toFixed(0) + 'MB → ~45MB)\n<i>This may take a moment</i>');
+                await edit(T('compressing'));
                 console.log('[INSTAGRAM] Compressing...');
                 const ok = compressVideo(rawPath, compressedPath, 45);
                 if (ok && fs.existsSync(compressedPath)) {
@@ -213,35 +211,21 @@ module.exports = {
                 }
             }
 
-            await edit('📤 <b>Sending...</b>');
+            await edit(T('sending'));
             const buf = fs.readFileSync(sendPath);
 
             const desc = meta?.description || meta?.title || null;
             const uploader = meta?.uploader || meta?.channel || null;
-            const caption =
-                (desc ? '📸 ' + desc.substring(0, 180) + '\n' : '📸 <b>Instagram</b>\n') +
-                (uploader ? '👤 @' + uploader + '\n' : '') +
-                (igHasAudio(meta) ? '' : '🔇 <i>Audio not available for this reel in this region</i>\n') +
-                '\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱';
+            const caption = uiCaption(desc ? desc.split('\n')[0] : 'Instagram', 'Instagram', uploader ? '@' + uploader : '') + (igHasAudio(meta) ? '' : `\n<i>${T('no_audio')}</i>`);
 
-            await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});
             await ctx.sendVideoBuffer(buf, { caption, parse_mode: 'HTML' });
+            await st.done();
 
         } catch(e) {
             console.error('[INSTAGRAM]', e.message);
             // empty media / CSRF / 4xx = transient anti-bot rate-limit: ask for a retry, don't blame the link
             const transient = /empty media|CSRF|429|rate.?limit|401|403/i.test(e.message || '');
-            const msg = transient
-                ? '⏳ <b>Instagram rate-limited this request!</b>\n\n' +
-                  '• Wait ~1 minute, then send the link again\n' +
-                  '• Your link is fine - this is temporary\n\n' +
-                  '<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
-                : '😔 <b>Couldn\'t download this post!</b>\n\n' +
-                  '• Account may be private\n' +
-                  '• Post may have been removed\n' +
-                  '• Try with a direct public reel link\n\n' +
-                  '<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>';
-            await edit(msg);
+            await st.end(transient ? T('rate_limited', { site: 'Instagram' }) : T('failed_site', { site: 'Instagram' }));
         } finally {
             try { if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath); } catch {}
             try { if (fs.existsSync(compressedPath)) fs.unlinkSync(compressedPath); } catch {}

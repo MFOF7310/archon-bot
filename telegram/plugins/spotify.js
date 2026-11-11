@@ -1,45 +1,34 @@
-const { shq } = require('../safe');
+// /spotify <link or song> — Spotify streams are protected, so the song is found on YouTube and sent as audio.
+// A Spotify link is turned into its title first (yt-dlp can't open Spotify links, so they always failed).
+const https = require('https');
+const { tr } = require('../lang/media');
+
+function spotifyTitle(url) {
+    return new Promise((resolve) => {
+        https.get('https://open.spotify.com/oembed?url=' + encodeURIComponent(url), { timeout: 8000 }, (res) => {
+            let d = ''; res.on('data', (c) => d += c);
+            res.on('end', () => { try { resolve(JSON.parse(d).title || null); } catch { resolve(null); } });
+        }).on('error', () => resolve(null)).on('timeout', function () { this.destroy(); resolve(null); });
+    });
+}
+
 module.exports = {
     name: 'spotify',
     aliases: ['sp', 'spoti', 'spdl'],
-    description: 'Download Spotify tracks via YouTube match',
+    description: 'Get a song as audio, from a Spotify link or its name',
     category: 'Media',
-    usage: '/sp <spotify url or song name>',
+    usage: '/sp <Spotify link or song name>',
 
     handler: async (ctx) => {
-        const input = ctx.args.join(' ');
-        if (!input) return ctx.replyHTML(`🎵 <b>Spotify Downloader</b>\n\n<code>/sp &lt;spotify url or song name&gt;</code>\n\n💡 Also works with just song names: <code>/sp Kizz Daniel Buga</code>`);
-
-        await ctx.action('upload_audio');
-        await ctx.replyHTML(`🎵 <i>Finding that track...</i>`);
-
-        try {
-            const { exec } = require('child_process');
-            // If Spotify URL, use yt-dlp spotify support; otherwise search YouTube
-            const query = input.includes('spotify.com') ? input : `ytsearch1:${input.replace(/["\']/g, '')}`;
-            const streamUrl = await new Promise((res, rej) =>
-                exec(`yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt -f "bestaudio[ext=m4a]/bestaudio" -g ${shq(query)}`,
-                    { timeout: 30000 }, (err, stdout) => err ? rej(err) : res(stdout.trim().split('\n')[0]))
-            );
-
-            const titleRes = await new Promise((res) =>
-                exec(`yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt --print "%(title)s|||%(uploader)s" ${shq(query)}`,
-                    { timeout: 20000 }, (err, stdout) => {
-                        if (err) return res({ title: input, uploader: '' });
-                        const [title, uploader] = stdout.trim().split('|||');
-                        res({ title: title?.trim(), uploader: uploader?.trim() });
-                    })
-            );
-
-            await ctx.sendAudio(streamUrl, {
-                caption: `🎵 <b>${(titleRes.title || input).substring(0, 80)}</b>\n👤 ${titleRes.uploader || ''}\n\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`,
-                title: titleRes.title?.substring(0, 64) || input.substring(0, 64),
-                performer: titleRes.uploader || 'ARCHON',
-                parse_mode: 'HTML'
-            });
-        } catch(e) {
-            console.error('[SP]', e.message);
-            await ctx.replyHTML(`❌ Couldn\'t find that — try the song name directly like: <code>/sp Kizz Daniel Buga</code>`);
+        const T = tr(ctx);
+        let input = ctx.args.join(' ').trim();
+        if (!input) return ctx.replyHTML(T('usage', { cmd: '/sp', example: '/sp Kizz Daniel Buga' }));
+        if (/open\.spotify\.com\//.test(input)) {
+            const title = await spotifyTitle(input.split(/\s/)[0]);
+            if (!title) return ctx.replyHTML(T('failed_site', { site: 'Spotify' }));
+            input = title;
         }
-    }
+        ctx.args = [input];
+        return ctx.bridge.getCommand('yta').handler(ctx);
+    },
 };

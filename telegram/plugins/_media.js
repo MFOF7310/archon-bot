@@ -106,4 +106,23 @@ async function getAvailableQualities(url) {
     });
 }
 
-module.exports = { dlVideo, dlAudio, getInfo, getAvailableQualities, clean, TMP, COOKIES };
+// A whole download for the simple sites (X, Snapchat, Vimeo…): one status message, the video, nothing else
+async function grab(ctx, url, site, quality = '720') {
+    const { progress, caption } = require('../ui');
+    const T = require('../lang/media').tr(ctx);
+    const st = await progress(ctx, T('getting', { what: T('what_video') }));
+    await ctx.action('upload_video');
+    try {
+        const [info, file] = await Promise.all([getInfo(url).catch(() => ({})), dlVideo(url, quality)]);
+        const mb = fs.statSync(file).size / 1048576;
+        if (mb >= 49) return st.end(T('too_big_lower', { mb: Math.round(mb) }));
+        await st.set(T('sending'));
+        await ctx.sendVideoBuffer(fs.readFileSync(file), { caption: caption(info.title || site, site, info.uploader, info.duration), parse_mode: 'HTML' });
+        return st.done();
+    } catch (e) {
+        console.error(`[${site}]`, e.message);
+        return st.end(T('failed_site', { site }));
+    }
+}
+
+module.exports = { dlVideo, dlAudio, getInfo, getAvailableQualities, clean, grab, TMP, COOKIES };

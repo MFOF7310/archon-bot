@@ -239,33 +239,14 @@ async function handleCallback(update, bridge, client) {
         }
 
         answerCBQ(bridge, cbq.id);
-        await bridge.editMessage(chatId, msgId,
-            mediaType === 'v'
-                ? (quality === 'best'
-                    ? `🎬 <i>Starting BEST quality download...</i>`
-                    : (quality ? `🎬 <i>Starting ${quality}p download...</i>` : `🎬 <i>Opening quality picker...</i>`))
-                : `🎵 <i>Starting audio download...</i>`,
-            { parse_mode: 'HTML' }
-        ).catch(() => {});
-
+        // The message with the quality buttons becomes the status line of the download: one message, no pile-up
+        ctx.statusMsgId = msgId;
         try {
-            if (mediaType === 'v') {
-                const ytv = require('./plugins/ytv');
-                ctx.args = [url, quality];
-                await ytv.handler(ctx);
-            } else {
-                const yta = require('./plugins/yta');
-                ctx.args = [url];
-                await yta.handler(ctx);
-            }
-            // Result stands on its own - clear the Starting/progress line
-            await bridge.deleteMessage(chatId, msgId).catch(() => {});
-        } catch(e) {
+            if (mediaType === 'v') { ctx.args = [url, quality]; await require('./plugins/ytv').handler(ctx); }
+            else { ctx.args = [url]; await require('./plugins/yta').handler(ctx); }
+        } catch (e) {
             console.error('[YTDL CB]', e.message);
-            await bridge.editMessage(chatId, msgId,
-                `😔 <b>Download failed!</b>\n\nTry again or use the command directly.`,
-                { parse_mode: 'HTML' }
-            ).catch(() => {});
+            await bridge.editMessage(chatId, msgId, require('./lang/media').tr(ctx)('failed'), { parse_mode: 'HTML' }).catch(() => {});
         }
         return;
     }

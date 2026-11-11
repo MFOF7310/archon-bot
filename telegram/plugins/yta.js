@@ -43,82 +43,44 @@ function getDirectAudioUrl(query) {
     });
 }
 
+const { progress, caption } = require('../ui');
+const { tr } = require('../lang/media');
+
 module.exports = {
     name: 'yta',
     aliases: ['ytaudio', 'ytmp3', 'ya'],
-    description: 'Download YouTube audio as MP3',
+    description: 'Get the audio of a YouTube video as an MP3, from a link or a song name',
     category: 'Media',
-    usage: '/yta <url or song name>',
+    usage: '/yta <link or song name>',
 
     handler: async (ctx) => {
-        const input = ctx.args.join(' ');
-        if (!input) return ctx.replyHTML(
-            `🎵 <b>YouTube Audio Downloader</b>\n\n` +
-            `Send a link or just the song name!\n\n` +
-            `<code>/yta https://youtube.com/watch?v=...</code>\n` +
-            `<code>/yta Mama Le Succes Bogotiguini</code>\n\n` +
-            `<i>MP3 • best quality • direct link for large files</i>`
-        );
+        const T = tr(ctx);
+        const input = ctx.args.join(' ').trim();
+        if (!input) return ctx.replyHTML(T('usage_yta'));
 
+        const st = await progress(ctx, T('looking'));
         await ctx.action('upload_audio');
-        const proc = await ctx.replyHTML(`🎵 <i>Looking up "${input.substring(0, 40)}"...</i>`);
-        const edit = (text) => ctx.bridge.editMessage(ctx.chatId, proc?.data?.message_id, text, { parse_mode: 'HTML' }).catch(() => {});
+        const query = /^https?:\/\//.test(input) ? input : `ytsearch1:${input}`;
+        const info = await getInfo(query).catch(() => ({}));
+        const title = (info.title || input).slice(0, 90);
+        await st.set(T('getting', { what: T('what_audio') }) + `\n<b>${require('../ui').esc(title)}</b>`);
 
-        try {
-            const isUrl = input.startsWith('http');
-            const query = isUrl ? input : `ytsearch1:${input}`;
-
-            const info = await getInfo(query).catch(() => ({}));
-            const title = info.title ? `<b>${info.title.substring(0, 80)}</b>` : `<b>Audio</b>`;
-            const meta = [info.uploader, info.duration].filter(Boolean).join(' • ');
-
-            await edit(`🎵 <i>Downloading</i> ${title}\n${meta}\n\n⏳ <i>Grabbing the audio...</i>`);
-
-            let filePath;
-            try {
-                filePath = await dlAudioSmart(query);
-            } catch {
-                // fallback
-            }
-
-            if (filePath) {
-                const buf = fs.readFileSync(filePath);
-                const caption = [`🎵 ${title}`, meta, `\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`].filter(Boolean).join('\n');
-                await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
-                await ctx.sendAudioBuffer(buf, {
-                    caption,
-                    title: info.title?.substring(0, 64) || input.substring(0, 64),
-                    performer: info.uploader || 'ARCHON',
-                    parse_mode: 'HTML'
-                });
-            } else {
-                await edit(`📦 <i>File too large — grabbing direct link...</i>`);
-                try {
-                    const url = await getDirectAudioUrl(query);
-                    await edit(
-                        `🎵 ${title}\n${meta}\n\n` +
-                        `📦 <b>Too large to send directly!</b>\n\n` +
-                        `No worries — tap below to download your audio:\n` +
-                        `<a href="${url.replace(/&/g, '&amp;')}">⬇️ Download Audio</a>\n\n` +
-                        `<i>⚠️ Link expires soon — save it quickly!\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>`
-                    );
-                } catch {
-                    await edit(
-                        `🎵 ${title}\n\n😔 <b>Couldn't grab this one.</b>\n\n` +
-                        `YouTube might be blocking it right now.\n` +
-                        `Try again in a few minutes!\n\n` +
-                        `<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>`
-                    );
-                }
-            }
-        } catch(e) {
-            console.error('[YTA]', e.message);
-            await edit(
-                `😔 <b>Something went wrong!</b>\n\n` +
-                `YouTube is being tricky right now.\n` +
-                `Try again or use a direct link!\n\n` +
-                `<i>🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>`
-            );
+        let file = null;
+        try { file = await dlAudioSmart(query); } catch (e) { console.error('[YTA]', e.message); }
+        if (file) {
+            await st.set(T('sending'));
+            await ctx.sendAudioBuffer(fs.readFileSync(file), {
+                caption: caption(title, info.uploader, info.duration),
+                title: title.slice(0, 64), performer: info.uploader || 'ARCHON', parse_mode: 'HTML',
+            });
+            return st.done();
         }
-    }
+        // Over 50 MB, or yt-dlp refused the download: a link straight from YouTube instead
+        try {
+            const link = await getDirectAudioUrl(query);
+            return st.end(T('too_big', { title, mb: '50+' }), { inline_keyboard: [[{ text: T('dl_btn'), url: link }]] });
+        } catch {
+            return st.end(T('failed'));
+        }
+    },
 };

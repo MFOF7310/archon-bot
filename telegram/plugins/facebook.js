@@ -83,89 +83,51 @@ async function getFacebookImages(url) {
     });
 }
 
+const { progress, caption } = require('../ui');
+const { tr } = require('../lang/media');
+
 module.exports = {
     name: 'facebook',
     aliases: ['fb', 'fbdl'],
-    description: 'Download Facebook videos',
+    description: 'Download a public Facebook video or the pictures of a post',
     category: 'Media',
-    usage: '/fb <url>',
+    usage: '/fb <link>',
 
     handler: async (ctx) => {
-        const url = ctx.args[0];
-        if (!url || (!url.includes('facebook') && !url.includes('fb.watch')))
-            return ctx.replyHTML(
-                '📘 <b>Facebook Video Downloader</b>\n\n' +
-                'Send me a public Facebook video link!\n\n' +
-                '<code>/fb https://facebook.com/video/...</code>\n\n' +
-                '<i>⚠️ Only public videos can be downloaded.</i>'
-            );
+        const T = tr(ctx);
+        const url = String(ctx.args[0] || '');
+        if (!url) return ctx.replyHTML(T('usage', { cmd: '/fb', example: '/fb https://www.facebook.com/…/videos/…' }));
+        if (!/facebook\.com|fb\.watch/.test(url)) return ctx.replyHTML(T('wrong_site', { site: 'Facebook' }));
+        if (isPrivateUrl(url)) return ctx.replyHTML(T('failed_private'));
 
-        if (isPrivateUrl(url))
-            return ctx.replyHTML(
-                '🔒 <b>Private Video!</b>\n\n' +
-                'This video is private or requires login to view.\n\n' +
-                '<b>To download private videos:</b>\n' +
-                '• Open the video on Facebook\n' +
-                '• Make sure it\'s set to <b>Public</b>\n' +
-                '• Copy the direct video link\n\n' +
-                '<i>Only public Facebook videos can be downloaded 🦅</i>'
-            );
+        const st = await progress(ctx, T('getting', { what: T('what_video') }));
 
-        // Détection : si l'URL ne contient pas /videos/ ou /watch, on tente les images
-        const isVideo = url.includes('/videos/') || url.includes('/watch') || url.includes('/reel/');
-        
+        // A post that isn't a video: its pictures as an album
+        const isVideo = /\/videos\/|\/watch|\/reel\//.test(url);
         if (!isVideo) {
             try {
                 await ctx.action('upload_photo');
-                const imgUrls = await getFacebookImages(url);
-                
-                if (imgUrls.length > 0) {
-                    // Découpage en paquets de 10 pour Telegram
-                    const chunks = [];
-                    for (let i = 0; i < imgUrls.length; i += 10) {
-                        chunks.push(imgUrls.slice(i, i + 10));
-                    }
-                    
-                    for (let i = 0; i < chunks.length; i++) {
-                        const group = chunks[i].map(u => ({ type: 'photo', media: u }));
-                        if (i === 0) {
-                            group[0].caption = '📘 <b>Facebook Images</b>\n\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱';
-                            group[0].parse_mode = 'HTML';
-                        }
-                        await ctx.bridge.sendMediaGroup(ctx.chatId, group);
-                    }
-                    
-                    return; // Images envoyées avec succès, sans message de statut
+                const imgs = await getFacebookImages(url);
+                for (let i = 0; i < imgs.length; i += 10) {
+                    const group = imgs.slice(i, i + 10).map((u) => ({ type: 'photo', media: u }));
+                    if (i === 0) { group[0].caption = caption('Facebook', T('album', { n: imgs.length })); group[0].parse_mode = 'HTML'; }
+                    await ctx.bridge.sendMediaGroup(ctx.chatId, group);
                 }
+                return st.done();
             } catch (e) {
-                console.log('[FACEBOOK] Image extraction failed, falling back to video:', e.message);
-                // On continue vers la logique vidéo ci-dessous
+                console.log('[FACEBOOK] no pictures, trying as a video:', e.message);
             }
         }
-        
-        await ctx.action('upload_video');
-        const proc = await ctx.replyHTML('📘 <i>Fetching Facebook video...</i>');
-        const edit = (t) => ctx.bridge.editMessage(ctx.chatId, proc?.data?.message_id, t, { parse_mode: 'HTML' }).catch(() => {});
 
+        await ctx.action('upload_video');
         try {
-            await edit('📘 <i>Downloading video... hang tight!</i>');
-            const filePath = await dlFacebook(url);
-            const buf = fs.readFileSync(filePath);
-            await ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {});
-            await ctx.sendVideoBuffer(buf, {
-                caption: '📘 <b>Facebook Video</b>\n\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱',
-                parse_mode: 'HTML'
-            });
-        } catch(e) {
+            const file = await dlFacebook(url);
+            await st.set(T('sending'));
+            await ctx.sendVideoBuffer(fs.readFileSync(file), { caption: caption('Facebook', 'Facebook'), parse_mode: 'HTML' });
+            return st.done();
+        } catch (e) {
             console.error('[FACEBOOK]', e.message);
-            await edit(
-                '😔 <b>Couldn\'t download this video!</b>\n\n' +
-                'This could be because:\n' +
-                '• Video is private or friends-only\n' +
-                '• Link has expired\n' +
-                '• Video was removed\n\n' +
-                '<i>Try with a direct public video link!\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱</i>'
-            );
+            return st.end(T('failed_site', { site: 'Facebook' }));
         }
-    }
+    },
 };

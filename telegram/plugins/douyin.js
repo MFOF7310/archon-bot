@@ -10,6 +10,9 @@ const { execSync } = require('child_process');
 
 function escapeHTML(t) { return !t || typeof t !== 'string' ? '' : t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
 
+const { progress, caption: uiCaption } = require('../ui');
+const { tr } = require('../lang/media');
+
 module.exports = {
     name: 'douyin',
     description: 'Download TikTok & Douyin videos in HD',
@@ -19,16 +22,11 @@ module.exports = {
 
     handler: async (ctx) => {
         // Extract URL from message (supports short links in long text)
+        const T = tr(ctx);
         const text = ctx.message?.text || ctx.text || '';
-        const urlMatch = text.match(/(https?:\/\/[^\s]+)/);
-        let url = urlMatch?.[0];
-        
-        const cmd = ctx.message.text?.split(' ')[0]?.toLowerCase() || '/douyin';
-        const platform = cmd.includes('tt') || cmd.includes('tik') ? 'TikTok' : 'Douyin';
-
-        if (!url) {
-            return ctx.replyHTML(`🎬 <b>${platform} Downloader</b>\n\nJust send me a ${platform} link and I'll grab it for you!\n\n<code>/${cmd.replace('/', '')} &lt;url&gt;</code>`);
-        }
+        let url = (ctx.args || []).find((a) => /^https?:\/\//.test(a)) || text.match(/(https?:\/\/[^\s]+)/)?.[0];
+        const platform = /douyin/.test(url || text) ? 'Douyin' : 'TikTok';
+        if (!url) return ctx.replyHTML(T('usage', { cmd: '/tiktok', example: '/tiktok https://vm.tiktok.com/…' }));
 
         // Follow redirects for short links (v.douyin.com, vm.tiktok.com, etc.)
         if (url.includes('v.douyin.com') || url.includes('vm.tiktok.com') || url.includes('vt.tiktok.com')) {
@@ -47,8 +45,10 @@ module.exports = {
         url = url.split('?')[0];
 
         await ctx.action('upload_video');
-        const proc = await ctx.replyHTML(`🎬 <i>On it! Grabbing that ${platform} video...</i>`);
-        const deleteProc = () => { try { ctx.bridge.deleteMessage(ctx.chatId, proc?.data?.message_id).catch(() => {}); } catch(e) {} };
+        // One message for the whole download (see ../ui.js)
+        const st = await progress(ctx, T('getting', { what: T('what_video') }));
+        const deleteProc = () => st.done();
+        const updateStatus = (t) => st.set(t);
 
         try {
             let info = await fetchTikWM(url);
@@ -60,15 +60,7 @@ module.exports = {
 
             // ── SLIDESHOW HANDLER ──
             if (info.images && info.images.length > 0) {
-                const slideCaption = (info.title ? `🖼️ ${escapeHTML(info.title.substring(0, 150))}\n` : '') +
-                    (info.uploader ? `👤 @${escapeHTML(info.uploader)}` : '') +
-                    `\n\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
-
-                const statusMsg = await ctx.bridge.sendTo(ctx.chatId, `⏳ <b>Downloading ${info.images.length} images...</b>`, { parse_mode: 'HTML' });
-                const statusId = statusMsg?.data?.message_id;
-                const updateStatus = async (text) => {
-                    if (statusId) await ctx.bridge.editMessage(ctx.chatId, statusId, text, { parse_mode: 'HTML' }).catch(() => {});
-                };
+                const slideCaption = uiCaption(info.title || platform, platform, info.uploader ? '@' + info.uploader : '', T('album', { n: info.images.length }));
 
                 try {
                     // Build the media group array
@@ -88,7 +80,7 @@ module.exports = {
                             group[0].parse_mode = 'HTML';
                         }
                         
-                        await updateStatus(`📤 <b>Sending album (${group.length} images)...</b>`);
+                        await updateStatus(T('sending'));
                         const res = await ctx.bridge.sendMediaGroup(ctx.chatId, group);
 
                         if (!res.success) {
@@ -103,7 +95,6 @@ module.exports = {
 
                     // Send the audio after the album
                     if (info.musicUrl) {
-                        await updateStatus(`🎵 <b>Sending original sound...</b>`);
                         try {
                             const audioBuf = await downloadBuffer(info.musicUrl);
                             await ctx.bridge.sendAudioBuffer(ctx.chatId, audioBuf, { 
@@ -115,22 +106,17 @@ module.exports = {
                         }
                     }
 
-                    if (statusId) await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});
-                    deleteProc();
+                    await deleteProc();
                     return; // Stop here, slideshow is done!
                 } catch (err) {
                     console.error('[TIKTOK] Slideshow error:', err.message);
-                    if (statusId) await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});
-                    deleteProc();
-                    await ctx.replyHTML(`❌ Couldn't deliver the slideshow.`);
+                    await st.end(T('failed_site', { site: platform }));
                     return;
                 }
             }
             // ── END SLIDESHOW HANDLER ──
 
-            const caption = (info.title ? `🎬 ${escapeHTML(info.title.substring(0, 120))}\n` : '') +
-                (info.uploader ? `👤 @${escapeHTML(info.uploader)}` : '') +
-                `\n\n🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
+            const caption = uiCaption(info.title || platform, platform, info.uploader ? '@' + info.uploader : '');
 
             // Download to buffer — TikTok CDN blocks direct Telegram fetches
             try {
@@ -138,13 +124,6 @@ module.exports = {
                 const uid = Date.now() + '_' + Math.floor(Math.random() * 10000);
                 const rawPath = path.join(tmpDir, `tt_${uid}_raw.mp4`);
                 const compressedPath = path.join(tmpDir, `tt_${uid}_out.mp4`);
-
-                // Status message — will be edited through the process, deleted after send
-                const statusMsg = await ctx.bridge.sendTo(ctx.chatId, '⏳ <b>Downloading video...</b>', { parse_mode: 'HTML' });
-                const statusId = statusMsg?.data?.message_id;
-                const updateStatus = async (text) => {
-                    if (statusId) await ctx.bridge.editMessage(ctx.chatId, statusId, text, { parse_mode: 'HTML' }).catch(() => {});
-                };
 
                 let result;
                 try {
@@ -155,8 +134,7 @@ module.exports = {
 
                     let sendPath = rawPath;
                     if (sizeMB >= 48) {
-                        await updateStatus(`🗜️ <b>Compressing...</b> (${sizeMB.toFixed(0)}MB → ~45MB)
-<i>This may take a moment</i>`);
+                        await updateStatus(T('compressing'));
                         console.log('[TIKTOK] Compressing to fit Telegram limit...');
                         const ok = compressVideo(rawPath, compressedPath, 45);
                         if (ok && fs.existsSync(compressedPath)) {
@@ -168,13 +146,12 @@ module.exports = {
                         }
                     }
 
-                    await updateStatus('📤 <b>Sending video...</b>');
+                    await updateStatus(T('sending'));
                     const buffer = fs.readFileSync(sendPath);
                     result = await ctx.bridge.sendVideoBuffer(ctx.chatId, buffer, { caption, parse_mode: 'HTML' });
                     console.log('[TIKTOK] Send result:', result?.success, result?.data?.message_id);
 
                     // Clean up status message — video is here, no need for it
-                    if (statusId && result?.success) await ctx.bridge.deleteMessage(ctx.chatId, statusId).catch(() => {});
                 } finally {
                     // Always clean up temp files
                     try { if (fs.existsSync(rawPath)) fs.unlinkSync(rawPath); } catch {}
@@ -185,12 +162,11 @@ module.exports = {
                 deleteProc();
             } catch(dlErr) {
                 console.error('[TIKTOK] Send error:', dlErr.message, dlErr.stack?.split('\n')[1]);
-                deleteProc();
-                await ctx.replyHTML(`❌ Couldn't deliver that video — try again or use a different link.`);
+                await st.end(T('failed_site', { site: platform }));
             }
         } catch (err) {
             console.error('[TIKTOK] Outer error:', err.message);
-            ctx.replyHTML(`❌ Couldn't grab that one — might be private or region-locked. Try a different video!`);
+            await st.end(T('failed_site', { site: platform }));
         }
     }
 };
