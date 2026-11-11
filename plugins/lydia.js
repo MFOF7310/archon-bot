@@ -484,32 +484,15 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
     console.log(`${C.yellow}[AI PREMIUM]${C.reset} Claude unavailable, falling back to free pool...`);
   }
 
-  const topModels = MODEL_POOL.slice(0, CFG.MAX_CONCURRENT_MODELS);
-  console.log(`${C.cyan}[AI]${C.reset} Racing ${topModels.length} models...`);
-
-  const promises = topModels.map(m => tryModel(m, messages, CFG.RESPONSE_TIMEOUT, guildKey));
-
+  // Free pool: the cheaper models, tried one after another. They used to race 3 at a time (Claude Sonnet and GPT-4o
+  // included) and every message paid for all three, even though only one answer was kept.
+  const pool = MODEL_POOL.filter(m => m.tier !== 'premium');
   let winner = null;
-  const results = await Promise.all(promises);
-
-  for (let i = 0; i < results.length; i++) {
-    if (results[i]) {
-      winner = results[i];
-      winner.attempted = topModels.slice(0, i + 1).map(m => m.name).join(' \u2192 ');
-      break;
-    }
-  }
-
-  if (!winner) {
-    const remaining = MODEL_POOL.slice(CFG.MAX_CONCURRENT_MODELS);
-    for (const model of remaining) {
-      const result = await tryModel(model, messages, CFG.RESPONSE_TIMEOUT, guildKey);
-      if (result) {
-        winner = result;
-        winner.attempted = 'parallel-fail \u2192 ' + model.name;
-        break;
-      }
-    }
+  const tried = [];
+  for (const model of pool) {
+    tried.push(model.name);
+    const result = await tryModel(model, messages, CFG.RESPONSE_TIMEOUT, guildKey);
+    if (result) { winner = result; winner.attempted = tried.join(' \u2192 '); break; }
   }
 
   if (!winner) {
@@ -1100,6 +1083,12 @@ async function handleLydiaMessage(message, client, database) {
   if (now - (userCooldowns.get(message.author.id) || 0) < CFG.COOLDOWN_TIME) return;
   if (channelCooldowns.has(message.channel.id) && now - channelCooldowns.get(message.channel.id) < CFG.CHANNEL_COOLDOWN) return;
   if (!client.lydiaChannels?.[message.channel.id]) return;
+  // Only messages addressed to the bot start the cooldowns (any chat in the channel used to block the next real question)
+  {
+    const _name = (getBotName(message) || 'Archon').toLowerCase();
+    const _c = (message.content || '').toLowerCase();
+    if (!(_c.startsWith(_name) || message.mentions?.has(client.user))) return;
+  }
 
   messageProcessingLocks.add(key);
   userCooldowns.set(message.author.id, now);
@@ -1742,6 +1731,7 @@ module.exports = {
   category: 'SYSTEM',
   cooldown: 5000,
   run: runLydiaCommand,
+  MODEL_POOL,
   execute: executeSlashCommand,
   data: slashCommand,
   setupLydia,

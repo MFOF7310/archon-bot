@@ -5580,7 +5580,8 @@ apiApp.get('/api/lydia/:guildId', requireAdmin, async (req, res) => {
         const channels = [...g.channels.cache.values()].filter(c => c.type === 0 && canBotSend(g, c) && isMemberVisible(g, c))
             .sort((x, y) => x.rawPosition - y.rawPosition)
             .map(c => ({ id: c.id, name: c.name, category: c.parent?.name || null }));
-        res.json({ enabled: row.ai_enabled === 1, activeChannelIds: active, channels });
+        let models = []; try { models = (require('./plugins/lydia.js').MODEL_POOL || []).map(m => ({ id: m.id, label: m.name })); } catch (e) {}
+        res.json({ enabled: row.ai_enabled !== 0, activeChannelIds: active, channels, models });
     } catch (e) {
         console.error(`[LYDIA-API] get guild=${req.params.guildId}:`, e.message);
         res.status(500).json({ error: 'internal' });
