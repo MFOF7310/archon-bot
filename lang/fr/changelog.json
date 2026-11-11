@@ -1,0 +1,12 @@
+{
+  "title": "Quoi de neuf sur ARCHON",
+  "version": "Version {v} · {date}",
+  "new": "Nouveau",
+  "improved": "Amélioré",
+  "fixed": "Corrigé",
+  "older": "Versions précédentes",
+  "dashboard": "Dashboard",
+  "support": "Serveur de support",
+  "posted": "ARCHON vient d'être mis à jour. Les membres peuvent revoir ceci à tout moment avec /changelog.",
+  "none": "Pas encore de notes de version."
+}

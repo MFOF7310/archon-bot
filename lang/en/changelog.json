@@ -1,0 +1,12 @@
+{
+  "title": "What's new on ARCHON",
+  "version": "Version {v} · {date}",
+  "new": "New",
+  "improved": "Improved",
+  "fixed": "Fixed",
+  "older": "Earlier versions",
+  "dashboard": "Dashboard",
+  "support": "Support server",
+  "posted": "ARCHON was just updated. Members can see this any time with /changelog.",
+  "none": "No release notes yet."
+}

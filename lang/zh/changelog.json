@@ -1,0 +1,12 @@
+{
+  "title": "ARCHON 更新内容",
+  "version": "版本 {v} · {date}",
+  "new": "新功能",
+  "improved": "改进",
+  "fixed": "修复",
+  "older": "历史版本",
+  "dashboard": "控制面板",
+  "support": "支持服务器",
+  "posted": "ARCHON 刚刚更新。成员随时可以用 /changelog 查看。",
+  "none": "暂无更新说明。"
+}
