@@ -5223,7 +5223,7 @@ apiApp.get('/api/moderation-logs/:guildId?', (req, res) => {
                 FROM moderation_logs m
                 LEFT JOIN users u   ON u.id = m.user_id      AND u.guild_id = m.guild_id
                 LEFT JOIN users mod ON mod.id = m.moderator_id AND mod.guild_id = m.guild_id
-                WHERE m.guild_id = ? ORDER BY m.timestamp DESC`).all(guildId);
+                WHERE m.guild_id = ? ORDER BY m.timestamp DESC LIMIT 1000`).all(guildId); // the whole history was sent on every visit (AutoMod adds many rows)
         } else {
             logs = db.prepare(`SELECT m.*, u.username AS target_username, mod.username AS moderator_username, u.avatar AS target_avatar, mod.avatar AS moderator_avatar
                 FROM moderation_logs m
