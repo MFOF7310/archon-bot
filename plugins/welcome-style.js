@@ -5,7 +5,7 @@
 
 const { EmbedBuilder, AttachmentBuilder } = require('discord.js');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-const EMOJIS = require('../config/emojis');
+const EMOJIS = (() => { try { return require('../config/emojis'); } catch { return {}; } })();
 const { t } = require('../lib/i18n');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const fs = require('fs');
@@ -103,21 +103,34 @@ function drawMascot(ctx, img, CW, CH, SCALE) {
 const W = 560, H = 175;
 
 // ================= SMART UTILITIES =================
-function ordinal(n) {
+// "1,234th" in English, "1 234e" in French; Chinese and Arabic sentences already say "number N"
+function ordinal(n, lang = 'en') {
+    n = Number(n) || 0;
+    if (lang === 'fr') return n === 1 ? '1er' : `${n.toLocaleString('fr-FR')}e`;
+    if (lang !== 'en') return n.toLocaleString('en-US');
     const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
-    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+    return n.toLocaleString('en-US') + (s[(v - 20) % 10] || s[v] || s[0]);
 }
 
-function fmtDur(ms) {
-    if (!ms || ms < 60000) return '< 1 minute';
-    const d = Math.floor(ms / 86400000);
-    const h = Math.floor((ms % 86400000) / 3600000);
-    const m = Math.floor((ms % 3600000) / 60000);
-    if (d > 365) return `${Math.floor(d / 365)}y ${d % 365}d`;
-    if (d > 30)  return `${Math.floor(d / 30)}mo ${d % 30}d`;
-    if (d > 0)   return `${d}d ${h}h`;
-    if (h > 0)   return `${h}h ${m}m`;
-    return `${m}m`;
+// How long someone stayed, in words, two units at most: "3 months 4 days", "2 heures 10 minutes"
+const DUR = {
+    en: { y: ['year', 'years'], mo: ['month', 'months'], d: ['day', 'days'], h: ['hour', 'hours'], m: ['minute', 'minutes'], lt: 'less than a minute', sp: ' ' },
+    fr: { y: ['an', 'ans'], mo: ['mois', 'mois'], d: ['jour', 'jours'], h: ['heure', 'heures'], m: ['minute', 'minutes'], lt: "moins d'une minute", sp: ' ' },
+    zh: { y: ['年', '年'], mo: ['个月', '个月'], d: ['天', '天'], h: ['小时', '小时'], m: ['分钟', '分钟'], lt: '不到一分钟', sp: '' },
+    ar: { y: ['سنة', 'سنوات'], mo: ['شهر', 'أشهر'], d: ['يوم', 'أيام'], h: ['ساعة', 'ساعات'], m: ['دقيقة', 'دقائق'], lt: 'أقل من دقيقة', sp: ' ' },
+};
+function fmtDur(ms, lang = 'en') {
+    const U = DUR[lang] || DUR.en;
+    if (!ms || ms < 60000) return U.lt;
+    const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
+    const part = (n, k) => `${n}${U.sp}${U[k][n === 1 ? 0 : 1]}`;
+    const out = [];
+    if (d >= 365) { out.push(part(Math.floor(d / 365), 'y')); const mo = Math.floor((d % 365) / 30); if (mo) out.push(part(mo, 'mo')); }
+    else if (d >= 30) { out.push(part(Math.floor(d / 30), 'mo')); if (d % 30) out.push(part(d % 30, 'd')); }
+    else if (d > 0) { out.push(part(d, 'd')); if (h) out.push(part(h, 'h')); }
+    else if (h > 0) { out.push(part(h, 'h')); if (m) out.push(part(m, 'm')); }
+    else out.push(part(m, 'm'));
+    return out.join(lang === 'zh' ? '' : ' ');
 }
 
 function realAccountAge(createdAt) {
@@ -424,7 +437,7 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     ctx.letterSpacing = '0px';
 
     // Duration + roles
-    const dur = duration || '< 1 min';
+    const dur = duration || '?';
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.font = `${10 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
     ctx.fillText(
@@ -532,7 +545,7 @@ function warmWelcomeText(member, count, cfg) {
 function goodbyeText(member, duration, roleCount, lang = 'en') {
     // v7: warm tone rewrite — direct address, `-#` info line, REG emojis
     const wave = em('wave', '👋');
-    const dur = duration || 'a short stay';
+    const dur = duration;
     const u = `**${member.user.username}**`;
 
     const farewells = {
@@ -573,7 +586,9 @@ function goodbyeText(member, duration, roleCount, lang = 'en') {
         ],
     };
 
-    const pool = farewells[lang] || farewells.en;
+    let pool = farewells[lang] || farewells.en;
+    // Join date unknown: only the lines that don't say how long they stayed
+    if (!dur) pool = pool.filter((_, i) => i === 1 || i === 3);
     const farewell = pool[Math.floor(Math.random() * pool.length)];
 
     // v7.1: info line dropped — canvas already shows duration and roles
@@ -584,26 +599,19 @@ function goodbyeText(member, duration, roleCount, lang = 'en') {
 function getWelcomeButtons(cfg, member) {
     const lang = cfg.lang || 'en';
     const buttons = [];
-    const guildId = member.guild.id;
-    const fallbackId = member.guild.systemChannelId || guildId;
+    const guild = member.guild, guildId = guild.id;
+    // A link button only for a channel that exists. Without one, the buttons used to point at the system channel
+    // (often the welcome channel itself), or at a "channel" made of the server id, which Discord can't open.
+    const exists = (id) => id && guild.channels.cache.has(String(id));
+    const rulesId = exists(cfg.rulesChannel) ? cfg.rulesChannel : exists(guild.rulesChannelId) ? guild.rulesChannelId : null;
+    if (rulesId) buttons.push({ label: t('welcome.btn_rules', lang), emoji: '📜', style: 'Link', url: `https://discord.com/channels/${guildId}/${rulesId}`, customId: null });
+    if (exists(cfg.generalChannel)) buttons.push({ label: t('welcome.btn_general', lang), emoji: '💬', style: 'Link', url: `https://discord.com/channels/${guildId}/${cfg.generalChannel}`, customId: null });
 
-    // Rules button — use configured channel if set, else fallback to system channel
-    const rulesId = cfg.rulesChannel || null;
-    buttons.push({
-        label: t('welcome.btn_rules', lang), emoji: '📜', style: 'Link',
-        url: `https://discord.com/channels/${guildId}/${rulesId || fallbackId}`,
-        customId: null
-    });
-
-    // General button — use configured channel if set, else fallback to system channel
-    const generalId = cfg.generalChannel || null;
-    buttons.push({
-        label: t('welcome.btn_general', lang), emoji: '💬', style: 'Link',
-        url: `https://discord.com/channels/${guildId}/${generalId || fallbackId}`,
-        customId: null
-    });
-
-    buttons.push({ label: t('welcome.btn_ai', lang), emoji: em('ai_assistant', '🤖'), style: 'Primary', url: null, customId: 'welcome_help' });
+    // The AI button only when Lydia answers somewhere on this server
+    const lydia = member.client?.lydiaChannels || {};
+    if (cfg.aiEnabled && Object.keys(lydia).some((id) => guild.channels.cache.has(id))) {
+        buttons.push({ label: t('welcome.btn_ai', lang), emoji: em('ai_assistant', '🤖'), style: 'Primary', url: null, customId: 'welcome_ai_assistant' });
+    }
     buttons.push({ label: t('welcome.btn_profile', lang), emoji: '👤', style: 'Success', url: null, customId: `welcome_profile_${member.user.id}` });
 
     return buttons;

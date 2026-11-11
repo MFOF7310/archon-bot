@@ -123,17 +123,16 @@ async function handleWelcome(member, client, db) {
     const attachment = new AttachmentBuilder(_fs.readFileSync(_bannerPath), { name: 'welcome.png' });
 
     // ── Compact content (Ephi style — 2 lignes) ──
-    const EMOJIS = require('../config/emojis');
     cfg.lang = lang;
     const _topRole = member.roles?.highest;
     const _badge = (_topRole && _topRole.id !== member.guild.id) ? ` [${_topRole.name}]` : '';
     const _greet = t('welcome.card_greeting', lang, { user: member.user, badge: _badge });
-    const _memberLine = t('welcome.card_member_count', lang, { count: Style.ordinal(count), guild: member.guild.name });
+    const _memberLine = t('welcome.card_member_count', lang, { count: Style.ordinal(count, lang), guild: member.guild.name });
     const _intro = t('welcome.card_intro', lang);
-    let content = `${_greet}\n${_memberLine}\n\n${_intro}`;
-    if (cfg.welcomeMessage) {
-        content = `${Style.formatTemplate(cfg.welcomeMessage, member, count)}\n${content}`;
-    }
+    // A custom message replaces the default greeting (it used to be stacked on top of it, so members got two welcomes)
+    let content = cfg.welcomeMessage
+        ? `${Style.formatTemplate(cfg.welcomeMessage, member, count)}\n${_memberLine}`
+        : `${_greet}\n${_memberLine}\n\n${_intro}`;
 
     // Embed uses attachment:// reference — NOT a base64 data URL
     // Hybrid accent: top role if readable, else neon green
@@ -162,17 +161,7 @@ async function handleWelcome(member, client, db) {
         'ℹ️': em('ic_info', 'ℹ️')
     };
 
-    const buttonDefs = rawDefs.map(d => {
-        let newD = { ...d };
-        if (newD.customId === 'welcome_help' && newD.label !== t('welcome.btn_help', lang)) {
-            newD.customId = 'welcome_ai_assistant';
-        }
-        // On remplace l'émoji si on a un custom correspondant
-        if (newD.emoji && EMOJI_MAP[newD.emoji]) {
-            newD.emoji = EMOJI_MAP[newD.emoji];
-        }
-        return newD;
-    });
+    const buttonDefs = rawDefs.map((d) => ({ ...d, emoji: (d.emoji && EMOJI_MAP[d.emoji]) || d.emoji }));
     if (!buttonDefs.some((d) => d.customId === 'welcome_help')) {
         buttonDefs.push({ label: t('welcome.btn_help', lang), emoji: em('ic_info', 'ℹ️'), style: 'Secondary', customId: 'welcome_help' });
     }
@@ -263,17 +252,19 @@ async function handleGoodbye(member, client, db) {
 
     ensureJoinTable(db);
     await backfillJoins(db, member.guild);
-    const joinedAt  = member.joinedTimestamp || lookupJoin(db, member.guild.id, member.id);
-    const duration  = joinedAt ? Style.fmtDur(Date.now() - joinedAt) : '< 1 min';
-    const roles     = [...member.roles.cache.values()].filter(r => r.id !== member.guild.id);
-    const safeMember = createMemberProxy(member);
-
-    // ── SINGLE canvas render ──
-    const png = await Style.renderGoodbyeCard(safeMember, duration, roles.length);
-    const attachment = new AttachmentBuilder(png, { name: 'goodbye-card.png' });
-
     const ssRawGoodbye = client.getServerSettings?.(member.guild.id) || {};
     const goodbyeLang = (ssRawGoodbye.language && ssRawGoodbye.language !== 'auto') ? ssRawGoodbye.language : (client.detectLanguage ? client.detectLanguage('welcome', member.guild.id) : 'en');
+    // Unknown join date: no duration at all (it used to say "< 1 min" for members who stayed for years)
+    const joinedAt  = member.joinedTimestamp || lookupJoin(db, member.guild.id, member.id);
+    const stayedMs  = joinedAt ? Date.now() - joinedAt : null;
+    const duration  = stayedMs != null ? Style.fmtDur(stayedMs, goodbyeLang) : null;
+    const roles     = [...(member.roles?.cache?.values?.() || [])].filter(r => r.id !== member.guild.id);
+    const safeMember = createMemberProxy(member);
+
+    // ── SINGLE canvas render (its labels are English, so the duration is too) ──
+    const png = await Style.renderGoodbyeCard(safeMember, stayedMs != null ? Style.fmtDur(stayedMs, 'en') : null, roles.length);
+    const attachment = new AttachmentBuilder(png, { name: 'goodbye-card.png' });
+
     let content = Style.goodbyeText(safeMember, duration, roles.length, goodbyeLang);
 
     if (cfg.goodbyeMessage) {
@@ -330,12 +321,15 @@ module.exports = {
 
     // ================= PREFIX COMMAND =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+        if (!message.guild) return;
         const sub = args[0]?.toLowerCase() || 'config';
         const prefix = serverSettings?.prefix || '.';
         let cfg = Style.normalizeWelcomeConfig(serverSettings);
         cfg = applyOwnerEnvFallback(cfg, message.guild.id);
 
         if (sub === 'test') {
+            if (!message.member.permissions.has(PermissionFlagsBits.Administrator))
+                return message.reply(t('welcome.admin_only', lang)).catch(() => {});
             await message.reply(toV2({
                 embeds: [new EmbedBuilder().setColor(0x00fbff).setDescription(`**${t('welcome.test_sending', lang)}**`).setFooter({ text: t('welcome.footer', lang) })]
             })).catch(() => {});

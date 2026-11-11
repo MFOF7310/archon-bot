@@ -3751,53 +3751,12 @@ safeOn(Events.GuildMemberAdd, async (member) => {
     // Determine if custom welcome is configured
     const hasCustomWelcome = cfg.welcomeChannel || cfg.welcomeMessage;
 
-if (welcomeLimited) {
-        // join burst: skip welcome cards only
-    } else if (client.welcome?.onMemberAdd) {
-        // PLUGIN PATH: Plugin loaded → it handles everything, fallback skipped
+    if (!welcomeLimited && client.welcome?.onMemberAdd) {
         await client.welcome.onMemberAdd(member, client, db);
-    } else if (hasCustomWelcome) {
-        // FALLBACK PATH: No plugin but channel configured → use shared module
-        await fallbackWelcome(member, client, db, cfg, Style);
+    } else if (!client.welcome && hasCustomWelcome) {
+        console.log(`${yellow}[WELCOME]${reset} plugins/welcome.js is not loaded: no welcome card for ${member.guild.name}`);
     }
 });
-
-// ╔══════════════════════════════════════════════════════════════════════╗
-// ║  FALLBACK WELCOME — Default cinematic matrix when no custom config   ║
-// ╚══════════════════════════════════════════════════════════════════════╝
-async function fallbackWelcome(member, client, db, cfg, Style) {
-    if (!cfg.welcomeEnabled) return;
-
-    const ch = cfg.welcomeChannel 
-        ? member.guild.channels.cache.get(cfg.welcomeChannel) 
-        : member.guild.systemChannel;
-    if (!ch) return;
-
-    const count = member.guild.memberCount;
-    const lang = member.guild.preferredLocale === 'fr' ? 'fr' : 'en';
-
-        // Render card via shared engine
-    const png = await Style.renderWelcomeCard(member, count);
-    
-    // Convert canvas buffer to base64 data URL (no duplicate attachment)
-    const dataUrl = `data:image/png;base64,${png.toString('base64')}`;
-    
-    const embed = new EmbedBuilder()
-        .setColor(0x00fbff)
-        .setImage(dataUrl)
-        .setFooter({ text: 'ARCHON CG-223' })
-        .setTimestamp();
-
-    const ansi = Style.ansiWelcome(member, count);
-    const tips = Style.buildProTips(cfg, lang);
-    
-    const tipBlock = `\n> ${t('index.tip_block_label', lang)}\n${tips.map(t => `> • ${t}`).join('\n')}`;
-
-    await ch.send({
-        content: ansi + tipBlock,
-        embeds: [embed],
-    }).catch(() => {});
-}
 
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  🦅 GUILD MEMBER REMOVE — ORCHESTRATED GOODBYE v6.0                ║
@@ -3832,47 +3791,9 @@ safeOn(Events.GuildMemberRemove, async (member) => {
 
     const hasCustomGoodbye = cfg.goodbyeChannel || cfg.goodbyeMessage;
 
-if (client.welcome?.onMemberRemove) {
-        // PLUGIN PATH: Plugin loaded → it handles everything, fallback skipped
-        await client.welcome.onMemberRemove(member, client, db);
-    } else if (hasCustomGoodbye) {
-        // FALLBACK PATH: No plugin but channel configured → use shared module
-        await fallbackGoodbye(member, client, db, cfg, Style);
-    }
+    if (client.welcome?.onMemberRemove) await client.welcome.onMemberRemove(member, client, db);
+    else if (hasCustomGoodbye) console.log(`${yellow}[GOODBYE]${reset} plugins/welcome.js is not loaded: no goodbye card for ${member.guild.name}`);
 });
-
-// ╔══════════════════════════════════════════════════════════════════════╗
-// ║  FALLBACK GOODBYE — Default departure matrix when no custom config  ║
-// ╚══════════════════════════════════════════════════════════════════════╝
-async function fallbackGoodbye(member, client, db, cfg, Style) {
-    if (!cfg.goodbyeEnabled || !cfg.goodbyeChannel) return;
-
-    const ch = member.guild.channels.cache.get(cfg.goodbyeChannel);
-    if (!ch) return;
-
-    // Try joinedTimestamp first, fall back to joinedAt, then DB
-    const joinedAt = member.joinedTimestamp || member.joinedAt?.getTime() || null;
-    const duration = joinedAt ? Style.fmtDur(Date.now() - joinedAt) : null;
-    const roles = [...member.roles.cache.values()].filter(r => r.id !== member.guild.id);
-
-        const png = await Style.renderGoodbyeCard(member, duration, roles.length);
-    
-    // Convert canvas buffer to base64 data URL (no duplicate attachment)
-    const dataUrl = `data:image/png;base64,${png.toString('base64')}`;
-    
-    const embed = new EmbedBuilder()
-        .setColor(0xe74c3c)
-        .setImage(dataUrl)
-        .setFooter({ text: 'ARCHON CG-223 | Departure Log' })
-        .setTimestamp();
-
-    const content = Style.ansiGoodbye(member, duration, roles.length, roles);
-
-    await ch.send({
-        content,
-        embeds: [embed],
-    }).catch(() => {});
-}
 
 // ================= GRACEFUL SHUTDOWN (PER-SERVER PARTITIONED FLUSH) =================
 async function gracefulShutdown(signal) {
