@@ -13,7 +13,13 @@ const { card } = require('../lib/games/v2');
 let EMOJIS = {};
 try { EMOJIS = require('../config/emojis'); } catch { /* plain emoji below */ }
 
-const TIER_EMOJI = { GOD: '🏆', S: '🔥', A: '⚔️', B: '🛡️', C: '📦' };
+// Tier marks and buttons use ARCHON's own icons; the plain emoji is only a fallback
+const ic = (k, fb) => EMOJIS[k] || fb;
+const TIER_EMOJI = { GOD: ic('ic_trophy', '🏆'), S: ic('ic_streak', '🔥'), A: ic('duel_sword', '⚔️'), B: ic('ic_shield', '🛡️'), C: ic('ic_bag', '📦') };
+const DICE = () => ic('ic_dice', '🎲');
+const BACK = () => ic('ic_back', '◀️');
+// A select option takes an emoji object, not the <:name:id> text
+const optEmoji = (s) => { if (!s) return undefined; const m = /^<(a?):(\w+):(\d+)>$/.exec(s); return m ? { id: m[3], name: m[2], animated: !!m[1] } : { name: s }; };
 const LIST_COLOR = 0xffd700;
 const ALL = '*';
 const hex = (c) => parseInt(String(c || '#95a5a6').replace('#', ''), 16);
@@ -26,12 +32,15 @@ const LOADOUT_KEYS = ['AK117', 'FFAR1', 'DLQ', 'KRM', 'TUNDRA', 'BP50', 'KN44', 
 const squash = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 function serverImage(db, guildId, weapon) {
     if (!db || !guildId) return null;
-    const key = LOADOUT_KEYS.find((k) => squash(weapon.name).startsWith(k));
-    if (!key) return null;
+    // The weapon's own name first ("DL Q33" → DLQ33), then the short key older pictures were saved under
+    const keys = [squash(weapon.name), LOADOUT_KEYS.find((k) => squash(weapon.name).startsWith(k))].filter(Boolean);
     try {
-        const row = db.prepare('SELECT image_path FROM loadout_images WHERE guild_id = ? AND weapon_key = ?').get(guildId, key);
-        return row?.image_path && fs.existsSync(row.image_path) ? row.image_path : null;
-    } catch { return null; }
+        for (const key of keys) {
+            const row = db.prepare('SELECT image_path FROM loadout_images WHERE guild_id = ? AND weapon_key = ?').get(guildId, key);
+            if (row?.image_path && fs.existsSync(row.image_path)) return row.image_path;
+        }
+    } catch { /* table not created yet */ }
+    return null;
 }
 
 const button = (id, label, emoji, style = ButtonStyle.Secondary) => {
@@ -45,7 +54,7 @@ function listView(ctx, cat) {
     const tr = T(ctx.lang);
     const { season, updated } = W.getSeason();
     const catKey = cat || ALL;
-    const items = [{ text: `## ${EMOJIS.gamer || '🎮'} ${tr('metaTitle', { season })}\n-# ${tr('updated', { updated: updated || tr('unknown') })}` }];
+    const items = [{ text: `## ${EMOJIS.gameCodm || EMOJIS.gamer || '🎮'} ${tr('metaTitle', { season })}\n-# ${tr('updated', { updated: updated || tr('unknown') })}` }];
 
     const blocks = [];
     for (const [tier, list] of W.byTier()) {
@@ -72,10 +81,10 @@ function listView(ctx, cat) {
                 pickable.map((w) => ({
                     label: w.name.slice(0, 100), value: w.name.slice(0, 100),
                     description: `${w.tier ? tr('tierName', { tier: w.tier === 'GOD' ? 'God' : w.tier }) : '—'} · ${w.category || '—'}`.slice(0, 100),
-                    emoji: TIER_EMOJI[w.tier] || undefined,
+                    emoji: optEmoji(TIER_EMOJI[w.tier]),
                 })),
             )) });
-        items.push({ row: new ActionRowBuilder().addComponents(button(`meta:r:${ctx.uid}:${catKey}`, tr('randomBtn'), '🎲')) });
+        items.push({ row: new ActionRowBuilder().addComponents(button(`meta:r:${ctx.uid}:${catKey}`, tr('randomBtn'), DICE())) });
     }
     items.push({ text: `-# ${tr('listHint')}` });
     return card(LIST_COLOR, items);
@@ -116,8 +125,8 @@ function weaponView(ctx, w, cat, random = false) {
 
     items.push({ rule: true });
     items.push({ row: new ActionRowBuilder().addComponents(
-        button(`meta:b:${ctx.uid}:${catKey}`, tr('backBtn'), '◀️'),
-        button(`meta:r:${ctx.uid}:${catKey}`, random ? tr('anotherBtn') : tr('randomBtn'), '🎲'),
+        button(`meta:b:${ctx.uid}:${catKey}`, tr('backBtn'), BACK()),
+        button(`meta:r:${ctx.uid}:${catKey}`, random ? tr('anotherBtn') : tr('randomBtn'), DICE()),
     ) });
     items.push({ text: `-# ${tr('weaponFooter', { season: W.getSeason().season })}` });
     return { ...card(hex(W.tierColor(w.tier)), items), files };

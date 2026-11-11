@@ -8,8 +8,20 @@ const i18n = require('../lib/i18n');
 const LOADOUT_IMG_DIR = path.join(__dirname, '../assets/loadouts');
 if (!fs.existsSync(LOADOUT_IMG_DIR)) fs.mkdirSync(LOADOUT_IMG_DIR, { recursive: true });
 
-const WEAPON_KEYS = ['AK117','FFAR1','DLQ','KRM','TUNDRA','BP50','KN44','HS0405','RYTEC','HDR','BY15'];
-const WEAPON_LIST = WEAPON_KEYS.join(', ');
+const W = require('../lib/weapons');
+// Any weapon of the meta list can get a picture (it used to be a fixed list of 11, so new weapons like the SKS couldn't).
+// A picture is saved under the weapon's name without spaces or dashes ("DL Q33" → DLQ33); meta.js reads it the same way.
+const squash = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+const LEGACY_KEYS = ['AK117','FFAR1','DLQ','KRM','TUNDRA','BP50','KN44','HS0405','RYTEC','HDR','BY15'];
+const weaponNames = () => W.getWeapons().map((w) => w.name);
+const listOf = () => weaponNames().join(', ');
+// The weapon typed or picked → { key, name }, or null when it isn't in the meta list
+function resolveWeapon(input) {
+    const w = W.findWeapon(String(input || '')) || W.getWeapons().find((x) => squash(x.name) === squash(input));
+    return w ? { key: squash(w.name), name: w.name } : null;
+}
+// Old pictures were saved under the short keys above: removing a weapon also removes its old picture
+const legacyKeyFor = (key) => LEGACY_KEYS.find((k) => key.startsWith(k) && k !== key) || null;
 
 // Prefix uses the server language (same as meta.js); slash uses slashLang, which also honours .mylang
 const translator = (lang) => (k, v) => i18n.t(`setloadout.${k}`, lang, v);
@@ -53,10 +65,12 @@ function imagePathFor(guildId, weapon) {
 
 function listText(db, guildId, tr) {
     const rows = db.prepare('SELECT weapon_key FROM loadout_images WHERE guild_id = ? ORDER BY weapon_key').all(guildId);
-    if (!rows.length) return `${tr('list_title')}\n\n${tr('list_empty', { list: WEAPON_LIST })}`;
-    const setKeys = rows.map(r => r.weapon_key);
-    const parts = [tr('list_title'), setKeys.map(w => tr('list_item_set', { weapon: w })).join('\n')];
-    const missing = WEAPON_KEYS.filter(k => !setKeys.includes(k));
+    if (!rows.length) return `${tr('list_title')}\n\n${tr('list_empty', { list: listOf() })}`;
+    const saved = rows.map(r => r.weapon_key);
+    const has = (w) => saved.includes(squash(w)) || saved.some((k) => LEGACY_KEYS.includes(k) && squash(w).startsWith(k));
+    const setNames = weaponNames().filter(has);
+    const parts = [tr('list_title'), setNames.map(w => tr('list_item_set', { weapon: w })).join('\n') || '—'];
+    const missing = weaponNames().filter((w) => !has(w));
     if (missing.length) {
         parts.push(`${tr('list_missing')}\n${missing.map(w => tr('list_item_missing', { weapon: w })).join('\n')}`);
     }
@@ -79,7 +93,7 @@ module.exports = {
             .setName('weapon')
             .setDescription('Weapon name')
             .setRequired(true)
-            .addChoices(...WEAPON_KEYS.map(k => ({ name: k, value: k })))
+            .setAutocomplete(true)
         )
         .addAttachmentOption(o => o
             .setName('image')
@@ -93,6 +107,13 @@ module.exports = {
             .addChoices({ name: 'Remove image', value: 'remove' })
         ),
 
+    // The weapon picker follows the meta list as it is updated
+    autocomplete: async (interaction) => {
+        const q = squash(interaction.options.getFocused());
+        const names = weaponNames().filter((n) => !q || squash(n).includes(q)).slice(0, 25);
+        return interaction.respond(names.map((n) => ({ name: n, value: n }))).catch(() => {});
+    },
+
     run: async (client, message, args, db) => {
         let tr = translator('en');
         try {
@@ -104,20 +125,23 @@ module.exports = {
                 || message.member?.permissions?.has(PermissionFlagsBits.Administrator);
             if (!isAdmin) return message.reply(tr('no_permission')).catch(() => {});
 
-            const weapon = args[0]?.toUpperCase();
-            const action = args[1]?.toLowerCase();
+            // The weapon name can have spaces ("DL Q33"); "remove" is the last word
+            const words = args.slice();
+            const action = words[words.length - 1]?.toLowerCase() === 'remove' ? words.pop().toLowerCase() : null;
+            const typed = words.join(' ').trim();
 
-            if (!weapon || weapon === 'LIST') {
+            if (!typed || typed.toUpperCase() === 'LIST') {
                 return message.reply(listText(db, guildId, tr)).catch(() => {});
             }
-            if (!WEAPON_KEYS.includes(weapon)) {
-                return message.reply(tr('unknown_weapon', { weapon, list: WEAPON_LIST })).catch(() => {});
+            const found = resolveWeapon(typed);
+            if (!found) {
+                return message.reply(tr('unknown_weapon', { weapon: typed, list: listOf() })).catch(() => {});
             }
+            const weapon = found.key;
 
             if (action === 'remove') {
-                clearOldImage(db, guildId, weapon);
-                removeImageFromDB(db, guildId, weapon);
-                return message.reply(tr('removed', { weapon })).catch(() => {});
+                for (const k of [weapon, legacyKeyFor(weapon)].filter(Boolean)) { clearOldImage(db, guildId, k); removeImageFromDB(db, guildId, k); }
+                return message.reply(tr('removed', { weapon: found.name })).catch(() => {});
             }
 
             const attachment = message.attachments?.first();
@@ -131,7 +155,7 @@ module.exports = {
             const dest = imagePathFor(guildId, weapon);
             await downloadToFile(attachment.url, dest);
             saveImageToDB(db, guildId, weapon, dest);
-            return message.reply(tr('saved', { weapon })).catch(() => {});
+            return message.reply(tr('saved', { weapon: found.name })).catch(() => {});
         } catch (err) {
             console.error('[SETLOADOUT]', err);
             message.reply(tr('failed')).catch(() => {});
@@ -146,16 +170,17 @@ module.exports = {
             if (!guildId) return interaction.reply({ content: tr('server_only'), flags: 64 });
 
             const db = client?.db || interaction.client.db;
-            const weapon = interaction.options.getString('weapon');
+            const found = resolveWeapon(interaction.options.getString('weapon'));
+            if (!found) return interaction.reply({ content: tr('unknown_weapon', { weapon: interaction.options.getString('weapon'), list: listOf() }), flags: 64 });
+            const weapon = found.key;
             const attachment = interaction.options.getAttachment('image');
             const action = interaction.options.getString('action');
 
             await interaction.deferReply({ flags: 64 });
 
             if (action === 'remove') {
-                clearOldImage(db, guildId, weapon);
-                removeImageFromDB(db, guildId, weapon);
-                return interaction.editReply(tr('removed', { weapon }));
+                for (const k of [weapon, legacyKeyFor(weapon)].filter(Boolean)) { clearOldImage(db, guildId, k); removeImageFromDB(db, guildId, k); }
+                return interaction.editReply(tr('removed', { weapon: found.name }));
             }
             if (!attachment) return interaction.editReply(tr('no_image_slash'));
             if (!(attachment.contentType || '').startsWith('image/')) return interaction.editReply(tr('not_image'));
@@ -164,7 +189,7 @@ module.exports = {
             const dest = imagePathFor(guildId, weapon);
             await downloadToFile(attachment.url, dest);
             saveImageToDB(db, guildId, weapon, dest);
-            return interaction.editReply(tr('saved', { weapon }));
+            return interaction.editReply(tr('saved', { weapon: found.name }));
         } catch (err) {
             console.error('[SETLOADOUT SLASH]', err);
             const reply = interaction.deferred || interaction.replied
