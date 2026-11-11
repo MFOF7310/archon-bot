@@ -1,4 +1,5 @@
 const { storeUrl } = require('./ytv.js');
+const { shq } = require('../safe');
 
 module.exports = {
     name: 'yts',
@@ -22,7 +23,7 @@ module.exports = {
             const { exec } = require('child_process');
             const results = await new Promise((res, rej) =>
                 exec(
-                    `yt-dlp --cookies /opt/youtube_cookies.txt "ytsearch5:${query.replace(/["']/g, '')}" --print "%(title)s|||%(webpage_url)s|||%(duration>%M:%S)s|||%(uploader)s" --no-playlist --flat-playlist`,
+                    `yt-dlp --cookies /opt/youtube_cookies.txt ${shq('ytsearch5:' + query)} --print "%(title)s|||%(webpage_url)s|||%(duration>%M:%S)s|||%(uploader)s" --no-playlist --flat-playlist`,
                     { timeout: 30000 }, (err, stdout) => err ? rej(err) : res(stdout)
                 )
             );

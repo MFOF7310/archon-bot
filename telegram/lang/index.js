@@ -1,4 +1,5 @@
 "use strict";
+const { store } = require('../safe');
 const en = require('./en');
 const fr = require('./fr');
 const bm = require('./bm');
@@ -20,7 +21,7 @@ const LANG_MAP = {
  * @returns {object} translations object
  */
 const fs = require('fs');
-const USER_LANG_DB = '/tmp/archon_user_langs.json';
+const USER_LANG_DB = store('archon_user_langs.json');
 
 function getUserPreference(userId) {
     try {

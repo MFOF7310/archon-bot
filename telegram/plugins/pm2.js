@@ -52,7 +52,7 @@ const PROCESSES = {
 
 module.exports = {
     name: 'sysctl',
-    aliases: ['admin', 'sys', 'process', 'pm2cmd'],
+    aliases: ['sys', 'process', 'pm2cmd'], // '/admin' lists the group admins (admins.js), it used to open pm2
     description: 'PM2 process manager from Telegram',
     category: 'System',
     usage: '/pm2 <command>',
@@ -64,7 +64,8 @@ if (String(ctx.userId) !== String(tgOwnerId) && !ctx.isOwner()) return ctx.reply
 
         const sub = ctx.args[0]?.toLowerCase();
         const target = ctx.args[1]?.toLowerCase();
-        const proc = PROCESSES[target] || target;
+        // Only a plain process name reaches the shell
+        const proc = PROCESSES[target] || (/^[A-Za-z0-9_.-]{1,40}$/.test(target || '') ? target : undefined);
 
         await ctx.action('typing');
 
@@ -141,7 +142,7 @@ if (String(ctx.userId) !== String(tgOwnerId) && !ctx.isOwner()) return ctx.reply
 
         // ── LOGS ──
         if (sub === 'logs' || sub === 'log') {
-            const lines = ctx.args[2] || ctx.args[3] || '20';
+            const lines = Math.min(500, Math.max(1, parseInt(ctx.args[2] || ctx.args[3], 10) || 20));
             const procName = proc || 'Architect-CG223';
             const { out, err } = await run(`pm2 logs ${procName} --lines ${lines} --nostream 2>&1`);
             const combined = (out + '\n' + err).trim();

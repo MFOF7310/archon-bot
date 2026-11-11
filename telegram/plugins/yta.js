@@ -1,4 +1,5 @@
 const { getInfo, TMP } = require('./_media.js');
+const { shq } = require('../safe');
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -13,7 +14,7 @@ function dlAudioSmart(query) {
             `-o "${out}"`,
             `-x --audio-format mp3 --audio-quality 0`,
             `--max-filesize 48M`,
-            `"${query}"`
+            shq(query)
         ].join(' ');
         exec(cmd, { timeout: 120000 }, (err, stdout, stderr) => {
             if (err) return rej(new Error(stderr?.substring(0, 200) || err.message));
@@ -32,7 +33,7 @@ function getDirectAudioUrl(query) {
             ? `--proxy "${process.env.WEBSHARE_PROXY}" `
             : '';
         exec(
-            `yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt ${proxyFlag}-f bestaudio --get-url "${query}"`,
+            `yt-dlp --no-playlist --cookies /opt/youtube_cookies.txt ${proxyFlag}-f bestaudio --get-url ${shq(query)}`,
             { timeout: 30000 },
             (err, stdout) => {
                 if (err || !stdout.trim()) return rej(new Error('No URL'));

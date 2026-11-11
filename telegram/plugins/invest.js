@@ -29,7 +29,7 @@ module.exports = {
     description: 'Invest credits in the Bamako Market',
     category: 'Economy',
     usage: '/invest <amount> | /invest claim | /invest status',
-    aliases: ['stake', 'market'],
+    aliases: ['stake'], // 'market' opens the shop
 
     handler: async (ctx) => {
         const db = ctx.client?.db;

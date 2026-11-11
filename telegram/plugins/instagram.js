@@ -1,11 +1,12 @@
 const { TMP, COOKIES } = require('./_media.js');
+const { shq } = require('../safe');
 const { exec, execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
 function dlInstagramMeta(url) {
     return new Promise((res, rej) => {
-        const cmd = 'yt-dlp ' + COOKIES + ' --ignore-errors --dump-single-json "' + url + '"';
+        const cmd = 'yt-dlp ' + COOKIES + ' --ignore-errors --dump-single-json ' + shq(url);
         exec(cmd, { timeout: 30000, maxBuffer: 1024 * 1024 * 10 }, (err, stdout) => {
             if (!stdout) return res(null);
             try { res(JSON.parse(stdout.trim())); } catch { res(null); }
@@ -30,7 +31,7 @@ function dlInstagram(url) {
             '-o "' + out + '"',
             '-f "bestvideo+bestaudio/best"',
             '--merge-output-format mp4',
-            '"' + url + '"'
+            shq(url)
         ].join(' ');
         exec(cmd, { timeout: 120000 }, (err, stdout, stderr) => {
             if (err) {

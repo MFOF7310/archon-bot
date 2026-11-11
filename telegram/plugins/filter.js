@@ -1,6 +1,7 @@
 const fs = require('fs');
+const { store } = require('../safe');
 
-const DB_PATH = '/tmp/archon_filters.json';
+const DB_PATH = store('archon_filters.json');
 
 function load() {
     try { return JSON.parse(fs.readFileSync(DB_PATH, 'utf8')); } catch { return {}; }

@@ -7,7 +7,7 @@ module.exports = {
     description: 'Full command guide with categories',
     category: 'System',
     usage: '/help [command]',
-    aliases: ['h', 'menu', 'commands', 'cmd'],
+    aliases: ['h', 'cmd'], // 'menu' and 'commands' open the list (list.js)
 
     handler: async (ctx) => {
         const args = ctx.args;

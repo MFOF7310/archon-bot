@@ -1,10 +1,11 @@
 // ═══════════════════════════════════════════
+const { store } = require('../safe');
 //  TG COMMAND: Trivia Game v3 — ARCHON Edition
 //  100+ questions, categories, difficulty, leaderboard
 // ═══════════════════════════════════════════
 
 const fs = require('fs');
-const SCORES_PATH = '/tmp/archon_trivia_scores.json';
+const SCORES_PATH = store('archon_trivia_scores.json');
 
 function loadScores() { try { return JSON.parse(fs.readFileSync(SCORES_PATH, 'utf8')); } catch { return {}; } }
 function saveScores(d) { fs.writeFileSync(SCORES_PATH, JSON.stringify(d, null, 2)); }

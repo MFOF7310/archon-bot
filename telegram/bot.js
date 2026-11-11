@@ -372,7 +372,7 @@ Tap a category:
         if (!ctx) return;
         const parts = data.split(':');
         const mediaType = parts[1];
-        const quality   = parts[2];
+        const quality   = (parts[2] === 'best' || /^\d{3,4}$/.test(parts[2] || '')) ? parts[2] : ''; // only a known quality reaches yt-dlp
         const urlKey    = parts[3];
         // Resolve short key back to full URL
         let url = urlKey;
@@ -651,7 +651,7 @@ function buildContext(update, bridge, client) {
         lang: (() => {
             try {
                 const fs = require('fs');
-                const db = JSON.parse(fs.readFileSync('/tmp/archon_user_langs.json', 'utf8'));
+                const db = JSON.parse(fs.readFileSync(require('./safe').store('archon_user_langs.json'), 'utf8'));
                 return db[String(userId)] || msg?.from?.language_code || 'en';
             } catch { return msg?.from?.language_code || 'en'; }
         })(),
@@ -659,7 +659,7 @@ function buildContext(update, bridge, client) {
             try {
                 const { t: translate } = require('./plugins/../lang/index.js');
                 const fs = require('fs');
-                const db = JSON.parse(fs.readFileSync('/tmp/archon_user_langs.json', 'utf8'));
+                const db = JSON.parse(fs.readFileSync(require('./safe').store('archon_user_langs.json'), 'utf8'));
                 const lang = db[String(userId)] || msg?.from?.language_code || 'en';
                 return translate(lang, key, vars, userId);
             } catch { return key; }
@@ -788,7 +788,7 @@ async function handleBuiltin(ctx, cmdName, bridge) {
             await ctx.action('typing');
             const { execSync } = require('child_process');
             const filter = ctx.args[0]?.toLowerCase() || 'all';
-            const numLines = ctx.args[1] || '20';
+            const numLines = Math.min(500, Math.max(1, parseInt(ctx.args[1], 10) || 20)); // only a number reaches the shell
             const LOG_PROCS = {
                 'arch': 'Architect-CG223', 'bot': 'Architect-CG223', 'all': 'Architect-CG223',
                 'dash': 'architect-dashboard', 'dashboard': 'architect-dashboard',

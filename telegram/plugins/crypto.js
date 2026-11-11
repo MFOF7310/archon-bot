@@ -16,7 +16,7 @@ module.exports = {
     description: 'Check cryptocurrency prices',
     category: 'Utility',
     usage: '/crypto <coin>',
-    aliases: ['price', 'coin', 'btc', 'eth'],
+    aliases: ['price', 'btc', 'eth'], // 'coin' is the coin flip (roll.js)
 
     handler: async (ctx) => {
         const query = ctx.args[0]?.toLowerCase() || 'bitcoin';

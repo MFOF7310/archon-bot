@@ -1,4 +1,5 @@
 const { TMP, COOKIES } = require('./_media.js');
+const { shq } = require('../safe');
 const { exec, execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -14,7 +15,7 @@ function dlFacebook(url) {
             '-f "hd/sd/best"',
             '--merge-output-format mp4',
             '--max-filesize 48M',
-            '"' + url + '"'
+            shq(url)
         ].join(' ');
         exec(cmd, { timeout: 120000 }, (err, stdout, stderr) => {
             if (err) {
@@ -69,7 +70,7 @@ async function getFacebookImages(url) {
 
     return new Promise((resolve, reject) => {
         // 3. Retirer le filtre "width" qui cause des bugs dans exec()
-        const cmd = `/root/.local/bin/gallery-dl --cookies /opt/youtube_cookies.txt --range 1-10 -g "${canonicalUrl}"`;
+        const cmd = `/root/.local/bin/gallery-dl --cookies /opt/youtube_cookies.txt --range 1-10 -g ${shq(canonicalUrl)}`;
         exec(cmd, { timeout: 30000 }, (err, stdout, stderr) => {
             if (err) {
                 console.log('[FACEBOOK] gallery-dl error:', stderr || err.message);

@@ -1,4 +1,5 @@
 const { TMP, COOKIES } = require('./_media.js');
+const { shq } = require('../safe');
 const { exec } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -22,6 +23,7 @@ function isChannelOrPlaylist(url) {
 }
 
 function dlVideoSmart(url, quality) {
+    if (quality !== 'best' && !/^\d{3,4}$/.test(String(quality))) quality = 'best';
     return new Promise((res, rej) => {
         const ts = Date.now();
         const out = path.join(TMP, 'vid_' + ts + '.%(ext)s');
@@ -37,7 +39,7 @@ function dlVideoSmart(url, quality) {
             '-f "' + fmt + '"',
             '--merge-output-format mp4',
             '--max-filesize 48M',
-            '"' + url + '"'
+            shq(url)
         ].join(' ');
         exec(cmd, { timeout: 300000 }, (err, stdout, stderr) => {
             if (err) return rej(new Error(stderr?.substring(0, 200) || err.message));
@@ -51,6 +53,7 @@ function dlVideoSmart(url, quality) {
 }
 
 function getDirectVideoUrl(url, quality) {
+    if (quality !== 'best' && !/^\d{3,4}$/.test(String(quality))) quality = 'best';
     return new Promise((res, rej) => {
         const proxyFlag = process.env.WEBSHARE_PROXY
             ? '--proxy "' + process.env.WEBSHARE_PROXY + '" '
@@ -109,7 +112,7 @@ module.exports = {
             try {
                 const { execSync } = require('child_process');
                 const formatsRaw = execSync(
-                    `yt-dlp --no-playlist -F "${url}" 2>/dev/null | grep -E "^[0-9]+" | grep "mp4|webm" | awk '{print $4}' | grep -E "^[0-9]+p$" | sort -t'p' -k1 -n | uniq`,
+                    `yt-dlp --no-playlist -F ${shq(url)} 2>/dev/null | grep -E "^[0-9]+" | grep "mp4|webm" | awk '{print $4}' | grep -E "^[0-9]+p$" | sort -t'p' -k1 -n | uniq`,
                     { timeout: 15000, encoding: 'utf8' }
                 ).trim();
                 const available = [...new Set(formatsRaw.split('\n').filter(Boolean))];
@@ -137,7 +140,7 @@ module.exports = {
             let title = 'YouTube Video';
             try {
                 const { execSync } = require('child_process');
-                title = execSync(`yt-dlp --no-playlist --get-title "${url}" 2>/dev/null`, { timeout: 10000, encoding: 'utf8' }).trim().substring(0, 60);
+                title = execSync(`yt-dlp --no-playlist --get-title ${shq(url)} 2>/dev/null`, { timeout: 10000, encoding: 'utf8' }).trim().substring(0, 60);
             } catch(e) {}
 
             return ctx.sendHTML(
@@ -157,7 +160,7 @@ module.exports = {
                 ? 'bestvideo[ext=mp4]+bestaudio/best'
                 : 'bestvideo[height<=' + quality + '][ext=mp4]+bestaudio/best[height<=' + quality + ']/best';
             const sizeRaw = execSync(
-                `yt-dlp --no-playlist -f "${sizeFmt}" --print filesize_approx "${url}" 2>/dev/null`,
+                `yt-dlp --no-playlist -f "${sizeFmt}" --print filesize_approx ${shq(url)} 2>/dev/null`,
                 { timeout: 15000, encoding: 'utf8' }
             ).trim();
             approxSize = parseInt(sizeRaw) || 0;
@@ -209,7 +212,7 @@ module.exports = {
                     '-o "' + rawPath + '"',
                     '-f "' + fmt + '"',
                     '--merge-output-format mp4',
-                    '"' + url + '"'
+                    shq(url)
                 ].join(' ');
                 require('child_process').exec(cmd, { timeout: 300000 }, (err, stdout, stderr) => {
                     if (err || !fs.existsSync(rawPath)) return rej(new Error(stderr?.substring(0, 200) || 'Download failed'));

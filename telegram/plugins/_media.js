@@ -1,4 +1,5 @@
 const { exec } = require('child_process');
+const { shq } = require('../safe');
 const fs = require('fs');
 const path = require('path');
 
@@ -11,6 +12,7 @@ function clean(f) { setTimeout(() => { try { fs.unlinkSync(f); } catch {} }, 300
 
 // Download video with true quality enforcement
 async function dlVideo(url, quality = '720') {
+    quality = /^\d{3,4}$/.test(String(quality)) ? String(quality) : '720';
     const ts = Date.now();
     const outTemplate = path.join(TMP, `vid_${ts}.%(ext)s`);
     const cmd = [
@@ -22,7 +24,7 @@ async function dlVideo(url, quality = '720') {
         `--hls-prefer-ffmpeg`,
         `--no-playlist`,
         `--max-filesize 48M`,
-        `"${url}"`
+        shq(url)
     ].join(' ');
 
     await new Promise((res, rej) =>
@@ -49,7 +51,7 @@ async function dlAudio(url) {
         `-x --audio-format mp3 --audio-quality 0`,
         `--no-playlist`,
         `--max-filesize 48M`,
-        `"${url}"`
+        shq(url)
     ].join(' ');
 
     await new Promise((res, rej) =>
@@ -67,7 +69,7 @@ async function dlAudio(url) {
 async function getInfo(url) {
     return new Promise((res) => {
         exec(
-            `yt-dlp ${COOKIES} --no-playlist --print "%(title)s|||%(duration>%M:%S)s|||%(uploader)s|||%(filesize_approx)s" "${url}"`,
+            `yt-dlp ${COOKIES} --no-playlist --print "%(title)s|||%(duration>%M:%S)s|||%(uploader)s|||%(filesize_approx)s" ${shq(url)}`,
             { timeout: 30000 }, (err, stdout) => {
                 if (err) return res({});
                 const parts = stdout.trim().split('|||');
@@ -86,7 +88,7 @@ async function getInfo(url) {
 async function getAvailableQualities(url) {
     return new Promise((res) => {
         exec(
-            `yt-dlp ${COOKIES} --no-playlist -F "${url}"`,
+            `yt-dlp ${COOKIES} --no-playlist -F ${shq(url)}`,
             { timeout: 30000 }, (err, stdout) => {
                 if (err) return res([720]);
                 const heights = new Set();

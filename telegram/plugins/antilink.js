@@ -1,6 +1,7 @@
 const fs = require('fs');
+const { store } = require('../safe');
 
-const DB_PATH = '/tmp/archon_antilink.json';
+const DB_PATH = store('archon_antilink.json');
 const URL_REGEX = /(https?:\/\/[^\s]+|t\.me\/[^\s]+|@[a-zA-Z0-9_]{5,})/gi;
 
 function load() { try { return JSON.parse(fs.readFileSync(DB_PATH,'utf8')); } catch { return {}; } }

@@ -1,4 +1,5 @@
 const https = require('https');
+const { store } = require('../safe');
 
 function escapeHTML(t) { return !t || typeof t !== 'string' ? '' : t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
@@ -69,7 +70,7 @@ function saveSettings(db, chatId, updates) {
 function getFilterCount(chatId) {
     try {
         const fs = require('fs');
-        const db = JSON.parse(fs.readFileSync('/tmp/archon_filters.json', 'utf8'));
+        const db = JSON.parse(fs.readFileSync(store('archon_filters.json'), 'utf8'));
         return [`c:${chatId}`,`g:${chatId}`].reduce((s,k) => s + Object.keys(db[k]||{}).length, 0);
     } catch { return 0; }
 }
