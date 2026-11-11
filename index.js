@@ -4327,9 +4327,14 @@ apiApp.use(cors({
 // Every dashboard request reaches the bot from 127.0.0.1, so counting by IP put ALL dashboard users in one
 // bucket of 100 requests per 15 minutes: a few people browsing emptied it and every page failed ("Too many
 // requests"). The dashboard already limits each visitor by their real IP; calls from this machine are not counted here.
+// nginx also connects from 127.0.0.1, so a request it forwards from the internet (it carries Cloudflare's
+// cf-connecting-ip header) is counted, by the visitor's real IP; only the dashboard's own calls are skipped.
+// Only Cloudflare can reach nginx (firewall), so that header can't be forged from outside.
+const visitorIp = (req) => String(req.get('cf-connecting-ip') || req.ip || '');
 const isLocalCaller = (req) => {
     const a = String(req.socket?.remoteAddress || '');
-    return a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+    const local = a === '127.0.0.1' || a === '::1' || a === '::ffff:127.0.0.1';
+    return local && !req.get('cf-connecting-ip');
 };
 const apiLimiter = expressRateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -4337,6 +4342,7 @@ const apiLimiter = expressRateLimit({
     standardHeaders: true,
     legacyHeaders: false,
     skip: isLocalCaller,
+    keyGenerator: (req) => (expressRateLimit.ipKeyGenerator || ((ip) => ip))(visitorIp(req)),
     message: { error: 'Too many requests from this IP, please try again later.' }
 });
 
