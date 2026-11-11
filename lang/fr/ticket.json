@@ -158,5 +158,8 @@
   "evOpened": "Ticket #{number} ouvert par {user} · {cat}",
   "evClaimed": "{staff} a pris en charge le ticket #{number}",
   "evClosed": "Ticket #{number} fermé par {user}",
-  "evAuto": "Ticket #{number} fermé faute d'activité"
+  "evAuto": "Ticket #{number} fermé faute d'activité",
+  "welcome_hello": "Salut {user}, l'équipe a été prévenue. Explique-nous tout ici, captures d'écran comprises.",
+  "welcome_foot": "Ouvert {time}",
+  "welcome_foot_ac": "Ouvert {time} · se ferme tout seul après {hours} h sans message"
 }

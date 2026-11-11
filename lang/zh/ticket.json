@@ -154,5 +154,8 @@
   "evOpened": "{user} 开启了工单 #{number} · {cat}",
   "evClaimed": "{staff} 接手了工单 #{number}",
   "evClosed": "{user} 关闭了工单 #{number}",
-  "evAuto": "工单 #{number} 因长时间无活动已关闭"
+  "evAuto": "工单 #{number} 因长时间无活动已关闭",
+  "welcome_hello": "你好 {user}，团队已收到通知。请在这里详细说明，也可以附上截图。",
+  "welcome_foot": "开启于 {time}",
+  "welcome_foot_ac": "开启于 {time} · {hours} 小时无消息后自动关闭"
 }

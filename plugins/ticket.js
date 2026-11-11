@@ -31,7 +31,7 @@ function setupTicketDB(db) {
     try {
         db.prepare(`CREATE TABLE IF NOT EXISTS tickets (channel_id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, creator_id TEXT NOT NULL, creator_tag TEXT, created_at INTEGER, claimed_by TEXT, category TEXT, category_value TEXT, ticket_number INTEGER, participants TEXT, status TEXT DEFAULT 'open', priority TEXT DEFAULT 'normal', closed_at INTEGER, closed_by TEXT, transcript TEXT, issue_desc TEXT)`).run();
         const ticketCols = db.prepare("PRAGMA table_info(tickets)").all().map(c => c.name);
-        const newCols = { status: "TEXT DEFAULT 'open'", priority: "TEXT DEFAULT 'normal'", closed_at: "INTEGER", closed_by: "TEXT", transcript: "TEXT", issue_desc: "TEXT" };
+        const newCols = { claimed_at: "INTEGER", status: "TEXT DEFAULT 'open'", priority: "TEXT DEFAULT 'normal'", closed_at: "INTEGER", closed_by: "TEXT", transcript: "TEXT", issue_desc: "TEXT" };
         for (const [col, type] of Object.entries(newCols)) {
             if (!ticketCols.includes(col)) {
                 try { db.prepare('ALTER TABLE tickets ADD COLUMN ' + col + ' ' + type).run(); } catch(e) {}
@@ -46,9 +46,9 @@ function setupTicketDB(db) {
     } catch(e) { if (!e.message.includes('duplicate column')) console.error('[TDB] setup:', e.message); }
 }
 
-function saveTicket(db, cid, t) { try { db.prepare(`INSERT OR REPLACE INTO tickets (channel_id, guild_id, creator_id, creator_tag, created_at, claimed_by, category, category_value, ticket_number, participants, status, priority, closed_at, closed_by, transcript, issue_desc) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(cid, t.guildId, t.creatorId, t.creatorTag||'', t.createdAt, t.claimedBy||null, t.category||null, t.categoryValue||null, t.number||0, JSON.stringify(t.participants||[t.creatorId]), t.status||'open', t.priority||'normal', t.closedAt||null, t.closedBy||null, t.transcript||null, t.issueDesc||null); } catch(e) { console.error('[TDB] save:', e.message); } }
-function loadTicket(db, cid) { try { const r = db.prepare(`SELECT * FROM tickets WHERE channel_id=? AND (status IS NULL OR status='open')`).get(cid); if(!r) return null; return { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]'), issueDesc:r.issue_desc }; } catch(e) { return null; } }
-function loadAllTicketsFromDB(db, client) { try { const gids = client ? [...client.guilds.cache.keys()] : []; if(!gids.length) return; const ph = gids.map(()=>'?').join(','); const rows = db.prepare(`SELECT * FROM tickets WHERE guild_id IN (${ph}) AND (status IS NULL OR status='open')`).all(...gids); rows.forEach(r => active.set(r.channel_id, { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]'), issueDesc:r.issue_desc })); if (rows.length) setTimeout(() => rearmTimers(db, client), 60000); } catch(e) {} }
+function saveTicket(db, cid, t) { try { db.prepare(`INSERT OR REPLACE INTO tickets (channel_id, guild_id, creator_id, creator_tag, created_at, claimed_by, claimed_at, category, category_value, ticket_number, participants, status, priority, closed_at, closed_by, transcript, issue_desc) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(cid, t.guildId, t.creatorId, t.creatorTag||'', t.createdAt, t.claimedBy||null, t.claimedAt||null, t.category||null, t.categoryValue||null, t.number||0, JSON.stringify(t.participants||[t.creatorId]), t.status||'open', t.priority||'normal', t.closedAt||null, t.closedBy||null, t.transcript||null, t.issueDesc||null); } catch(e) { console.error('[TDB] save:', e.message); } }
+function loadTicket(db, cid) { try { const r = db.prepare(`SELECT * FROM tickets WHERE channel_id=? AND (status IS NULL OR status='open')`).get(cid); if(!r) return null; return { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, claimedAt:r.claimed_at, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]'), issueDesc:r.issue_desc }; } catch(e) { return null; } }
+function loadAllTicketsFromDB(db, client) { try { const gids = client ? [...client.guilds.cache.keys()] : []; if(!gids.length) return; const ph = gids.map(()=>'?').join(','); const rows = db.prepare(`SELECT * FROM tickets WHERE guild_id IN (${ph}) AND (status IS NULL OR status='open')`).all(...gids); rows.forEach(r => active.set(r.channel_id, { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, claimedAt:r.claimed_at, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]'), issueDesc:r.issue_desc })); if (rows.length) setTimeout(() => rearmTimers(db, client), 60000); } catch(e) {} }
 
 async function rearmTimers(db, client) {
     for (const [cid, tk] of active) {
@@ -308,14 +308,16 @@ async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false, s=null, iss
     
     const staffPing = s?.ticketStaffRole ? `<@&${s.ticketStaffRole}>` : '';
     
-    const view = _v2.card(isPremium ? 0xf1c40f : 0x00f0ff, [
-        { text: `## ${catObj.emoji || '🎫'} Ticket #${n}` },
-        { text: t('ticket.welcome_msg', lang, { user: `<@${u.id}>` }) || `Welcome <@${u.id}>!` },
+    const acRaw = s?.ticketAutoCloseHours, ac = (acRaw !== undefined && acRaw !== null && acRaw !== '') ? Number(acRaw) : 0;
+    const opened = `<t:${Math.floor(Date.now() / 1000)}:R>`;
+    const foot = ac > 0 ? t('ticket.welcome_foot_ac', lang, { time: opened, hours: ac }) : t('ticket.welcome_foot', lang, { time: opened });
+    const quote = issueDesc ? String(issueDesc).trim().split('\n').slice(0, 12).map((l) => `> ${l}`).join('\n') : null;
+    const view = _v2.card(isPremium ? 0xf1c40f : 0x3498db, [
+        { text: `## ${catObj.emoji || '🎫'} Ticket #${n} · ${catObj.label}` },
+        { text: t('ticket.welcome_hello', lang, { user: `<@${u.id}>` }) },
+        ...(quote ? [{ rule: true }, { text: quote }] : []),
         { rule: true },
-        { text: t('ticket.welcome_info', lang, { cat: cl, time: `<t:${Math.floor(Date.now() / 1000)}:R>` }) || `**Category** · ${cl}` },
-        { rule: true },
-        ...(issueDesc ? [{ text: t('ticket.welcome_inquiry', lang, { desc: issueDesc }) || `**Initial Inquiry**\n> *"${issueDesc}"*` }, { rule: true }] : []),
-        { text: `-# ${t('ticket.wDesc', lang, {user: u.id, cat: cl}).replace(`<@${u.id}>`, '').trim() || 'Our team has been notified.'}` },
+        { text: `-# ${em('ic_wait', '⏳')} ${foot}` },
         { row: r }
     ]);
     
@@ -625,7 +627,7 @@ module.exports = {
             if(!isS)return ix.reply({content:t('ticket.staffOnlyClaim', lang),flags:1<<6}).catch(()=>{});
             if(tk?.claimedBy)return ix.reply({content:t('ticket.already', lang),flags:1<<6}).catch(()=>{});
             await ix.deferReply({flags:1<<6}).catch(()=>{});
-            tk.claimedBy=uid; if(db)saveTicket(db,cid,tk);
+            tk.claimedBy=uid; tk.claimedAt=Date.now(); if(db)saveTicket(db,cid,tk);
             try{
                 const msgs=await ix.channel.messages.fetch({limit:10});
                 // the opening card (Components V2): a status line, and the Claim button turned off

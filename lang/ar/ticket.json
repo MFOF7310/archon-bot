@@ -154,5 +154,8 @@
   "evOpened": "فتح {user} التذكرة #{number} · {cat}",
   "evClaimed": "تولّى {staff} التذكرة #{number}",
   "evClosed": "أغلق {user} التذكرة #{number}",
-  "evAuto": "أُغلقت التذكرة #{number} بسبب عدم النشاط"
+  "evAuto": "أُغلقت التذكرة #{number} بسبب عدم النشاط",
+  "welcome_hello": "مرحبًا {user}، تم إبلاغ الفريق. اشرح لنا كل شيء هنا، ويمكنك إرفاق لقطات شاشة.",
+  "welcome_foot": "فُتحت {time}",
+  "welcome_foot_ac": "فُتحت {time} · تُغلق تلقائيًا بعد {hours} ساعة دون رسائل"
 }

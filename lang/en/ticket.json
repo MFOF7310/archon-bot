@@ -158,5 +158,8 @@
   "evOpened": "Ticket #{number} opened by {user} · {cat}",
   "evClaimed": "{staff} took ticket #{number}",
   "evClosed": "Ticket #{number} closed by {user}",
-  "evAuto": "Ticket #{number} closed after inactivity"
+  "evAuto": "Ticket #{number} closed after inactivity",
+  "welcome_hello": "Hi {user}, the team has been notified. Tell us everything here, screenshots included.",
+  "welcome_foot": "Opened {time}",
+  "welcome_foot_ac": "Opened {time} · closes on its own after {hours} h without a message"
 }

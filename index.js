@@ -5966,6 +5966,28 @@ apiApp.post('/api/ticket-config/:guildId', requireAdmin, async (req, res) => {
 });
 
 // ── TICKET CHANNEL AUTO-CREATE ──
+// Ticket numbers for the dashboard: open now, closed this week, rating, how long until someone takes a ticket
+apiApp.get('/api/ticket-stats/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const a = await verifyActor(req.params.guildId, req.query.userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const g = a.guild, db = client.db, gid = g.id, now = Date.now();
+        const open = db.prepare("SELECT ticket_number AS number, creator_id, creator_tag, category, claimed_by, created_at FROM tickets WHERE guild_id = ? AND (status IS NULL OR status = 'open') ORDER BY created_at DESC").all(gid);
+        const closedWeek = db.prepare("SELECT COUNT(*) AS c FROM tickets WHERE guild_id = ? AND status = 'closed' AND closed_at >= ?").get(gid, now - 7 * 86400000)?.c || 0;
+        const rating = db.prepare('SELECT AVG(stars) AS a, COUNT(*) AS c FROM ticket_ratings WHERE guild_id = ?').get(gid) || {};
+        const claim = db.prepare('SELECT AVG(claimed_at - created_at) AS ms, COUNT(*) AS c FROM tickets WHERE guild_id = ? AND claimed_at IS NOT NULL AND created_at >= ?').get(gid, now - 30 * 86400000) || {};
+        const name = (id) => { const m = id ? g.members.cache.get(String(id)) : null; return m ? (m.displayName || m.user.username) : null; };
+        res.json({
+            open: open.length,
+            closedWeek,
+            rating: rating.c ? Math.round(rating.a * 10) / 10 : null,
+            ratings: rating.c || 0,
+            claimMinutes: claim.c ? Math.round(claim.ms / 60000) : null,
+            list: open.slice(0, 10).map((r) => ({ number: r.number, member: name(r.creator_id) || (r.creator_tag || '').split('#')[0] || null, category: r.category || null, staff: name(r.claimed_by), claimed: !!r.claimed_by, openedAt: Number(r.created_at) || null })),
+        });
+    } catch (e) { console.error(`[TICKET-API] stats guild=${req.params.guildId}:`, e.message); res.status(500).json({ error: 'internal' }); }
+});
+
 apiApp.post('/api/ticket-config/:guildId/create-channels', requireAdmin, async (req, res) => {
     try {
         const { userId } = req.body || {};
