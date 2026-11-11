@@ -58,12 +58,30 @@ setInterval(() => {
 const MALICIOUS = [
     /discordg1ft/i, /free-nitro/i, /steanm/i, /grabify\./i, /iplogger\./i,
     /free\s*tokens?/i, /dm\s*(me|for)\s*(nitro|reward)/i, /self[-\s]?bot/i, /massdm/i,
-    /\.(ru|tk|ml|ga|cf)\//i, /discord\.(?!com|gg)/i,
+    /\.(ru|tk|ml|ga|cf)\//i,
     /(?:https?:\/\/)?(?:www\.)?discord(?:app)?\.(?:com|gg)\/gift\/[a-zA-Z0-9]{16,}/i,
     /t\.me\/\+?[a-zA-Z0-9_-]+/i,
 ];
-const INVITE_RE = /discord\.gg\/[a-zA-Z0-9_-]+/gi;
+// Invites are caught with or without https:// ("discord.gg/abc" alone used to slip through)
+const INVITE_RE = /(?:discord\.gg|discord(?:app)?\.com\/invite)\/[a-zA-Z0-9_-]+/gi;
 const ANY_LINK_RE = /https?:\/\/[^\s<>"`{}|\[\]]+/gi;
+// ANY_LINK_RE is global (used with match): calling .test() on it kept a position between messages, so every other
+// message with a link was read as having none. This one has no state.
+const HAS_LINK_RE = /https?:\/\/[^\s<>"`{}|\[\]]/i;
+
+// Fake Discord sites (dlscord-gift.com, discord-nitro.ru...): a link whose site name looks like Discord but isn't one of
+// Discord's own. It used to be any text "discord." followed by something, which also flagged "discord.js" in a sentence.
+const DISCORD_HOSTS = new Set(['discord.com', 'discord.gg', 'discordapp.com', 'discordapp.net', 'discord.media', 'discord.dev',
+    'discord.new', 'discord.gift', 'discord.gifts', 'discord.co', 'discordstatus.com', 'discord.store', 'dis.gd']);
+function fakeDiscordLink(content) {
+    for (const link of content.match(ANY_LINK_RE) || []) {
+        const host = extractDomain(link).replace(/^www\./, '');
+        if (!/d[i1l!|]sc[o0]rd/i.test(host)) continue;
+        const official = [...DISCORD_HOSTS].some(d => host === d || host.endsWith('.' + d));
+        if (!official) return true;
+    }
+    return false;
+}
 
 // ================= DEFAULT DOMAIN WHITELIST =================
 const DEFAULT_DOMAIN_WHITELIST = new Set([
@@ -157,7 +175,8 @@ async function checkToxicity(text) {
             temperature: 0, max_tokens: 60
         }, { headers: { Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 5000 });
         const c = r.data?.choices?.[0]?.message?.content;
-        if (c) { try { return JSON.parse(c.replace(/```json|```/g, '').trim()); } catch { return c.includes('true') ? { toxic: true, type: 'spam' } : null; } }
+        // An answer that isn't clean JSON counts as toxic only if it clearly says so (any "true" in it used to be enough)
+        if (c) { try { return JSON.parse(c.replace(/```json|```/g, '').trim()); } catch { return /"toxic"\s*:\s*true/i.test(c) ? { toxic: true, type: 'toxic content' } : null; } }
     } catch (e) { /* silent */ }
     return null;
 }
@@ -671,7 +690,7 @@ async function scanMessage(message, client, db) {
     const entry = history.get(k);
     entry.last = now;
 
-    const record = { ts: now, content: message.content, channelId: message.channel.id, mid: message.id, hasLinks: ANY_LINK_RE.test(message.content), norm: normalize(message.content), attachments: message.attachments.size };
+    const record = { ts: now, content: message.content, channelId: message.channel.id, mid: message.id, hasLinks: HAS_LINK_RE.test(message.content), norm: normalize(message.content), attachments: message.attachments.size };
     entry.messages.push(record);
     const cutoff = now - 120000;
     while (entry.messages.length && entry.messages[0].ts < cutoff) entry.messages.shift();
@@ -762,13 +781,11 @@ async function scanMessage(message, client, db) {
         seen.add('promo');
     }
 
-    // 6. Malicious links
-    if (record.hasLinks) {
-        const mal = MALICIOUS.some(p => p.test(message.content));
-        const inv = message.content.match(INVITE_RE);
-        if (mal && !seen.has('malicious')) { violations.push({ type: 'malicious link', reason: 'Phishing/scam URL detected', source: 'malicious' }); seen.add('malicious'); }
-        else if (inv?.length && ss?.inviteFilterEnabled && !seen.has('invite')) { violations.push({ type: 'unauthorized invite', reason: 'External Discord invite', source: 'invite' }); seen.add('invite'); }
-    }
+    // 6. Malicious links, then invites (an invite needs no https:// to work, so it is checked on every message)
+    const mal = record.hasLinks && (MALICIOUS.some(p => p.test(message.content)) || fakeDiscordLink(message.content));
+    const inv = message.content.match(INVITE_RE);
+    if (mal && !seen.has('malicious')) { violations.push({ type: 'malicious link', reason: 'Phishing/scam URL detected', source: 'malicious' }); seen.add('malicious'); }
+    else if (inv?.length && ss?.inviteFilterEnabled && !seen.has('invite')) { violations.push({ type: 'unauthorized invite', reason: 'External Discord invite', source: 'invite' }); seen.add('invite'); }
 
     // 7. Global link blocker
     if (ss?.linkFilterEnabled && record.hasLinks && !seen.has('malicious') && !seen.has('invite') && !seen.has('global_link')) {
@@ -837,10 +854,13 @@ async function scanMessage(message, client, db) {
         if (rapid.length >= 3) { const uc = new Set(rapid.map(m => m.channelId)); if (uc.size >= 2) { violations.push({ type: 'rapid fire', reason: `${rapid.length} messages across ${uc.size} channels in ${SPAM_WINDOW/1000}s`, source: 'rapid', crossChannel: true, channels: [...uc] }); seen.add('rapid'); } }
     }
 
-    // 10. AI toxicity
-    if (violations.length === 0 && message.content.length > 10 && require('./premium.js').isPremium(db, message.guild?.id)) {
-        const ai = await checkToxicity(message.content);
-        if (ai?.toxic) { violations.push({ type: ai.type || 'toxic content', reason: ai.reason || 'AI detected', source: 'ai' }); }
+    // 10. AI toxicity (Premium). It runs in the background: the message handler used to wait for the AI (up to 5 s)
+    // before any command or XP was processed, so every command felt slow on Premium servers. Commands are not sent to it.
+    const _prefix = ss?.prefix || '.';
+    if (violations.length === 0 && message.content.length > 10 && !message.content.startsWith(_prefix) && require('./premium.js').isPremium(db, message.guild?.id)) {
+        checkToxicity(message.content).then((ai) => {
+            if (ai?.toxic) return takeAction(message, [{ type: ai.type || 'toxic content', reason: ai.reason || 'AI detected', source: 'ai' }], client, db);
+        }).catch((e) => console.error('[AUTOMOD] AI check failed:', e.message));
     }
 
     if (violations.length > 0) {
