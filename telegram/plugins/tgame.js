@@ -31,12 +31,8 @@ module.exports = {
         });
 
         if (!result.ok) {
-            return ctx.replyHTML(
-                '🎮 <b>ARCHON Trivia</b>\n\n' +
-                'Play our trivia game in your browser!\n\n' +
-                '<a href="https://bamako-steel-dev.xyz/games/trivia.html">▶️ Play Now</a>\n\n' +
-                '🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱'
-            );
+            const T = require('../lang/play').tr(ctx);
+            return ctx.replyHTML(T('web_game'), { extra: { reply_markup: { inline_keyboard: [[{ text: T('b_play'), url: 'https://bamako-steel-dev.xyz/games/trivia.html' }]] } } });
         }
     }
 };

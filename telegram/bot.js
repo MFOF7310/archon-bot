@@ -374,6 +374,7 @@ async function handleCallback(update, bridge, client) {
         const ctx = buildContext(update, bridge, client);
         if (!ctx) return;
         ctx.args = arg ? [arg] : [];
+        ctx.calledAs = cmdName;
         ctx.statusMsgId = msgId;
         const cmd = bridge.getCommand(cmdName);
         if (cmd?.handler && !cmd.ownerOnly) { try { await cmd.handler(ctx); } catch (e) { console.error('[CMDX]', cmdName, e.message); } }
@@ -386,6 +387,7 @@ async function handleCallback(update, bridge, client) {
         const ctx = buildContext(update, bridge, client);
         if (!ctx) return;
         ctx.args = [];
+        ctx.calledAs = cmdName;
         const cmd = bridge.getCommand(cmdName);
         if (cmd?.handler) {
             try { await cmd.handler(ctx); } catch(e) { ctx.replyHTML(`❌ ${escapeHTML(e.message)}`); }
@@ -762,6 +764,7 @@ async function handleUpdate(update, bridge, client) {
         const cmdName = parts[0].toLowerCase().split('@')[0];
         const args = parts.slice(1);
         ctx.args = args;
+        ctx.calledAs = cmdName; // the word the member typed (/flip and /roll share one plugin)
 
         // Cooldown
         const cdKey = `${ctx.userId}:${cmdName}`;

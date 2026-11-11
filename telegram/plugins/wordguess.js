@@ -50,6 +50,8 @@ module.exports = {
             guessed: new Set(),
             wrong: 0,
             over: false,
+            // From the "New word" button: that message becomes the new game instead of a new message
+            msgId: ctx.callbackQuery?.message?.message_id || null,
         });
 
         await sendGame(ctx, chatId, userId);
@@ -72,16 +74,14 @@ async function sendGame(ctx, chatId, userId) {
     let guessedStr = '';
     const wrongGuesses = [...game.guessed].filter(ch => !game.word.includes(ch)).sort();
     if (wrongGuesses.length > 0) {
-        guessedStr = `\n❌ Wrong: <code>${wrongGuesses.join(' ')}</code>\n`;
+        guessedStr = '';
     }
 
-    const msg = `🔤 <b>WORD GUESS</b>\n` +
+    const msg = `🔤 <b>Word guess</b>\n` +
         `${hangman}\n` +
-        `━━━━━━━━━━━━━━━━━━━━\n\n` +
-        `Word: <code>${wordDisplay}</code>\n\n` +
-        `💡 Hint: ${game.hint}\n` +
-        `❌ Wrong: <b>${game.wrong}/${MAX_WRONG}</b> · 🎯 Remaining: <b>${remaining}</b>${guessedStr}\n\n` +
-        `<i>Tap a letter to guess!</i>`;
+        `<code>${wordDisplay}</code>\n\n` +
+        `💡 ${game.hint}\n` +
+        `Mistakes <b>${game.wrong}/${MAX_WRONG}</b> · letters left <b>${remaining}</b>`;
 
     // Build letter keyboard — show used letters as disabled
     const kb = [];
@@ -107,15 +107,33 @@ async function sendGame(ctx, chatId, userId) {
 
     // Control row
     kb.push([
-        { text: '🔄 New Word', callback_data: 'wg_new' },
-        { text: '💡 Hint', callback_data: '_noop' },
-        { text: '🏳️ Give Up', callback_data: 'wg_giveup' },
+        { text: '🔄 New word', callback_data: 'wg_new' },
+        { text: '🏳️ Give up', callback_data: 'wg_giveup' },
     ]);
+    await gameMsg(ctx, game, chatId, msg, { inline_keyboard: kb });
+}
 
-    await ctx.bridge.sendTo(chatId, msg, {
-        parse_mode: 'HTML',
-        extra: { reply_markup: { inline_keyboard: kb } } }
-    );
+// The whole game lives in one message: every letter edits it (it used to send a new 26-button message per letter)
+async function gameMsg(ctx, game, chatId, text, keyboard = null) {
+    const opt = { parse_mode: 'HTML', ...(keyboard ? { extra: { reply_markup: keyboard } } : {}) };
+    if (game.msgId) {
+        const r = await ctx.bridge.editMessage(chatId, game.msgId, text, opt).catch(() => null);
+        if (r?.success !== false) return;
+    }
+    const sent = await ctx.bridge.sendTo(chatId, text, opt).catch(() => null);
+    game.msgId = sent?.data?.message_id || game.msgId;
+}
+const againKb = { inline_keyboard: [[{ text: '🔁 New word', callback_data: 'wg_new' }]] };
+
+// A won game is real XP on the Telegram profile
+function reward(ctx, points, won) {
+    try {
+        const db = ctx.client?.db; if (!db) return;
+        const E = require('../econ');
+        const u = E.ensureUser(db, ctx.userId, ctx.username); if (!u) return;
+        const xp = (u.xp || 0) + (won ? points : 0);
+        E.update(db, ctx.userId, { xp, level: E.levelOf(xp), games_played: (u.games_played || 0) + 1, games_won: (u.games_won || 0) + (won ? 1 : 0) });
+    } catch (e) { console.error('[WORDGUESS] reward:', e.message); }
 }
 
 async function handleCallback(ctx, data) {
@@ -136,14 +154,11 @@ async function handleCallback(ctx, data) {
     if (data === 'wg_giveup') {
         const game = activeGames.get(key);
         activeGames.delete(key);
-        await ctx.answerCallback('Game ended!');
+        await ctx.answerCallback('🏳️');
         if (game) {
-            await ctx.bridge.sendTo(chatId,
-                `💀 <b>GAME OVER!</b>\n\n` +
-                `The word was: <b>${game.word}</b>\n\n` +
-                `<code>/wordguess</code> to try again!`,
-                { parse_mode: 'HTML' }
-            );
+            if (!game.msgId) game.msgId = ctx.callbackQuery?.message?.message_id || null;
+            reward(ctx, 0, false);
+            await gameMsg(ctx, game, chatId, `🏳️ The word was <b>${game.word}</b>.`, againKb);
         }
         return true;
     }
@@ -170,6 +185,7 @@ async function handleCallback(ctx, data) {
     }
 
     game.guessed.add(letter);
+    if (!game.msgId) game.msgId = ctx.callbackQuery?.message?.message_id || null;
 
     if (!game.word.includes(letter)) {
         game.wrong++;
@@ -185,28 +201,15 @@ async function handleCallback(ctx, data) {
     if (won) {
         activeGames.delete(key);
         const score = Math.max(10, 100 - game.wrong * 10);
-        await ctx.bridge.sendTo(chatId,
-            `🎉 <b>YOU WON!</b>\n` +
-            `━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `Word: <b>${game.word}</b>\n` +
-            `Wrong guesses: <b>${game.wrong}/${MAX_WRONG}</b>\n` +
-            `🏆 Score: <b>${score}</b> points!\n\n` +
-            `<code>/wordguess</code> — Play again`,
-            { parse_mode: 'HTML' }
-        );
+        reward(ctx, score, true);
+        await gameMsg(ctx, game, chatId, `🎉 <b>${game.word}</b>, found with ${game.wrong} mistake${game.wrong === 1 ? '' : 's'}.\n+${score} XP on your /profile`, againKb);
         return true;
     }
 
     if (lost) {
         activeGames.delete(key);
-        await ctx.bridge.sendTo(chatId,
-            `💀 <b>GAME OVER!</b>\n` +
-            `━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `The word was: <b>${game.word}</b>\n` +
-            `Wrong guesses: <b>${game.wrong}/${MAX_WRONG}</b>\n\n` +
-            `<code>/wordguess</code> — Try again!`,
-            { parse_mode: 'HTML' }
-        );
+        reward(ctx, 0, false);
+        await gameMsg(ctx, game, chatId, `${getHangman(game.wrong)}\nThe word was <b>${game.word}</b>.`, againKb);
         return true;
     }
 

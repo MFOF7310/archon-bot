@@ -99,51 +99,58 @@ const LETTERS = ['A', 'B', 'C', 'D'];
 const activeGames = new Map();
 const GAME_TIMEOUT = 90000; // 90 seconds per question
 
-async function sendQuestion(ctx, chatId, userId) {
+// The whole quiz lives in one message: each question, the feedback and the result replace the previous text
+async function gameMsg(ctx, game, chatId, text, keyboard = null) {
+    const opt = { parse_mode: 'HTML', ...(keyboard ? { extra: { reply_markup: keyboard } } : {}) };
+    if (game.msgId) {
+        const r = await ctx.bridge.editMessage(chatId, game.msgId, text, opt).catch(() => null);
+        if (r?.success !== false) return;
+    }
+    const sent = await ctx.bridge.sendTo(chatId, text, opt).catch(() => null);
+    game.msgId = sent?.data?.message_id || game.msgId;
+}
+
+async function sendQuestion(ctx, chatId, userId, note = '') {
     const key = chatId + '_' + userId;
     const game = activeGames.get(key);
     if (!game) return;
 
     const q = game.question;
-    const cat = game.category;
-    const catEmoji = CAT_EMOJIS[cat] || '❓';
-    const progress = '█'.repeat(game.qIndex) + '░'.repeat(game.totalQuestions - game.qIndex);
-
+    const catEmoji = CAT_EMOJIS[game.category] || '🎲';
     const text =
-        catEmoji + ' <b>Question ' + game.qIndex + '/' + game.totalQuestions + '</b>\n' +
-        '<code>' + progress + '</code>\n' +
-        '━━━━━━━━━━━━━━━━\n\n' +
+        (note ? note + '\n\n' : '') +
+        catEmoji + ' <b>' + game.qIndex + '/' + game.totalQuestions + '</b> · score ' + game.score + '\n\n' +
         '<b>' + escapeHTML(q.q) + '</b>\n\n' +
         q.a.map((ans, i) => LETTERS[i] + '. ' + escapeHTML(ans)).join('\n') +
-        '\n\n⏱ 90s · Score: ' + game.score + '/' + (game.qIndex - 1);
+        '\n\n<i>⏱ 90 s</i>';
+    const btn = (i) => ({ text: LETTERS[i] + '. ' + q.a[i].substring(0, 24), callback_data: 'trivia_' + game.id + '_' + LETTERS[i] });
+    const keyboard = { inline_keyboard: [[btn(0), btn(1)], [btn(2), btn(3)], [{ text: '🏳️ Stop', callback_data: 'trivia_' + game.id + '_QUIT' }]] };
 
-    const keyboard = {
-        inline_keyboard: [
-            [
-                { text: 'A. ' + escapeHTML(q.a[0].substring(0,20)), callback_data: 'trivia_' + game.id + '_A' },
-                { text: 'B. ' + escapeHTML(q.a[1].substring(0,20)), callback_data: 'trivia_' + game.id + '_B' },
-            ],
-            [
-                { text: 'C. ' + escapeHTML(q.a[2].substring(0,20)), callback_data: 'trivia_' + game.id + '_C' },
-                { text: 'D. ' + escapeHTML(q.a[3].substring(0,20)), callback_data: 'trivia_' + game.id + '_D' },
-            ],
-            [{ text: '🏳️ Give Up', callback_data: 'trivia_' + game.id + '_QUIT' }]
-        ]
-    };
-
-    // Clear old timeout
     if (game.timeout) clearTimeout(game.timeout);
     game.timeout = setTimeout(async () => {
         if (!activeGames.has(key)) return;
         activeGames.delete(key);
-        await ctx.bridge.sendTo(chatId,
-            '⏰ <b>Time is up!</b>\n\nCorrect answer was: <b>' + LETTERS[game.correct] + '.</b> ' + escapeHTML(q.a[game.correct]) + '\n\nFinal score: <b>' + game.score + '/' + game.totalQuestions + '</b>\n\n/trivia to play again!',
-            { parse_mode: 'HTML' }
-        );
+        reward(ctx, game);
+        await gameMsg(ctx, game, chatId,
+            '⏰ <b>Time is up</b>\nThe answer was ' + LETTERS[game.correct] + '. ' + escapeHTML(q.a[game.correct]) +
+            '\n\nScore <b>' + game.score + '/' + game.totalQuestions + '</b>', againKb());
     }, GAME_TIMEOUT);
 
-    await ctx.bridge.sendTo(chatId, text, { parse_mode: 'HTML', extra: { reply_markup: keyboard } });
+    await gameMsg(ctx, game, chatId, text, keyboard);
 }
+
+// Points become real XP on the Telegram profile (the end screen used to promise XP that was never given)
+function reward(ctx, game) {
+    try {
+        const db = ctx.client?.db; if (!db || game.rewarded) return;
+        game.rewarded = true;
+        const E = require('../econ');
+        const u = E.ensureUser(db, ctx.userId, ctx.username); if (!u) return;
+        const xp = (u.xp || 0) + game.score * 10;
+        E.update(db, ctx.userId, { xp, level: E.levelOf(xp), games_played: (u.games_played || 0) + 1, games_won: (u.games_won || 0) + (game.score >= Math.ceil(game.totalQuestions * 0.8) ? 1 : 0) });
+    } catch (e) { console.error('[TRIVIA] reward:', e.message); }
+}
+const againKb = () => ({ inline_keyboard: [[{ text: '🔁 Play again', callback_data: 'trivia_start_random_5' }, { text: '🏆 Top', callback_data: 'trivia_start_top_0' }]] });
 
 module.exports = {
     name: 'trivia',
@@ -159,7 +166,7 @@ module.exports = {
 
         // Already in a game?
         if (activeGames.has(key)) {
-            return ctx.replyHTML('⚠️ You already have an active game! Answer the question or wait for it to expire.\n\n/trivia stop — to quit');
+            return ctx.replyHTML('You already have a quiz running. Answer it, or send /trivia stop.');
         }
 
         // Parse args: /trivia [category] [count]
@@ -185,15 +192,7 @@ module.exports = {
         // No args — show category menu
         if (ctx.args.length === 0) {
             return ctx.bridge.sendTo(chatId,
-                '🎮 <b>ARCHON Trivia</b>\n━━━━━━━━━━━━━━━━\n\n' +
-                'Choose a category or play random!\n\n' +
-                '🇲🇱 Mali\n🌍 Africa\n💻 Tech\n🎮 Gaming\n🌐 General\n\n' +
-                '💡 Usage:\n' +
-                '<code>/trivia</code> — Random mix\n' +
-                '<code>/trivia mali</code> — Mali questions\n' +
-                '<code>/trivia tech 10</code> — 10 tech questions\n' +
-                '<code>/trivia top</code> — Leaderboard\n\n' +
-                '🦅 ARCHON CG-223',
+                '🎮 <b>Trivia</b>\nPick a theme. 5 questions, 90 seconds each, every right answer is 10 XP.',
                 {
                     parse_mode: 'HTML',
                     extra: {
@@ -254,11 +253,9 @@ module.exports = {
         if (letter === 'QUIT') {
             clearTimeout(game.timeout);
             activeGames.delete(key);
-            await ctx.answerCallback('👋 Game stopped!');
-            await ctx.bridge.sendTo(chatId,
-                '🏳️ Game ended!\n\nFinal score: <b>' + game.score + '/' + game.totalQuestions + '</b>\n\n/trivia to play again! 🎮',
-                { parse_mode: 'HTML' }
-            );
+            await ctx.answerCallback('👋');
+            reward(ctx, game);
+            await gameMsg(ctx, game, chatId, '🏳️ <b>Quiz stopped</b>\nScore <b>' + game.score + '/' + game.totalQuestions + '</b>', againKb());
             return true;
         }
 
@@ -268,24 +265,15 @@ module.exports = {
 
         if (isCorrect) {
             game.score++;
-            const xp = 10 * game.score;
-            await ctx.answerCallback('✅ Correct! +' + xp + ' XP');
+            await ctx.answerCallback('✅ +10 XP');
 
             if (game.qIndex < game.totalQuestions) {
-                await ctx.bridge.sendTo(chatId,
-                    '✅ <b>CORRECT!</b> ' + '🔥'.repeat(Math.min(game.score, 5)) + '\n\n' +
-                    escapeHTML(game.question.a[userAnswer]) + '\n\n' +
-                    '⭐ +' + xp + ' XP · Score: <b>' + game.score + '/' + (game.qIndex) + '</b>\n\n' +
-                    '<i>Next question...</i>',
-                    { parse_mode: 'HTML' }
-                );
-                await new Promise(r => setTimeout(r, 1200));
+                // Next question in the same message, with the result of this one on top; no repeats within a quiz
                 game.qIndex++;
-                const pool = game.category === 'random' ? ALL_QUESTIONS : (QUESTIONS[game.category] || ALL_QUESTIONS);
-                game.question = pool[Math.floor(Math.random() * pool.length)];
+                game.question = game.pool[(game.qIndex - 1) % game.pool.length];
                 game.correct = game.question.c;
                 game.answered = false;
-                await sendQuestion(ctx, chatId, userId);
+                await sendQuestion(ctx, chatId, userId, '✅ <b>' + escapeHTML(correctText) + '</b> ' + '🔥'.repeat(Math.min(game.score, 5)));
             } else {
                 clearTimeout(game.timeout);
                 activeGames.delete(key);
@@ -293,33 +281,24 @@ module.exports = {
                 const scores = loadScores();
                 const uid = String(ctx.userId);
                 const uname = ctx.username || 'Player';
-                if (!scores[uid] || game.score > (scores[uid].best || 0)) {
-                    scores[uid] = { name: uname, best: game.score, total: (scores[uid] && scores[uid].total || 0) + game.score, games: (scores[uid] && scores[uid].games || 0) + 1 };
-                    saveScores(scores);
-                }
+                // Every finished quiz counts (games and total used to change only on a new best score)
+                const prev = scores[uid] || {};
+                scores[uid] = { name: uname, best: Math.max(prev.best || 0, game.score), total: (prev.total || 0) + game.score, games: (prev.games || 0) + 1 };
+                saveScores(scores);
                 const grade = game.score >= game.totalQuestions ? '🏆 PERFECT!' : game.score >= game.totalQuestions * 0.8 ? '⭐ Excellent!' : game.score >= game.totalQuestions * 0.6 ? '👍 Good!' : game.score >= game.totalQuestions * 0.4 ? '💪 Not Bad!' : '😅 Keep Practicing!';
-                await ctx.bridge.sendTo(chatId,
-                    '🎉 <b>QUIZ COMPLETE!</b>\n━━━━━━━━━━━━━━━━\n\n' +
-                    grade + '\n\n' +
-                    '📊 Score: <b>' + game.score + '/' + game.totalQuestions + '</b>\n' +
-                    '⭐ XP Earned: <b>' + (game.score * (game.score + 1) * 5) + '</b>\n' +
-                    '🔥 Streak: ' + '🔥'.repeat(Math.min(game.score, 10)) + '\n\n' +
-                    '/trivia to play again!\n/trivia top — Leaderboard',
-                    { parse_mode: 'HTML' }
-                );
+                reward(ctx, game);
+                await gameMsg(ctx, game, chatId,
+                    '🎉 <b>Quiz complete</b> · ' + grade + '\nScore <b>' + game.score + '/' + game.totalQuestions + '</b> · +' + (game.score * 10) + ' XP on your /profile', againKb());
             }
         } else {
             clearTimeout(game.timeout);
             activeGames.delete(key);
-            await ctx.answerCallback('❌ Wrong!');
-            await ctx.bridge.sendTo(chatId,
-                '❌ <b>WRONG!</b>\n\n' +
-                'Your answer: ' + letter + '. ' + escapeHTML(game.question.a[userAnswer]) + '\n' +
-                'Correct: <b>' + LETTERS[game.correct] + '.</b> ' + escapeHTML(correctText) + '\n\n' +
-                '📊 Final Score: <b>' + game.score + '/' + game.totalQuestions + '</b>\n\n' +
-                '/trivia to try again! 🎮',
-                { parse_mode: 'HTML' }
-            );
+            await ctx.answerCallback('❌');
+            reward(ctx, game);
+            await gameMsg(ctx, game, chatId,
+                '❌ <b>Not quite</b>\nYou chose ' + letter + '. ' + escapeHTML(game.question.a[userAnswer] || '') +
+                '\nThe answer was <b>' + LETTERS[game.correct] + '. ' + escapeHTML(correctText) + '</b>' +
+                '\n\nScore <b>' + game.score + '/' + game.totalQuestions + '</b>', againKb());
         }
         return true;
     }
@@ -332,21 +311,13 @@ async function startGame(ctx, chatId, userId, key, category, count) {
     const gameId = Date.now().toString(36);
 
     activeGames.set(key, {
-        id: gameId, userId, category,
+        id: gameId, userId, category, pool: shuffled,
         question: q, correct: q.c,
         score: 0, qIndex: 1, totalQuestions: Math.min(count, pool.length),
-        answered: false, timeout: null
+        answered: false, timeout: null,
+        // Started from the menu: the menu message becomes the quiz
+        msgId: ctx.callbackQuery?.message?.message_id || null,
     });
-
-    const catEmoji = CAT_EMOJIS[category] || '🎲';
-    await ctx.bridge.sendTo(chatId,
-        catEmoji + ' <b>Trivia Starting!</b>\n' +
-        (category === 'random' ? '🎲 Random Mix' : category.charAt(0).toUpperCase() + category.slice(1)) +
-        ' · ' + Math.min(count, pool.length) + ' questions\n\n' +
-        'Good luck ' + escapeHTML(ctx.username) + '! 🍀',
-        { parse_mode: 'HTML' }
-    );
-    await new Promise(r => setTimeout(r, 800));
     await sendQuestion(ctx, chatId, userId);
 }
 
@@ -355,11 +326,9 @@ async function showLeaderboard(ctx, chatId) {
     const sorted = Object.entries(scores).sort((a,b) => (b[1].best||0) - (a[1].best||0)).slice(0, 10);
     if (!sorted.length) return ctx.replyHTML('No scores yet! Play /trivia to get on the board 🎮');
     const medals = ['🥇','🥈','🥉','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟'];
-    let msg = '🏆 <b>Trivia Leaderboard</b>\n━━━━━━━━━━━━━━━━\n\n';
+    let msg = '🏆 <b>Trivia, best scores</b>\n\n';
     sorted.forEach(([uid, data], i) => {
-        msg += medals[i] + ' <b>' + escapeHTML(data.name) + '</b>\n';
-        msg += '   Best: ' + data.best + ' · Total XP: ' + (data.total * 10) + '\n\n';
+        msg += medals[i] + ' ' + escapeHTML(data.name) + ' · best ' + data.best + ' · ' + (data.games || 1) + ' games\n';
     });
-    msg += '🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱';
     return ctx.bridge.sendTo(chatId, msg, { parse_mode: 'HTML' });
 }

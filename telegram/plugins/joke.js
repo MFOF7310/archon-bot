@@ -39,18 +39,18 @@ module.exports = {
         if (type === 'programming' || type === 'dev') {
             const devJokes = JOKES.filter(j => /programmer|code|developer|python|java|database|function|bug|api/i.test(j));
             const joke = devJokes[Math.floor(Math.random() * devJokes.length)] || JOKES[0];
-            return ctx.replyHTML(`💻 <b>Dev Joke</b>\n\n${escapeHTML(joke)}`);
+            return ctx.replyHTML(`💻 ${escapeHTML(joke)}`);
         }
 
         try {
             const data = await requestJSON('https://official-joke-api.appspot.com/random_joke', { timeout: 5000 });
             if (data?.setup && data?.punchline) {
-                return ctx.replyHTML(`😂 <b>Joke</b>\n\n${escapeHTML(data.setup)}\n\n${escapeHTML(data.punchline)}`);
+                return ctx.replyHTML(`😂 ${escapeHTML(data.setup)}\n\n<tg-spoiler>${escapeHTML(data.punchline)}</tg-spoiler>`);
             }
         } catch { /* fallback */ }
 
         const joke = JOKES[Math.floor(Math.random() * JOKES.length)];
-        ctx.replyHTML(`😂 <b>Joke</b>\n\n${escapeHTML(joke)}`);
+        ctx.replyHTML(`😂 ${escapeHTML(joke)}`);
     }
 };
 

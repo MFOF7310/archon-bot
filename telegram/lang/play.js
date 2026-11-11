@@ -4,6 +4,7 @@ const { langOf } = require('./menu');
 
 const T = {
     en: {
+        heads: '🪙 <b>Heads</b>', tails: '🪙 <b>Tails</b>', b_again: '🔁 Again', rolled: '🎲 <b>{r}</b> on a {s}-sided die', rolled_many: '🎲 {list}\nTotal <b>{t}</b>', range: '🎲 <b>{r}</b> between {a} and {b}', picked: '🎯 I pick <b>{x}</b>', pick_help: 'Give me at least two choices: /pick rice fonio couscous', joke_t: '😂', web_game: '🎮 <b>ARCHON Trivia</b>\nPlay it in your browser.', b_play: '▶️ Play',
         no_db: 'The database is not reachable right now. Try again in a moment.',
         no_account: "You don't have an account yet. Claim your first reward with /daily.",
         daily_wait: '⏰ <b>Already claimed today</b>\nCome back in {time}. Your streak: {streak} days.',
@@ -29,6 +30,7 @@ const T = {
         ranks: ['🌱 Recruit', '🔹 Field agent', '💠 Cyber specialist', '⚜️ Bamako commander', '👑 System architect'],
     },
     fr: {
+        heads: '🪙 <b>Pile</b>', tails: '🪙 <b>Face</b>', b_again: '🔁 Encore', rolled: '🎲 <b>{r}</b> sur un dé à {s} faces', rolled_many: '🎲 {list}\nTotal <b>{t}</b>', range: '🎲 <b>{r}</b> entre {a} et {b}', picked: '🎯 Je choisis <b>{x}</b>', pick_help: 'Donne-moi au moins deux choix : /pick riz fonio couscous', joke_t: '😂', web_game: '🎮 <b>Quiz ARCHON</b>\nJoue dans ton navigateur.', b_play: '▶️ Jouer',
         no_db: "La base de données ne répond pas pour le moment. Réessaie dans un instant.",
         no_account: "Tu n'as pas encore de compte. Récupère ta première récompense avec /daily.",
         daily_wait: '⏰ <b>Déjà récupéré aujourd\'hui</b>\nReviens dans {time}. Ta série : {streak} jours.',
@@ -54,6 +56,7 @@ const T = {
         ranks: ['🌱 Recrue', '🔹 Agent de terrain', '💠 Cyber-spécialiste', '⚜️ Commandant de Bamako', '👑 Architecte système'],
     },
     zh: {
+        heads: '🪙 <b>正面</b>', tails: '🪙 <b>反面</b>', b_again: '🔁 再来', rolled: '🎲 {s} 面骰子掷出 <b>{r}</b>', rolled_many: '🎲 {list}\n合计 <b>{t}</b>', range: '🎲 {a} 到 {b} 之间：<b>{r}</b>', picked: '🎯 我选 <b>{x}</b>', pick_help: '至少给我两个选项：/pick 米饭 面条 饺子', joke_t: '😂', web_game: '🎮 <b>ARCHON 问答</b>\n在浏览器里玩。', b_play: '▶️ 开始',
         no_db: '数据库暂时无法连接，请稍后再试。',
         no_account: '你还没有账户。用 /daily 领取第一份奖励吧。',
         daily_wait: '⏰ <b>今天已经领取过了</b>\n请在 {time} 后再来。连续签到：{streak} 天。',
@@ -79,6 +82,7 @@ const T = {
         ranks: ['🌱 新兵', '🔹 外勤特工', '💠 网络专家', '⚜️ 巴马科指挥官', '👑 系统架构师'],
     },
     ar: {
+        heads: '🪙 <b>وجه</b>', tails: '🪙 <b>كتابة</b>', b_again: '🔁 مرة أخرى', rolled: '🎲 <b>{r}</b> على نرد من {s} أوجه', rolled_many: '🎲 {list}\nالمجموع <b>{t}</b>', range: '🎲 <b>{r}</b> بين {a} و{b}', picked: '🎯 أختار <b>{x}</b>', pick_help: 'أعطني خيارين على الأقل: /pick أرز فونيو كسكس', joke_t: '😂', web_game: '🎮 <b>مسابقة ARCHON</b>\nالعب في متصفحك.', b_play: '▶️ العب',
         no_db: 'قاعدة البيانات لا تستجيب حاليًا. حاول بعد قليل.',
         no_account: 'ليس لديك حساب بعد. احصل على مكافأتك الأولى عبر /daily.',
         daily_wait: '⏰ <b>استلمتها اليوم بالفعل</b>\nعد بعد {time}. سلسلتك: {streak} يومًا.',
