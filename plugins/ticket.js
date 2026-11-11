@@ -1,14 +1,15 @@
 const {
     EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder,
     ButtonStyle, PermissionFlagsBits, ChannelType, StringSelectMenuBuilder,
-    ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, TextDisplayBuilder
+    ModalBuilder, TextInputBuilder, TextInputStyle, MessageFlags, TextDisplayBuilder,
+    ChannelSelectMenuBuilder, RoleSelectMenuBuilder
 } = require('discord.js');
 const { toV2, fit, isV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const { card: v2card } = require('../lib/games/v2');
 const { icon } = require('../lib/ui/icons');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { safeSend } = require('../lib/safeSend');
-const EMOJIS = require('../config/emojis');
+const EMOJIS = (() => { try { return require('../config/emojis'); } catch { return {}; } })();
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const mentions = require('../lib/mentions');
 const { t } = require('../lib/i18n');
@@ -355,6 +356,106 @@ function cfgCard(s, g, c, lang='en') {
     ]);
 }
 
+// ================= LIVE CONFIGURATION CARD =================
+// One card, a menu per setting: picking a value saves it and redraws the card. Only Manage Server can change it.
+const AC_STEPS = [0, 12, 24, 48, 72, 168];
+const LIM_STEPS = [1, 2, 3, 5, 10];
+const canConfigure = (m) => !!(m?.permissions?.has(PermissionFlagsBits.ManageGuild) || m?.permissions?.has(PermissionFlagsBits.Administrator));
+const DASHBOARD = 'https://bamako-steel-dev.xyz';
+
+function liveConfig(client, g, lang = 'en') {
+    const L = (k, v) => t('ticket.' + k, lang, v || {});
+    const s = effectiveSettings(client.getServerSettings?.(g.id) || {}, g.id);
+    const has = (id, kind) => id && (kind === 'role' ? g.roles.cache.has(String(id)) : g.channels.cache.has(String(id)));
+    let open = 0; for (const [, tk] of active) if (tk.guildId === g.id) open++;
+    let panel = null; try { panel = client.db?.prepare('SELECT ticket_panel_channel AS c FROM server_settings WHERE guild_id = ?').get(g.id)?.c || null; } catch {}
+    const ready = has(s.ticketCategory);
+    const status = ready
+        ? `${icon('ok', g)} ${has(panel) ? L('live_ready', { open, panel: `<#${panel}>` }) : L('live_ready_nopanel', { open })}`
+        : `${icon('warn', g)} **${L('live_missing')}**`;
+
+    const ac = Number(s.ticketAutoCloseHours) || 0, lim = Number(s.ticketLimitPerUser) || 1;
+    const acLabel = (h) => (h <= 0 ? L('ac_off') : h % 24 === 0 && h >= 48 ? L('ac_d', { d: h / 24 }) : L('ac_h', { h }));
+    const limLabel = (n) => (n === 1 ? L('lim_one') : L('lim_n', { n }));
+
+    const cat = new ChannelSelectMenuBuilder().setCustomId('ticket_cfg_cat').setPlaceholder(L('ph_cat')).addChannelTypes(ChannelType.GuildCategory).setMinValues(0).setMaxValues(1);
+    if (has(s.ticketCategory)) cat.setDefaultChannels(String(s.ticketCategory));
+    const staff = new RoleSelectMenuBuilder().setCustomId('ticket_cfg_staff').setPlaceholder(L('ph_staff')).setMinValues(0).setMaxValues(1);
+    if (has(s.ticketStaffRole, 'role')) staff.setDefaultRoles(String(s.ticketStaffRole));
+    const tx = new ChannelSelectMenuBuilder().setCustomId('ticket_cfg_tx').setPlaceholder(L('ph_tx')).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMinValues(0).setMaxValues(1);
+    if (has(s.ticketTranscriptChannel)) tx.setDefaultChannels(String(s.ticketTranscriptChannel));
+    const acSel = new StringSelectMenuBuilder().setCustomId('ticket_cfg_ac')
+        .addOptions([...new Set([...AC_STEPS, ac])].sort((x, y) => x - y).map((h) => ({ label: acLabel(h), value: String(h), default: h === ac })));
+    const limSel = new StringSelectMenuBuilder().setCustomId('ticket_cfg_lim')
+        .addOptions([...new Set([...LIM_STEPS, lim])].sort((x, y) => x - y).map((n) => ({ label: limLabel(n), value: String(n), default: n === lim })));
+    const row = (c) => new ActionRowBuilder().addComponents(c);
+    const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('ticket_cfg_post').setLabel(L('btn_post')).setStyle(ButtonStyle.Primary).setEmoji(icon('ticket', g)).setDisabled(!ready),
+        new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(`${DASHBOARD}/dashboard/${g.id}/tickets`).setLabel(L('btn_cats')).setEmoji(em('dashboard', '🌐')),
+        new ButtonBuilder().setCustomId('ticket_cfg_stats').setLabel(L('btn_stats')).setStyle(ButtonStyle.Secondary).setEmoji(icon('stats', g)),
+    );
+    return v2card(ready ? 0x378ADD : 0xBA7517, [
+        { text: `## ${icon('ticket', g)} ${L('live_title', { guild: g.name })}\n-# ${L('live_sub')}` },
+        { text: status },
+        { rule: true },
+        { text: `**${L('live_cat')}**` }, { row: row(cat) },
+        { text: `**${L('live_staff')}**` }, { row: row(staff) },
+        { text: `**${L('live_tx')}**` }, { row: row(tx) },
+        { text: `**${L('live_ac')}** · **${L('live_lim')}**` }, { row: row(acSel) }, { row: row(limSel) },
+        { rule: true },
+        { row: buttons },
+    ]);
+}
+
+// Posts the ticket panel in a channel and remembers it. Returns null when posted, else the reason in words.
+async function postPanel(client, g, ch, lang) {
+    const _cp = require('../lib/canPost'), me = g.members.me, d = _cp.diagnose(g, ch, me);
+    if (!d.ok) return t('ticket.' + d.key, lang, { ch: String(ch), role: d.role || '', perms: _cp.localize(d.missing || [], lang).join(', '), bot: me?.roles?.botRole?.name || me?.displayName || 'ARCHON', cmd: '/ticket panel' });
+    const ss = effectiveSettings(client.getServerSettings?.(g.id) || {}, g.id);
+    const card = panelCard(ss, g.name, lang, new ActionRowBuilder().addComponents(panelMenu(ss, lang)), client);
+    const sent = await ch.send(card).catch((e) => { console.error('[TICKET] panel send failed:', e.message); return null; });
+    if (!sent) return t('ticket.failed_generic', lang);
+    try {
+        client.db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(g.id);
+        client.db.prepare('UPDATE server_settings SET ticket_panel_channel=?, ticket_panel_channel_name=?, ticket_panel_message_id=? WHERE guild_id=?').run(ch.id, ch.name || String(ch.id), sent.id, g.id);
+        client.settings?.delete?.(g.id);
+    } catch (e) {}
+    return null;
+}
+
+async function handleLiveConfig(ix, client, lang) {
+    const g = ix.guild;
+    if (!canConfigure(ix.member)) return ix.reply({ content: `${icon('no', ix)} ${t('ticket.live_noperm', lang)}`, flags: 64 }).catch(() => {});
+    const id = ix.customId;
+    const val = ix.values?.[0] ?? null;   // an emptied menu clears the setting
+    const save = (key, v) => { client.updateServerSetting(g.id, key, v); client.settings?.delete?.(g.id); };
+    if (id === 'ticket_cfg_cat') save('ticketCategory', val);
+    else if (id === 'ticket_cfg_staff') save('ticketStaffRole', val);
+    else if (id === 'ticket_cfg_tx') save('ticketTranscriptChannel', val);
+    else if (id === 'ticket_cfg_ac') { const h = Math.max(0, Math.min(168, parseInt(val, 10) || 0)); save('ticketAutoCloseHours', String(h)); for (const [cid, tk] of active) if (tk.guildId === g.id) resetACTimer(cid, client, effectiveSettings(client.getServerSettings?.(g.id) || {}, g.id)); }
+    else if (id === 'ticket_cfg_lim') save('ticketLimitPerUser', String(Math.max(1, Math.min(10, parseInt(val, 10) || 1))));
+    else if (id === 'ticket_cfg_post') {
+        const why = await postPanel(client, g, ix.channel, lang);
+        await ix.update(liveConfig(client, g, lang)).catch(() => {});
+        return ix.followUp({ content: why ? `${icon('no', ix)} ${t('ticket.live_post_fail', lang, { why })}` : `${icon('ok', ix)} ${t('ticket.live_posted', lang, { ch: String(ix.channel) })}`, flags: 64 }).catch(() => {});
+    } else if (id === 'ticket_cfg_stats') {
+        return ix.reply({ ...statsCard(client.db, g.id, lang), flags: 64 | MessageFlags.IsComponentsV2 }).catch(() => {});
+    }
+    return ix.update(liveConfig(client, g, lang)).catch((e) => console.error('[TICKET] live config:', e.message));
+}
+
+function statsCard(db, gid, lang) {
+    const q = (sql, ...a) => { try { return db.prepare(sql).get(...a) || {}; } catch { return {}; } };
+    const total = q('SELECT COUNT(*) AS c FROM tickets WHERE guild_id = ?', gid).c || 0;
+    const open = q("SELECT COUNT(*) AS c FROM tickets WHERE guild_id = ? AND (status IS NULL OR status = 'open')", gid).c || 0;
+    const rated = q('SELECT COUNT(*) AS c, AVG(stars) AS a FROM ticket_ratings WHERE guild_id = ?', gid);
+    return v2card(0x00f0ff, [
+        { text: `## ${em('charts', '📊')} ${t('ticket.stats_title', lang) || 'Ticket Analytics'}` },
+        { rule: true },
+        { text: `**${em('ticket', '🎫')} ${t('ticket.stats_total', lang) || 'Total'}** · \`${total}\`\n**${em('ping_ok', '🟢')} ${t('ticket.stats_open', lang) || 'Open'}** · \`${open}\`\n**${em('star', '⭐')} ${t('ticket.stats_avg', lang) || 'Average rating'}** · \`${(rated.a || 0).toFixed(1)}\` (${rated.c || 0})` },
+    ]);
+}
+
 async function saveSetting(client, gid, key, val, lang='en') { try { const ok=client.updateServerSetting(gid,key,val); if(ok){client.settings?.delete(gid);return{ok:true,msg:t('ticket.setOK', lang, {setting: key, value: val})};} const g=client.guilds?.cache?.get(gid);return{ok:false,err:`${getErrorEmoji(g)} DB error.`};}catch(e){return{ok:false,err:`${getErrorEmoji(client.guilds?.cache?.get(gid))} DB error.`};} }
 
 function onMessageActivity(message, client, s) {
@@ -391,24 +492,21 @@ module.exports = {
     description:'🎫 Professional ticket system — panel, categories, auto-close, logs.',
     usage:'.ticket [panel|close|setup|config|setcategory|setstaffrole|settranscript|setautoclose|setlimit]',
 
+    // Members never see /ticket: they open tickets from the panel and close them with the buttons. Discord can only hide
+    // a whole command (not one subcommand), so the command needs Manage Server; owners can still adjust it in
+    // Server Settings › Integrations. The five "set..." subcommands are now menus on the /ticket config card.
     data: new SlashCommandBuilder().setName('ticket').setDescription('🎫 Ticket system').
-        addSubcommand(s=>s.setName('panel').setDescription('Post ticket panel')).
-        addSubcommand(s=>s.setName('close').setDescription('Close current ticket')).
-        addSubcommand(s=>s.setName('setup').setDescription('Show setup guide')).
-        addSubcommand(s=>s.setName('config').setDescription('View configuration')).
-        addSubcommand(s=>s.setName('setcategory').setDescription('Set archive category').addChannelOption(o=>o.setName('category').setDescription('Archive category').setRequired(true).addChannelTypes(ChannelType.GuildCategory))).
-        addSubcommand(s=>s.setName('setstaffrole').setDescription('Set staff role').addRoleOption(o=>o.setName('role').setDescription('Staff role').setRequired(true))).
-        addSubcommand(s=>s.setName('settranscript').setDescription('Set log channel').addChannelOption(o=>o.setName('channel').setDescription('Log channel').setRequired(true).addChannelTypes(ChannelType.GuildText,5))).
-        addSubcommand(s=>s.setName('setautoclose').setDescription('Auto-close hours').addIntegerOption(o=>o.setName('hours').setDescription('Hours (0=off)').setRequired(true).setMinValue(0).setMaxValue(168))).
-        addSubcommand(s=>s.setName('setlimit').setDescription('Max tickets per user').addIntegerOption(o=>o.setName('limit').setDescription('1-10').setRequired(true).setMinValue(1).setMaxValue(10))).
-        addSubcommand(s=>s.setName('leaderboard').setDescription('🏆 Top staff by rating')).
-        addSubcommand(s=>s.setName('stats').setDescription('📊 Ticket system analytics')).
-        addSubcommand(s=>s.setName('myrating').setDescription('⭐ Your rating history')),
+        setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild).setDMPermission(false).
+        addSubcommand(s=>s.setName('config').setDescription('Set up tickets: category, staff, transcripts, auto-close, limit')).
+        addSubcommand(s=>s.setName('panel').setDescription('Post the ticket panel in this channel')).
+        addSubcommand(s=>s.setName('close').setDescription('Close the ticket you are in')).
+        addSubcommand(s=>s.setName('stats').setDescription('Ticket numbers for this server')).
+        addSubcommand(s=>s.setName('leaderboard').setDescription('Top support staff by rating')),
 
     run: async(client,msg,args,db,ss)=>{
         const lang = pickLang(client, msg.guild?.id, msg), sub=args[0]?.toLowerCase(), g=msg.guild, p=ss?.prefix||'.';
         if(!g)return msg.reply(t('ticket.servers_only', lang)).catch(()=>{});
-        const adm=msg.member.permissions.has(PermissionFlagsBits.Administrator);
+        const adm=canConfigure(msg.member);
         const needAdm=['setcategory','setstaffrole','settranscript','setautoclose','setlimit','panel','config','setup'].includes(sub);
         if(needAdm&&!adm)return msg.reply(t('ticket.needAdmin', lang, { error: getErrorEmoji(g) })).catch(()=>{});
         const es=effectiveSettings(ss,g.id);
@@ -418,9 +516,10 @@ module.exports = {
         if(sub==='settranscript'){const id=args[1]?.replace(/[<#>]/g,'');if(!id)return msg.reply(`${EMOJIS.warning} ${mentions(client, 'channels', 'set')} type:Ticket Logs <id>`).catch(()=>{});const c=g.channels.cache.get(id);if(!c)return msg.reply(t('ticket.badCh', lang)).catch(()=>{});const r=await saveSetting(client,g.id,'ticketTranscriptChannel',id,lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='setautoclose'){const h=parseInt(args[1]);if(isNaN(h)||h<0||h>168)return msg.reply(t('ticket.badNum', lang)).catch(()=>{});const r=await saveSetting(client,g.id,'ticketAutoCloseHours',String(h),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
         if(sub==='setlimit'){const l=parseInt(args[1]);if(isNaN(l)||l<1||l>10)return msg.reply(t('ticket.badNum', lang)).catch(()=>{});const r=await saveSetting(client,g.id,'ticketLimitPerUser',String(l),lang);return msg.reply(r.ok?r.msg:r.err).catch(()=>{});}
-        if(sub==='config'){const e=cfgCard(es,g,client,lang);return msg.reply(e).catch(()=>{});}
+        if(sub==='config'||sub==='setup'){return msg.reply(liveConfig(client,g,lang)).catch(()=>{});}
+        if(sub==='myrating'){const rows=(()=>{try{return db.prepare('SELECT stars, comment FROM ticket_ratings WHERE rater_id = ? ORDER BY created_at DESC LIMIT 10').all(msg.author.id);}catch{return [];}})();if(!rows.length)return msg.reply(t('ticket.no_my_ratings', lang)||'No ratings yet.').catch(()=>{});return msg.reply(v2card(0x9b59b6,[{text:'## ⭐ '+(t('ticket.myrating_title',lang)||'Your ratings')},{rule:true},{text:rows.map(r=>'⭐'.repeat(r.stars)+(r.comment?'\n> '+String(r.comment).slice(0,60):'')).join('\n\n')}])).catch(()=>{});}
 
-        if(!es?.ticketCategory&&sub!=='setup')return msg.reply(t('ticket.notSet', lang)).catch(()=>{});
+        if(!es?.ticketCategory&&sub==='panel')return msg.reply(t('ticket.notSet', lang)).catch(()=>{});
 
         if(sub==='setup'){
             let setupUsage = '';
@@ -460,7 +559,7 @@ module.exports = {
     execute: async(ix,client)=>{
         const lang = pickLang(client, ix.guildId, ix), sc=ix.options.getSubcommand(), g=ix.guild,u=ix.user,db=client.db,ss=effectiveSettings(client.getServerSettings?.(g?.id)||{},g?.id);
         if(!g)return ix.reply({content:t('ticket.servers_only', lang),flags:1<<6});
-        const adm=ix.member.permissions?.has(PermissionFlagsBits.Administrator);
+        const adm=canConfigure(ix.member);
         const need=['setcategory','setstaffrole','settranscript','setautoclose','setlimit','panel','config','setup'].includes(sc);
         if(need&&!adm)return ix.reply({content:t('ticket.needAdmin', lang, { error: getErrorEmoji(g) }),flags:1<<6});
 
@@ -469,8 +568,9 @@ module.exports = {
         if(sc==='settranscript'){const c=ix.options.getChannel('channel');if(!c)return ix.reply({content:t('ticket.badCh', lang),flags:1<<6});const r=await saveSetting(client,g.id,'ticketTranscriptChannel',c.id,lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
         if(sc==='setautoclose'){const h=ix.options.getInteger('hours');const r=await saveSetting(client,g.id,'ticketAutoCloseHours',String(h),lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
         if(sc==='setlimit'){const l=ix.options.getInteger('limit');const r=await saveSetting(client,g.id,'ticketLimitPerUser',String(l),lang);return ix.reply({content:r.ok?r.msg:r.err,flags:1<<6});}
-        if(sc==='config'){const e=cfgCard(ss,g,client,lang);return ix.reply({...e, flags:1<<6 | 32768});}
-        if(!ss?.ticketCategory&&sc!=='setup')return ix.reply({content:t('ticket.notSet', lang),flags:1<<6});
+        if(sc==='config'){const e=liveConfig(client,g,lang);return ix.reply({...e, flags:1<<6 | 32768});}
+        if(!ss?.ticketCategory&&sc==='panel')return ix.reply({content:t('ticket.notSet', lang),flags:1<<6});
+        if(sc==='stats')return ix.reply({...statsCard(db,g.id,lang),flags:1<<6|32768});
 
         if(sc==='setup'){
             let setupUsage = '';
@@ -494,7 +594,7 @@ module.exports = {
             ]);
             return ix.reply({ ...setupCard, flags: 1 << 6 | 32768 });
         }
-        if(sc==='panel'){const _cp=require('../lib/canPost'),_me=g.members.me,_d=_cp.diagnose(g,ix.channel,_me);if(!_d.ok)return ix.reply({content:t('ticket.'+_d.key,lang,{ch:String(ix.channel),role:_d.role||'',perms:_cp.localize(_d.missing||[],lang).join(', '),bot:_me.roles.botRole?.name||_me.displayName,cmd: mentions(ix.client, ix.commandName, 'panel')}),flags:1<<6}).catch(()=>{});const e=panelCard(ss,g.name,lang,null,client),m=panelMenu(ss,lang),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);await ix.reply({content:t('ticket.posting', lang),flags:1<<6});const s=await ix.channel.send(e).catch(err=>{console.error('[TICKET] panel send failed:',err.message);return null;});if(s){await ix.editReply({content:t('ticket.posted', lang)}).catch(()=>{});try{db.prepare('UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=?,ticket_panel_message_id=? WHERE guild_id=?').run(ix.channel.id,ix.channel.name||String(ix.channel.id),s.id,g.id);}catch(e){}}else await ix.editReply({content:t('ticket.failed_generic', lang)}).catch(()=>{});return;}
+        if(sc==='panel'){await ix.deferReply({flags:1<<6});const why=await postPanel(client,g,ix.channel,lang);return ix.editReply({content:why?`${icon('no',ix)} ${why}`:t('ticket.posted', lang)}).catch(()=>{});}
         if(sc==='close'){const ch=ix.channel,tk=active.get(ch.id);if(!tk)return ix.reply({content:t('ticket.not_a_ticket', lang),flags:1<<6});if(u.id!==tk.creatorId&&!isStaff(ix.member,ss))return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6});await ix.deferReply();await saveTx(ch,tk,u.id,client,ss);await ix.editReply({content:t('ticket.closing', lang)}).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id,u.id);logEvent(client,ss,g.id,'evClosed',{number:tk.number||'?',user:`<@${u.id}>`});const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${u.tag}`).catch(()=>{}),5000);return;}
         if(sc==='leaderboard'){
             await ix.deferReply({flags:1<<6});
@@ -563,6 +663,8 @@ module.exports = {
     handleComponent: async(ix,client)=>{
         const lang = pickLang(client, ix.guildId, ix), db=client.db, ss=effectiveSettings(client.getServerSettings?.(ix.guild?.id)||{},ix.guild?.id);
 
+        if(ix.customId?.startsWith('ticket_cfg_')) { await handleLiveConfig(ix, client, lang); return true; }
+
         if(ix.isStringSelectMenu()&&ix.customId==='ticket_category_select'){
             const g=ix.guild,u=ix.user,cv=ix.values[0],cats=getCats(ss),cat=cats.find(c=>c.value===cv)||cats[0];
             const lim=ss?.ticketLimitPerUser||1;
@@ -625,7 +727,8 @@ module.exports = {
 
         if(act==='claim'){
             if(!isS)return ix.reply({content:t('ticket.staffOnlyClaim', lang),flags:1<<6}).catch(()=>{});
-            if(tk?.claimedBy)return ix.reply({content:t('ticket.already', lang),flags:1<<6}).catch(()=>{});
+            if(!tk)return ix.reply({content:t('ticket.data_not_found', lang),flags:1<<6}).catch(()=>{});
+            if(tk.claimedBy)return ix.reply({content:t('ticket.already', lang),flags:1<<6}).catch(()=>{});
             await ix.deferReply({flags:1<<6}).catch(()=>{});
             tk.claimedBy=uid; tk.claimedAt=Date.now(); if(db)saveTicket(db,cid,tk);
             try{
@@ -742,5 +845,5 @@ module.exports = {
     },
 
     setupTicketDB, loadAllTicketsFromDB, onMessageActivity,
-    _cards: { ticketLogCard, ratingLogCard, openFor }
+    _cards: { ticketLogCard, ratingLogCard, openFor, liveConfig, statsCard }
 };

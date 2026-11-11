@@ -3511,7 +3511,8 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
     interaction.customId === 'ticket_lang_select' || 
     interaction.customId === 'ticket_category_select'
 )) || 
-(interaction.isModalSubmit() && (interaction.customId.startsWith('ticket_issue_modal_') || interaction.customId.startsWith('ticket_modal_create_')));
+(interaction.isModalSubmit() && (interaction.customId.startsWith('ticket_issue_modal_') || interaction.customId.startsWith('ticket_modal_create_'))) ||
+(interaction.isAnySelectMenu() && interaction.customId.startsWith('ticket_cfg_'));
 
     if (isTicketComponent) {
         try {
