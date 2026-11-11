@@ -237,5 +237,20 @@
   "cardTitleTimeout": "{ic_wait} I balila sɛbɛni ci li ma fo nin waati {duration} la nin {server} kɔnɔ.",
   "cardTitleWarn": "{ic_warn} Kankaridakan kelen nin {server} kɔnɔ.",
   "cardClears": "{ic_calendar} Ɲanginiw bɛ jɔsi tile 30 kɔfɛ.",
-  "cardContact": "Ɲininkaliw? Ɲininkali kɛ {contact} la."
+  "cardContact": "Ɲininkaliw? Ɲininkali kɛ {contact} la.",
+  "why_human_message_spam": "I ye mesagi caman ci teliyala salɔn kelen kɔnɔ.",
+  "why_human_caps_flood": "I ka mesagi cilenw tun bɛ sɛbɛnna sɛbɛnden kumabaw la.",
+  "why_human_emoji_flood": "I ka mesagiw bɛ tun ye emoji ye.",
+  "why_human_mass_mention": "I ka mesagi tun ye mɔgɔ caman de kofɔ ɲɔgɔn fɛɛ.",
+  "why_human_everyone_here_spam": "I ye bɛɛ la jɛlen ping nin attachements caman ye.",
+  "why_human_rapid_everyone_spam": "I ye bɛɛ kofɔ ɲɔgɔn fɛ siyɛn caman wagati kuru kelen kɔnɔ.",
+  "why_human_promotional_spam": "I ye bɛɛ kofɔ nin bɔlɔlɔ juru min yamaruyalen tɛ yan.",
+  "why_human_malicious_link": "Bɔlɔlɔ juru min dɔn nen ni scam ni phising tun bɛ I ka mesagi kɔnɔna la.",
+  "why_human_unauthorized_invite": "I ye sɛrivɛri wɛrɛ ka bɔlɔlɔ juru ci ka na Discord sɛrivɛri kɔnɔ.",
+  "why_human_unauthorized_link": "I ye bɔlɔlɔ juru dɔ tun ci ni o yamaruyalen tɛ yan.",
+  "why_human_image_spam": "I ye jaa caman ci sanga kuruni kɔnɔ.",
+  "why_human_attachment_spam": "I ye jaa caman ni sɛbɛnni foyi t'a kɔnɔ.",
+  "why_human_cross_channel_spam": "I ye mesagi kelen in ci salɔn caman kɔnɔ.",
+  "why_human_rapid_fire": "I ye mesagi caman ci salɔn caman waati kuruni kɔnɔ.",
+  "why_human_toxic_content": "I ka mesagi flage (flagged) la kɔmi juguya ka ɲɛsin maa wɛrɛw ma."
 }

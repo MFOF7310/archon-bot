@@ -5633,7 +5633,7 @@ apiApp.get('/api/general/:guildId', requireAdmin, async (req, res) => {
             });
         const fallbacks = {};
         if (g.id === process.env.GUILD_ID) {
-            const ENV = { modLogChannel: 'MOD_LOG_CHANNEL_ID', logChannel: 'LOG_CHANNEL_ID', rulesChannel: 'RULES_CHANNEL_ID', updatesChannel: 'UPDATES_CHANNEL_ID' };
+            const ENV = { modLogChannel: 'MOD_LOG_CHANNEL_ID', logChannel: 'LOG_CHANNEL_ID', rulesChannel: 'RULES_CHANNEL_ID', updatesChannel: 'UPDATES_CHANNEL_ID', welcomeChannel: 'WELCOME_CHANNEL_ID', goodbyeChannel: 'GOODBYE_CHANNEL_ID' };
             for (const [k, e] of Object.entries(ENV)) {
                 const c = process.env[e] ? g.channels.cache.get(process.env[e]) : null;
                 if (c) fallbacks[k] = { id: c.id, name: c.name };

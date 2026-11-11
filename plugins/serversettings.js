@@ -1,4 +1,5 @@
 const EMOJIS = require('../config/emojis');
+const em = (k, fb) => EMOJIS[k] || fb;
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const mentions = require('../lib/mentions');
 const { t } = require('../lib/i18n');
@@ -105,8 +106,8 @@ async execute(interaction, client) {
         const ownerName = owner ? `**${owner.user.username}**` : 'the server owner';
 
         const msg = lang === 'fr'
-            ? `🔒 **ACCÈS RESTREINT**\n\nCette commande est réservée aux **administrateurs** du serveur.\n\n👑 **Propriétaire :** ${ownerName}`
-            : `🔒 **RESTRICTED ACCESS**\n\nThis command is reserved for server **administrators**.\n\n👑 **Server Owner:** ${ownerName}`;
+            ? `${em('ic_lock', '🔒')} **ACCÈS RESTREINT**\n\nCette commande est réservée aux **administrateurs** du serveur.\n\n${em('ic_owner', '👑')} **Propriétaire :** ${ownerName}`
+            : `${em('ic_lock', '🔒')} **RESTRICTED ACCESS**\n\nThis command is reserved for server **administrators**.\n\n${em('ic_owner', '👑')} **Server Owner:** ${ownerName}`;
         
         return interaction.reply({ content: msg, flags: 1 << 6 });
     }
@@ -137,16 +138,16 @@ async execute(interaction, client) {
             } catch (e) {}
 
             const msg = client.detectLanguage(message.content) === 'fr'
-                ? `🔒 **ACCÈS RESTREINT**\n\n` +
+                ? `${em('ic_lock', '🔒')} **ACCÈS RESTREINT**\n\n` +
                   `Cette commande est réservée aux **administrateurs** du serveur.\n\n` +
-                  `👑 **Propriétaire du serveur :** ${ownerName}\n` +
-                  `🛡️ **Permission requise :** \`Administrateur\`\n\n` +
-                  `💡 Si vous pensez que cela devrait être modifié, contactez ${ownerName}.`
-                : `🔒 **RESTRICTED ACCESS**\n\n` +
+                  `${em('ic_owner', '👑')} **Propriétaire du serveur :** ${ownerName}\n` +
+                  `${em('ic_shield', '🛡️')} **Permission requise :** \`Administrateur\`\n\n` +
+                  `${em('hint', '💡')} Si vous pensez que cela devrait être modifié, contactez ${ownerName}.`
+                : `${em('ic_lock', '🔒')} **RESTRICTED ACCESS**\n\n` +
                   `This command is reserved for server **administrators**.\n\n` +
-                  `👑 **Server Owner:** ${ownerName}\n` +
-                  `🛡️ **Required Permission:** \`Administrator\`\n\n` +
-                  `💡 If you believe this should be changed, please contact ${ownerName}.`;
+                  `${em('ic_owner', '👑')} **Server Owner:** ${ownerName}\n` +
+                  `${em('ic_shield', '🛡️')} **Required Permission:** \`Administrator\`\n\n` +
+                  `${em('hint', '💡')} If you believe this should be changed, please contact ${ownerName}.`;
 
             const embed = new EmbedBuilder()
                 .setColor('#e74c3c')
@@ -196,8 +197,8 @@ async execute(interaction, client) {
         }
 
         const msg = lang === 'fr'
-            ? '❓ Action inconnue. Utilisez: `view`, `set`, `reset`, `export`'
-            : '❓ Unknown action. Use: `view`, `set`, `reset`, `export`';
+            ? em('ic_info', '❓') + ' Action inconnue. Utilisez: `view`, `set`, `reset`, `export`'
+            : em('ic_info', '❓') + ' Unknown action. Use: `view`, `set`, `reset`, `export`';
         return message.reply(msg);
     },
 
@@ -217,8 +218,8 @@ async execute(interaction, client) {
                 return null;
             };
 
-            const checkEmoji = EMOJIS.screaminggreen || em('ic_ok', '✅');
-            const crossEmoji = EMOJIS.red_color || em('ic_warn', '⚠️');
+            const checkEmoji = em('ic_ok', '✅');
+            const crossEmoji = em('ic_off', '❌');
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
@@ -264,23 +265,23 @@ async execute(interaction, client) {
         const tr = (k) => t('serversettings.' + k, lang);
         
         const isArchitectServer = guild.id === process.env.GUILD_ID;
-        const chM = (id, env) => id ? `<#${id}>` : (isArchitectServer && process.env[env] ? `<#${process.env[env]}> 🔹 .env` : `\`${tr('not_set')}\``);
-        const roleM = (id, env) => id ? `<@&${id}>` : (isArchitectServer && process.env[env] ? `<@&${process.env[env]}> 🔹 .env` : `\`${tr('not_set')}\``);
-        const bS = (val) => val ? `${EMOJIS.screaminggreen || em('ic_ok', '✅')} ${tr('enabled')}` : `${EMOJIS.red_color || em('ic_off', '❌')} ${tr('disabled')}`;
-        
         const em = (k, fb) => EMOJIS[k] || fb;
+        const chM = (id, env) => id ? `<#${id}>` : (isArchitectServer && process.env[env] ? `<#${process.env[env]}> ${em('dot_blue', '🔹')} .env` : `\`${tr('not_set')}\``);
+        const roleM = (id, env) => id ? `<@&${id}>` : (isArchitectServer && process.env[env] ? `<@&${process.env[env]}> ${em('dot_blue', '🔹')} .env` : `\`${tr('not_set')}\``);
+        const bS = (val) => val ? `${em('ic_on', '🟢')} ${tr('enabled')}` : `${em('ic_off', '🔴')} ${tr('disabled')}`;
+
 
         // Définition de toutes les sections avec leur statut "isSet"
         const sections = [
             {
-                emoji: '👑',
+                emoji: em('ic_settings', '⚙️'),
                 title: tr('cat_general'),
                 lines: [
                     { text: `**${tr('prefix')}** — \`${settings.prefix || '.'}\``, isSet: true }
                 ]
             },
             {
-                emoji: '👋',
+                emoji: em('wave', '👋'),
                 title: tr('cat_welcome'),
                 lines: [
                     { text: `**${tr('welcome_channel')}** — ${chM(settings.welcomeChannel, 'WELCOME_CHANNEL_ID')}`, isSet: !!settings.welcomeChannel },
@@ -290,7 +291,7 @@ async execute(interaction, client) {
                 ]
             },
             {
-                emoji: '💰',
+                emoji: em('ic_economy', '💰'),
                 title: tr('cat_leveling'),
                 lines: [
                     { text: `**${tr('level_channel')}** — ${chM(settings.levelChannel, 'LEVEL_CHANNEL_ID')}`, isSet: !!settings.levelChannel },
@@ -301,7 +302,7 @@ async execute(interaction, client) {
                 ]
             },
             {
-                emoji: '🛡️',
+                emoji: em('ic_shield', '🛡️'),
                 title: `${tr('cat_features')} & ${tr('cat_moderation')}`,
                 lines: [
                     { text: `**${tr('afk')}** — ${bS(settings.afkEnabled)}`, isSet: settings.afkEnabled == 1 },
@@ -312,7 +313,7 @@ async execute(interaction, client) {
                 ]
             },
             {
-                emoji: '🎭',
+                emoji: em('ic_role', '🎭'),
                 title: tr('cat_roles'),
                 lines: [
                     { text: `**${tr('member_role')}** — ${roleM(settings.memberRole, 'MEMBER_ROLE')}`, isSet: !!settings.memberRole },
@@ -348,7 +349,7 @@ async execute(interaction, client) {
 
         const setCmd = mentions(client, 'serversettings', 'set');
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${tr('footer')} : ${setCmd}`));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 ${em('ic_mali', '🇲🇱')} • ${tr('footer')} : ${setCmd}`));
 
         return { components: [c], flags: MessageFlags.IsComponentsV2 };
     },
