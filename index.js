@@ -1789,6 +1789,21 @@ client.once(Events.ClientReady, async () => {
     Promise.resolve(require('./plugins/automod.js').resumeRaids?.(client, db)).catch((e) => console.error('[RAID] resume failed:', e.message));
     // AutoMod: one summary a day for each server owner (21:00 Bamako time)
     try { require('./plugins/automod.js').startDigest?.(client, db); } catch (e) { console.error('[AUTOMOD] digest start failed:', e.message); }
+    // The dashboard's "create ticket channels" button used to put custom-emoji codes in channel names, which Discord
+    // shows as raw text (<:ic_setup:…> STAFF & SUPPORT, note1564…-・transcript-logs). Those exact names get fixed once.
+    setTimeout(async () => {
+        let fixed = 0;
+        for (const g of client.guilds.cache.values()) {
+            for (const ch of g.channels.cache.values()) {
+                let name = null;
+                if (/^<a?:\w+:\d{15,25}> STAFF & SUPPORT$/.test(ch.name)) name = '🛠️ STAFF & SUPPORT';
+                else if (/^note\d{15,25}-・transcript-logs$/.test(ch.name)) name = '📝-・transcript-logs';
+                if (!name) continue;
+                try { await ch.setName(name, 'Fix a channel name ARCHON created with a raw emoji code'); fixed++; } catch (e) {}
+            }
+        }
+        if (fixed) console.log(`[CHANNELS] Fixed ${fixed} channel name(s) with raw emoji codes`);
+    }, 30000).unref?.();
     // Cache missing guild names from DB + bulk stats sync
     setTimeout(async () => {
         try {
@@ -6062,13 +6077,13 @@ apiApp.post('/api/ticket-config/:guildId/create-channels', requireAdmin, async (
         if (!me?.permissions.has(P.Flags.ManageChannels)) return res.status(403).json({ error: 'bot_missing_manage_channels' });
 
         const category = await g.channels.create({
-            name: `${em('ic_setup', '🛠️')} STAFF & SUPPORT`, type: ChannelType.GuildCategory,
+            name: '🛠️ STAFF & SUPPORT', type: ChannelType.GuildCategory,
         });
         const supportCh = await g.channels.create({
             name: '🎫-・support-tickets', type: ChannelType.GuildText, parent: category.id,
         });
         const transcriptCh = await g.channels.create({
-            name: `${em('note', '📝')}-・transcript-logs`, type: ChannelType.GuildText, parent: category.id,
+            name: '📝-・transcript-logs', type: ChannelType.GuildText, parent: category.id,
             permissionOverwrites: [
                 { id: g.roles.everyone.id, deny: [P.Flags.ViewChannel] },
                 { id: me.id, allow: [P.Flags.ViewChannel, P.Flags.SendMessages] },

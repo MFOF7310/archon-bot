@@ -230,7 +230,7 @@ async function createCh(g, uid, uname, cat, s, client) {
     const ow=[{id:g.id,deny:[PermissionFlagsBits.ViewChannel]},{id:client.user.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ManageChannels,PermissionFlagsBits.EmbedLinks,PermissionFlagsBits.AttachFiles,PermissionFlagsBits.ManageMessages,PermissionFlagsBits.ReadMessageHistory]},{id:uid,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.EmbedLinks,PermissionFlagsBits.AttachFiles,PermissionFlagsBits.ReadMessageHistory]}];
     if(s?.ticketStaffRole){const r=g.roles.cache.get(s.ticketStaffRole);if(r)ow.push({id:r.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ManageMessages,PermissionFlagsBits.EmbedLinks,PermissionFlagsBits.AttachFiles,PermissionFlagsBits.ReadMessageHistory]});}
     const ar=g.roles.cache.find(r=>r.permissions?.has(PermissionFlagsBits.Administrator));if(ar&&!ow.some(o=>o.id===ar.id))ow.push({id:ar.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ManageMessages]});
-    const opts={name,type:ChannelType.GuildText,permissionOverwrites:ow,topic:`#${n} | ${cd.emoji} ${cd.label}`};
+    const opts={name,type:ChannelType.GuildText,permissionOverwrites:ow,topic:`#${n} | ${String(cd.emoji||'').replace(/<a?:\w+:\d+>/g,'').trim()} ${cd.label}`.replace(/\|\s+/, '| ')}; // a channel topic can't show custom emojis
     if(tcid&&g.channels.cache.get(tcid))opts.parent=tcid;
     return g.channels.create(opts);
 }
