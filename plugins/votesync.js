@@ -1,93 +1,88 @@
 const axios = require('axios');
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { card } = require('../lib/games/v2');
 const { icon } = require('../lib/ui/icons');
-const EMOJIS = (() => { try { return require('../config/emojis'); } catch { return {}; } })();
 
 /**
  * VoteSync Engine — The heart of the voting system. (v1.1 i18n: en/fr/zh/ar)
  * Does ONE job well: process a vote claim from any source.
  */
 
-// ================= QUADRILINGUAL =================
+// ================= TEXTS (en/fr/zh/ar; Bambara falls back to English) =================
 const T = {
     en: {
-        rewardAuthor: 'ARCHON CG-223 • TOP.GG VERIFIED',
-        dmTitle: ['🌟 Thanks for voting! 🌟', '⚡ COSMIC ENERGY RECEIVED ⚡', '🦅 THE ARCHITECT SALUTES YOU 🦅'],
-        dear: 'Dear Agent,', thanks: 'Your vote has been received.', support: 'Thank you for your support! 🙌',
-        reward: '💰 REWARD', streak: '🔥 STREAK', best: 'BEST', lifetime: '👑 LIFETIME',
-        nextVote: '⏳ NEXT VOTE', rewardFmt: '\u001b[1;33m+{n} Credits\u001b[0m',
-        streakFmt: '\u001b[1;36mCurrent: {current}\nBest: {best}\u001b[0m',
-        lifetimeFmt: '\u001b[1;35m{rewards} 🪙\n{votes} votes\u001b[0m',
-        nextFmt: '{time} ({relative})',
-        milestone7: '🏆 7-DAY MILESTONE! +2,000 BONUS!', milestone7desc: '```ansi\n\u001b[1;32m+2,000 BONUS CREDITS!\u001b[0m\n```',
-        milestone30: '👑 30-DAY LEGENDARY! +5,000 BONUS!', milestone30desc: '```ansi\n\u001b[1;35m+5,000 BONUS CREDITS!\u001b[0m\n```',
-        milestone100: '🌟 100-DAY MYTHIC! +10,000 BONUS!', milestone100desc: '```ansi\n\u001b[1;33m+10,000 BONUS + LEGENDARY TITLE!\u001b[0m\n```',
-        footer: 'ARCHON CG-223 • Top.gg Certified',
-        voteAgain: 'Vote Again', noVote: em('ic_off', em('ic_off', '❌')) + ' You have not voted yet!',
-        checkError: em('ic_off', em('ic_off', '❌')) + ' Could not check vote status. Try again later.',
-        alreadyClaimed: '⏰ Already claimed! Next vote: {time}',
-        publicTitle: '🗳️ VOTE RECEIVED', publicDesc: '**{user}** voted!\n💰 **Reward:** +{reward} Credits\n🔥 **Streak:** {streak} days\n📊 **Total:** {total} votes',
-        publicFooter: 'ARCHON CG-223 • Top.gg Verified'
+        got: '+{n} credits', thanks: 'Thanks for your vote, {user}',
+        streak: 'Streak of **{days}**', milestone: 'Milestone reached: **+{bonus}** bonus included',
+        nextMs: 'Next milestone: {days}', allMs: 'Every milestone reached',
+        weekend: 'Weekend: your vote counts double', next: 'Next vote {when}', nextRemind: 'Next vote {when}. I\'ll let you know.',
+        voteAgain: 'Vote again', remindOn: 'Remind me', remindOff: 'Stop reminders',
+        remindTitle: 'You can vote again', remindStreak: 'Vote today to keep your **{days}** streak going.',
+        remindFresh: 'Every vote earns **{base}** credits{weekend}.', weekendBit: ', double this weekend',
+        remindFoot: 'You get this because you turned reminders on.',
+        log: '{user} voted · +{n} · streak {days} · {guild}',
+        days: ['day', 'days'],
     },
     fr: {
-        rewardAuthor: 'ARCHON CG-223 • TOP.GG VÉRIFIÉ',
-        dmTitle: ['🌟 Merci pour ton vote ! 🌟', '⚡ ÉNERGIE COSMIQUE REÇUE ⚡', '🦅 L\'ARCHITECTE VOUS SALUE 🦅'],
-        dear: 'Cher Agent,', thanks: 'Votre vote a été reçu.', support: 'Merci pour votre soutien ! 🙌',
-        reward: '💰 RÉCOMPENSE', streak: '🔥 SÉRIE', best: 'MEILLEURE', lifetime: '👑 TOTAL',
-        nextVote: '⏳ PROCHAIN VOTE', rewardFmt: '\u001b[1;33m+{n} Crédits\u001b[0m',
-        streakFmt: '\u001b[1;36mActuelle : {current}\nMeilleure : {best}\u001b[0m',
-        lifetimeFmt: '\u001b[1;35m{rewards} 🪙\n{votes} votes\u001b[0m',
-        nextFmt: '{time} ({relative})',
-        milestone7: '🏆 OBJECTIF 7 JOURS ! +2 000 BONUS !', milestone7desc: '```ansi\n\u001b[1;32m+2 000 CRÉDITS BONUS !\u001b[0m\n```',
-        milestone30: '👑 LÉGENDAIRE 30 JOURS ! +5 000 BONUS !', milestone30desc: '```ansi\n\u001b[1;35m+5 000 CRÉDITS BONUS !\u001b[0m\n```',
-        milestone100: '🌟 MYTHIQUE 100 JOURS ! +10 000 BONUS !', milestone100desc: '```ansi\n\u001b[1;33m+10 000 BONUS + TITRE LÉGENDAIRE !\u001b[0m\n```',
-        footer: 'ARCHON CG-223 • Certifié Top.gg',
-        voteAgain: 'Voter à nouveau', noVote: em('ic_off', em('ic_off', '❌')) + ' Vous n\'avez pas encore voté !',
-        checkError: em('ic_off', em('ic_off', '❌')) + ' Impossible de vérifier. Réessayez plus tard.',
-        alreadyClaimed: '⏰ Déjà réclamé ! Prochain vote : {time}',
-        publicTitle: '🗳️ VOTE REÇU', publicDesc: '**{user}** a voté !\n💰 **Récompense :** +{reward} Crédits\n🔥 **Série :** {streak} jours\n📊 **Total :** {total} votes',
-        publicFooter: 'ARCHON CG-223 • Top.gg Vérifié'
+        got: '+{n} crédits', thanks: 'Merci pour ton vote, {user}',
+        streak: 'Série de **{days}**', milestone: 'Palier atteint : **+{bonus}** de bonus inclus',
+        nextMs: 'Prochain palier : {days}', allMs: 'Tous les paliers sont atteints',
+        weekend: 'Week-end : ton vote compte double', next: 'Prochain vote {when}', nextRemind: 'Prochain vote {when}. Je te préviens.',
+        voteAgain: 'Voter à nouveau', remindOn: 'Me rappeler', remindOff: 'Arrêter les rappels',
+        remindTitle: 'Tu peux voter de nouveau', remindStreak: 'Vote aujourd\'hui pour garder ta série de **{days}**.',
+        remindFresh: 'Chaque vote rapporte **{base}** crédits{weekend}.', weekendBit: ', le double ce week-end',
+        remindFoot: 'Tu reçois ce message parce que tu as activé les rappels.',
+        log: '{user} a voté · +{n} · série {days} · {guild}',
+        days: ['jour', 'jours'],
     },
     zh: {
-        rewardAuthor: 'ARCHON CG-223 • TOP.GG 已验证',
-        dmTitle: ['🌟 神经网格已同步 🌟', '⚡ 宇宙能量已接收 ⚡', '🦅 架构师向你致敬 🦅'],
-        dear: '特工你好，', thanks: '你的投票已收到。', support: '感谢你的支持！🙌',
-        reward: '💰 奖励', streak: '🔥 连投', best: '最高', lifetime: '👑 生涯总计',
-        nextVote: '⏳ 下次可投', rewardFmt: '\u001b[1;33m+{n} 积分\u001b[0m',
-        streakFmt: '\u001b[1;36m当前：{current}\n最高：{best}\u001b[0m',
-        lifetimeFmt: '\u001b[1;35m{rewards} 🪙\n{votes} 次投票\u001b[0m',
-        nextFmt: '{time}（{relative}）',
-        milestone7: '🏆 7 天里程碑！+2,000 奖励！', milestone7desc: '```ansi\n\u001b[1;32m+2,000 奖励积分！\u001b[0m\n```',
-        milestone30: '👑 30 天传奇！+5,000 奖励！', milestone30desc: '```ansi\n\u001b[1;35m+5,000 奖励积分！\u001b[0m\n```',
-        milestone100: '🌟 100 天神话！+10,000 奖励！', milestone100desc: '```ansi\n\u001b[1;33m+10,000 奖励 + 传奇称号！\u001b[0m\n```',
-        footer: 'ARCHON CG-223 • Top.gg 认证',
-        voteAgain: '再投一票', noVote: em('ic_off', em('ic_off', '❌')) + ' 你还没有投票！',
-        checkError: em('ic_off', em('ic_off', '❌')) + ' 无法检查投票状态，请稍后再试。',
-        alreadyClaimed: '⏰ 已领取！下次可投：{time}',
-        publicTitle: '🗳️ 收到投票', publicDesc: '**{user}** 投票了！\n💰 **奖励：** +{reward} 积分\n🔥 **连投：** {streak} 天\n📊 **总计：** {total} 次',
-        publicFooter: 'ARCHON CG-223 • Top.gg 已验证'
+        got: '+{n} 积分', thanks: '感谢你的投票，{user}',
+        streak: '连投 **{days}**', milestone: '达成里程碑：已含 **+{bonus}** 奖励',
+        nextMs: '下一个里程碑：{days}', allMs: '所有里程碑都已达成',
+        weekend: '周末：你的投票算双倍', next: '下次投票：{when}', nextRemind: '下次投票：{when}。到时我会提醒你。',
+        voteAgain: '再投一票', remindOn: '提醒我', remindOff: '停止提醒',
+        remindTitle: '你可以再次投票了', remindStreak: '今天投票，保持你 **{days}** 的连投。',
+        remindFresh: '每票可得 **{base}** 积分{weekend}。', weekendBit: '，本周末双倍',
+        remindFoot: '你开启了提醒，所以收到这条消息。',
+        log: '{user} 投票了 · +{n} · 连投 {days} · {guild}',
+        days: ['天', '天'],
     },
     ar: {
-        rewardAuthor: 'أركون CG-223 • Top.gg موثّق',
-        dmTitle: ['🌟 الشبكة العصبية متزامنة 🌟', '⚡ طاقة كونية مستقبلة ⚡', '🦅 المهندس يحييك 🦅'],
-        dear: 'أهلًا أيها الوكيل،', thanks: 'وصلنا تصويتك.', support: 'شكرًا لدعمك! 🙌',
-        reward: '💰 المكافأة', streak: '🔥 السلسلة', best: 'الأفضل', lifetime: '👑 الإجمالي',
-        nextVote: '⏳ التصويت التالي', rewardFmt: '\u001b[1;33m+{n} رصيد\u001b[0m',
-        streakFmt: '\u001b[1;36mالحالية: {current}\nالأفضل: {best}\u001b[0m',
-        lifetimeFmt: '\u001b[1;35m{rewards} 🪙\n{votes} تصويت\u001b[0m',
-        nextFmt: '{time} ({relative})',
-        milestone7: '🏆 محطة 7 أيام! +2,000 مكافأة!', milestone7desc: '```ansi\n\u001b[1;32m+2,000 رصيد مكافأة!\u001b[0m\n```',
-        milestone30: '👑 أسطورة 30 يومًا! +5,000 مكافأة!', milestone30desc: '```ansi\n\u001b[1;35m+5,000 رصيد مكافأة!\u001b[0m\n```',
-        milestone100: '🌟 أسطوري 100 يومًا! +10,000 مكافأة!', milestone100desc: '```ansi\n\u001b[1;33m+10,000 مكافأة + لقب أسطوري!\u001b[0m\n```',
-        footer: 'أركون CG-223 • Top.gg معتمد',
-        voteAgain: 'صوّت مجددًا', noVote: em('ic_off', em('ic_off', '❌')) + ' ما صوّيت بعد!',
-        checkError: em('ic_off', em('ic_off', '❌')) + ' ما قدرت أتحقق. حاول بعد لحظات.',
-        alreadyClaimed: '⏰ اناستلمت! التصويت التالي: {time}',
-        publicTitle: '🗳️ وصل تصويت', publicDesc: '**{user}** صوّت!\n💰 **المكافأة:** +{reward} رصيد\n🔥 **السلسلة:** {streak} يوم\n📊 **الإجمالي:** {total} تصويت',
-        publicFooter: 'أركون CG-223 • Top.gg موثّق'
-    }
+        got: '+{n} رصيد', thanks: 'شكرًا على تصويتك، {user}',
+        streak: 'سلسلة **{days}**', milestone: 'وصلت إلى محطة: تشمل **+{bonus}** إضافية',
+        nextMs: 'المحطة التالية: {days}', allMs: 'وصلت إلى كل المحطات',
+        weekend: 'عطلة نهاية الأسبوع: تصويتك يُحسب مرتين', next: 'التصويت التالي {when}', nextRemind: 'التصويت التالي {when}. سأنبهك.',
+        voteAgain: 'صوّت مجددًا', remindOn: 'ذكّرني', remindOff: 'أوقف التذكير',
+        remindTitle: 'يمكنك التصويت مجددًا', remindStreak: 'صوّت اليوم لتحافظ على سلسلة **{days}**.',
+        remindFresh: 'كل تصويت يمنحك **{base}** رصيد{weekend}.', weekendBit: '، والضعف في عطلة نهاية الأسبوع',
+        remindFoot: 'تصلك هذه الرسالة لأنك فعّلت التذكير.',
+        log: '{user} صوّت · +{n} · السلسلة {days} · {guild}',
+        days: ['يوم', 'يوم'],
+    },
 };
+const BASE = 1000;
+const MILESTONES = [[7, 2000], [30, 5000], [100, 10000]];
+const fill = (str, v = {}) => String(str).replace(/\{(\w+)\}/g, (m, k) => (v[k] !== undefined ? String(v[k]) : m));
+const num = (n, lang) => Number(n || 0).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US');
+const dayWord = (n, lang) => `${num(n, lang)} ${(T[lang] || T.en).days[Number(n) === 1 ? 0 : 1]}`;
+// The vote link carries the server, so a vote made from a server's card is paid on that server (Top.gg sends it back)
+const voteUrl = (client, guildId) => `https://top.gg/bot/${client.user.id}/vote${guildId ? `?guild=${guildId}` : ''}`;
+
+function langFor(client, guildId, userId) {
+    try { return require('../lib/pick-lang').pickLang(client, guildId, null, userId) || 'en'; } catch { return 'en'; }
+}
+
+// Top.gg's weekend multiplier (Friday to Sunday): asked to Top.gg, kept 10 minutes; Friday-Sunday UTC if it can't answer
+let _weekend = { at: 0, v: false };
+async function isWeekend() {
+    if (Date.now() - _weekend.at < 600000) return _weekend.v;
+    let v = [5, 6, 0].includes(new Date().getUTCDay());
+    try {
+        const token = process.env.TOPGG_API_TOKEN;
+        if (token) { const r = await axios.get('https://top.gg/api/weekend', { headers: { Authorization: token }, timeout: 4000 }); if (typeof r.data?.is_weekend === 'boolean') v = r.data.is_weekend; }
+    } catch {}
+    _weekend = { at: Date.now(), v };
+    return v;
+}
 
 // ================= DB =================
 function setupDB(db) {
@@ -181,7 +176,7 @@ async function checkTopGGVote(userId) {
 // so "7 days" used to be reached after 3 and a half days, and a milestone could pay twice the same day.
 const dayOf = (ts) => Math.floor((ts || 0) / 86400);
 function streakAlive(lastVote, now = Math.floor(Date.now() / 1000)) { return !!lastVote && dayOf(now) - dayOf(lastVote) <= 1; }
-function calculateReward(stats) {
+function calculateReward(stats, weekend = false) {
     const now = Math.floor(Date.now() / 1000);
     const gap = stats.last_vote_date ? dayOf(now) - dayOf(stats.last_vote_date) : 99;
     const cur = stats.current_streak || 0;
@@ -191,7 +186,8 @@ function calculateReward(stats) {
     if (grew && streak === 7) { bonus = 2000; milestone = '7'; }
     else if (grew && streak === 30) { bonus = 5000; milestone = '30'; }
     else if (grew && streak === 100) { bonus = 10000; milestone = '100'; }
-    return { streak, bonus, total: 1000 + bonus, best: Math.max(streak, stats.best_streak || 0), milestone };
+    const base = weekend ? BASE * 2 : BASE;
+    return { streak, bonus, base, weekend: !!weekend, total: base + bonus, best: Math.max(streak, stats.best_streak || 0), milestone };
 }
 
 // ================= UPDATE DB =================
@@ -219,52 +215,95 @@ function updateDB(db, userId, guildId, result, stats, addCredits = null) {
     return { newTotalVotes, newTotalRewards };
 }
 
-// ================= BUILD DM EMBED =================
-function buildDMEmbed(client, user, result, stats, t, lang) {
-    const nextTs = Math.floor(Date.now() / 1000) + 43200;
-    const titles = t.dmTitle;
-    const title = titles[Math.floor(Math.random() * titles.length)];
-
-    const embed = new EmbedBuilder().setColor('#ffd700')
-        .setAuthor({ name: t.rewardAuthor, iconURL: client.user.displayAvatarURL() })
-        .setTitle(title)
-        .setDescription(`\`\`\`ansi\n\u001b[1;33m${t.dear}\u001b[0m\n\n\u001b[1;37m${t.thanks}\u001b[0m\n\u001b[1;36m${t.support}\u001b[0m\n\`\`\``)
-        .addFields(
-            { name: t.reward, value: `\`\`\`ansi\n${t.rewardFmt.replace('{n}', result.total.toLocaleString())}\n\`\`\``, inline: false },
-            { name: t.streak, value: `\`\`\`ansi\n${t.streakFmt.replace('{current}', result.streak).replace('{best}', result.best)}\n\`\`\``, inline: true },
-            { name: t.lifetime, value: `\`\`\`ansi\n${t.lifetimeFmt.replace('{rewards}', ((stats.total_rewards || 0) + result.total).toLocaleString()).replace('{votes}', (stats.total_votes || 0) + 1)}\n\`\`\``, inline: true },
-            { name: t.nextVote, value: `<t:${nextTs}:F> (<t:${nextTs}:R>)`, inline: false }
-        )
-        .setFooter({ text: t.footer, iconURL: client.user.displayAvatarURL() })
-        .setTimestamp();
-
-    if (result.milestone === '7') embed.addFields({ name: '\u200b', value: t.milestone7desc, inline: false });
-    if (result.milestone === '30') embed.addFields({ name: '\u200b', value: t.milestone30desc, inline: false });
-    if (result.milestone === '100') embed.addFields({ name: '\u200b', value: t.milestone100desc, inline: false });
-
-    // Custom vote emoji on button; label carries NO star (kills the duplicate)
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel(t.voteAgain).setStyle(ButtonStyle.Link)
-            .setURL(`https://top.gg/bot/${client.user.id}/vote`)
-            .setEmoji(icon('votes'))
-    );
-
-    return { embed, components: [row], nextVote: nextTs };
+// ================= REMINDERS =================
+// Off by default. When on, ARCHON sends one DM when the member's next vote opens (12 h after the last one).
+let _remReady = false;
+function remindersTable(db) {
+    if (_remReady) return;
+    db.prepare('CREATE TABLE IF NOT EXISTS vote_reminders (user_id TEXT PRIMARY KEY, guild_id TEXT, enabled INTEGER DEFAULT 0, notified_for INTEGER DEFAULT 0)').run();
+    _remReady = true;
+}
+function reminderOn(db, userId) {
+    try { remindersTable(db); return !!db.prepare('SELECT enabled FROM vote_reminders WHERE user_id = ?').get(userId)?.enabled; } catch { return false; }
+}
+function setReminder(db, userId, guildId, on) {
+    remindersTable(db);
+    db.prepare(`INSERT INTO vote_reminders (user_id, guild_id, enabled) VALUES (?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET enabled = excluded.enabled, guild_id = COALESCE(excluded.guild_id, vote_reminders.guild_id)`).run(userId, guildId || null, on ? 1 : 0);
+    return on;
+}
+function remindButton(lang, on, where) {
+    const t = T[lang] || T.en;
+    return new ButtonBuilder().setCustomId(on ? 'vote_remindoff_slash' : 'vote_remindon_slash').setLabel(on ? t.remindOff : t.remindOn)
+        .setStyle(ButtonStyle.Secondary).setEmoji(icon(on ? 'bellOff' : 'bell', where));
 }
 
-// ================= SEND PUBLIC LOG =================
-async function sendPublicLog(client, user, result, stats, t) {
+async function sendReminders(client) {
+    const db = client.db;
+    if (!db) return;
+    remindersTable(db);
+    const now = Math.floor(Date.now() / 1000);
+    let due = [];
+    try {
+        due = db.prepare(`SELECT r.user_id, r.guild_id, MAX(v.last_vote_date) AS last FROM vote_reminders r
+            JOIN user_votes v ON v.user_id = r.user_id WHERE r.enabled = 1 GROUP BY r.user_id
+            HAVING last > 0 AND last + 43200 <= ? AND COALESCE(MAX(r.notified_for), 0) < last`).all(now);
+    } catch (e) { return console.log('[VOTE REMIND]', e.message); }
+    const weekend = due.length ? await isWeekend() : false;
+    for (const r of due) {
+        db.prepare('UPDATE vote_reminders SET notified_for = ? WHERE user_id = ?').run(r.last, r.user_id);   // once per vote, even if the DM fails
+        const user = await client.users.fetch(r.user_id).catch(() => null);
+        if (!user) continue;
+        const lang = langFor(client, r.guild_id, r.user_id), t = T[lang] || T.en;
+        const st = r.guild_id ? getStats(db, r.user_id, r.guild_id) : null;
+        const keep = st && st.current_streak > 0 && streakAlive(st.last_vote_date, now);
+        const body = keep ? fill(t.remindStreak, { days: dayWord(st.current_streak, lang) })
+            : fill(t.remindFresh, { base: num(BASE, lang), weekend: weekend ? t.weekendBit : '' });
+        const msg = card(0x1D9E75, [
+            { text: `### ${icon('bell')} ${t.remindTitle}\n${body}` },
+            { row: new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(voteUrl(client, r.guild_id)).setLabel(t.voteAgain).setEmoji(icon('star')),
+                remindButton(lang, true)) },
+            { text: `-# ${t.remindFoot}` },
+        ]);
+        await user.send(msg).catch(() => {});
+        await new Promise((res) => setTimeout(res, 800));
+    }
+}
+let _remTimer = null;
+function startReminders(client) {
+    if (_remTimer) return;
+    _remTimer = setInterval(() => sendReminders(client).catch((e) => console.log('[VOTE REMIND]', e.message)), 120000);
+}
+
+// ================= DM RECEIPT =================
+function buildDM(client, user, result, lang, guildName, reminders) {
+    const t = T[lang] || T.en, nextTs = Math.floor(Date.now() / 1000) + 43200;
+    const lines = [`${icon('streak')} ${fill(t.streak, { days: dayWord(result.streak, lang) })}`];
+    if (result.milestone) lines.push(`${icon('trophy')} ${fill(t.milestone, { bonus: num(result.bonus, lang) })}`);
+    const nm = MILESTONES.find(([d]) => result.streak < d);
+    lines.push(`${icon('milestone')} ${nm ? fill(t.nextMs, { days: dayWord(nm[0], lang) }) : t.allMs}`);
+    if (result.weekend) lines.push(`${icon('weekend')} ${t.weekend}`);
+    lines.push(`${icon('clock')} ${fill(reminders ? t.nextRemind : t.next, { when: `<t:${nextTs}:R>` })}`);
+    const head = `### ${fill(t.got, { n: num(result.total, lang) })}\n-# ${fill(t.thanks, { user: user.globalName || user.username })}${guildName ? ` · ${guildName}` : ''}`;
+    const avatar = user.displayAvatarURL?.({ size: 128 });
+    return {
+        nextVote: nextTs,
+        payload: card(0xBA7517, [avatar ? { thumbnail: [head, avatar] } : { text: head }, { rule: true }, { text: lines.join('\n') },
+            { row: new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(voteUrl(client, result.guildId)).setLabel(t.voteAgain).setEmoji(icon('star')),
+                remindButton(lang, reminders)) }]),
+    };
+}
+
+// One plain line in the owner's log channel (LOG_CHANNEL_ID), no ping
+async function sendPublicLog(client, user, result, lang, guildName) {
     const logId = process.env.LOG_CHANNEL_ID;
     if (!logId) return;
-    try {
-        const ch = await client.channels.fetch(logId).catch(() => null);
-        if (!ch) return;
-        const embed = new EmbedBuilder().setColor('#ffd700')
-            .setAuthor({ name: t.publicTitle, iconURL: user.displayAvatarURL() })
-            .setDescription(t.publicDesc.replace('{user}', user.username).replace('{reward}', result.total.toLocaleString()).replace('{streak}', result.streak).replace('{total}', (stats.total_votes || 0) + 1))
-            .setFooter({ text: t.publicFooter }).setTimestamp();
-        await ch.send({ embeds: [embed] }).catch(() => {});
-    } catch (e) {}
+    const ch = await client.channels.fetch(logId).catch(() => null);
+    if (!ch?.isTextBased?.()) return;
+    const t = T.en;
+    await ch.send({ content: `${icon('votes', ch)} ${fill(t.log, { user: user.username, n: num(result.total, 'en'), days: dayWord(result.streak, 'en'), guild: guildName || '?' })}${result.weekend ? ' · weekend x2' : ''}`, allowedMentions: { parse: [] } }).catch(() => {});
 }
 
 // ================= PROCESS VOTE (Main Entry Point) =================
@@ -314,6 +353,9 @@ async function _processVote(userId, guildId, client, opts = {}) {
     if (voted === false) return { success: false, error: 'NOT_VOTED' };
     if (voted === null) return { success: false, error: 'CHECK_FAILED' };
 
+    // Weekend: the webhook says it (weight 2); a claim asks Top.gg
+    const weekend = typeof opts.weekend === 'boolean' ? opts.weekend : await isWeekend();
+
     // 2-4. Cooldown check, reward and write in one transaction, after the Top.gg answer: two quick presses on Claim
     // (or Claim at the same time as the webhook) used to both pass the check during the wait and pay twice.
     let stats, result, totals;
@@ -324,7 +366,7 @@ async function _processVote(userId, guildId, client, opts = {}) {
             const lastAny = db.prepare('SELECT MAX(last_vote_date) AS t FROM user_votes WHERE user_id = ?').get(userId)?.t || 0;
             const cooldown = Math.max(st.last_vote_date || 0, lastAny) + 43200;
             if (now < cooldown) return { cooldown };
-            const r = calculateReward(st);
+            const r = calculateReward(st, weekend);
             return { st, r, totals: updateDB(db, userId, guildId, r, st, client.addCredits) };
         })();
         if (out.cooldown) return { success: false, error: 'COOLDOWN', nextVote: out.cooldown };
@@ -339,31 +381,20 @@ async function _processVote(userId, guildId, client, opts = {}) {
     const user = await client.users.fetch(userId).catch(() => null);
     if (!user) return { success: false, error: 'USER_NOT_FOUND' };
 
-    // 6. Detect language: server setting wins, then Discord locale (fr/zh), default en
-    let lang = 'en';
-    try {
-        const ssLang = client.getServerSettings?.(guildId)?.language;
-        if (['en', 'fr', 'zh', 'ar', 'bm'].includes(ssLang)) lang = ssLang;
-        else {
-            const g = client.guilds.cache.find(g => g.members.cache.has(userId));
-            const loc = g?.preferredLocale || '';
-            if (loc.startsWith('fr')) lang = 'fr';
-            else if (loc.startsWith('zh')) lang = 'zh';
-        }
-    } catch {}
-    const t = T[lang] || T.en;
+    // 6. The member's language (server setting, then their /mylang)
+    result.guildId = guildId;
+    const lang = langFor(client, guildId, userId);
+    const guildName = client.guilds.cache.get(String(guildId))?.name || null;
 
-    // 7. Send DM
+    // 7. Receipt by DM
     let dmSent = false;
-    const { embed, components, nextVote } = buildDMEmbed(client, user, result, stats, t, lang);
-    await user.send({ embeds: [embed], components }).then(() => { dmSent = true; }).catch(err => {
-        console.log(`[VOTESYNC] DM failed for ${userId}: ${err.message}`);
-    });
+    const { payload, nextVote } = buildDM(client, user, result, lang, guildName, reminderOn(db, userId));
+    await user.send(payload).then(() => { dmSent = true; }).catch((err) => console.log(`[VOTESYNC] DM failed for ${userId}: ${err.message}`));
 
-    // 8. Public log (localized too)
-    await sendPublicLog(client, user, result, stats, t);
+    // 8. Owner's log line
+    await sendPublicLog(client, user, result, lang, guildName);
 
-    console.log(`[VOTESYNC] ✅ ${user.username} | +${result.total} | Streak: ${result.streak} | Lang: ${lang} | DM: ${dmSent ? 'sent' : 'failed'}`);
+    console.log(`[VOTESYNC] ${user.username} | +${result.total}${result.weekend ? ' (weekend)' : ''} | streak ${result.streak} | ${guildName || guildId} | DM ${dmSent ? 'sent' : 'failed'}`);
     return { success: true, ...result, nextVote, lang, dmSent, total_votes: newTotalVotes, total_rewards: newTotalRewards };
 }
 
@@ -380,5 +411,11 @@ module.exports = {
     getStats,
     calculateReward,
     streakAlive,
+    isWeekend,
+    reminderOn,
+    setReminder,
+    remindButton,
+    startReminders,
+    voteUrl,
     T
 };

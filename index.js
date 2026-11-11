@@ -2112,6 +2112,7 @@ buildAliasLanguageMap();
     // config/changelog.json is the one source (/changelog, Lydia, /update). When a new version boots, it is posted once
     // in every server that picked an updates channel. The old 400-line boot report (data/changelog.md) is gone:
     // its statuses were written by hand and never checked, and the owner's boot DM already covers the boot.
+    try { require('./plugins/votesync.js').startReminders(client); } catch (e) { console.log(`[VOTE REMIND] ${e.message}`); }
     setTimeout(() => require('./lib/changelog').announce(client).catch((e) => console.log(`${yellow}[CHANGELOG]${reset} ${e.message}`)), 45000);
 
     // ================= BIRTHDAY SYSTEM =================
@@ -5873,9 +5874,19 @@ apiApp.post('/api/vote', (req, res) => {
     try {
         const votesync = require('./plugins/votesync.js');
         (async () => {
-            const gid = await votesync.resolveHomeGuild(user, client);
+            // The server the vote was made from: the vote links carry ?guild=<id> (v1 sends it parsed in data.query,
+            // v0 as a query string). Without it every webhook vote went to the member's "home" server, so the other
+            // servers' vote counts (and their dashboards) never moved.
+            let fromGuild = body.data?.query?.guild;
+            if (!fromGuild && typeof body.query === 'string') { try { fromGuild = new URLSearchParams(body.query.replace(/^\?/, '')).get('guild'); } catch {} }
+            let gid = null;
+            if (/^\d{17,20}$/.test(String(fromGuild || ''))) {
+                const g = client.guilds.cache.get(String(fromGuild));
+                if (g && (g.members.cache.has(user) || await g.members.fetch(user).catch(() => null))) gid = g.id;
+            }
+            if (!gid) gid = await votesync.resolveHomeGuild(user, client);
             if (!gid) return console.warn(`[VOTE] no home server for ${user} — skipped`);
-            const r = await votesync.processVote(user, gid, client, { source: 'webhook' });
+            const r = await votesync.processVote(user, gid, client, { source: 'webhook', weekend: isWeekend });
             if (!r.success) console.warn(`[VOTE] ${user}@${gid}: ${r.error}`);
         })().catch(e => console.error('[VOTE] processVote:', e.message));
         res.json({ success: true });

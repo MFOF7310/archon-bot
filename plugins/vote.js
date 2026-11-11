@@ -26,6 +26,7 @@ const COLOR = { ready: 0x2ecc71, claim: 0x2ecc71, wait: 0xf39c12, first: 0x5865f
 // {days}, {best}, {votes}, {credits}, {base}, {bonus}, {next} and {n} in claimTitle come with their unit ("5 days").
 const T = {
  en: {
+  week: 'Your last 7 days', weekLegend: 'today on the right', todayMs: 'Vote today: **{days} milestone** → +{bonus}', statsLine: '{votes} · rank **#{rank}** · {credits} earned', statsLineNoRank: '{votes} · {credits} earned', weekendOn: 'Weekend: every vote pays double', claimWeekend: 'Weekend: double reward included', remindedOn: "Reminders on. I'll DM you when your next vote opens.", remindedOff: 'Reminders off.',
   hello: 'Hello, {user}', helloBack: 'Welcome back, {user}', helloFirst: 'Welcome to voting, {user}', thanks: 'Thanks for your vote, {user}',
   subReady: 'You can vote now', subReadyStreak: 'You can vote now · streak of {days}', subWait: 'Your next vote opens {when}',
   subFirst: 'Your first vote is waiting', subClaim: 'Your vote came in: your reward is waiting',
@@ -53,6 +54,7 @@ const T = {
   units: { day: ['day', 'days'], vote: ['vote', 'votes'], credit: ['credit', 'credits'] },
  },
  fr: {
+  week: 'Tes 7 derniers jours', weekLegend: "aujourd'hui à droite", todayMs: "Vote aujourd'hui : **palier {days}** → +{bonus}", statsLine: '{votes} · rang **#{rank}** · {credits} gagnés', statsLineNoRank: '{votes} · {credits} gagnés', weekendOn: 'Week-end : chaque vote rapporte le double', claimWeekend: 'Week-end : récompense doublée incluse', remindedOn: "Rappels activés. Je t'envoie un DM quand ton prochain vote s'ouvre.", remindedOff: 'Rappels désactivés.',
   hello: 'Bonjour, {user}', helloBack: 'Bon retour, {user}', helloFirst: 'Bienvenue au vote, {user}', thanks: 'Merci pour ton vote, {user}',
   subReady: 'Tu peux voter maintenant', subReadyStreak: 'Tu peux voter maintenant · série de {days}', subWait: 'Ton prochain vote ouvre {when}',
   subFirst: "Ton premier vote t'attend", subClaim: "Ton vote est bien arrivé : ta récompense t'attend",
@@ -80,6 +82,7 @@ const T = {
   units: { day: ['jour', 'jours'], vote: ['vote', 'votes'], credit: ['crédit', 'crédits'] },
  },
  zh: {
+  week: '最近 7 天', weekLegend: '最右边是今天', todayMs: '今天投票：**{days}里程碑** → +{bonus}', statsLine: '{votes} · 排名 **#{rank}** · 已获得 {credits}', statsLineNoRank: '{votes} · 已获得 {credits}', weekendOn: '周末：每票奖励翻倍', claimWeekend: '周末：已含双倍奖励', remindedOn: '已开启提醒。下次可以投票时我会私信你。', remindedOff: '已关闭提醒。',
   hello: '你好，{user}', helloBack: '欢迎回来，{user}', helloFirst: '欢迎参与投票，{user}', thanks: '感谢你的投票，{user}',
   subReady: '现在就可以投票', subReadyStreak: '现在就可以投票 · 已连投 {days}', subWait: '下次投票：{when}',
   subFirst: '你的第一票正等着你', subClaim: '投票已收到，奖励等你领取',
@@ -107,6 +110,7 @@ const T = {
   units: { day: ['天', '天'], vote: ['次投票', '次投票'], credit: ['积分', '积分'] },
  },
  ar: {
+  week: 'آخر 7 أيام', weekLegend: 'اليوم على اليمين', todayMs: 'صوّت اليوم: **محطة {days}** ← +{bonus}', statsLine: '{votes} · الترتيب **#{rank}** · {credits} مكتسب', statsLineNoRank: '{votes} · {credits} مكتسب', weekendOn: 'عطلة نهاية الأسبوع: كل تصويت بضعف المكافأة', claimWeekend: 'عطلة نهاية الأسبوع: تشمل المكافأة المضاعفة', remindedOn: 'تم تفعيل التذكير. سأراسلك عندما يُفتح تصويتك التالي.', remindedOff: 'تم إيقاف التذكير.',
   hello: 'مرحبًا، {user}', helloBack: 'أهلًا بعودتك، {user}', helloFirst: 'أهلًا بك في التصويت، {user}', thanks: 'شكرًا على تصويتك، {user}',
   subReady: 'يمكنك التصويت الآن', subReadyStreak: 'يمكنك التصويت الآن · السلسلة {days}', subWait: 'تصويتك التالي {when}',
   subFirst: 'تصويتك الأول بانتظارك', subClaim: 'وصل تصويتك، ومكافأتك بانتظارك',
@@ -139,12 +143,15 @@ const T = {
 const OKL = ['en', 'fr', 'bm', 'zh', 'ar'];
 const pl = (o) => OKL.includes(o?.language) ? o.language : 'en';
 const L = (lang) => T[lang] || T.en;
+function langOf(client, gid, interaction, uid) {
+    try { const l = require('../lib/pick-lang').pickLang(client, gid, interaction, uid); return OKL.includes(l) ? l : 'en'; } catch { return 'en'; }
+}
 const fill = (s, vars = {}) => String(s).replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));
 const num = (n, lang) => Number(n || 0).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US');
 const bold = (s) => `**${s}**`;
 const esc = (s) => (typeof escapeMarkdown === 'function' ? escapeMarkdown(String(s)) : String(s));
 const eph = (p) => ({ ...p, flags: (p.flags || 0) | MessageFlags.Ephemeral });
-const voteUrl = (client) => `https://top.gg/bot/${client.user.id}/vote`;
+const voteUrl = (client, gid) => voteSync.voteUrl(client, gid);
 const nextMilestone = (streak) => MILESTONES.find(([d]) => streak < d) || null;
 
 // "5 days", "1 vote", in the card's language
@@ -168,6 +175,16 @@ function nextVoteOf(db, uid, gid) {
     let last = s.last_vote_date || 0;
     try { last = Math.max(last, db.prepare('SELECT MAX(last_vote_date) AS t FROM user_votes WHERE user_id = ?').get(uid)?.t || 0); } catch { /* the per-server date is enough */ }
     return { stats: s, last, nextVote: last + COOLDOWN };
+}
+
+// The last 7 days, oldest first: 🟩 voted, ⬛ missed, ⬜ today and still open
+function weekStrip(db, uid, gid) {
+    const today = Math.floor(Date.now() / 86400000);
+    let days = new Set();
+    try { days = new Set(db.prepare('SELECT DISTINCT claim_date / 86400 AS d FROM vote_claims WHERE user_id = ? AND guild_id = ? AND claim_date >= ?').all(uid, gid, (today - 6) * 86400).map((r) => Math.floor(r.d))); } catch {}
+    let out = '';
+    for (let d = today - 6; d <= today; d++) out += days.has(d) ? '🟩' : d === today ? '⬜' : '⬛';
+    return out;
 }
 
 function rankOf(db, gid, uid) {
@@ -195,10 +212,12 @@ async function getRealtimeStatus(client, uid, gid, db) {
     const isFirstTime = !(stats.total_votes > 0);
     const alive = stats.current_streak > 0 && voteSync.streakAlive(stats.last_vote_date, now);
     let state = 'ready';
+    const weekend = await voteSync.isWeekend().catch(() => false);
+    const reminders = voteSync.reminderOn(db, uid);
     if (last && now < nextVote) state = 'wait';
     else if (topgg === true) state = 'claim';
     else if (isFirstTime) state = 'first';
-    return { stats, state, nextVote, alive, topgg, isFirstTime };
+    return { stats, state, nextVote, alive, topgg, isFirstTime, weekend, reminders, week: weekStrip(db, uid, gid), rank: rankOf(db, gid, uid) };
 }
 
 // ================= CARDS =================
@@ -224,23 +243,26 @@ function progressText(streak, lang, I) {
     return `${I('milestone')} ${fill(t.nextMilestone, { days: bold(amount(days, 'day', lang)), bonus: amount(bonus, 'credit', lang) })}\n${bar} ${pctText} · ${fill(t.toGo, { n: days - streak })}`;
 }
 
-function voteButton(client, t, where) {
-    return new ButtonBuilder().setLabel(t.btnVote).setStyle(ButtonStyle.Link).setURL(voteUrl(client)).setEmoji(icon('star', where));
+function voteButton(client, t, where, gid = null) {
+    return new ButtonBuilder().setLabel(t.btnVote).setStyle(ButtonStyle.Link).setURL(voteUrl(client, gid)).setEmoji(icon('star', where));
 }
 
-function portalRow(client, state, t, sfx, where) {
-    const row = new ActionRowBuilder();
-    if (state === 'ready' || state === 'first') row.addComponents(voteButton(client, t, where));
-    if (state !== 'wait') row.addComponents(new ButtonBuilder().setCustomId(`vote_claim${sfx}`).setLabel(t.btnClaim).setStyle(ButtonStyle.Success).setEmoji(icon('coins', where)));
-    else row.addComponents(new ButtonBuilder().setCustomId(`vote_check_status${sfx}`).setLabel(t.btnWait).setStyle(ButtonStyle.Secondary).setEmoji(icon('clock', where)));
-    if (state !== 'first') row.addComponents(
+function portalRows(client, status, t, sfx, where, lang, gid) {
+    const state = status.state;
+    const main = new ActionRowBuilder();
+    if (state === 'ready' || state === 'first') main.addComponents(voteButton(client, t, where, gid));
+    if (state !== 'wait') main.addComponents(new ButtonBuilder().setCustomId(`vote_claim${sfx}`).setLabel(t.btnClaim).setStyle(ButtonStyle.Success).setEmoji(icon('coins', where)));
+    else main.addComponents(new ButtonBuilder().setCustomId(`vote_check_status${sfx}`).setLabel(t.btnWait).setStyle(ButtonStyle.Secondary).setEmoji(icon('clock', where)));
+    // Reminders are personal: whoever presses gets their own setting changed (works from any card, and from the DM)
+    const more = new ActionRowBuilder().addComponents(voteSync.remindButton(lang, status.reminders, where));
+    if (state !== 'first') more.addComponents(
         new ButtonBuilder().setCustomId(`vote_stats${sfx}`).setLabel(t.btnStats).setStyle(ButtonStyle.Secondary).setEmoji(icon('stats', where)),
         new ButtonBuilder().setCustomId(`vote_lb${sfx}`).setLabel(t.btnTop).setStyle(ButtonStyle.Secondary).setEmoji(icon('trophy', where)),
     );
-    return row;
+    return [main, more];
 }
 
-function portalCard(client, who, status, lang, where, guildName, isSlash = false) {
+function portalCard(client, who, status, lang, where, guildName, isSlash = false, gid = null) {
     const t = L(lang), I = (k) => icon(k, where), s = status.stats;
     const vars = { user: who.name };
     let title, sub;
@@ -253,15 +275,25 @@ function portalCard(client, who, status, lang, where, guildName, isSlash = false
     /** @type {any[]} */
     const items = [who.avatar ? { thumbnail: [head, who.avatar] } : { text: head }, { rule: true }];
     if (status.state === 'first') {
-        items.push({ text: `${fill(t.firstBody, { claim: t.btnClaim, base: amount(BASE_REWARD, 'credit', lang) })}\n${I('gift')} ${t.bonuses}` });
+        items.push({ text: `${fill(t.firstBody, { claim: t.btnClaim, base: amount(BASE_REWARD * (status.weekend ? 2 : 1), 'credit', lang) })}\n${I('gift')} ${t.bonuses}` });
     } else {
         const lines = [];
         if (status.state === 'wait') lines.push(`${I('clock')} ${fill(t.voteAt, { time: `<t:${status.nextVote}:t>` })}`);
-        lines.push(...recordLines(s, status.alive, lang, I));
-        if (lines.length) items.push({ text: lines.join('\n') });
-        if (status.state !== 'wait') items.push({ rule: true }, { text: progressText(status.alive ? s.current_streak : 0, lang, I) });
+        if (s.current_streak > 0) lines.push(`${I('streak')} ${fill(status.alive ? t.streak : t.streakEnded, { days: bold(amount(s.current_streak, 'day', lang)), best: bold(amount(Math.max(s.best_streak || 0, s.current_streak), 'day', lang)) })}`);
+        const votes = bold(amount(s.total_votes, 'vote', lang)), credits = bold(amount(s.total_rewards, 'credit', lang));
+        lines.push(`${I('votes')} ${status.rank >= 0 ? fill(t.statsLine, { votes, credits, rank: status.rank + 1 }) : fill(t.statsLineNoRank, { votes, credits })}`);
+        items.push({ text: lines.join('\n') }, { rule: true });
+        items.push({ text: `**${t.week}**\n${status.week}\n-# ${t.weekLegend}` });
+        if (status.state !== 'wait') {
+            // Voting today grows the streak when the last vote was yesterday: say so when that lands on a milestone
+            const today = Math.floor(Date.now() / 86400000), lastDay = Math.floor((s.last_vote_date || 0) / 86400);
+            const nextStreak = status.alive ? (lastDay === today ? s.current_streak : s.current_streak + 1) : 1;
+            const hit = MILESTONES.find(([d]) => d === nextStreak && nextStreak > (status.alive ? s.current_streak : 0));
+            items.push({ text: hit ? `${I('trophy')} ${fill(t.todayMs, { days: amount(hit[0], 'day', lang), bonus: amount(hit[1], 'credit', lang) })}` : progressText(status.alive ? s.current_streak : 0, lang, I) });
+        }
     }
-    items.push({ row: portalRow(client, status.state, t, isSlash ? '_slash' : '', where) });
+    if (status.weekend) items.push({ text: `${I('weekend')} **${t.weekendOn}**` });
+    for (const row of portalRows(client, status, t, isSlash ? '_slash' : '', where, lang, gid)) items.push({ row });
     if (guildName) items.push({ text: `-# ${esc(guildName)}` });
     return card(COLOR[status.state] ?? COLOR.ready, items);
 }
@@ -271,6 +303,7 @@ function claimReply(client, result, lang, where, who) {
     const t = L(lang), I = (k) => icon(k, where);
     if (result?.success) {
         const lines = [];
+        if (result.weekend) lines.push(`${I('weekend')} ${t.claimWeekend}`);
         if (result.milestone) lines.push(`${I('trophy')} ${fill(t.claimMilestone, { days: amount(Number(result.milestone), 'day', lang), bonus: amount(result.bonus || 0, 'credit', lang) })}`);
         const m = nextMilestone(result.streak);
         const days = bold(amount(result.streak, 'day', lang));
@@ -287,7 +320,7 @@ function claimReply(client, result, lang, where, who) {
     }
     if (result?.error === 'NOT_VOTED') return card(COLOR.error, [
         { text: `### ${I('no')} ${t.notVotedTitle}\n${fill(t.notVotedBody, { claim: t.btnClaim })}` },
-        { row: new ActionRowBuilder().addComponents(voteButton(client, t)) },
+        { row: new ActionRowBuilder().addComponents(voteButton(client, t, where, result?.guildId)) },
     ]);
     if (result?.error === 'COOLDOWN') return card(COLOR.wait, [{ text: `### ${I('clock')} ${t.alreadyTitle}\n${fill(t.alreadyBody, { when: `<t:${result.nextVote}:R>` })}` }]);
     return { content: `${I('no')} ${result?.error === 'CHECK_FAILED' ? t.checkFail : t.processFail}`, allowedMentions: { parse: [] } };
@@ -337,7 +370,7 @@ async function lbImage(client, db, gid, guildName) {
 function waitCard(client, nextVote, lang, where) {
     const t = L(lang), I = (k) => icon(k, where);
     const left = nextVote - Math.floor(Date.now() / 1000);
-    if (left <= 0) return card(COLOR.ready, [{ text: `### ${t.readyNow}` }, { row: new ActionRowBuilder().addComponents(voteButton(client, t, where)) }]);
+    if (left <= 0) return card(COLOR.ready, [{ text: `### ${t.readyNow}` }, { row: new ActionRowBuilder().addComponents(voteButton(client, t, where, where?.guildId || where?.guild?.id)) }]);
     const h = Math.floor(left / 3600), m = Math.floor((left % 3600) / 60);
     return card(COLOR.wait, [
         { text: `### ${I('clock')} ${fill(t.waitTitle, { when: `<t:${nextVote}:R>` })}` },
@@ -378,7 +411,7 @@ module.exports = {
     run: async (client, message, args, db, ss) => {
         if (!message.guild) return message.reply(L(pl(ss)).serverOnly).catch(() => {});
         voteSync.setupDB(db);
-        const lang = pl(ss);
+        const lang = langOf(client, message.guild.id, null, message.author.id);
         const t = L(lang);
         const sub = args[0]?.toLowerCase();
         const uid = message.author.id;
@@ -435,11 +468,12 @@ module.exports = {
 
         // ---- PORTAL (default) ----
         const status = await getRealtimeStatus(client, uid, gid, db);
-        const sent = await message.reply(portalCard(client, who, status, lang, message, message.guild.name, false)).catch(() => null);
+        const sent = await message.reply(portalCard(client, who, status, lang, message, message.guild.name, false, gid)).catch(() => null);
         if (!sent) return;
 
         const collector = sent.createMessageComponentCollector({ time: 120000 });
         collector.on('collect', async i => {
+            if (i.customId.endsWith('_slash')) return;   // reminders: the global button handler answers
             if (i.user.id !== uid) return i.reply({ content: t.notYours, flags: MessageFlags.Ephemeral }).catch(() => {});
             await i.deferUpdate().catch(() => {});
 
@@ -466,7 +500,7 @@ module.exports = {
     execute: async (interaction, client) => {
         if (!interaction.guild) return interaction.reply({ content: T.en.serverOnly, flags: MessageFlags.Ephemeral });
         voteSync.setupDB(client.db);
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr', 'zh', 'ar']);
+        const lang = langOf(client, interaction.guildId, interaction);
         const t = L(lang);
         const db = client.db;
         const uid = interaction.user.id;
@@ -505,18 +539,31 @@ module.exports = {
         // ---- PORTAL (default) ----
         await interaction.deferReply();
         const status = await getRealtimeStatus(client, uid, gid, db);
-        return interaction.editReply(portalCard(client, who, status, lang, interaction, interaction.guild.name, true)).catch(() => {});
+        return interaction.editReply(portalCard(client, who, status, lang, interaction, interaction.guild.name, true, gid)).catch(() => {});
     },
 
     // ================= BUTTON HANDLER (slash portal: anyone can press, each gets a private answer) =================
     async handleSlashButton(interaction, client) {
         voteSync.setupDB(client.db);
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr', 'zh', 'ar']);
+        const lang = langOf(client, interaction.guildId, interaction);
         const db = client.db;
         const uid = interaction.user.id;
         const gid = interaction.guildId;
         const id = interaction.customId;
         const who = whoOf(interaction.user, interaction.member);
+
+        if (id === 'vote_remindon_slash' || id === 'vote_remindoff_slash') {
+            const on = voteSync.setReminder(db, uid, gid, id === 'vote_remindon_slash');
+            const t = L(lang);
+            // In the DM receipt the button itself flips; on a server card the member gets a private note
+            if (!interaction.guildId) {
+                const rows = interaction.message.components.map((c) => c.toJSON());
+                const swap = (o) => { if (o.custom_id === id) { const b = voteSync.remindButton(lang, on).toJSON(); Object.assign(o, b); } (o.components || []).forEach(swap); };
+                rows.forEach(swap);
+                return interaction.update({ components: rows, flags: MessageFlags.IsComponentsV2 }).catch(() => interaction.reply({ content: on ? t.remindedOn : t.remindedOff }).catch(() => {}));
+            }
+            return interaction.reply({ content: `${icon(on ? 'bell' : 'bellOff', interaction)} ${on ? t.remindedOn : t.remindedOff}`, flags: MessageFlags.Ephemeral });
+        }
 
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
