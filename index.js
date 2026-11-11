@@ -1552,6 +1552,7 @@ client.loadPlugins = async () => {
 
     const loadedCommands = [];
     const failedCommands = [];
+    client.failedPlugins = failedCommands; // the owner's start-up DM lists them
     const moduleStats = { discord: 0, telegram: 0, total: 0, aliases: 0, slash: 0 };
     
     // ── DISCORD MODULES ──
@@ -2980,59 +2981,85 @@ setInterval(async () => {
     }
 
     // ================= SEND BOOT DM TO OWNER =================
-    try {
-        const owner = await client.users.fetch(process.env.OWNER_ID).catch(() => null);
-        if (owner) {
-            let trend = TRENDS?.STEADY || { name: 'Steady Market', emoji: em('ic_chart', '📊'), color: '#f1c40f' };
-            let marketState = { trend: 'STEADY', multiplier: 1.0 };
-            try {
-                if (getMarketState) {
-                    marketState = getMarketState(null);
-                    trend = TRENDS[marketState.trend] || TRENDS.STEADY;
-                }
-            } catch (err) {}
-            
-            const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
-            
-            const bootCard = new ContainerBuilder()
-                .setAccentColor(trend.color ? parseInt(trend.color.replace('#', ''), 16) : 0x2ecc71)
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('eagle', '🦅')} ARCHON CG-223 is online\n${em('ic_ok', '✅')} **Started**`))
-                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                    `**System:** reboot complete\n` +
-                    `**Modules:** ${client.commands.size} plugins synced\n` +
-                    `**Version:** v${client.version}\n` +
-                    `**Node:** BAMAKO_223 🇲🇱\n` +
-                    `**Listeners:** ${client.listenerCount('messageCreate')} active`
-                ))
-                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                    `**Database:** WAL Mode + Per-Server Partitioning\n` +
-                    `**AFK System:** ACTIVE\n` +
-                    `**Circuit Breaker:** READY`
-                ))
-                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                    `**Lydia AI:** MULTI-AGENT ACTIVE\n` +
-                    `**Telegram:** ${client.telegramBridge?.enabled ? 'ACTIVE' : 'STANDBY'}\n` +
-                    `**Market:** ${trend.emoji || em('ic_chart', '📊')} ${trend.name} (${(marketState.multiplier * 100).toFixed(1)}%)`
-                ))
-                .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(
-                    `${em('globe', '🌐')} **Dashboard:** [bamako-steel-dev.xyz](https://bamako-steel-dev.xyz)\n` +
-                    `${em('developericon', '🏗️')} **Architect:** \`MFOF7310\`\n` +
-                    `⚡ **Slash Commands:** ${commands.length} commands registered\n` +
-                    `${em('clock', '🕐')} **Boot Time:** <t:${Math.floor(Date.now() / 1000)}:F>`
-                ))
-                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${em('eagle', '🦅')} ARCHON CG-223 v${client.version} • bamako-steel-dev.xyz`));
-
-            await owner.send({ components: [bootCard], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
-            console.log(`${green}[DM]${reset}   Boot DM sent successfully to ${owner.tag}`);
-        }
-    } catch (err) {
-        console.log(`${yellow}[DM]${reset}   Could not send boot DM: ${err.message}`);
-    }
+    // What was deployed, real checks, and one message for restarts close together (the webhook restarts on every push)
+    client._slashCount = commands.length;
+    setTimeout(() => sendBootDM().catch((e) => console.log(`${yellow}[DM]${reset}   Could not send boot DM: ${e.message}`)), 20000);
 });
+
+async function sendBootDM() {
+    const owner = await client.users.fetch(process.env.OWNER_ID).catch(() => null);
+    if (!owner) return;
+    const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+    const { execSync } = require('child_process');
+    const meta = (k) => { try { return db.prepare('SELECT value FROM bot_meta WHERE key = ?').get(k)?.value || null; } catch { return null; } };
+    const setMeta = (k, v) => { try { db.prepare('INSERT OR REPLACE INTO bot_meta (key, value) VALUES (?, ?)').run(k, String(v)); } catch {} };
+    const now = Date.now();
+
+    // Commits since the last start-up DM
+    let head = null, changes = [];
+    try {
+        head = execSync('git rev-parse HEAD', { cwd: __dirname }).toString().trim();
+        const last = meta('boot_dm_commit');
+        if (last && last !== head) {
+            execSync(`git cat-file -e ${last}^{commit}`, { cwd: __dirname, stdio: 'ignore' });
+            changes = execSync(`git log --no-merges --format=%s ${last}..HEAD`, { cwd: __dirname }).toString().trim().split('\n').filter(Boolean);
+        }
+    } catch { /* not a git checkout, or the old commit is gone */ }
+
+    // Real checks
+    let dbOk = true; try { db.prepare('SELECT 1').get(); } catch { dbOk = false; }
+    const aiOk = !!process.env.OPENROUTER_API_KEY;
+    const ping = client.ws?.ping > 0 ? Math.round(client.ws.ping) : null;
+    const tg = client.telegramBridge?.status?.() || null;
+    const tgOn = !!client.telegramBridge?.enabled;
+    const failed = (client.failedPlugins || []).map((f) => String(f.file).replace(/\.js$/, ''));
+    const problems = [];
+    if (!dbOk) problems.push('The database does not answer.');
+    if (!aiOk) problems.push('AI: OPENROUTER_API_KEY is missing from the .env.');
+    if (failed.length) problems.push(`${failed.length} plugin${failed.length === 1 ? '' : 's'} did not load: ${failed.slice(0, 6).join(', ')}${failed.length > 6 ? '…' : ''}`);
+    if (tg?.configured && !tgOn) problems.push('Telegram is set up but did not start.');
+    const dot = (ok) => ok ? em('ic_on', '🟢') : em('ic_off', '🔴');
+
+    // Restarts close together share one message
+    const lastAt = Number(meta('boot_dm_at')) || 0, lastId = meta('boot_dm_id');
+    const recent = lastId && now - lastAt < 30 * 60000;
+    const count = recent ? (Number(meta('boot_dm_count')) || 1) + 1 : 1;
+    const shown = recent ? [...changes, ...(JSON.parse(meta('boot_dm_changes') || '[]'))].slice(0, 8) : changes.slice(0, 8);
+
+    const c = new ContainerBuilder().setAccentColor(problems.length ? 0xe24b4a : 0x1d9e75);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
+        `## ${problems.length ? em('ic_warn', '⚠️') : em('eagle', '🦅')} ${problems.length ? 'ARCHON restarted, with a problem' : 'ARCHON restarted'}\n` +
+        `-# v${client.version} · <t:${Math.floor(now / 1000)}:R>${count > 1 ? ` · ${count} restarts in the last 30 minutes` : ''}`));
+    if (problems.length) {
+        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(problems.map((p) => `${em('ic_off', '🔴')} ${p}`).join('\n') + '\n-# The details are in pm2 logs Architect-CG223'));
+    }
+    if (shown.length) {
+        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**What just shipped**\n${shown.map((l) => `• ${l.slice(0, 120)}`).join('\n')}`));
+    }
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
+        `${dot(ping != null)} Discord${ping != null ? ` · ${ping} ms` : ''}   ${dot(dbOk)} Database   ${dot(aiOk)} AI\n` +
+        `${tg?.configured ? `${dot(tgOn)} Telegram   ` : ''}${dot(!failed.length)} ${client.commands.size} plugins loaded\n` +
+        `-# ${client.guilds.cache.size} servers · ${client._slashCount || 0} slash commands`));
+    c.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Dashboard').setURL('https://bamako-steel-dev.xyz').setEmoji(em('globe', '🌐'))));
+
+    const payload = { components: [c], flags: MessageFlags.IsComponentsV2 };
+    let sent = null;
+    if (recent) {
+        try { const dm = await owner.createDM(); const m = await dm.messages.fetch(lastId); sent = await m.edit({ components: [c] }); } catch { sent = null; }
+    }
+    if (!sent) sent = await owner.send(payload).catch(() => null);
+    if (!sent) return;
+    setMeta('boot_dm_id', sent.id);
+    setMeta('boot_dm_at', recent ? lastAt : now); // the 30-minute window starts with the first restart
+    setMeta('boot_dm_count', sent.id === lastId ? count : 1);
+    setMeta('boot_dm_changes', JSON.stringify(shown));
+    if (head) setMeta('boot_dm_commit', head);
+    console.log(`${green}[DM]${reset}   Boot DM ${sent.id === lastId ? 'updated' : 'sent'} for ${owner.tag}`);
+}
 
 // ================= MESSAGE PROCESSING (PER-SERVER PARTITIONED) =================
 // Keep users.avatar (Discord avatar hash) fresh for the dashboard. Writes only
