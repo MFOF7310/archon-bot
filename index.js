@@ -6023,6 +6023,12 @@ apiApp.post('/api/update-config', requireAdmin, (req, res) => {
         }
         client.settings.delete(guildId);
         client.invalidateGuildCache(guildId);
+        // Discord's own invite rule follows the invite filter set from the dashboard
+        if (Object.keys(settings).some(k => /^invite_?filter/i.test(k))) {
+            const g = client.guilds.cache.get(String(guildId));
+            const ss = client.getServerSettings?.(String(guildId));
+            if (g && ss?.autoModEnabled) require('./plugins/automod.js').syncRules(g, 'invite', ss).catch(() => {});
+        }
         res.json({ success: true, updated, guildId });
     } catch (err) {
         res.status(500).json({ error: err.message });

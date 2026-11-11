@@ -10,11 +10,27 @@ const ui = require('../lib/games/ui');
 const EMOJIS = require('../config/emojis');
 
 // ================= THRESHOLDS =================
-const SPAM_THRESHOLD = 3;
+const SPAM_THRESHOLD = 3;   // default; each server sets its own (spam_threshold, 3–15)
 const SPAM_WINDOW = 5000;
 const CAPS_RATIO = 0.7;
 const EMOJI_RATIO = 0.75;
-const MENTION_LIMIT = 6;
+const MENTION_LIMIT = 6;    // default; each server sets its own (mention_limit, 3–20)
+const clampInt = (v, min, max, dflt) => { const n = parseInt(v, 10); return Number.isFinite(n) ? Math.min(max, Math.max(min, n)) : dflt; };
+
+// The dashboard's spam, mention, link and invite settings used to be ignored: AutoMod always used 3 messages,
+// 6 mentions, and blocked links and invites. They are now applied. Once, before that, every server's saved
+// values are set to what AutoMod really did, so nothing changes until an admin changes them.
+function migrateFilterSettings(db) {
+    try {
+        if (db.prepare("SELECT 1 FROM bot_state WHERE key = 'automod_settings_live'").get()) return;
+        db.transaction(() => {
+            db.prepare('UPDATE server_settings SET spam_threshold = ?, mention_limit = ?, link_filter_enabled = 1, invite_filter_enabled = 1').run(SPAM_THRESHOLD, MENTION_LIMIT);
+            db.prepare("INSERT OR REPLACE INTO bot_state (key, value) VALUES ('automod_settings_live', '1')").run();
+        })();
+        console.log('[AUTOMOD] Saved spam, mention, link and invite settings aligned with what AutoMod enforced');
+    } catch (e) { console.error('[AUTOMOD] settings alignment failed:', e.message); }
+}
+let _migrated = false;
 const REPEAT_WINDOW = 15000;
 const MAX_HISTORY = 100;
 const IMAGE_SPAM_LIMIT = 2;
@@ -636,6 +652,7 @@ function advancedAutomodOn(db, gid) {
 
 async function scanMessage(message, client, db) {
     if (!message.guild || message.author.bot || message.webhookId) return false;
+    if (!_migrated) { _migrated = true; migrateFilterSettings(db); client.settings?.clear?.(); }
     const ss = client.getServerSettings?.(message.guild.id);
     if (!ss?.autoModEnabled) return false;
     const member = message.member;
@@ -664,6 +681,8 @@ async function scanMessage(message, client, db) {
     const recent = h.filter(m => now - m.ts <= SPAM_WINDOW);
     const violations = [];
     const seen = new Set();
+    const spamLimit = clampInt(ss?.spamThreshold, 3, 15, SPAM_THRESHOLD);
+    const mentionLimit = clampInt(ss?.mentionLimit, 3, 20, MENTION_LIMIT);
 
     // ── PER-SERVER CHANNEL RESTRICTION ──
     const rawChannels = ss?.automodChannels || ss?.automod_channels || '';
@@ -671,8 +690,8 @@ async function scanMessage(message, client, db) {
     const isRestrictedChannel = restrictedChannels ? restrictedChannels.includes(message.channel.id) : true;
 
     // 1. Message spam (same channel)
-    if (recent.filter(m => m.channelId === message.channel.id).length >= SPAM_THRESHOLD && !seen.has('spam')) {
-        violations.push({ type: 'message spam', reason: `${SPAM_THRESHOLD}+ messages in ${SPAM_WINDOW/1000}s`, source: 'spam' });
+    if (recent.filter(m => m.channelId === message.channel.id).length >= spamLimit && !seen.has('spam')) {
+        violations.push({ type: 'message spam', reason: `${spamLimit}+ messages in ${SPAM_WINDOW/1000}s`, source: 'spam' });
         seen.add('spam');
     }
 
@@ -711,7 +730,7 @@ async function scanMessage(message, client, db) {
     });
     const everyoneCount = (message.content.match(/@here|@everyone/g) || []).length;
     const mentions = filteredUsers.size + filteredRoles.size + everyoneCount;
-    if (mentions > MENTION_LIMIT && !seen.has('mention')) {
+    if (mentions > mentionLimit && !seen.has('mention')) {
         violations.push({ type: 'mass mention', reason: `${mentions} mentions`, source: 'mention' });
         seen.add('mention');
     }
@@ -748,11 +767,11 @@ async function scanMessage(message, client, db) {
         const mal = MALICIOUS.some(p => p.test(message.content));
         const inv = message.content.match(INVITE_RE);
         if (mal && !seen.has('malicious')) { violations.push({ type: 'malicious link', reason: 'Phishing/scam URL detected', source: 'malicious' }); seen.add('malicious'); }
-        else if (inv?.length && !seen.has('invite')) { violations.push({ type: 'unauthorized invite', reason: 'External Discord invite', source: 'invite' }); seen.add('invite'); }
+        else if (inv?.length && ss?.inviteFilterEnabled && !seen.has('invite')) { violations.push({ type: 'unauthorized invite', reason: 'External Discord invite', source: 'invite' }); seen.add('invite'); }
     }
 
     // 7. Global link blocker
-    if (record.hasLinks && !seen.has('malicious') && !seen.has('invite') && !seen.has('global_link')) {
+    if (ss?.linkFilterEnabled && record.hasLinks && !seen.has('malicious') && !seen.has('invite') && !seen.has('global_link')) {
         if (!isElevated(member)) {
             const customDomains = parseDomainWhitelist(ss?.autoModDomains);
             if (!isDomainWhitelisted(message.content, customDomains)) {
@@ -1307,6 +1326,20 @@ async function syncRules(guild, action, settings) {
             { name: `${PREFIX} • Rogue Domains`, eventType: 1, triggerType: 1, triggerMetadata: { keywordFilter: ['.ru/', 'grabify.', 'iplogger.', 'bit.ly-'] }, actions: [{ type: 1, metadata: { customMessage: '🛡️ AutoMod: Unverified domain blocked.' } }], enabled: true, exemptRoles, reason: 'AutoMod Domain Shield' },
             { name: `${PREFIX} • Promo Spam`, eventType: 1, triggerType: 1, triggerMetadata: { keywordFilter: ['dm me for', 'join for reward', 'free tokens', 'giveaway enter'] }, actions: [{ type: 1, metadata: { customMessage: '🛡️ AutoMod: Promotional spam blocked.' } }], enabled: true, exemptRoles, reason: 'AutoMod Promo Shield' },
         ];
+
+        // Discord's own invite rule follows the server's invite filter
+        if (settings && settings.inviteFilterEnabled === false) {
+            const i = rules.findIndex(r => r.name.endsWith('Invite Spam'));
+            if (i >= 0) rules.splice(i, 1);
+        }
+
+        if (action === 'invite') {
+            const rule = rules.find(r => r.name.endsWith('Invite Spam'));
+            const cur = [...(existing?.values?.() || [])].find(r => r.name === `${PREFIX} • Invite Spam`);
+            if (rule && !cur) { try { await guild.autoModerationRules.create(rule); } catch (e) { console.log(`[AUTOMOD GATEWAY] invite rule: ${e.message}`); } }
+            if (!rule && cur) { try { await cur.delete('Invite filter turned off'); } catch {} }
+            return true;
+        }
 
         if (action === 'create') {
             let created = 0, skipped = 0;
@@ -1941,3 +1974,4 @@ module.exports = {
 };
 
 module.exports.resumeRaids = resumeRaids;
+module.exports.syncRules = syncRules;
