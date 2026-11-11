@@ -114,5 +114,9 @@
   "memory_empty_title": "📭 Nothing saved yet",
   "memory_count": "{n} saved",
   "memory_saved_on": "Saved {date}",
-  "onTitle": "AI Chat is active here"
+  "onTitle": "AI Chat is active here",
+  "sub_forget": "🗑️ Delete everything Archon remembers about you",
+  "memory_forgot": "Done. {n} memories about you were deleted.",
+  "memory_forget_none": "I don't remember anything about you yet.",
+  "memory_forget_hint": "Use /lydia forget to delete them."
 }

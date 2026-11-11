@@ -114,5 +114,9 @@
   "memory_empty_title": "📭 还没有保存任何内容",
   "memory_count": "已保存 {n} 条",
   "memory_saved_on": "保存于 {date}",
-  "onTitle": "AI 聊天已在此处激活"
+  "onTitle": "AI 聊天已在此处激活",
+  "sub_forget": "🗑️ 删除 Archon 记住的关于你的一切",
+  "memory_forgot": "已完成。已删除 {n} 条关于你的记忆。",
+  "memory_forget_none": "我还没有记住任何关于你的信息。",
+  "memory_forget_hint": "使用 /lydia forget 删除它们。"
 }

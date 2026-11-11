@@ -122,23 +122,27 @@ function detectTheme(userPrompt) {
 // UNIVERSAL LANGUAGE DETECTOR
 // ═══════════════════════════════════════════════════════════════════════════════
 
+// Which language the member wrote in. Returns null when the message gives no clear signal (an emoji, a name,
+// "ok"), so the caller falls back to the member's /mylang or the server language. It used to answer English
+// messages in Spanish as soon as they contained "no" or "son", and in French for any accented name ("Pokémon").
+const LANG_WORDS = {
+  fr: /\b(je|tu|il|elle|nous|vous|ils|est|sont|suis|c'est|j'ai|t'es|les|des|une|du|au|aux|pour|avec|dans|sur|pas|mais|oui|non|merci|bonjour|salut|comment|quoi|pourquoi|quand|parce|donc|alors|aussi|encore|toujours|jamais|rien|tout|très|bien|faire|peux|veux|stp|svp|frère|wesh)\b/g,
+  en: /\b(i|you|he|she|we|they|is|are|am|was|were|the|and|but|what|why|how|when|where|who|can|could|would|should|please|thanks|thank|hello|hey|this|that|have|has|do|does|don't|it's|i'm|my|your|with|for|about)\b/g,
+  es: /\b(yo|tú|usted|nosotros|ellos|está|estás|estoy|eres|soy|hola|gracias|qué|cómo|dónde|cuándo|porque|también|siempre|nunca|pero|muy|quiero|puedes|necesito|ayuda)\b/g,
+};
 function detectUserLanguage(text) {
-  if (!text || typeof text !== 'string') return 'en';
-  const t = text.toLowerCase().trim();
-  if (!t) return 'en';
-
-  if (/[\u00E0\u00E2\u00E4\u00E9\u00E8\u00EA\u00EB\u00EE\u00EF\u00F4\u00F6\u00F9\u00FB\u00FC\u00FF\u00E7\u0153\u00E6]/i.test(t)) return 'fr';
-  const frWords = /\b(le|la|les|un|une|des|du|de|je|tu|il|elle|nous|vous|ils|elles|est|sont|\u00E9t\u00E9|faire|voir|aller|venir|parler|penser|tr\u00E8s|bien|oui|non|merci|bonjour|salut|comment|quoi|o\u00F9|quand|pourquoi|parce|donc|alors|aussi|encore|toujours|jamais|tout|rien|quelque|chaque|plus|moins|avec|sans|dans|sur|sous|entre|chez|vers)\b/i;
-  if (frWords.test(t)) return 'fr';
-
-  const esWords = /\b(el|la|los|las|un|una|yo|t\u00FA|\u00E9l|ella|nosotros|vosotros|ellos|son|est\u00E1|estar|hacer|ver|ir|venir|hablar|pensar|muy|bien|s\u00ED|no|gracias|hola|c\u00F3mo|qu\u00E9|d\u00F3nde|cu\u00E1ndo|porqu\u00E9|porque|entonces|tambi\u00E9n|siempre|nunca|todo|nada|cada|m\u00E1s|menos|con|sin|dentro|sobre|entre|hacia)\b/i;
-  if (esWords.test(t)) return 'es';
-
+  const t = String(text || '').toLowerCase().replace(/<[@#&!:a-z0-9_]+>/g, ' ').trim();
+  if (!t) return null;
   if (/[\u0600-\u06FF]/.test(t)) return 'ar';
+  if (/[\u3040-\u30FF]/.test(t)) return 'ja';
   if (/[\u4E00-\u9FFF]/.test(t)) return 'zh';
-  if (/[\u3040-\u309F\u30A0-\u30FF]/.test(t)) return 'ja';
-
-  return 'en';
+  const score = {};
+  for (const [l, re] of Object.entries(LANG_WORDS)) score[l] = (t.match(re) || []).length;
+  if (/[àâçèêëîïôûùœ]/.test(t)) score.fr += 1;
+  if (/[ñ¿¡]/.test(t)) score.es += 2;
+  const best = Object.entries(score).sort((x, y) => y[1] - x[1]);
+  if (!best[0][1] || best[0][1] === best[1][1]) return null;
+  return best[0][0];
 }
 
 const LANG_NAMES = {
@@ -190,7 +194,7 @@ Never ask a regular member for owner-only output (like .system).
 ARCHON CG-223 runs ${pluginCount} active plugins across Discord and Telegram.${pluginBreakdown} Built on Node.js v${process.versions.node.split('.')[0]}, Discord.js v14, SQLite WAL mode, per-server data isolation (composite key: user_id + guild_id). Every server is its own universe — zero cross-server leakage.
 
 Economy 🪙 — daily claims, streak system (milestones: 3/7/30/100/365 days), streak shields, shop, transfers, cross-economy
-Market 📈 — Bamako Market: 4 states (Steady/Bull/Bear/Volatile), updates every 6h, invest and claim profits
+Market 📈 — Bamako Market: 4 states (Steady/Bull/Bear/Volatile). /invest: each stake grows 2.5 % every 6 hours, up to +10 %, at most 10,000 credits invested at once
 Leveling ⚡ — XP from messages, formula: floor(0.1 x sqrt(XP)) + 1, ranks from Initiate to Supreme Architect
 Moderation 🛡️ — automod, warn/mute/kick/ban, mention limits, join-velocity raid detection, appeal system
 Welcome 🎭 — cinematic canvas cards, tier assignment, auto-roles, stay-duration tracking
@@ -199,7 +203,7 @@ AI 🤖 — you: memory, web search via Brave, image analysis, reminders, birthd
 Telegram 🔗 — selective command bridge, not a full mirror
 TikTok 📱 — automated video tracking and channel notifications
 
-Commands always come in two flavors: prefix+command and /command — always show both.
+Show the /slash form when the command has one (listed below), otherwise the prefix form.
 
 — HOW YOU WRITE —
 You are in Discord embeds. These rules are non-negotiable:
@@ -213,7 +217,12 @@ You are in Discord embeds. These rules are non-negotiable:
 - No corporate speak. No padding. Just signal.
 
 — REAL-TIME AWARENESS —
-You read the live changelog at boot. When recent changes are relevant, reference them naturally — "that was just fixed" or "Moussa pushed that yesterday." Do not force it. Just be aware.
+RECENT CHANGES below lists the latest ARCHON releases. When one is relevant, mention it naturally ("that was fixed in 3.2.0"). Do not force it, and never invent changes that are not listed.
+
+— MEMORY AND REMINDERS —
+Remember something only when the person asks you to, or tells you a lasting preference about themselves (the name to call them, their language, their main game or weapon). Never store passwords, keys, health, money or anything private. To store it, add this at the very end of your reply, on its own line: [MEMORY: short_key | value]
+When someone asks to be reminded, say when you will remind them and add on its own line: [REMIND: 20 min | what to remind] (units: min, h). Up to 30 days.
+These tags are removed before the message is shown. Members see and delete their memories with /lydia memory and /lydia forget.
 
 — HARD LIMITS —
 - Never fabricate commands or features not listed above
@@ -258,11 +267,10 @@ function scrubSecrets(text) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const HALLUCINATION_PATTERNS = [
-  /\b(tensorflow|pytorch|keras|opencv|scikit|huggingface transformers|local model|on-device|gpu cluster|cuda cores|nvidia|rtx| training data)\b/gi,
   /\b(nano banana|nano agent|self-aware|conscious|sentient|emotion engine|dream mode|hologram|quantum computing)\b/gi,
   /\b(i can see (the |your )?(source code|config|env|environment|token|password|secret))/gi,
   /\b(i have access to (the |your )?(server|database|file system|logs|config))/gi,
-  /\b(\/plugins\/|\/src\/|\/config\/|\/data\/database|\.env\b|\.json\b|\/telegram\/|\/node_modules\/)/gi,
+  /(\/root\/cloud-gaming|cloud-gaming-223-digital-engine|\/opt\/dashboard)/gi,
 ];
 
 function validateResponse(response, lang = 'en') {
@@ -284,9 +292,10 @@ function validateResponse(response, lang = 'en') {
     reasons.push('Source code claim');
   }
 
-  if (/\b(process\.env|environment variable|env var|config file|\.env)\b/gi.test(response)) {
+  // Talking about .env files or environment variables is normal coding help; only a claim about the bot's own is blocked
+  if (/\b(my|archon'?s|the bot'?s) (\.env|environment variables?|config file|api keys?|token)\b/gi.test(response)) {
     score += 5;
-    reasons.push('Config/env reference');
+    reasons.push('Own config reference');
   }
 
   const cleaned = scrubSecrets(response);
@@ -361,6 +370,17 @@ const PREMIUM_MODEL = {
   tier: 'premium'
 };
 
+// A model that just failed is skipped for a while instead of costing every message 15 s again:
+// 5 minutes after a timeout or a busy answer, 6 hours when OpenRouter says the model doesn't exist.
+const benched = new Map();
+const VISION = new Set(['anthropic/claude-sonnet-5.5', 'anthropic/claude-haiku-5.5', 'openai/gpt-4o', 'openai/gpt-4o-mini', 'google/gemini-2.5-flash']);
+const TOTAL_BUDGET = 30000;
+function bench(model, status) {
+  const long = status === 400 || status === 404;
+  benched.set(model.id, Date.now() + (long ? 6 * 3600000 : 300000));
+}
+const isBenched = (m) => (benched.get(m.id) || 0) > Date.now();
+
 async function tryModel(model, messages, timeoutMs, keyOverride = null) {
   const apiKey = keyOverride || process.env.OPENROUTER_API_KEY;
   if (!apiKey) return null;
@@ -368,6 +388,7 @@ async function tryModel(model, messages, timeoutMs, keyOverride = null) {
   return new Promise(async (resolve) => {
     const timer = setTimeout(() => {
       console.log(`${C.yellow}[TIMEOUT]${C.reset} ${model.id}`);
+      bench(model, 'timeout');
       resolve(null);
     }, timeoutMs);
 
@@ -403,6 +424,8 @@ async function tryModel(model, messages, timeoutMs, keyOverride = null) {
       clearTimeout(timer);
       const status = e.response?.status || 'NET';
       const errMsg = e.response?.data?.error?.message || e.message || 'unknown';
+      // A bad key (401/402) is not the model's fault: the next model would fail the same way
+      if (status !== 401 && status !== 402) bench(model, status);
       console.log(`${C.yellow}[AI RETRY]${C.reset} ${model.id} | HTTP ${status} | ${errMsg.substring(0, 80)}`);
       resolve(null);
     }
@@ -458,12 +481,17 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
 
   // Free pool: the cheaper models, tried one after another. They used to race 3 at a time (Claude Sonnet and GPT-4o
   // included) and every message paid for all three, even though only one answer was kept.
-  const pool = MODEL_POOL.filter(m => m.tier !== 'premium');
+  let pool = MODEL_POOL.filter(m => m.tier !== 'premium' && (!imageUrl || VISION.has(m.id)));
+  const fresh = pool.filter(m => !isBenched(m));
+  if (fresh.length) pool = fresh;   // all benched: try them anyway rather than give up
   let winner = null;
   const tried = [];
+  const started = Date.now();
   for (const model of pool) {
+    const left = TOTAL_BUDGET - (Date.now() - started);
+    if (left < 3000) break;
     tried.push(model.name);
-    const result = await tryModel(model, messages, CFG.RESPONSE_TIMEOUT, guildKey);
+    const result = await tryModel(model, messages, Math.min(CFG.RESPONSE_TIMEOUT, left), guildKey);
     if (result) { winner = result; winner.attempted = tried.join(' \u2192 '); break; }
   }
 
@@ -534,7 +562,7 @@ function parseAndStoreMemory(reply, userId, database) {
 // REMINDER SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function parseAndScheduleReminder(response, userId, channelId, client, database) {
+function parseAndScheduleReminder(response, userId, channelId, client, database, guildId = null) {
   const regex = /\[REMIND:\s*(\d+)\s*(min|h|sec|s|m|hour|hours|minute|minutes)\s*\|\s*(.+?)\]/gi;
   let match;
   let cleanedResponse = response;
@@ -553,9 +581,9 @@ function parseAndScheduleReminder(response, userId, channelId, client, database)
 
     try {
       database.prepare(`
-        INSERT INTO reminders (id, user_id, user_tag, guild_id, channel_id, message, execute_at, delivered)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 0)
-      `).run(id, userId, null, null, channelId, msg.trim(), executeAt);
+        INSERT INTO reminders (id, user_id, user_tag, guild_id, channel_id, message, execute_at, delivered, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?)
+      `).run(id, userId, null, guildId, channelId, msg.trim(), executeAt, Math.floor(now / 1000));
 
       // Delivered by plugins/reminder.js tick() (every 30 s)
 
@@ -567,7 +595,7 @@ function parseAndScheduleReminder(response, userId, channelId, client, database)
     cleanedResponse = cleanedResponse.replace(match[0], '').trim();
   }
 
-  return cleanedResponse.replace(/\s+/g, ' ').trim();
+  return cleanedResponse.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function rehydrateReminders(client, database) {
@@ -680,9 +708,6 @@ function formatDiscordResponse(text) {
 
   // Add blank line before bullet lists if missing
   formatted = formatted.replace(/([^\n])(\n[\-\*\u2022\u25CB])\s/g, '$1\n$2 ');
-
-  // Add visual separator between major bold-header sections
-  formatted = formatted.replace(/(\n\n\*\*[A-Z][^*]+\*\*\n)/g, '\n\n\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n$1');
 
   // Ensure paragraphs are separated by blank lines
   formatted = formatted.replace(/\n{3,}/g, '\n\n');
@@ -825,31 +850,13 @@ function _tx(key, lang, fallback) {
 function buildEmbed(reply, message, options = {}) {
   const { isError = false, isThinking = false, theme = THEMES.default, model = null, latency = null, tokens = null, sources = [], lang = 'en' } = options;
 
-  const tz = 'Africa/Bamako';
-  const bamakoTime = new Date().toLocaleTimeString('en-US', {
-    timeZone: tz, hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
-  });
-
   const themeKey = Object.keys(THEMES).find(k => THEMES[k].name === theme.name) || 'default';
   const embedColor = isError ? 0xff4757 : parseInt(getSentimentColor(themeKey, reply).replace('#', ''), 16);
-
-  let classification = 'UNCLASSIFIED';
-  let badgeEmoji = '🟢';
-  if (isError) { classification = 'SYSTEM ALERT'; badgeEmoji = '🔴'; }
-  else if (themeKey === 'police') { classification = 'SECURITY BRIEF'; badgeEmoji = '🛡️'; }
-  else if (themeKey === 'tech') { classification = 'TECHNICAL BRIEF'; badgeEmoji = '💻'; }
-  else if (themeKey === 'intel') { classification = 'INTEL REPORT'; badgeEmoji = '🔍'; }
-  else if (themeKey === 'medical') { classification = 'MEDICAL ADVISORY'; badgeEmoji = '🏥'; }
-  else if (themeKey === 'tactical') { classification = 'FIELD GUIDE'; badgeEmoji = '📋'; }
-  else if (themeKey === 'academic') { classification = 'RESEARCH NOTE'; badgeEmoji = '📚'; }
-  { const _ck = { 'UNCLASSIFIED': 'unclassified', 'SYSTEM ALERT': 'systemAlert', 'SECURITY BRIEF': 'securityBrief', 'TECHNICAL BRIEF': 'technicalBrief', 'INTEL REPORT': 'intelReport', 'MEDICAL ADVISORY': 'medicalAdvisory', 'FIELD GUIDE': 'fieldGuide', 'RESEARCH NOTE': 'researchNote' }[classification]; if (_ck) classification = _tx(`lydia.classification.${_ck}`, lang, classification); }
 
   const c = new ContainerBuilder().setAccentColor(embedColor);
 
   if (isThinking) {
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${badgeEmoji} ${classification} · ${require('../lib/i18n').t('lydia.thinkingEmbed.label', lang)}`));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*${require('../lib/i18n').t('lydia.thinkingEmbed.text', lang)}*`));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${message.guild?.name || 'DM'} · ${bamakoTime} UTC`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${theme.emoji} ${require('../lib/i18n').t('lydia.thinkingEmbed.label', lang)}\n*${require('../lib/i18n').t('lydia.thinkingEmbed.text', lang)}*`));
     return c;
   }
 
@@ -862,9 +869,7 @@ function buildEmbed(reply, message, options = {}) {
     const { title, content } = chunks[i];
     const cChunk = new ContainerBuilder().setAccentColor(embedColor);
 
-    if (i === 0) {
-      cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${badgeEmoji} ${classification}`));
-    } else {
+    if (i > 0) {
       cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${title || 'Continued'}**`));
       cChunk.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     }
@@ -874,8 +879,8 @@ function buildEmbed(reply, message, options = {}) {
     if (i === chunks.length - 1 || i === CFG.MAX_EMBEDS_PER_MSG - 1) {
       cChunk.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
-      let footerText = `-# ARCHON CG-223 • Archon AI`;
-      if (lang === 'fr') footerText += ' 🇫🇷'; else footerText += ' 🌐';
+      // Which model answered: honest, and useful when a server compares answers
+      const footerText = `-# ${theme.emoji} Archon${model?.name && !isError ? ` · ${model.name}` : ''}`;
 
       if (sources.length > 0 && !isError) {
         const sourceLinks = sources.slice(0, 4).map((s, idx) => {
@@ -883,12 +888,6 @@ function buildEmbed(reply, message, options = {}) {
           return `[[${idx + 1}]](${s.url}) ${tTitle}`;
         }).join('\n');
         cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${require('../lib/i18n').t('lydia.sourcesTitle', lang)}**\n${sourceLinks}`));
-      }
-
-      const botCommands = ['.daily', '.shop', '.profile', '.level', '.market', '.help', '.ticket', '.remind', '.afk', '.invest', '.claim', '.streak', '.rank', '.leaderboard', '.whois', '.mute', '.kick', '.ban', '.warn', '.automod'];
-      const mentionedCommand = reply ? botCommands.find(cmd => reply.toLowerCase().includes(cmd)) : null;
-      if (mentionedCommand && !isError) {
-        cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**📋 SYSTEM BRIEFING**\n\`> ${mentionedCommand}\` — Use this command in any server channel.`));
       }
 
       cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(footerText));
@@ -981,7 +980,6 @@ function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.
   let pluginBreakdown = '';
   const ms = moduleStats;
   if (ms && ms.total) pluginCount = ms.total;   // one count everywhere: the same number as her breakdown (client.commands.size was one more)
-  console.log('[LYDIA-DEBUG] moduleStats:', JSON.stringify(ms));
   if (ms) {
     pluginBreakdown = ` That is ${ms.discord} on Discord, ${ms.telegram} of which are also bridged to Telegram; ${ms.slash} of the Discord ones register slash commands, the rest are prefix-only. They expose ${ms.aliases} aliases in total.`;
   }
@@ -996,7 +994,7 @@ function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.
   const langName = LANG_NAMES[lang] || 'English';
 
   const changelogSummary = getChangelogSummary();
-  const ownerTag = isOwner ? ' — the developer' : '';
+  const ownerTag = isOwner === 'dev' ? ' — the developer of ARCHON' : isOwner === 'server' ? " — this server's owner" : '';
   return `${BOT_KNOWLEDGE(pluginCount, pluginBreakdown)}
 
 LIVE CONTEXT:
@@ -1006,7 +1004,7 @@ LIVE CONTEXT:
 - Mode: ${theme.name}
 - Prefix: ${prefix} (or use slash commands). You ALREADY KNOW the current prefix, it is "${prefix}". Never say you don't know it or tell the user to check it elsewhere.
 - Language: respond in ${langName} — follow the user, always
-${allCommandsBlock(commands, isOwner)}${(() => { const rc = relevantCommands(userMessage, commands); return rc ? `\nRELEVANT COMMANDS (the signatures of the commands that match this message; every command that exists is named under ALL COMMANDS):\n${rc}` : ''; })()}
+${allCommandsBlock(commands, isOwner === 'dev')}${(() => { const rc = relevantCommands(userMessage, commands); return rc ? `\nRELEVANT COMMANDS (the signatures of the commands that match this message; every command that exists is named under ALL COMMANDS):\n${rc}` : ''; })()}
 
 RECENT CHANGES:
 ${changelogSummary}
@@ -1070,9 +1068,9 @@ async function handleLydiaMessage(message, client, database) {
   let searchUsed = false;
   let searchSources = [];
 
-  const detectedLang = detectUserLanguage(message.content || '');
-  const lang = detectedLang;
-  const uiLang = _uiLang(client, message, lang);
+  // The member's own language when the message shows it, else their /mylang or the server language
+  const uiLang = _uiLang(client, message, 'en');
+  const lang = detectUserLanguage(message.content || '') || uiLang || 'en';
 
   try {
     const botName = (getBotName(message) || 'Archon').toLowerCase();
@@ -1122,7 +1120,8 @@ async function handleLydiaMessage(message, client, database) {
       return;
     }
 
-    const cached = getCachedResponse(message.author.id, userPrompt);
+    const cacheId = `${message.guild.id}:${message.author.id}`;
+    const cached = getCachedResponse(cacheId, userPrompt);
     if (cached && !imageUrl) {
       const cacheEmbeds = buildEmbed(cached.content, message, {
         isError: false, theme, model: cached.model, latency: 0, tokens: cached.tokens,
@@ -1142,16 +1141,10 @@ async function handleLydiaMessage(message, client, database) {
       `).all(message.author.id, CFG.MAX_MEMORY_PER_USER);
     } catch (e) {}
 
-    let ownerInfo = null;
-    try {
-      ownerInfo = await getGuildOwner(client, message.guild.id);
-    } catch (ownerErr) {
-      console.log(`${C.yellow}[OWNER CHECK ERR]${C.reset} ${ownerErr.message}`);
-      ownerInfo = null;
-    }
-    // Check .env OWNER_ID first, then fallback to Discord Guild Owner
+    // Only ARCHON's owner is "the developer" and sees the owner-only commands. Every server owner used to be
+    // introduced as the developer, and the owner was looked up with two Discord API calls on every message.
     const envOwnerId = process.env.OWNER_ID || process.env.DEVELOPER_ID || process.env.BOT_OWNER;
-    const isOwner = (envOwnerId && message.author.id === envOwnerId) || (ownerInfo && message.author.id === ownerInfo.id);
+    const isOwner = envOwnerId && message.author.id === envOwnerId ? 'dev' : message.author.id === message.guild.ownerId ? 'server' : null;
     const serverPrefix = client.getServerSettings?.(message.guild.id)?.prefix || process.env.PREFIX || '.';
 
     const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang, client.commands?.size || 0, message.content, client.commands, !!(message.guild?.id && isPremium(database, message.guild.id)), client.moduleStats);
@@ -1193,9 +1186,13 @@ async function handleLydiaMessage(message, client, database) {
     }
 
     let searchResults = null;
-    const searchTriggers = ['search', 'find', 'what is', 'who is', 'latest', 'news', 'weather', 'how to', 'price', 'current', 'update', 'today'];
-    if (searchTriggers.some(t => userPrompt.toLowerCase().includes(t)) && process.env.BRAVE_API_KEY) {
-      const searchData = await webSearch(userPrompt, message.guild?.id ? getGuildKey(database, message.guild.id, 'brave') : null);
+    // Web search only for questions about the world, not about ARCHON itself (that's in the prompt already).
+    // Whole words: "update" used to match "updated", "find" matched "finder", and each one cost a paid search.
+    const searchTriggers = /\b(search|google|look up|who is|what is|latest|news|weather|price|today|tonight|this week|score|météo|actualités?|prix|qui est|c'est quoi|aujourd'hui)\b/i;
+    const aboutBot = /\b(archon|lydia|command|commande|prefix|préfixe|dashboard|slash)\b|^[./!]/i.test(userPrompt);
+    const braveKey = getGuildKey(database, message.guild.id, 'brave') || process.env.BRAVE_API_KEY;
+    if (braveKey && !aboutBot && searchTriggers.test(userPrompt)) {
+      const searchData = await webSearch(userPrompt, braveKey);
       if (searchData) {
         searchResults = searchData.formatted;
         searchSources = searchData.sources;
@@ -1224,7 +1221,6 @@ async function handleLydiaMessage(message, client, database) {
     let safeReply = validation.cleaned;
     if (validation.ok !== false && message.guild && typeof safeReply === 'string') {
       try {
-        console.log('[LYDIA ACTION] checking reply for intent…');
         safeReply = await lydiaActions.handleIntent({ reply: safeReply, message, client, db: database, isPremium, isElevated: _isElevated, lang: uiLang });
       } catch (e) { console.log('[LYDIA ACTION] error:', e.message); }
     }
@@ -1249,7 +1245,9 @@ async function handleLydiaMessage(message, client, database) {
     } catch (e) {}
 
     parseAndStoreMemory(safeReply, message.author.id, database);
-    const finalReply = parseAndScheduleReminder(cleanReply, message.author.id, message.channel.id, client, database);
+    // The tags are read from the reply before they are stripped (they were stripped first, so no reminder was ever set)
+    parseAndScheduleReminder(safeReply, message.author.id, message.channel.id, client, database, message.guild.id);
+    const finalReply = cleanReply;
 
     // NEW — buildEmbed now returns array of embeds (multi-embed support)
     const finalEmbeds = buildEmbed(finalReply, message, {
@@ -1260,7 +1258,7 @@ async function handleLydiaMessage(message, client, database) {
     else await message.reply({ components: finalEmbeds, flags: MessageFlags.IsComponentsV2 });
 
     if (!imageUrl && finalReply.length > 20) {
-      setCachedResponse(message.author.id, userPrompt, {
+      setCachedResponse(cacheId, userPrompt, {
         content: finalReply, model, latency, tokens, sources: searchSources
       });
     }
@@ -1277,18 +1275,6 @@ async function handleLydiaMessage(message, client, database) {
   } finally {
     messageProcessingLocks.delete(key);
   }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// OWNER HELPER
-// ═══════════════════════════════════════════════════════════════════════════════
-
-async function getGuildOwner(client, guildId) {
-  try {
-    const guild = await client.guilds.fetch(guildId);
-    const owner = await client.users.fetch(guild.ownerId);
-    return { id: owner.id, username: owner.username, displayName: owner.displayName || owner.username };
-  } catch (e) { return null; }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1419,7 +1405,12 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
   } else {
     userId = interactionOrMessage.author.id;
     username = interactionOrMessage.author.username;
-    respond = async (content) => interactionOrMessage.reply(content);
+    // A channel message can't be private: the memories go to the member's DMs instead of the channel
+    respond = async (content) => {
+      const dm = { ...content, flags: content.flags & ~64 };
+      return interactionOrMessage.author.send(dm).then(() => interactionOrMessage.react('📬').catch(() => {}))
+        .catch(() => interactionOrMessage.reply(dm));
+    };
   }
 
   try {
@@ -1445,7 +1436,7 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
       c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**📌 ${m.memory_key}**\n${m.memory_value}\n-# ${t('lydia.memory_saved_on', lang, { date })}`));
     }
     
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${memories.length > 25 ? t('lydia.memory_showing', lang, { count: 25, total: memories.length }) : t('lydia.memory_footer', lang)}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${memories.length > 25 ? t('lydia.memory_showing', lang, { count: 25, total: memories.length }) : t('lydia.memory_footer', lang)} · ${t('lydia.memory_forget_hint', lang)}`));
 
     await respond({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
   } catch (err) {
@@ -1455,6 +1446,17 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('lydia.memory_error', lang)));
     await respond({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
   }
+}
+
+// Deletes every memory Archon keeps about the member who asks (memories follow the member across servers)
+async function forgetMemories(src, database, client) {
+  const userId = src.user?.id || src.author?.id;
+  let lang = 'en';
+  try { lang = pickLang(client, src.guild?.id, src.user ? src : null, userId) || 'en'; } catch {}
+  let n = 0;
+  try { n = database.prepare('DELETE FROM lydia_memory WHERE user_id = ?').run(userId).changes; } catch {}
+  const text = n ? t('lydia.memory_forgot', lang, { n }) : t('lydia.memory_forget_none', lang);
+  return src.reply(src.user ? { content: text, flags: 64 } : { content: text }).catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1580,11 +1582,10 @@ function setupLydia(client, database) {
 
   client.on('messageCreate', async (message) => {
     if (!message || message.author?.bot) return;
-    console.log(`[LYDIA-RAW] ch=${message.channel?.id} guild=${message.guild?.id} content=${message.content?.slice(0,30)}`);
     try {
       await handleLydiaMessage(message, client, database);
     } catch (eventErr) {
-      console.error(`\x1b[31m[EVENT CRITICAL]\x001b[0m ${eventErr.message}`);
+      console.error(`${C.red}[LYDIA]${C.reset} ${eventErr.message}`);
     }
   });
 }
@@ -1597,14 +1598,16 @@ async function runLydiaCommand(client, message, args, database, serverSettings, 
     const guildId = message.guild?.id ?? 'DM';
   if (!message.guild) return;
   const lang = serverSettings?.language && serverSettings.language !== 'auto' ? serverSettings.language : 'en';
+  const sub = args[0]?.toLowerCase() || 'status';
+  if (sub === 'memory') return await handleMemorySubcommand(message, database, false, client);
+  if (sub === 'forget') return await forgetMemories(message, database, client);
   if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
     return message.reply({
       embeds: [new EmbedBuilder().setColor('#ff4757').setDescription(t('lydia.admin_only', lang))]
     }).catch(() => {});
   }
 
-  const sub = args[0]?.toLowerCase() || 'status';
-  if (sub === 'memory') return await handleMemorySubcommand(message, database, false, client);
+
   if (!['on', 'off', 'status'].includes(sub)) return;
   await handleLydiaToggle(client, message.channel.id, message.guild.id, message.author.id, sub, async (payload) => message.reply(payload));
 }
@@ -1616,6 +1619,7 @@ const slashCommand = new SlashCommandBuilder()
   .addSubcommand(s => s.setName('off').setDescription('\u{1F534} Deactivate Archon AI'))
   .addSubcommand(s => s.setName('status').setDescription('\u{1F4CA} Show Archon status'))
   .addSubcommand(s => s.setName('memory').setDescription('\u{1F9E0} View your stored memories'))
+  .addSubcommand(s => s.setName('forget').setDescription('\u{1F5D1}\u{FE0F} Delete everything Archon remembers about you'))
   .addSubcommand(s => s.setName('setkey').setDescription('\u{1F511} [PREMIUM] Power this server with your own API key')
     .addStringOption(o => o.setName('service').setDescription('Which service the key is for').setRequired(true)
       .addChoices({ name: 'OpenRouter (AI brain)', value: 'openrouter' }, { name: 'Brave (web search)', value: 'brave' }))
@@ -1626,6 +1630,11 @@ async function executeSlashCommand(interaction, client) {
   const _ssX = client.getServerSettings?.(interaction.guild?.id) || {};
   const lang = _ssX.language && _ssX.language !== 'auto' ? _ssX.language : (require('../lib/i18n').slashLang(interaction));
   if (!interaction.guild) return interaction.reply({ content: t('lydia.no_guild', lang), flags: 64 });
+  const _sub = interaction.options.getSubcommand();
+  if (_sub === 'memory' || _sub === 'forget') {
+    if (!client.db) return interaction.reply({ content: t('lydia.db_offline', lang), flags: 64 });
+    return _sub === 'memory' ? handleMemorySubcommand(interaction, client.db, true, client) : forgetMemories(interaction, client.db, client);
+  }
   if (!interaction.member.permissions?.has(PermissionsBitField.Flags.Administrator)) {
     return interaction.reply({
       embeds: [new EmbedBuilder().setColor('#ff4757').setDescription(t('lydia.admin_only_slash', lang))],

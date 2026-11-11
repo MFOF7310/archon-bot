@@ -114,5 +114,9 @@
   "memory_empty_title": "📭 Rien d'enregistré pour l'instant",
   "memory_count": "{n} enregistré(s)",
   "memory_saved_on": "Enregistré le {date}",
-  "onTitle": "Le chat IA est actif ici"
+  "onTitle": "Le chat IA est actif ici",
+  "sub_forget": "🗑️ Effacer tout ce qu'Archon retient sur toi",
+  "memory_forgot": "C'est fait. {n} souvenirs sur toi ont été effacés.",
+  "memory_forget_none": "Je ne retiens encore rien sur toi.",
+  "memory_forget_hint": "Utilise /lydia forget pour les effacer."
 }

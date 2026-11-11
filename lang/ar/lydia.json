@@ -114,5 +114,9 @@
   "memory_empty_title": "📭 لا شيء محفوظ بعد",
   "memory_count": "{n} محفوظة",
   "memory_saved_on": "حُفظ في {date}",
-  "onTitle": "الدردشة بالذكاء الاصطناعي نشطة هنا"
+  "onTitle": "الدردشة بالذكاء الاصطناعي نشطة هنا",
+  "sub_forget": "🗑️ احذف كل ما يتذكره Archon عنك",
+  "memory_forgot": "تم. حُذفت {n} من الذكريات عنك.",
+  "memory_forget_none": "لا أتذكر شيئًا عنك بعد.",
+  "memory_forget_hint": "استخدم ‎/lydia forget لحذفها."
 }
