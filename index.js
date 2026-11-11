@@ -3009,7 +3009,9 @@ async function sendBootDM() {
     // Real checks
     let dbOk = true; try { db.prepare('SELECT 1').get(); } catch { dbOk = false; }
     const aiOk = !!process.env.OPENROUTER_API_KEY;
+    // Right after start-up Discord may not have measured the ping yet (-1): connected is what matters here
     const ping = client.ws?.ping > 0 ? Math.round(client.ws.ping) : null;
+    const discordOk = client.ws?.status === 0 || ping != null;
     const tg = client.telegramBridge?.status?.() || null;
     const tgOn = !!client.telegramBridge?.enabled;
     const failed = (client.failedPlugins || []).map((f) => String(f.file).replace(/\.js$/, ''));
@@ -3036,11 +3038,13 @@ async function sendBootDM() {
     }
     if (shown.length) {
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**What just shipped**\n${shown.map((l) => `• ${l.slice(0, 120)}`).join('\n')}`));
+        // A long commit title keeps its first part, cut at a word ("settings saved in data/telegram instead of /tmp (" used to end mid-way)
+        const short = (l) => { const x = l.split(/;\s|\s\(/)[0]; return x.length <= 110 ? x : x.slice(0, 110).replace(/\s+\S*$/, '') + '…'; };
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**What just shipped**\n${shown.map((l) => `• ${short(l)}`).join('\n')}`));
     }
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
-        `${dot(ping != null)} Discord${ping != null ? ` · ${ping} ms` : ''}   ${dot(dbOk)} Database   ${dot(aiOk)} AI\n` +
+        `${dot(discordOk)} Discord${ping != null ? ` · ${ping} ms` : ''}   ${dot(dbOk)} Database   ${dot(aiOk)} AI\n` +
         `${tg?.configured ? `${dot(tgOn)} Telegram   ` : ''}${dot(!failed.length)} ${client.commands.size} plugins loaded\n` +
         `-# ${client.guilds.cache.size} servers · ${client._slashCount || 0} slash commands`));
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
