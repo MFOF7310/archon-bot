@@ -3438,6 +3438,8 @@ if (cooldownCheck.blocked) {
 
 // ================= INTERACTION HANDLER =================
 safeOn(Events.InteractionCreate, async (interaction) => {
+    // Buttons and menus count for /bot activity (the counter existed but nothing fed it, so it always showed 0)
+    if (interaction.guild && (interaction.isButton?.() || interaction.isStringSelectMenu?.())) { try { client.botStats?.onButtonClicked?.(db, interaction.guild.id); } catch (e) {} }
     // ── VERIFY PANEL (buttons + modal) — must run before other routers ──
     if ((interaction.isButton?.() || interaction.isModalSubmit?.()) && interaction.customId?.startsWith('vpanel:')) {
         try {
