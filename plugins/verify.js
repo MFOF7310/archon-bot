@@ -638,23 +638,27 @@ module.exports = {
     handleDM: async (message, client, db) => {
         if (message.author.bot || !message.channel.isDMBased()) return false;
         
-        const pendingRows = db.prepare('SELECT guild_id, code, attempts FROM verify_pending WHERE user_id = ?').all(message.author.id);
+        const pendingRows = db.prepare('SELECT guild_id, code, attempts, kick_at FROM verify_pending WHERE user_id = ?').all(message.author.id)
+            .filter(r => client.guilds.cache.has(r.guild_id));
         if (!pendingRows.length) return false;
 
-        const row = pendingRows[0];
+        // Someone waiting on several servers at once: the code answers the server it belongs to. It used to be
+        // checked against the first server only, so the others could never be passed by DM.
+        const guess = message.content.replace(/\s+/g, '').toUpperCase();
+        const row = pendingRows.find(r => String(r.code || '').toUpperCase() === guess)
+            || pendingRows.slice().sort((a, b) => (b.kick_at || 0) - (a.kick_at || 0))[0];
         const gid = row.guild_id;
         const guild = client.guilds.cache.get(gid);
         if (!guild) return false;
 
         const lang = pickLang(client, gid, null, message.author.id) || 'en';
-        const guess = message.content.replace(/\s+/g, '').toUpperCase();
 
         if (!/^[A-Z0-9]{6}$/.test(guess)) {
             await message.channel.send({ content: vt(lang, 'dmHint') }).catch(() => {});
             return true;
         }
 
-        if (guess === row.code) {
+        if (guess === String(row.code || '').toUpperCase()) {
             const settings = db.prepare('SELECT verify_role_id, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
             const vRole = settings?.verify_role_id ? guild.roles.cache.get(settings.verify_role_id) : null;
             const uRole = settings?.verify_unverified_role_id ? guild.roles.cache.get(settings.verify_unverified_role_id) : null;
