@@ -150,5 +150,9 @@
   "rateTitle": "تقييم الدعم: {n}/5",
   "rateTicket": "التذكرة **#{number}**{cat} · من {user}",
   "rateBy": "من {user}",
-  "rateStaff": "تولّاها {staff}"
+  "rateStaff": "تولّاها {staff}",
+  "evOpened": "فتح {user} التذكرة #{number} · {cat}",
+  "evClaimed": "تولّى {staff} التذكرة #{number}",
+  "evClosed": "أغلق {user} التذكرة #{number}",
+  "evAuto": "أُغلقت التذكرة #{number} بسبب عدم النشاط"
 }

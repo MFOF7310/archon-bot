@@ -154,5 +154,9 @@
   "rateTitle": "Support rating: {n}/5",
   "rateTicket": "Ticket **#{number}**{cat} · by {user}",
   "rateBy": "From {user}",
-  "rateStaff": "Handled by {staff}"
+  "rateStaff": "Handled by {staff}",
+  "evOpened": "Ticket #{number} opened by {user} · {cat}",
+  "evClaimed": "{staff} took ticket #{number}",
+  "evClosed": "Ticket #{number} closed by {user}",
+  "evAuto": "Ticket #{number} closed after inactivity"
 }

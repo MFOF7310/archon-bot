@@ -150,5 +150,9 @@
   "rateTitle": "支持评分：{n}/5",
   "rateTicket": "工单 **#{number}**{cat} · 评分人 {user}",
   "rateBy": "评分人：{user}",
-  "rateStaff": "处理人：{staff}"
+  "rateStaff": "处理人：{staff}",
+  "evOpened": "{user} 开启了工单 #{number} · {cat}",
+  "evClaimed": "{staff} 接手了工单 #{number}",
+  "evClosed": "{user} 关闭了工单 #{number}",
+  "evAuto": "工单 #{number} 因长时间无活动已关闭"
 }

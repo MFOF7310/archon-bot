@@ -47,8 +47,8 @@ function setupTicketDB(db) {
 }
 
 function saveTicket(db, cid, t) { try { db.prepare(`INSERT OR REPLACE INTO tickets (channel_id, guild_id, creator_id, creator_tag, created_at, claimed_by, category, category_value, ticket_number, participants, status, priority, closed_at, closed_by, transcript, issue_desc) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(cid, t.guildId, t.creatorId, t.creatorTag||'', t.createdAt, t.claimedBy||null, t.category||null, t.categoryValue||null, t.number||0, JSON.stringify(t.participants||[t.creatorId]), t.status||'open', t.priority||'normal', t.closedAt||null, t.closedBy||null, t.transcript||null, t.issueDesc||null); } catch(e) { console.error('[TDB] save:', e.message); } }
-function loadTicket(db, cid) { try { const r = db.prepare(`SELECT * FROM tickets WHERE channel_id=?`).get(cid); if(!r) return null; return { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]'), issueDesc:r.issue_desc }; } catch(e) { return null; } }
-function loadAllTicketsFromDB(db, client) { try { const gids = client ? [...client.guilds.cache.keys()] : []; if(!gids.length) return; const ph = gids.map(()=>'?').join(','); const rows = db.prepare(`SELECT * FROM tickets WHERE guild_id IN (${ph})`).all(...gids); rows.forEach(r => active.set(r.channel_id, { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]'), issueDesc:r.issue_desc })); if (rows.length) setTimeout(() => rearmTimers(db, client), 60000); } catch(e) {} }
+function loadTicket(db, cid) { try { const r = db.prepare(`SELECT * FROM tickets WHERE channel_id=? AND (status IS NULL OR status='open')`).get(cid); if(!r) return null; return { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]'), issueDesc:r.issue_desc }; } catch(e) { return null; } }
+function loadAllTicketsFromDB(db, client) { try { const gids = client ? [...client.guilds.cache.keys()] : []; if(!gids.length) return; const ph = gids.map(()=>'?').join(','); const rows = db.prepare(`SELECT * FROM tickets WHERE guild_id IN (${ph}) AND (status IS NULL OR status='open')`).all(...gids); rows.forEach(r => active.set(r.channel_id, { creatorId:r.creator_id, creatorTag:r.creator_tag, createdAt:r.created_at, claimedBy:r.claimed_by, category:r.category, categoryValue:r.category_value, guildId:r.guild_id, number:r.ticket_number, participants:JSON.parse(r.participants||'[]'), issueDesc:r.issue_desc })); if (rows.length) setTimeout(() => rearmTimers(db, client), 60000); } catch(e) {} }
 
 async function rearmTimers(db, client) {
     for (const [cid, tk] of active) {
@@ -56,7 +56,7 @@ async function rearmTimers(db, client) {
             const guild = client.guilds.cache.get(tk.guildId);
             if (!guild) continue;
             const ch = await client.channels.fetch(cid).catch(() => null);
-            if (!ch) { active.delete(cid); try { db.prepare('DELETE FROM tickets WHERE channel_id=?').run(cid); } catch {} continue; }
+            if (!ch) { active.delete(cid); delTicket(db, cid); continue; }
             const s = effectiveSettings(client.getServerSettings?.(tk.guildId) || {}, tk.guildId);
             const hRaw = s?.ticketAutoCloseHours;
             const h = (hRaw !== undefined && hRaw !== null && hRaw !== '') ? Number(hRaw) : 0;
@@ -73,7 +73,26 @@ async function rearmTimers(db, client) {
         } catch (e) {}
     }
 }
-function delTicket(db, cid) { try { db.prepare(`DELETE FROM tickets WHERE channel_id=?`).run(cid); } catch(e) {} }
+// Closed tickets stay in the table as history (stats, dashboard, ticket numbers); only open ones are loaded back.
+function delTicket(db, cid, by = null) { try { db.prepare(`UPDATE tickets SET status='closed', closed_at=?, closed_by=? WHERE channel_id=?`).run(Date.now(), by, cid); } catch(e) {} }
+
+// Ticket numbers carry on after a restart (the counter used to start again at #1)
+function nextNumber(db, gid) {
+    if (!counters.has(gid)) { let max = 0; try { max = Number(db?.prepare('SELECT MAX(ticket_number) AS m FROM tickets WHERE guild_id=?').get(gid)?.m) || 0; } catch (e) {} counters.set(gid, max); }
+    const n = counters.get(gid) + 1; counters.set(gid, n); return n;
+}
+
+// One line in the log channel when a ticket is opened, claimed or closed
+async function logEvent(client, s, guildId, key, vars) {
+    const id = s?.ticketLogChannel; if (!id) return;
+    try {
+        const ch = await client.channels.fetch(id).catch(() => null);
+        if (!ch || ch.guildId !== guildId) return;
+        const lang = pickLang(client, guildId, null) || 'en';
+        const ico = { evOpened: 'ticket', evClaimed: 'claimed', evClosed: 'lock', evAuto: 'lock' }[key] || 'ticket';
+        await safeSend('ticket-log', ch, v2card(0x3498db, [{ text: `${icon(ico, ch)} ${t('ticket.' + key, lang, vars)} · <t:${Math.floor(Date.now() / 1000)}:t>` }]), { guild: ch.guild });
+    } catch (e) {}
+}
 
 const counters = new Map();
 const active = new Map();
@@ -124,8 +143,9 @@ function resetACTimer(cid, client, s, remainingMs) {
             const txResult = await saveTx(ch, tk, null, client, s, 'auto');
             if (ch) await ch.send(toV2({ embeds: [new EmbedBuilder().setColor('#e74c3c').setDescription(t('ticket.acDone', lang) || '🔒 Ticket auto-closed.')] })).catch(() => {});
             active.delete(cid);
-            if (client.db) delTicket(client.db, cid);
+            if (client.db) delTicket(client.db, cid, null);
             timers.delete(cid);
+            logEvent(client, s, tk.guildId, 'evAuto', { number: tk.number || '?' });
             setTimeout(() => ch?.delete('Auto-closed').catch(() => {}), 5000);
         } catch (e) { timers.delete(cid); }
     }, ms);
@@ -203,7 +223,7 @@ async function saveTx(ch, tk, closer, client, s, kind = 'closed', by = null) {
 }
 
 async function createCh(g, uid, uname, cat, s, client) {
-    const gid=g.id, n=(counters.get(gid)||0)+1; counters.set(gid,n);
+    const gid=g.id, n=nextNumber(client.db,gid);
     const cd=typeof cat==='object'?cat:{emoji:'🎫',label:'Support',value:'support'};
     const name=`ticket-${n}-${uname}`.toLowerCase().replace(/[^a-z0-9-]/g,'').substring(0,100);
     const tcid=s?.ticketCategory;
@@ -423,7 +443,7 @@ module.exports = {
             return msg.reply(setupCard).catch(()=>{});
         }
         if(sub==='panel'){const e=panelCard(es,g.name,lang,null,client),m=panelMenu(es,lang),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);const s=await msg.channel.send(e).catch(()=>null);if(s){await msg.react(`${EMOJIS.check}`).catch(()=>{});try{db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(g.id);db.prepare(`UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=?,ticket_panel_message_id=? WHERE guild_id=?`).run(msg.channel.id,msg.channel.name||String(msg.channel.id),s.id,g.id);}catch(e){}}return;}
-        if(sub==='close'){const ch=msg.channel,tk=active.get(ch.id);if(!tk)return msg.reply(t('ticket.not_a_ticket', lang)).catch(()=>{});if(msg.author.id!==tk.creatorId&&!isStaff(msg.member,es))return msg.reply(t('ticket.noPerm', lang)).catch(()=>{});await saveTx(ch,tk,msg.author.id,client,es);await msg.reply(t('ticket.closing', lang)).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${msg.author.tag}`).catch(()=>{}),5000);return;}
+        if(sub==='close'){const ch=msg.channel,tk=active.get(ch.id);if(!tk)return msg.reply(t('ticket.not_a_ticket', lang)).catch(()=>{});if(msg.author.id!==tk.creatorId&&!isStaff(msg.member,es))return msg.reply(t('ticket.noPerm', lang)).catch(()=>{});await saveTx(ch,tk,msg.author.id,client,es);await msg.reply(t('ticket.closing', lang)).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id,msg.author.id);logEvent(client,es,g.id,'evClosed',{number:tk.number||'?',user:`<@${msg.author.id}>`});const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${msg.author.tag}`).catch(()=>{}),5000);return;}
 
         const _v2 = require('../lib/games/v2');
         const helpCard = _v2.card(0x00fbff, [
@@ -473,7 +493,7 @@ module.exports = {
             return ix.reply({ ...setupCard, flags: 1 << 6 | 32768 });
         }
         if(sc==='panel'){const _cp=require('../lib/canPost'),_me=g.members.me,_d=_cp.diagnose(g,ix.channel,_me);if(!_d.ok)return ix.reply({content:t('ticket.'+_d.key,lang,{ch:String(ix.channel),role:_d.role||'',perms:_cp.localize(_d.missing||[],lang).join(', '),bot:_me.roles.botRole?.name||_me.displayName,cmd: mentions(ix.client, ix.commandName, 'panel')}),flags:1<<6}).catch(()=>{});const e=panelCard(ss,g.name,lang,null,client),m=panelMenu(ss,lang),r=new ActionRowBuilder().addComponents(m);e.components[0].addActionRowComponents(r);await ix.reply({content:t('ticket.posting', lang),flags:1<<6});const s=await ix.channel.send(e).catch(err=>{console.error('[TICKET] panel send failed:',err.message);return null;});if(s){await ix.editReply({content:t('ticket.posted', lang)}).catch(()=>{});try{db.prepare('UPDATE server_settings SET ticket_panel_channel=?,ticket_panel_channel_name=?,ticket_panel_message_id=? WHERE guild_id=?').run(ix.channel.id,ix.channel.name||String(ix.channel.id),s.id,g.id);}catch(e){}}else await ix.editReply({content:t('ticket.failed_generic', lang)}).catch(()=>{});return;}
-        if(sc==='close'){const ch=ix.channel,tk=active.get(ch.id);if(!tk)return ix.reply({content:t('ticket.not_a_ticket', lang),flags:1<<6});if(u.id!==tk.creatorId&&!isStaff(ix.member,ss))return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6});await ix.deferReply();await saveTx(ch,tk,u.id,client,ss);await ix.editReply({content:t('ticket.closing', lang)}).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id);const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${u.tag}`).catch(()=>{}),5000);return;}
+        if(sc==='close'){const ch=ix.channel,tk=active.get(ch.id);if(!tk)return ix.reply({content:t('ticket.not_a_ticket', lang),flags:1<<6});if(u.id!==tk.creatorId&&!isStaff(ix.member,ss))return ix.reply({content:t('ticket.noPerm', lang),flags:1<<6});await ix.deferReply();await saveTx(ch,tk,u.id,client,ss);await ix.editReply({content:t('ticket.closing', lang)}).catch(()=>{});active.delete(ch.id);if(db)delTicket(db,ch.id,u.id);logEvent(client,ss,g.id,'evClosed',{number:tk.number||'?',user:`<@${u.id}>`});const ex=timers.get(ch.id);if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(ch.id);}setTimeout(()=>ch.delete(`By ${u.tag}`).catch(()=>{}),5000);return;}
         if(sc==='leaderboard'){
             await ix.deferReply({flags:1<<6});
             try {
@@ -579,6 +599,7 @@ module.exports = {
                 const td = { creatorId: u.id, creatorTag: u.tag, createdAt: Date.now(), claimedBy: null, category: `${cat.emoji} ${cat.label}`, categoryValue: cat.value, guildId: g.id, number: n, participants: [u.id], issueDesc };
                 active.set(tc.id, td); saveTicket(db, tc.id, td);
                 await welcomeMsg(tc, u, cat, n, lang, false, ss, issueDesc);
+                logEvent(client, ss, g.id, 'evOpened', { number: n, user: `<@${u.id}>`, cat: `${cat.emoji} ${cat.label}` });
                 resetACTimer(tc.id, client, ss);
                 
                 const _v2 = require('../lib/games/v2');
@@ -617,6 +638,7 @@ module.exports = {
                 }
             }catch(e){}
             await ix.channel.send(t('ticket.claimed_msg', lang, {user: uid}));
+            logEvent(client, ss, ix.guildId, 'evClaimed', { number: tk?.number || '?', staff: `<@${uid}>` });
             await ix.editReply({content:t('ticket.claimed_generic', lang)}).catch(()=>{});
             resetACTimer(cid,client,ss);
             return true;
@@ -638,9 +660,10 @@ module.exports = {
             if(tk) await saveTx(ch,tk,cl,client,ss);
             await ch.send(t('ticket.closedBy', lang, {user: cl})).catch(()=>{});
             active.delete(cid);
-            if(db) delTicket(db,cid);
+            if(db) delTicket(db,cid,cl);
+            if(tk) logEvent(client,ss,ix.guildId,'evClosed',{number:tk.number||'?',user:`<@${cl}>`});
             const ex=timers.get(cid);
-            if(ex){clearTimeout(ex);timers.delete(cid);}
+            if(ex){if(ex.warn)clearTimeout(ex.warn);if(ex.close)clearTimeout(ex.close);timers.delete(cid);}
             
             try {
                 const creator = await client.users.fetch(tk?.creatorId || crid).catch(()=>null);

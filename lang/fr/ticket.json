@@ -154,5 +154,9 @@
   "rateTitle": "Note du support : {n}/5",
   "rateTicket": "Ticket **#{number}**{cat} · par {user}",
   "rateBy": "Par {user}",
-  "rateStaff": "Pris en charge par {staff}"
+  "rateStaff": "Pris en charge par {staff}",
+  "evOpened": "Ticket #{number} ouvert par {user} · {cat}",
+  "evClaimed": "{staff} a pris en charge le ticket #{number}",
+  "evClosed": "Ticket #{number} fermé par {user}",
+  "evAuto": "Ticket #{number} fermé faute d'activité"
 }
