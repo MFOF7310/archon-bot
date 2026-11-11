@@ -10,5 +10,6 @@
   "doneReset": "A ɲɛna, I seginna kana otomatiki la.",
   "scopeServer": "I ka sugandilen bɛ la baara nin sɛrivɛri in dɔrɔn de kɔnɔ. Sɛrivɛri wɛrɛw ni DMs bɛ to u sagoyaw la.",
   "scopeDm": "I ka sugandilen bɛ la baara an ka mesagi dogolenw dɔrɔn de la. Sɛrivɛri bɛɛ bɛ a taa maralen de la baara.",
-  "lockedHere": "Ɲɛmɔgɔ dɔ ye sɛrivɛri ka kan bila **{lang}** na mɔgɔ bɛɛ la jɛlen ye, o hokumu la n'bɛ kuma {lang} la yan. N'i b'a fɛ ka an ka kan sugandilen mesagi dogolenw na, i bɛ /mylang sɛbɛn an ka DM kɔnɔ."
+  "lockedHere": "Ɲɛmɔgɔ dɔ ye sɛrivɛri ka kan bila **{lang}** na mɔgɔ bɛɛ la jɛlen ye, o hokumu la n'bɛ kuma {lang} la yan. N'i b'a fɛ ka an ka kan sugandilen mesagi dogolenw na, i bɛ /mylang sɛbɛn an ka DM kɔnɔ.",
+  "tapHint": "I tɛkɛ diki kan dɔ kan ka sen k'a yɛlɛma."
 }

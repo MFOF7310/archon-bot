@@ -33,5 +33,8 @@
   "rating_how": "I bɛ support kɛcogo ɲɛnabɔ cogo di?",
   "rating_server": "Sɛrvɛr:",
   "lb_title": "SUPPORT CLASSEMENT",
-  "lb_top": "TOP 10 • CLASSÉ PAR NOTE MOYENNE"
+  "lb_top": "TOP 10 • CLASSÉ PAR NOTE MOYENNE",
+  "welcome_hello": "I ni ce {user}, kuma la sera équipe ma. Fɛn bɛ ɲɛfɔli kɛ yan nɔ, ka fara jaaw fɛnɛ kan.",
+  "welcome_foot": "A dayɛlɛla {time}",
+  "welcome_foot_ac": "A dayɛlɛla {time} · a bɛ datugu a yɛrɛ ye nin {hours} waati in kɔfɛ ni mesagi fosi tɛ."
 }
