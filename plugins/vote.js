@@ -9,7 +9,6 @@
 // One icon per line (lib/icons: ARCHON's own emoji where it may use it), numbers in bold, buttons keep standard emojis.
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, MessageFlags, AttachmentBuilder, escapeMarkdown } = require('discord.js');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-const { toV2 } = require('../lib/v2convert');   // the admin repair report (classic embed → card)
 const { card } = require('../lib/games/v2');
 const { icon } = require('../lib/ui/icons');
 
@@ -19,7 +18,6 @@ const { buildVoteLBCanvas } = require('./vote-lb-canvas.js');
 
 // Same numbers as votesync.processVote / calculateReward
 const COOLDOWN = 43200;          // 12 h between two claimed votes, counted over every server
-const STREAK_WINDOW = 86400;     // a vote within 24 h of the last one keeps the streak
 const BASE_REWARD = 1000;        // credits per vote
 const MILESTONES = [[7, 2000], [30, 5000], [100, 10000]];   // streak → bonus credits
 const COLOR = { ready: 0x2ecc71, claim: 0x2ecc71, wait: 0xf39c12, first: 0x5865f2, gold: 0xf1c40f, error: 0xe74c3c };
@@ -195,7 +193,7 @@ async function getRealtimeStatus(client, uid, gid, db) {
         if (v === true || v === false) topgg = v;
     } catch { topgg = null; }
     const isFirstTime = !(stats.total_votes > 0);
-    const alive = stats.current_streak > 0 && now - (stats.last_vote_date || 0) <= STREAK_WINDOW;
+    const alive = stats.current_streak > 0 && voteSync.streakAlive(stats.last_vote_date, now);
     let state = 'ready';
     if (last && now < nextVote) state = 'wait';
     else if (topgg === true) state = 'claim';
@@ -297,7 +295,7 @@ function claimReply(client, result, lang, where, who) {
 
 function statsCard(s, rank, lang, where, who, guildName) {
     const t = L(lang), I = (k) => icon(k, where);
-    const alive = s.current_streak > 0 && Math.floor(Date.now() / 1000) - (s.last_vote_date || 0) <= STREAK_WINDOW;
+    const alive = s.current_streak > 0 && voteSync.streakAlive(s.last_vote_date);
     const lines = [];
     if (s.current_streak > 0) lines.push(`${I('streak')} ${fill(alive ? t.streak : t.streakEnded, { days: bold(amount(s.current_streak, 'day', lang)), best: bold(amount(Math.max(s.best_streak || 0, s.current_streak), 'day', lang)) })}`);
     lines.push(`${I('votes')} ${fill(t.votesMonth, { votes: bold(amount(s.total_votes, 'vote', lang)), month: bold(num(s.votes_this_month, lang)) })}`);
@@ -366,7 +364,7 @@ module.exports = {
     aliases: ['voter', 'upvote', 'topgg'],
     description: '⭐ Vote on Top.gg and claim legendary rewards with streaks and milestones.',
     category: 'ECONOMY',
-    usage: '.vote | .vote claim | .vote stats | .vote lb | .vote test @user | .vote status',
+    usage: '.vote | .vote claim | .vote stats | .vote lb | .vote status',
     cooldown: 3000,
 
     data: new SlashCommandBuilder().setName('vote').setDescription('⭐ Vote on Top.gg and claim rewards')
@@ -405,55 +403,9 @@ module.exports = {
             return message.reply(file ? { files: [file] } : await topCard(client, db, gid, lang, message, message.guild.name)).catch(() => {});
         }
 
-        // ---- ADMIN RAW BAL ----
-        if (sub === 'rawbal' && isAdmin) {
-            const targetId = args[1]?.replace(/[<@!>]/g, '') || uid;
-            const raw = db.prepare("SELECT credits FROM users WHERE id = ? AND guild_id = ?").get(targetId, gid);
-            return message.reply(`🔍 RAW DB: credits=${raw?.credits ?? 'NOT FOUND'}`).catch(() => {});
-        }
-
-        // ---- ADMIN FIX VOTES ----
-        if (sub === 'fixvotes' && isAdmin) {
-            const alreadyRan = db.prepare(`SELECT value FROM bot_meta WHERE key = 'fixvotes_ran'`).get();
-            if (alreadyRan) {
-                return message.reply(`${em('ic_off', '❌')} fixvotes was already executed on ${alreadyRan.value}. Cannot run again to prevent duplicate credits.`).catch(() => {});
-            }
-            const voteRewards = db.prepare(`SELECT user_id, guild_id, SUM(reward) as total FROM vote_claims GROUP BY user_id, guild_id`).all();
-            if (voteRewards.length === 0) {
-                return message.reply(em('ic_off', em('ic_off', '❌')) + ' No vote history found.').catch(() => {});
-            }
-            let report = '';
-            let totalFixed = 0;
-            const repair = db.transaction(() => {
-                for (const row of voteRewards) {
-                    const profile = db.prepare(`SELECT credits FROM users WHERE id = ? AND guild_id = ?`).get(row.user_id, row.guild_id);
-                    if (profile) {
-                        const before = profile.credits || 0;
-                        const after = before + row.total;
-                        db.prepare(`UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?`).run(after, row.user_id, row.guild_id);
-                        const check = db.prepare(`SELECT credits FROM users WHERE id = ? AND guild_id = ?`).get(row.user_id, row.guild_id);
-                        report += `- <@${row.user_id}> Server ${row.guild_id}: ${before} → ${check.credits} (+${row.total})\n`;
-                        totalFixed++;
-                    } else {
-                        db.prepare(`INSERT INTO users (id, guild_id, credits, xp, level, streak_days, last_daily, total_dailies, highest_streak) VALUES (?, ?, ?, 0, 1, 0, 0, 0, 0)`).run(row.user_id, row.guild_id, row.total);
-                        report += `- <@${row.user_id}> Server ${row.guild_id}: NEW → ${row.total}\n`;
-                        totalFixed++;
-                    }
-                }
-            });
-            repair();
-            db.prepare(`CREATE TABLE IF NOT EXISTS bot_meta (key TEXT PRIMARY KEY, value TEXT)`).run();
-            db.prepare(`INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('fixvotes_ran', ?)`).run(new Date().toISOString());
-            const embed = new EmbedBuilder()
-                .setColor('#2ecc71')
-                .setTitle('🔧 VOTE REPAIR COMPLETE')
-                .setDescription(report.substring(0, 2000) || em('ic_ok', '✅') + ' Done')
-                .setFooter({ text: `${totalFixed} entries fixed • Locked permanently` });
-            return message.reply(toV2({ embeds: [embed] })).catch(() => {});
-        }
-
         // ---- ADMIN DIAGNOSTIC ----
-        if (sub === 'diag' && isAdmin) {
+        // Owner only: it lists a member's credits on every server, which no server admin should see
+        if (sub === 'diag' && uid === process.env.OWNER_ID) {
             const targetId = args[1]?.replace(/[<@!>]/g, '') || uid;
             const voteHistory = db.prepare(`SELECT guild_id, total_votes, total_rewards FROM user_votes WHERE user_id = ?`).all(targetId);
             const profiles = db.prepare(`SELECT guild_id, credits, xp, level FROM users WHERE id = ?`).all(targetId);

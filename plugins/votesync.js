@@ -2,7 +2,7 @@ const axios = require('axios');
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { icon } = require('../lib/ui/icons');
-const EMOJIS = require('../config/emojis');
+const EMOJIS = (() => { try { return require('../config/emojis'); } catch { return {}; } })();
 
 /**
  * VoteSync Engine — The heart of the voting system. (v1.1 i18n: en/fr/zh/ar)
@@ -152,8 +152,10 @@ function setupDB(db) {
 function getStats(db, userId, guildId) {
     let s = db.prepare(`SELECT * FROM user_votes WHERE user_id = ? AND guild_id = ?`).get(userId, guildId);
     if (!s) s = { user_id: userId, guild_id: guildId, total_votes: 0, current_streak: 0, best_streak: 0, last_vote_date: 0, total_rewards: 0, votes_this_month: 0, last_month_reset: 0 };
-    const now = Math.floor(Date.now() / 1000), month = new Date().getMonth();
-    const lastMonth = s.last_month_reset ? new Date(s.last_month_reset * 1000).getMonth() : -1;
+    // Year and month together: November 2027 is not "the same month" as November 2026
+    const now = Math.floor(Date.now() / 1000), d = new Date(), month = d.getUTCFullYear() * 12 + d.getUTCMonth();
+    const lm = s.last_month_reset ? new Date(s.last_month_reset * 1000) : null;
+    const lastMonth = lm ? lm.getUTCFullYear() * 12 + lm.getUTCMonth() : -1;
     if (month !== lastMonth) {
         s.votes_this_month = 0; s.last_month_reset = now;
         db.prepare(`UPDATE user_votes SET votes_this_month = 0, last_month_reset = ? WHERE user_id = ? AND guild_id = ?`).run(now, userId, guildId);
@@ -165,8 +167,9 @@ function getStats(db, userId, guildId) {
 async function checkTopGGVote(userId) {
     const token = process.env.TOPGG_API_TOKEN;
     if (!token) return null;
+    const botId = global.client?.user?.id || process.env.CLIENT_ID || '1472707869257367676';
     try {
-        const res = await axios.get(`https://top.gg/api/bots/1472707869257367676/check?userId=${userId}`, {
+        const res = await axios.get(`https://top.gg/api/bots/${botId}/check?userId=${userId}`, {
             headers: { Authorization: token }, timeout: 5000
         });
         return res.data?.voted === 1;
@@ -174,19 +177,25 @@ async function checkTopGGVote(userId) {
 }
 
 // ================= CALCULATE REWARD =================
+// The streak counts days (UTC, which is Bamako time), not votes: with a 12-hour cooldown two votes fit in one day,
+// so "7 days" used to be reached after 3 and a half days, and a milestone could pay twice the same day.
+const dayOf = (ts) => Math.floor((ts || 0) / 86400);
+function streakAlive(lastVote, now = Math.floor(Date.now() / 1000)) { return !!lastVote && dayOf(now) - dayOf(lastVote) <= 1; }
 function calculateReward(stats) {
     const now = Math.floor(Date.now() / 1000);
-    const consecutive = (now - (stats.last_vote_date || 0)) <= 86400;
-    const streak = consecutive ? stats.current_streak + 1 : 1;
+    const gap = stats.last_vote_date ? dayOf(now) - dayOf(stats.last_vote_date) : 99;
+    const cur = stats.current_streak || 0;
+    const streak = gap === 0 ? Math.max(cur, 1) : gap === 1 ? cur + 1 : 1;
+    const grew = streak > cur || gap > 1;
     let bonus = 0, milestone = null;
-    if (streak === 7) { bonus = 2000; milestone = '7'; }
-    else if (streak === 30) { bonus = 5000; milestone = '30'; }
-    else if (streak === 100) { bonus = 10000; milestone = '100'; }
-    return { streak, bonus, total: 1000 + bonus, best: Math.max(streak, stats.best_streak), milestone };
+    if (grew && streak === 7) { bonus = 2000; milestone = '7'; }
+    else if (grew && streak === 30) { bonus = 5000; milestone = '30'; }
+    else if (grew && streak === 100) { bonus = 10000; milestone = '100'; }
+    return { streak, bonus, total: 1000 + bonus, best: Math.max(streak, stats.best_streak || 0), milestone };
 }
 
 // ================= UPDATE DB =================
-function updateDB(db, userId, guildId, result, stats) {
+function updateDB(db, userId, guildId, result, stats, addCredits = null) {
     const now = Math.floor(Date.now() / 1000);
     const newTotalVotes = (stats.total_votes || 0) + 1;
     const newTotalRewards = (stats.total_rewards || 0) + result.total;
@@ -197,41 +206,14 @@ function updateDB(db, userId, guildId, result, stats) {
 
     db.prepare(`INSERT OR IGNORE INTO vote_claims (user_id, guild_id, claim_date, reward) VALUES (?, ?, ?, ?)`).run(userId, guildId, now, result.total);
 
-    try {
-        const allUserRecords = db.prepare(`SELECT guild_id, credits FROM users WHERE id = ? AND guild_id = ?`).all(userId, guildId);
-
-        if (allUserRecords.length > 0) {
-            const updateMany = db.transaction((records, amount) => {
-                const stmt = db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`);
-                for (const record of records) {
-                    const result = stmt.run(amount, userId, record.guild_id);
-                    if (result.changes === 0) {
-                        console.warn(`[VOTESYNC] No rows updated for ${userId}@${record.guild_id}`);
-                    }
-                }
-            });
-
-            updateMany(allUserRecords, result.total);
-            db.pragma('wal_checkpoint(TRUNCATE)');
-            console.log(`[VOTESYNC] Credits added to ${allUserRecords.length} servers for ${userId}: +${result.total}`);
-        } else {
-            const targetGuild = guildId || '0';
-            db.prepare(`INSERT INTO users (id, guild_id, credits, xp, level, streak_days, last_daily, total_dailies, highest_streak)
-                VALUES (?, ?, ?, 0, 1, 0, 0, 0, 0)`)
-              .run(userId, targetGuild, result.total);
-            db.pragma('wal_checkpoint(TRUNCATE)');
-            console.log(`[VOTESYNC] New profile created for ${userId} with ${result.total} credits`);
-        }
-
-        const verify = db.prepare(`SELECT credits FROM users WHERE id = ?`).all(userId);
-        const totalCredits = verify.reduce((sum, r) => sum + (r.credits || 0), 0);
-        console.log(`[VOTESYNC] Verification: User ${userId} now has ${totalCredits} total credits across ${verify.length} profiles`);
-
-    } catch (e) {
-        console.error(`[VOTESYNC ERROR] Failed to add credits for ${userId}:`, e.message);
-        try { db.exec('ROLLBACK'); } catch (rollbackErr) {
-            console.error(`[VOTESYNC] Rollback failed:`, rollbackErr.message);
-        }
+    // Through the bot's economy helper when there is one: it also updates the cached profile. Writing the table
+    // alone let the next batched save of the cached profile put the old balance back (the credits "vanished").
+    if (typeof addCredits === 'function') {
+        const r = addCredits(userId, guildId, result.total);
+        if (!r?.ok) throw new Error(r?.error || 'credits not added');
+    } else if (!db.prepare(`UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?`).run(result.total, userId, guildId).changes) {
+        db.prepare(`INSERT INTO users (id, guild_id, credits, xp, level, streak_days, last_daily, total_dailies, highest_streak)
+            VALUES (?, ?, ?, 0, 1, 0, 0, 0, 0)`).run(userId, guildId || '0', result.total);
     }
 
     return { newTotalVotes, newTotalRewards };
@@ -310,7 +292,15 @@ async function resolveHomeGuild(userId, client) {
     return null;
 }
 
+const claiming = new Set();   // one claim at a time per member
 async function processVote(userId, guildId, client, opts = {}) {
+    if (claiming.has(userId)) return { success: false, error: 'COOLDOWN', nextVote: Math.floor(Date.now() / 1000) + 5 };
+    claiming.add(userId);
+    try { return await _processVote(userId, guildId, client, opts); }
+    finally { claiming.delete(userId); }
+}
+
+async function _processVote(userId, guildId, client, opts = {}) {
     const db = client.db;
     if (!db) return { success: false, error: 'NO_DB' };
     setupDB(db);
@@ -324,18 +314,26 @@ async function processVote(userId, guildId, client, opts = {}) {
     if (voted === false) return { success: false, error: 'NOT_VOTED' };
     if (voted === null) return { success: false, error: 'CHECK_FAILED' };
 
-    // 2. Check cooldown
-    const stats = getStats(db, userId, guildId);
-    const now = Math.floor(Date.now() / 1000);
-    const lastAny = db.prepare('SELECT MAX(last_vote_date) AS t FROM user_votes WHERE user_id = ?').get(userId)?.t || 0;
-    const cooldown = Math.max(stats.last_vote_date || 0, lastAny) + 43200;
-    if (now < cooldown) return { success: false, error: 'COOLDOWN', nextVote: cooldown };
-
-    // 3. Calculate reward
-    const result = calculateReward(stats);
-
-    // 4. Update DB
-    const { newTotalVotes, newTotalRewards } = updateDB(db, userId, guildId, result, stats);
+    // 2-4. Cooldown check, reward and write in one transaction, after the Top.gg answer: two quick presses on Claim
+    // (or Claim at the same time as the webhook) used to both pass the check during the wait and pay twice.
+    let stats, result, totals;
+    try {
+        const out = db.transaction(() => {
+            const st = getStats(db, userId, guildId);
+            const now = Math.floor(Date.now() / 1000);
+            const lastAny = db.prepare('SELECT MAX(last_vote_date) AS t FROM user_votes WHERE user_id = ?').get(userId)?.t || 0;
+            const cooldown = Math.max(st.last_vote_date || 0, lastAny) + 43200;
+            if (now < cooldown) return { cooldown };
+            const r = calculateReward(st);
+            return { st, r, totals: updateDB(db, userId, guildId, r, st, client.addCredits) };
+        })();
+        if (out.cooldown) return { success: false, error: 'COOLDOWN', nextVote: out.cooldown };
+        ({ st: stats, r: result, totals } = out);
+    } catch (e) {
+        console.error('[VOTESYNC] claim failed:', e.message);
+        return { success: false, error: 'PROCESS_FAILED' };
+    }
+    const { newTotalVotes, newTotalRewards } = totals;
 
     // 5. Fetch user
     const user = await client.users.fetch(userId).catch(() => null);
@@ -381,5 +379,6 @@ module.exports = {
     setupDB,
     getStats,
     calculateReward,
+    streakAlive,
     T
 };
