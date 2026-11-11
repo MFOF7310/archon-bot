@@ -1,58 +1,27 @@
-// ═══════════════════════════════════════════
-//  TG COMMAND: Rank / Level
-// ═══════════════════════════════════════════
-
-const formatNumber = (n) => n?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') || '0';
-
-function calcLevel(xp) { return Math.floor(0.1 * Math.sqrt(xp || 0)) + 1; }
-
-const RANKS = [
-    { minLv: 1, title: '🌱 RECRUIT' },
-    { minLv: 6, title: '🔹 FIELD AGENT' },
-    { minLv: 16, title: '💠 CYBER SPECIALIST' },
-    { minLv: 31, title: '⚜️ BKO COMMANDER' },
-    { minLv: 51, title: '👑 SYSTEM ARCHITECT' }
-];
-
-function getRank(level) { return [...RANKS].reverse().find(r => level >= r.minLv) || RANKS[0]; }
+// /rank — level, title and progress to the next level
+const E = require('../econ');
+const { tr, esc } = require('../lang/play');
 
 module.exports = {
     name: 'rank',
-    description: 'View your rank and XP progress',
+    description: 'Your level, title and progress',
     category: 'Economy',
-    usage: '/rank [user]',
+    usage: '/rank',
     aliases: ['level', 'lvl'],
 
     handler: async (ctx) => {
-        const db = ctx.client?.db;
-        const userId = ctx.userId.toString();
-
-        if (!db) return ctx.replyHTML(`❌ Database not connected.`);
-
-        const user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
-        if (!user) return ctx.replyHTML(`⚠️ No account! Use <code>/daily</code>.`);
-
-        const level = user.level || calcLevel(user.xp);
-        const rank = getRank(level);
-        const xp = user.xp || 0;
-        const currentMin = Math.pow((level - 1) / 0.1, 2);
-        const nextMin = Math.pow(level / 0.1, 2);
-        const progress = ((xp - currentMin) / (nextMin - currentMin)) * 100;
-        const bar = '█'.repeat(Math.floor(progress / 10)) + '░'.repeat(10 - Math.floor(progress / 10));
-        const needed = Math.floor(nextMin - xp);
-        const nextRank = RANKS.find(r => r.minLv > level);
-
-        let msg = `${rank.title}\n━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `👤 <b>${ctx.username}</b>\n` +
-            `📊 Level: <b>${level}</b>\n` +
-            `✨ XP: <b>${formatNumber(xp)}</b> / ${formatNumber(Math.floor(nextMin))}\n` +
-            `${bar} ${progress.toFixed(1)}%\n\n` +
-            `📈 Next: +${formatNumber(needed)} XP\n`;
-
-        if (nextRank) msg += `🏆 Next: ${nextRank.title} (${nextRank.minLv - level} lvls)\n`;
-        else msg += `🏆 <b>Max Rank!</b> 🎉\n`;
-
-        msg += `\n━━━━━━━━━━━━━━━━━━━━\n📍 BAMAKO_223 🇲🇱`;
-        await ctx.replyHTML(msg);
-    }
+        const T = tr(ctx), db = ctx.client?.db;
+        if (!db) return ctx.replyHTML(T('no_db'));
+        const u = E.getUser(db, ctx.userId);
+        if (!u) return ctx.replyHTML(T('no_account'));
+        const level = u.level || E.levelOf(u.xp), ranks = T('ranks'), ri = E.rankIndex(level);
+        const p = E.progress(u.xp, level);
+        const lines = [
+            `<b>${ranks[ri]}</b> · ${esc(ctx.username)}`,
+            `${E.bar(p.pct)} ${p.pct}%`,
+            T('rank_next', { need: T.num(p.need), next: level + 1 }),
+            ri < ranks.length - 1 ? T('rank_title_next', { title: ranks[ri + 1], lv: E.RANK_LV[ri + 1] }) : T('rank_top'),
+        ];
+        return ctx.replyHTML(lines.join('\n'));
+    },
 };

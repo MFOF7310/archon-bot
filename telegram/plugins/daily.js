@@ -1,77 +1,34 @@
-// ═══════════════════════════════════════════
-//  TG COMMAND: Daily Reward
-// ═══════════════════════════════════════════
-
-const formatNumber = (n) => n?.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') || '0';
-
-function calcLevel(xp) { return Math.floor(0.1 * Math.sqrt(xp || 0)) + 1; }
+// /daily — the Telegram reward: credits and XP every 24 h, more with a streak, a bonus at 7 and 30 days.
+const E = require('../econ');
+const { tr } = require('../lang/play');
 
 module.exports = {
     name: 'daily',
-    description: 'Claim daily reward with streak bonuses',
+    description: 'Claim your daily credits; a streak gives more',
     category: 'Economy',
     aliases: ['claim', 'reward', 'collect'],
 
     handler: async (ctx) => {
-        const db = ctx.client?.db;
-        const userId = ctx.userId.toString();
-        const username = ctx.username;
-        const now = Math.floor(Date.now() / 1000);
+        const T = tr(ctx), db = ctx.client?.db;
+        if (!db) return ctx.replyHTML(T('no_db'));
+        const user = E.ensureUser(db, ctx.userId, ctx.username);
+        if (!user) return ctx.replyHTML(T('no_db'));
+        const now = Math.floor(Date.now() / 1000), last = user.last_daily || 0, streak = user.streak_days || 0;
 
-        if (!db) return ctx.replyHTML(`❌ Database not connected.`);
-
-        let user = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
-        if (!user) {
-            // Telegram users have no guild — use 'telegram' as default
-            try {
-                db.prepare(`INSERT INTO users (id, guild_id, username, xp, level, credits, streak_days, last_daily, total_messages, games_played, games_won, total_winnings, gaming, last_xp_gain, total_dailies, highest_streak, streak_protections) VALUES (?, ?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}', 0, 0, 0, 0)`)
-                    .run(userId, 'telegram', username);
-            } catch (err) {
-                // Fallback: guild_id may not exist in schema, try without it
-                db.prepare(`INSERT INTO users (id, username, xp, level, credits, streak_days, last_daily, total_messages, games_played, games_won, total_winnings, gaming, last_xp_gain, total_dailies, highest_streak, streak_protections) VALUES (?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, '{"game":"CODM","rank":"Unranked"}', 0, 0, 0, 0)`)
-                    .run(userId, username);
-            }
-            user = { credits: 0, xp: 0, level: 1, streak_days: 0, last_daily: 0 };
+        if (now - last < 86400) {
+            const left = 86400 - (now - last);
+            return ctx.replyHTML(T('daily_wait', { time: `${Math.floor(left / 3600)} h ${String(Math.floor((left % 3600) / 60)).padStart(2, '0')}`, streak }));
         }
+        const newStreak = now - last > 172800 ? 1 : streak + 1;
+        // The 7- and 30-day bonuses were announced but never added to the balance
+        const bonus = newStreak === 7 ? 500 : newStreak === 30 ? 2000 : 0;
+        const total = 100 + Math.min(newStreak * 10, 200) + bonus;
+        const xpGain = 50 + newStreak * 5;
+        const xp = (user.xp || 0) + xpGain, credits = (user.credits || 0) + total;
+        E.update(db, ctx.userId, { credits, xp, level: E.levelOf(xp), streak_days: newStreak, last_daily: now, total_dailies: (user.total_dailies || 0) + 1, highest_streak: Math.max(user.highest_streak || 0, newStreak) });
 
-        const lastDaily = user.last_daily || 0;
-        const streak = user.streak_days || 0;
-        const COOLDOWN = 86400;
-
-        if (now - lastDaily < COOLDOWN) {
-            const left = COOLDOWN - (now - lastDaily);
-            const hrs = Math.floor(left / 3600);
-            const mins = Math.floor((left % 3600) / 60);
-            return ctx.replyHTML(`⏰ <b>Daily Claimed!</b>\n\nCome back in <b>${hrs}h ${mins}m</b>\n🔥 Streak: <b>${streak}</b> days`);
-        }
-
-        let newStreak = streak + 1;
-        if (now - lastDaily > 172800) newStreak = 1;
-
-        const base = 100;
-        const bonus = Math.min(newStreak * 10, 200);
-        const total = base + bonus;
-        const xpGain = 50 + (newStreak * 5);
-        const newXP = (user.xp || 0) + xpGain;
-        const newLevel = calcLevel(newXP);
-        const newCredits = (user.credits || 0) + total;
-
-        db.prepare("UPDATE users SET credits=?, xp=?, level=?, streak_days=?, last_daily=?, total_dailies=total_dailies+1 WHERE id=?")
-            .run(newCredits, newXP, newLevel, newStreak, now, userId);
-
-        let msg = `✅ <b>DAILY REWARD!</b>\n━━━━━━━━━━━━━━━━━━━━\n\n` +
-            `💰 Base: <b>${base}</b> 🪙\n` +
-            `🔥 Streak: <b>+${bonus}</b> 🪙\n` +
-            `✨ XP: <b>+${xpGain}</b>\n` +
-            `━━━━━━━━━━━━━━━━━━━━\n` +
-            `🎁 Total: <b>${total}</b> 🪙\n` +
-            `📅 Streak: <b>${newStreak}</b> day${newStreak > 1 ? 's' : ''}\n` +
-            `💰 Balance: <b>${formatNumber(newCredits)}</b> 🪙\n` +
-            `📊 Level: <b>${newLevel}</b>\n`;
-
-        if (newStreak === 7) msg += `\n🏆 <b>7 DAY STREAK!</b> +500 🪙 bonus!`;
-        if (newStreak === 30) msg += `\n👑 <b>30 DAY STREAK!</b> +2000 🪙 bonus!`;
-
-        await ctx.replyHTML(msg);
-    }
+        let msg = T('daily_done', { total: T.num(total), streak: newStreak, xp: xpGain, balance: T.num(credits) });
+        if (bonus) msg += '\n' + T('daily_bonus', { days: newStreak, bonus: T.num(bonus) });
+        return ctx.replyHTML(msg);
+    },
 };

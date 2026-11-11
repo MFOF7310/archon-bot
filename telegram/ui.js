@@ -24,4 +24,11 @@ function caption(title, ...details) {
     return [title ? `<b>${esc(String(title).slice(0, 120))}</b>` : '', d].filter(Boolean).join('\n');
 }
 
-module.exports = { progress, caption, esc };
+// Show a card: in the message whose button was pressed (no new message), otherwise as a reply
+function show(ctx, text, markup = null) {
+    const opt = { parse_mode: 'HTML', ...(markup ? { extra: { reply_markup: markup } } : {}) };
+    if (ctx.statusMsgId) return ctx.bridge.editMessage(ctx.chatId, ctx.statusMsgId, text, opt).catch(() => {});
+    return ctx.bridge.sendTo(ctx.chatId, text, { ...opt, reply_to: ctx.message?.message_id });
+}
+
+module.exports = { progress, caption, esc, show };

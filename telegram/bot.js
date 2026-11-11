@@ -368,6 +368,18 @@ async function handleCallback(update, bridge, client) {
         return;
     }
 
+    // A button that runs a command with one argument and shows the answer in the same message (cmdx:<command>:<arg>)
+    if (data.startsWith('cmdx:')) {
+        const [, cmdName, arg = ''] = data.split(':');
+        const ctx = buildContext(update, bridge, client);
+        if (!ctx) return;
+        ctx.args = arg ? [arg] : [];
+        ctx.statusMsgId = msgId;
+        const cmd = bridge.getCommand(cmdName);
+        if (cmd?.handler && !cmd.ownerOnly) { try { await cmd.handler(ctx); } catch (e) { console.error('[CMDX]', cmdName, e.message); } }
+        return;
+    }
+
     // Direct command trigger from button
     if (data.startsWith('cmd:')) {
         const cmdName = data.split(':')[1];
