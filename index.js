@@ -5862,7 +5862,7 @@ function validateCategory(c) {
     if (typeof c !== 'object' || !c) return 'not an object';
     if (!c.label || typeof c.label !== 'string' || c.label.length > 32) return 'label must be a string under 32 chars';
     if (!c.value || typeof c.value !== 'string' || !/^[a-z0-9_-]{1,32}$/.test(c.value)) return 'value must be lowercase a-z, 0-9, _ or -';
-    if (!c.emoji || typeof c.emoji !== 'string' || c.emoji.length > 8) return 'emoji required';
+    if (!c.emoji || typeof c.emoji !== 'string' || c.emoji.length > 64) return 'emoji required'; // custom emojis <:name:id> are allowed
     if (c.desc && (typeof c.desc !== 'string' || c.desc.length > 100)) return 'desc must be under 100 chars';
     return null;
 }
