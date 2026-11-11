@@ -4853,7 +4853,7 @@ apiApp.get('/api/user/:userId', (req, res) => {
         const guildId = req.query.guild || null;
 
         // Get guild-specific or all guild data
-        const allUserData = guildId && /^\d{17,19}$/.test(String(guildId))
+        const allUserData = guildId && /^\d{17,20}$/.test(String(guildId))
             ? db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').all(userId, String(guildId))
             : db.prepare('SELECT * FROM users WHERE id = ?').all(userId);
         // Get dashboard user info
@@ -4872,9 +4872,17 @@ apiApp.get('/api/user/:userId', (req, res) => {
         const totalCredits = allUserData.reduce((sum, u) => sum + (u.credits || 0), 0);
         const maxLevel = Math.max(...allUserData.map(u => u.level || 1), 1);
         const maxStreak = Math.max(...allUserData.map(u => u.streak_days || 0), 0);
-        const totalClaims = allUserData.reduce((sum, u) => sum + (u.claim_count || 0), 0);
-        const totalMessages = allUserData.reduce((sum, u) => sum + (u.message_count || 0), 0);
-        const totalCommands = allUserData.reduce((sum, u) => sum + (u.commands_used || 0), 0);
+        // The columns are total_dailies and total_messages (claim_count and message_count never existed, so these
+        // showed 0). Commands come from the usage log, which keeps the last 90 days.
+        const totalClaims = allUserData.reduce((sum, u) => sum + (u.total_dailies || 0), 0);
+        const totalMessages = allUserData.reduce((sum, u) => sum + (u.total_messages || 0), 0);
+        let totalCommands = 0;
+        try {
+            const inGuild = guildId && /^\d{17,20}$/.test(String(guildId));
+            totalCommands = (inGuild
+                ? db.prepare('SELECT COUNT(*) AS n FROM command_events WHERE user_id = ? AND guild_id = ?').get(userId, String(guildId))
+                : db.prepare('SELECT COUNT(*) AS n FROM command_events WHERE user_id = ?').get(userId))?.n || 0;
+        } catch (e) {}
         const activeBadge = allUserData.find(u => u.active_badge)?.active_badge || null;
 
         // Get global rank by total XP
