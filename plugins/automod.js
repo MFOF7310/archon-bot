@@ -2016,13 +2016,13 @@ module.exports.resumeRaids = resumeRaids;
 // ── Daily AutoMod digest for each server owner ──────────────────────────────────────────────────────────────────
 // Owners used to get a DM for every strike. Now: one summary a day at 21:00 Bamako time (UTC), only on days with
 // something to report. Bans and actions the bot couldn't take still reach them right away.
-const DIGEST_HOUR_UTC = 21;
+const DIGEST_HOUR = 21; // local time of each server
 function typeFromReason(reason) {
     const r = String(reason || '').replace(/^AutoMod:\s*/, '');
     for (const [type, spec] of Object.entries(_RULE_REASONS)) if (spec[0].test(r)) return type;
     return 'toxic content';
 }
-async function sendDigests(client, db) {
+async function sendDigests(client, db, onlyGuilds = null) {
     const since = Date.now() - 86400000;
     const rows = db.prepare("SELECT guild_id, user_id, action, reason FROM moderation_logs WHERE moderator_id = ? AND reason LIKE 'AutoMod:%' AND timestamp >= ?").all(client.user.id, since);
     const byGuild = new Map();
@@ -2030,6 +2030,7 @@ async function sendDigests(client, db) {
     const _v2 = require('../lib/games/v2');
     const E = require('../config/emojis');
     for (const [gid, list] of byGuild) {
+        if (onlyGuilds && !onlyGuilds.has(gid)) continue;
         const guild = client.guilds.cache.get(gid); if (!guild) continue;
         const owner = await guild.fetchOwner().catch(() => null); if (!owner || owner.user.bot) continue;
         const L = require('../lib/botPerms').langOf({ guild, client });
@@ -2056,17 +2057,30 @@ async function sendDigests(client, db) {
     }
 }
 let _digestTimer = null;
+// Each server gets its digest at 21:00 in its own timezone (General tab), UTC when none is set
+function localDayHour(tz) {
+    try {
+        const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz || 'UTC', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hourCycle: 'h23' })
+            .formatToParts(new Date()).map((x) => [x.type, x.value]));
+        return { day: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour) };
+    } catch { const d = new Date(); return { day: d.toISOString().slice(0, 10), hour: d.getUTCHours() }; }
+}
 function startDigest(client, db) {
     if (_digestTimer) return;
     const tick = async () => {
-        const now = new Date();
-        if (now.getUTCHours() < DIGEST_HOUR_UTC) return;
-        const today = now.toISOString().slice(0, 10);
         try {
-            const last = db.prepare("SELECT value FROM bot_state WHERE key = 'automod_digest_day'").get()?.value;
-            if (last === today) return;
-            db.prepare("INSERT OR REPLACE INTO bot_state (key, value) VALUES ('automod_digest_day', ?)").run(today);
-            await sendDigests(client, db);
+            db.prepare('CREATE TABLE IF NOT EXISTS automod_digest_sent (guild_id TEXT PRIMARY KEY, day TEXT)').run();
+            const due = new Set();
+            for (const g of client.guilds.cache.values()) {
+                const tz = client.getServerSettings?.(g.id)?.timezone || 'UTC';
+                const { day, hour } = localDayHour(tz);
+                if (hour < DIGEST_HOUR) continue;
+                const last = db.prepare('SELECT day FROM automod_digest_sent WHERE guild_id = ?').get(g.id)?.day;
+                if (last === day) continue;
+                db.prepare('INSERT OR REPLACE INTO automod_digest_sent (guild_id, day) VALUES (?, ?)').run(g.id, day);
+                due.add(g.id);
+            }
+            if (due.size) await sendDigests(client, db, due);
         } catch (e) { console.error('[AUTOMOD] digest failed:', e.message); }
     };
     _digestTimer = setInterval(tick, 10 * 60000);
