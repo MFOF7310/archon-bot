@@ -100,7 +100,10 @@ async function logVerify(guild, db, color, title, userId, detail = '', lang = 'e
                 db.prepare('CREATE INDEX IF NOT EXISTS idx_verify_events ON verify_events (guild_id, ts)').run();
                 _evReady = true;
             }
-            const kind = title.startsWith(em('ic_ok', '✅')) ? 'passed' : title.startsWith('👢') ? 'kicked' : title.startsWith('❌') ? 'failed' : 'spam';
+            // Sorted by which text the title is. It used to look at the first emoji, which became a custom icon,
+            // so every event was counted as join spam and the dashboard showed 0 passed, 0 failed, 0 kicked.
+            const is = (...keys) => keys.some((k) => title === vt(lang, k));
+            const kind = is('logPassedDm', 'logPassedPanel') ? 'passed' : is('logKickedFail', 'logKickedTimeout') ? 'kicked' : is('logFailed', 'logFailedPanel') ? 'failed' : 'spam';
             db.prepare('INSERT INTO verify_events VALUES (?, ?, ?, ?)').run(guild.id, String(userId), kind, Math.floor(Date.now() / 1000));
         } catch (e) { console.error('[VERIFY] event store:', e.message); }
         
