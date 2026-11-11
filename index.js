@@ -1781,6 +1781,8 @@ client.once(Events.ClientReady, async () => {
     Promise.resolve(require('./plugins/verify.js').resumeKickTimers?.(client, db)).catch((e) => console.error('[VERIFY] resume failed:', e.message));
     // Raid mode: pick up a raid that was active when the bot stopped
     Promise.resolve(require('./plugins/automod.js').resumeRaids?.(client, db)).catch((e) => console.error('[RAID] resume failed:', e.message));
+    // AutoMod: one summary a day for each server owner (21:00 Bamako time)
+    try { require('./plugins/automod.js').startDigest?.(client, db); } catch (e) { console.error('[AUTOMOD] digest start failed:', e.message); }
     // Cache missing guild names from DB + bulk stats sync
     setTimeout(async () => {
         try {

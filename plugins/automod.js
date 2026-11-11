@@ -581,17 +581,26 @@ async function takeAction(message, violations, client, db) {
         const _accent = typeof actionColor === 'string' && actionColor.startsWith('#')
             ? parseInt(actionColor.slice(1), 16)
             : (typeof actionColor === 'number' ? actionColor : 0x2F3136);
-        const _card = _v2.card(
-            _accent,
-            [
-                { text: `*${resolveEmoji('eagle', client) || '🦅'} ARCHON CG-223 · Enforcement*` },
-                { text: `## ${actionEmoji} ${_titleText}` },
-                { rule: true },
-                { text: _body },
-                { text: `-# ${_t('strikeDmFooter')}` },
-                { row: appealRow },
-            ]
-        );
+        // Member card: one plain sentence about what happened, their message quoted, the strike ladder once.
+        const _E2 = require('../config/emojis');
+        const _titleTxt = outcome === 'ban' ? _t('cardTitleBan', { server: message.guild.name })
+            : outcome === 'timeout' ? _t('cardTitleTimeout', { duration: _dur(duration), server: message.guild.name })
+            : _t('cardTitleWarn', { server: message.guild.name });
+        const _whyKey = 'why_human_' + _slug(violations[0]?.type);
+        const _whyHuman = _usable(_t(_whyKey), _whyKey, ruleReason(violations[0], _t));
+        const _quote = (message.content || '').trim().slice(0, 300);
+        const _dots = [0, 1, 2, 3].map(i => i < displayWc ? (i === 3 ? (_E2.dot_red || '🔴') : (_E2.dot_yellow || '🟡')) : (_E2.dot_white || '⚪')).join(' ');
+        const _items = [
+            { text: `## ${_titleTxt}` },
+            { text: _whyHuman },
+        ];
+        if (_quote) _items.push({ text: _quote.split('\n').slice(0, 4).map(l => `> ${l}`).join('\n') });
+        _items.push({ rule: true });
+        _items.push({ text: `${_dots}\n-# ${_t('cardLadder')}` });
+        _items.push({ text: `-# ${_t('cardClears')} ${_t('cardContact', { contact: appealContact })}` });
+        _items.push({ row: appealRow });
+        _items.push({ text: `-# ${_E2.eagle || '🦅'} ARCHON CG-223` });
+        const _card = _v2.card(_accent, _items);
 
         await message.author.send({ ..._card }).catch((e) => {
             console.error(`[AUTOMOD DM] send failed for ${message.author.tag}: ${e.message}`);
@@ -623,15 +632,15 @@ async function takeAction(message, violations, client, db) {
             if (repeatV?.channels?.length > 1) _extra.push(`**${_t('strikeLabelCross')}** · ${repeatV.channels.map(c => `<#${c}>`).join(' ')}`);
             if (whyNot) _extra.push(`**${_t('strikeLabelWhy')}** · ${whyNot}`);
 
+            // One compact entry per action, so a busy day stays readable
+            const _E3 = require('../config/emojis');
+            const _ico = outcome === 'ban' ? (_E3.ic_ban || '🔨') : outcome === 'timeout' ? (_E3.ic_wait || '⏳') : (_E3.ic_warn || '⚠️');
+            const _q = (message.content || '').trim().slice(0, 200).split('\n')[0];
             const _logItems = [
-                { text: `*${resolveEmoji('eagle', client) || '🦅'} ARCHON CG-223 · Enforcement Log*` },
-                { text: `## ${resolveEmoji('mod_sign', client) || '⚖️'} ${actionText}` },
-                { rule: true },
-                { text: _t('strikeLogDesc', { emoji: '', action: '', member: `${message.author}`, uid, rule: ruleName(violations[0], _t), violation: ruleReason(violations[0], _t), channel: `<#${message.channel.id}>` }).replace(/^\s*[\n\r]+/, '').trim() },
+                { text: `${_ico} <t:${Math.floor(Date.now() / 1000)}:t> · ${message.author} · **${actionText}** · ${ruleName(violations[0], _t)} · <#${message.channel.id}> · ${_t('logStrike', { n: displayWc })}` },
             ];
+            if (_q) _logItems.push({ text: `> ${_q}` });
             if (_extra.length) _logItems.push({ text: _extra.join('\n') });
-            _logItems.push({ rule: true });
-            _logItems.push({ text: `-# ${_t('strikeLogFooter', { bar, n: displayWc, next })}` });
 
             const _logCard = _v2.card((typeof actionColor === 'string' && actionColor.startsWith('#') ? parseInt(actionColor.slice(1), 16) : (typeof actionColor === 'number' ? actionColor : 0x2F3136)), _logItems);
             await logCh.send({ ..._logCard }).catch(() => {});
@@ -640,7 +649,7 @@ async function takeAction(message, violations, client, db) {
 
     try {
         const owner = await message.guild.fetchOwner().catch(() => null);
-        if (owner && !owner.user.bot) {
+        if (owner && !owner.user.bot && (outcome === 'ban' || whyNot)) {
             const _v2 = require('../lib/games/v2');
             const _accent = typeof actionColor === 'string' && actionColor.startsWith('#') ? parseInt(actionColor.slice(1), 16) : (typeof actionColor === 'number' ? actionColor : 0x2F3136);
             const _dmItems = [
@@ -2003,4 +2012,66 @@ module.exports = {
 };
 
 module.exports.resumeRaids = resumeRaids;
+
+// ── Daily AutoMod digest for each server owner ──────────────────────────────────────────────────────────────────
+// Owners used to get a DM for every strike. Now: one summary a day at 21:00 Bamako time (UTC), only on days with
+// something to report. Bans and actions the bot couldn't take still reach them right away.
+const DIGEST_HOUR_UTC = 21;
+function typeFromReason(reason) {
+    const r = String(reason || '').replace(/^AutoMod:\s*/, '');
+    for (const [type, spec] of Object.entries(_RULE_REASONS)) if (spec[0].test(r)) return type;
+    return 'toxic content';
+}
+async function sendDigests(client, db) {
+    const since = Date.now() - 86400000;
+    const rows = db.prepare("SELECT guild_id, user_id, action, reason FROM moderation_logs WHERE moderator_id = ? AND reason LIKE 'AutoMod:%' AND timestamp >= ?").all(client.user.id, since);
+    const byGuild = new Map();
+    for (const r of rows) { if (!byGuild.has(r.guild_id)) byGuild.set(r.guild_id, []); byGuild.get(r.guild_id).push(r); }
+    const _v2 = require('../lib/games/v2');
+    const E = require('../config/emojis');
+    for (const [gid, list] of byGuild) {
+        const guild = client.guilds.cache.get(gid); if (!guild) continue;
+        const owner = await guild.fetchOwner().catch(() => null); if (!owner || owner.user.bot) continue;
+        const L = require('../lib/botPerms').langOf({ guild, client });
+        const t = (k, v) => require('../lib/i18n').t('automod.' + k, L, v);
+        const count = (fn) => list.filter(fn).length;
+        const rules = new Map();
+        for (const r of list) { const ty = typeFromReason(r.reason); rules.set(ty, (rules.get(ty) || 0) + 1); }
+        const users = new Map();
+        for (const r of list) users.set(r.user_id, (users.get(r.user_id) || 0) + 1);
+        const topRules = [...rules].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([ty, n]) => `\`${n}×\` ${ruleName({ type: ty }, t)}`).join('\n');
+        const topUsers = [...users].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([u, n]) => `<@${u}> (${n})`).join(' · ');
+        const items = [
+            { text: `## ${t('digestTitle', { server: guild.name })}` },
+            { text: t('digestIntro') },
+            { text: `-# ${t('digestSummary', { removed: list.length, timeouts: count(r => r.action === 'timeout'), bans: count(r => r.action === 'ban') })}` },
+            { rule: true },
+            { text: topRules },
+            { text: `-# ${t('digestTop', { list: topUsers })}` },
+            { row: new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
+                .setLabel(t('digestBtn')).setURL(`https://bamako-steel-dev.xyz/dashboard/${gid}`)) },
+            { text: `-# ${E.eagle || '🦅'} ARCHON CG-223` },
+        ];
+        await owner.send({ ..._v2.card(0x5865F2, items), allowedMentions: { parse: [] } }).catch(() => {});
+    }
+}
+let _digestTimer = null;
+function startDigest(client, db) {
+    if (_digestTimer) return;
+    const tick = async () => {
+        const now = new Date();
+        if (now.getUTCHours() < DIGEST_HOUR_UTC) return;
+        const today = now.toISOString().slice(0, 10);
+        try {
+            const last = db.prepare("SELECT value FROM bot_state WHERE key = 'automod_digest_day'").get()?.value;
+            if (last === today) return;
+            db.prepare("INSERT OR REPLACE INTO bot_state (key, value) VALUES ('automod_digest_day', ?)").run(today);
+            await sendDigests(client, db);
+        } catch (e) { console.error('[AUTOMOD] digest failed:', e.message); }
+    };
+    _digestTimer = setInterval(tick, 10 * 60000);
+    _digestTimer.unref?.();
+    tick();
+}
+module.exports.startDigest = startDigest;
 module.exports.syncRules = syncRules;
