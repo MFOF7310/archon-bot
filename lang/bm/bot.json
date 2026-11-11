@@ -53,5 +53,6 @@
   "prefix_usage": "Kelen taa: `ping`, `stats`, `activity`, `about` or `invite`. For example `{prefix}bot ping`.",
   "alive_title": "Sisiteme Kɔnɔkow",
   "alive_status": "Statut",
-  "alive_resources": "Sisiteme Baarakɛminɛnw"
+  "alive_resources": "Sisiteme Baarakɛminɛnw",
+  "prefix": "Prefix"
 }

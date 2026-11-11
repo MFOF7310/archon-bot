@@ -61,5 +61,6 @@
   "act_quiet": "Aucune commande ici ces 7 derniers jours.",
   "act_totals": "Depuis le début · {cmds} commandes · {ai} échanges avec Lydia · {people} membres aidés · {buttons} boutons pressés",
   "act_level": "ARCHON est niveau {level}, classé #{rank} sur {total} sur ce serveur.",
-  "btn_insights": "Voir Insights"
+  "btn_insights": "Voir Insights",
+  "prefix": "Préfixe"
 }

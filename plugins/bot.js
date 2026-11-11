@@ -124,7 +124,7 @@ async function statsCard(client, lang, db, guildId) {
         { text: [
             `**${_('servers')}** · ${n(guilds)}  ·  **${_('members')}** · ${n(members)}`,
             `**${_('commands')}** · ${n(client.commands?.size || 0)}  ·  **${_('memory')}** · ${mem} MB`,
-            `**Prefix** · \`${(client.getServerSettings?.(guildId)?.prefix) || process.env.PREFIX || '.'}\``,
+            `**${_('prefix')}** · \`${(client.getServerSettings?.(guildId)?.prefix) || process.env.PREFIX || '.'}\``,
             `${em('clock', '🕐')} **${_('uptime')}** ${uptime(process.uptime())}    **${_('ping_gateway')}** ${api == null ? '—' : api + ' ms'}`,
         ].join('\n') },
         { rule: true },

@@ -61,5 +61,6 @@
   "act_quiet": "لم يُستخدم أي أمر هنا خلال آخر 7 أيام.",
   "act_totals": "منذ البداية · {cmds} أمر · {ai} محادثة مع Lydia · {people} عضو تمت مساعدتهم · {buttons} ضغطة زر",
   "act_level": "ARCHON في المستوى {level}، المرتبة #{rank} من {total} على هذا الخادم.",
-  "btn_insights": "عرض Insights"
+  "btn_insights": "عرض Insights",
+  "prefix": "البادئة"
 }

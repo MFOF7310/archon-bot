@@ -61,5 +61,6 @@
   "act_quiet": "最近 7 天这里没有使用命令。",
   "act_totals": "累计 · {cmds} 条命令 · 与 Lydia 对话 {ai} 次 · 帮助了 {people} 位成员 · 按钮点击 {buttons} 次",
   "act_level": "ARCHON 等级 {level}，在本服务器排名 #{rank} / {total}。",
-  "btn_insights": "查看 Insights"
+  "btn_insights": "查看 Insights",
+  "prefix": "前缀"
 }
