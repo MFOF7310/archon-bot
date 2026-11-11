@@ -126,7 +126,7 @@ async function handleWelcome(member, client, db) {
     cfg.lang = lang;
     const _topRole = member.roles?.highest;
     const _badge = (_topRole && _topRole.id !== member.guild.id) ? ` [${_topRole.name}]` : '';
-    const _greet = t('welcome.card_greeting', lang, { user: member.user, badge: _badge });
+    const _greet = t('welcome.card_greeting', lang, { user: member.user, badge: _badge, wave: em('wave', '👋') });
     const _memberLine = t('welcome.card_member_count', lang, { count: Style.ordinal(count, lang), guild: member.guild.name });
     const _intro = t('welcome.card_intro', lang);
     // A custom message replaces the default greeting (it used to be stacked on top of it, so members got two welcomes)
@@ -196,36 +196,31 @@ async function handleWelcome(member, client, db) {
     let _inviter = null;
     try { _inviter = await require('../lib/invite-tracker').detect(member.guild); } catch {}
 
-    // ── Compact footer (no ping) ──
-    const _fmt = { day: 'numeric', month: 'short', year: 'numeric' };
-    const _joinedStr = new Intl.DateTimeFormat(lang, _fmt).format(member.joinedAt || new Date());
-    let _footerLine = '-# ' + t('welcome.card_footer', lang, { count, date: _joinedStr });
-    if (_inviter?.code) {
-        const _invName = _inviter.inviter?.username || (_inviter.inviter?.tag || '').split('#')[0];
-        _footerLine += _invName
-            ? t('welcome.card_inviter', lang, { code: _inviter.code, name: _invName })
-            : t('welcome.card_inviter', lang, { code: _inviter.code, name: '' }).replace(/ \(\s*\)/, '');
-    } else {
-        _footerLine += t('welcome.card_inviter_unknown', lang);
-    }
+    // ── Info line: who invited them and how old the account is (Discord shows "2 years ago" in each reader's language) ──
+    const esc = (x) => String(x || '').replace(/([*_`~|\\])/g, '\\$1');
+    const info = [];
+    const invName = _inviter?.inviter?.username || (_inviter?.inviter?.tag || '').split('#')[0];
+    if (invName) info.push(`${em('myprofile', '👤')} ${Style.cardText(lang, 'invited', { name: esc(invName) })}`);
+    else if (_inviter?.code) info.push(`${em('ic_link', '🔗')} ${Style.cardText(lang, 'viaCode', { code: esc(_inviter.code) })}`);
+    info.push(`${em('ic_calendar', '📅')} ${Style.cardText(lang, 'created', { when: `<t:${Math.floor(member.user.createdTimestamp / 1000)}:R>` })}`);
 
-    // ── V2 container (compact Ephi style) ──
+    // ── V2 card: banner, greeting with the avatar, intro, info, buttons ──
+    const _avatar = (() => { try { return safeMember.displayAvatarURL({ size: 256, extension: 'png' }); } catch { return null; } })();
+    const [_head, ..._rest] = content.split('\n\n');
     const _container = new ContainerBuilder()
         .setAccentColor(parseInt(_accentHex, 16))
-        .addMediaGalleryComponents(
-            new MediaGalleryBuilder().addItems(
-                new MediaGalleryItemBuilder().setURL('attachment://welcome.png')
-            )
-        )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(content)
-        )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent('\u200b')
-        )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(_footerLine)
-        );
+        .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL('attachment://welcome.png')));
+    if (_avatar) {
+        _container.addSectionComponents(new SectionBuilder()
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(_head))
+            .setThumbnailAccessory(new ThumbnailBuilder().setURL(_avatar)));
+    } else {
+        _container.addTextDisplayComponents(new TextDisplayBuilder().setContent(_head));
+    }
+    if (_rest.length) _container.addTextDisplayComponents(new TextDisplayBuilder().setContent(_rest.join('\n\n')));
+    _container
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${info.join(' · ')}`));
 
     if (rows.length > 0) {
         _container.addActionRowComponents(...rows);
@@ -248,7 +243,7 @@ async function handleGoodbye(member, client, db) {
     if (!cfg.goodbyeEnabled || !cfg.goodbyeChannel) return;
 
     const ch = member.guild.channels.cache.get(cfg.goodbyeChannel);
-    if (!canSend('goodbye', ch, _CARD_NEEDED, { guild: member.guild, channelId: cfg.goodbyeChannel })) return;
+    if (!canSend('goodbye', ch, require('../lib/canPost').neededFor('goodbye'), { guild: member.guild, channelId: cfg.goodbyeChannel })) return;
 
     ensureJoinTable(db);
     await backfillJoins(db, member.guild);
@@ -261,41 +256,29 @@ async function handleGoodbye(member, client, db) {
     const roles     = [...(member.roles?.cache?.values?.() || [])].filter(r => r.id !== member.guild.id);
     const safeMember = createMemberProxy(member);
 
-    // ── SINGLE canvas render (its labels are English, so the duration is too) ──
-    const png = await Style.renderGoodbyeCard(safeMember, stayedMs != null ? Style.fmtDur(stayedMs, 'en') : null, roles.length);
-    const attachment = new AttachmentBuilder(png, { name: 'goodbye-card.png' });
+    const name = String(member.displayName || member.user?.globalName || member.user?.username || '?').replace(/([*_`~|\\])/g, '\\$1');
+    const line = cfg.goodbyeMessage
+        ? Style.formatTemplate(cfg.goodbyeMessage, safeMember, member.guild.memberCount)
+        : Style.cardText(goodbyeLang, 'bye');
+    const head = `### ${em('wave', '👋')} ${Style.cardText(goodbyeLang, 'left', { name })}\n${line}`;
+    const info = [];
+    if (duration) info.push(`${em('clock', '🕒')} ${Style.cardText(goodbyeLang, 'with', { dur: duration })}`);
+    if (joinedAt) info.push(Style.cardText(goodbyeLang, 'joined', { when: `<t:${Math.floor(joinedAt / 1000)}:D>` }));
+    if (roles.length) info.push(Style.cardText(goodbyeLang, 'roles', { n: roles.length }));
+    info.push(Style.cardText(goodbyeLang, 'members', { n: member.guild.memberCount.toLocaleString(goodbyeLang === 'fr' ? 'fr-FR' : 'en-US') }));
 
-    let content = Style.goodbyeText(safeMember, duration, roles.length, goodbyeLang);
-
-    if (cfg.goodbyeMessage) {
-        content = `${Style.formatTemplate(cfg.goodbyeMessage, safeMember, member.guild.memberCount)}\n${content}`;
-    }
-
-
-    // v7: Components V2 container (goodbye)
-    const _gbContainer = new ContainerBuilder()
-        .setAccentColor(0xff4757)
-        .addMediaGalleryComponents(
-            new MediaGalleryBuilder().addItems(
-                new MediaGalleryItemBuilder().setURL('attachment://goodbye-card.png')
-            )
-        )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(content)
-        )
-        .addSeparatorComponents(
-            new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)
-        )
-        .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-                t('welcome.goodbye_footer', goodbyeLang, { guild: member.guild.name })
-            )
-        );
+    let avatar = null;
+    try { avatar = (member.user || member).displayAvatarURL({ size: 256, extension: 'png' }); } catch {}
+    const card = new ContainerBuilder().setAccentColor(0x888780);
+    if (avatar) card.addSectionComponents(new SectionBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(head)).setThumbnailAccessory(new ThumbnailBuilder().setURL(avatar)));
+    else card.addTextDisplayComponents(new TextDisplayBuilder().setContent(head));
+    card.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${info.join(' · ')}`));
 
     await safeSend('goodbye', ch, {
-        components: [_gbContainer],
-        files: [attachment],
+        components: [card],
         flags: MessageFlags.IsComponentsV2,
+        allowedMentions: { parse: [] },
     });
 }
 

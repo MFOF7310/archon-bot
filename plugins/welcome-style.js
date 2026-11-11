@@ -595,6 +595,29 @@ function goodbyeText(member, duration, roleCount, lang = 'en') {
     return farewell;
 }
 
+// ================= CARD TEXTS (welcome info line, goodbye card) =================
+const CARD = {
+    en: { invited: 'Invited by **{name}**', viaCode: 'Joined with the link **{code}**', created: 'account created {when}',
+          left: '{name} left the server', with: '{dur} with us', joined: 'joined {when}', roles: ['{n} role', '{n} roles'], members: '{n} members now',
+          bye: ['Hope our paths cross again.', 'The door stays open.', 'Safe travels, friend.', 'It mattered. Come back when it feels right.', 'Thanks for the time spent here.'] },
+    fr: { invited: 'Invité par **{name}**', viaCode: 'Arrivé avec le lien **{code}**', created: 'compte créé {when}',
+          left: '{name} a quitté le serveur', with: '{dur} avec nous', joined: 'arrivée {when}', roles: ['{n} rôle', '{n} rôles'], members: '{n} membres maintenant',
+          bye: ["J'espère qu'on se reverra.", 'La porte reste ouverte.', "Bon vent, l'ami.", "Ça comptait. Reviens quand tu veux.", 'Merci pour le temps passé ici.'] },
+    zh: { invited: '由 **{name}** 邀请', viaCode: '通过邀请链接 **{code}** 加入', created: '账号创建于 {when}',
+          left: '{name} 离开了服务器', with: '陪伴了我们 {dur}', joined: '加入于 {when}', roles: ['{n} 个身份组', '{n} 个身份组'], members: '现有 {n} 名成员',
+          bye: ['希望还能再见。', '大门一直敞开。', '一路顺风，朋友。', '这段时光很有意义，想回来就回来。', '感谢你在这里的时光。'] },
+    ar: { invited: 'دعاه **{name}**', viaCode: 'انضم عبر الرابط **{code}**', created: 'أُنشئ الحساب {when}',
+          left: 'غادر {name} السيرفر', with: '{dur} معنا', joined: 'انضم {when}', roles: ['دور واحد', '{n} أدوار'], members: '{n} عضو الآن',
+          bye: ['نأمل أن نلتقي مجددًا.', 'الباب يبقى مفتوحًا.', 'رحلة آمنة يا صديق.', 'كان وجودك مهمًا. عُد متى شئت.', 'شكرًا على الوقت الذي قضيته هنا.'] },
+    bm: { bye: ["K'an bɛn tugun.", 'An bɛ an hakili to i la.', 'Segi ni i sɔnna.'] },
+};
+function cardText(lang, key, vars = {}) {
+    let v = (CARD[lang] && CARD[lang][key] !== undefined) ? CARD[lang][key] : CARD.en[key];
+    if (Array.isArray(v) && key === 'roles') v = v[Number(vars.n) === 1 ? 0 : 1];
+    if (Array.isArray(v)) v = v[Math.floor(Math.random() * v.length)];
+    return String(v).replace(/\{(\w+)\}/g, (m, k) => (vars[k] !== undefined ? String(vars[k]) : m));
+}
+
 // ================= BUTTON DEFINITIONS =================
 function getWelcomeButtons(cfg, member) {
     const lang = cfg.lang || 'en';
@@ -619,6 +642,7 @@ function getWelcomeButtons(cfg, member) {
 
 // ================= EXPORT =================
 module.exports = {
+    cardText,
     normalizeWelcomeConfig,
     formatTemplate,
     renderWelcomeCard,
