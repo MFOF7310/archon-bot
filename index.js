@@ -5617,6 +5617,8 @@ apiApp.get('/api/general/:guildId', requireAdmin, async (req, res) => {
         const row = db.prepare('SELECT * FROM server_settings WHERE guild_id = ?').get(g.id) || {};
         const settings = {};
         for (const [k, col] of Object.entries(GENERAL_FIELDS)) settings[k] = row[col] ? String(row[col]) : null;
+        // An auto-role saved by the old .settings command lives in auto_role_id: show it, the bot applies it
+        if (!settings.joinRoleId && row.auto_role_id) settings.joinRoleId = String(row.auto_role_id);
         const channels = [...g.channels.cache.values()].filter(isTextChan)
             .sort((x, y) => x.rawPosition - y.rawPosition)
             .map(c => ({ id: c.id, name: c.name, category: c.parent?.name || null }));
@@ -5634,6 +5636,8 @@ apiApp.get('/api/general/:guildId', requireAdmin, async (req, res) => {
                 const c = process.env[e] ? g.channels.cache.get(process.env[e]) : null;
                 if (c) fallbacks[k] = { id: c.id, name: c.name };
             }
+            const r = process.env.AUTO_ROLE_ID ? g.roles.cache.get(process.env.AUTO_ROLE_ID) : null;
+            if (r) fallbacks.joinRoleId = { id: r.id, name: r.name };
         }
         res.json({ settings, channels, roles, fallbacks });
     } catch (e) {
@@ -5671,6 +5675,9 @@ apiApp.post('/api/general/:guildId', requireAdmin, async (req, res) => {
         const tx = db.transaction(() => {
             for (const [col, val] of updates)
                 db.prepare(`UPDATE server_settings SET ${col} = ? WHERE guild_id = ?`).run(val, g.id);
+            // The auto-role now lives in join_role_id only: clear the old column, or a role removed here would still be given
+            if (updates.some(([col]) => col === 'join_role_id'))
+                db.prepare('UPDATE server_settings SET auto_role_id = NULL WHERE guild_id = ?').run(g.id);
         });
         tx();
         client.settings?.delete?.(g.id);
