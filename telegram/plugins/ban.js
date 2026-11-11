@@ -1,46 +1,21 @@
-const https = require('https');
-
-function escapeHTML(s) { return !s || typeof s !== 'string' ? '' : s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function tgApi(token, method, params) {
-    return new Promise((res) => {
-        const body = JSON.stringify(params);
-        const req = https.request(`https://api.telegram.org/bot${token}/${method}`,
-            { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }, timeout: 10000 },
-            (r) => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>{ try{res(JSON.parse(d));}catch{res({ok:false});} }); }
-        );
-        req.on('error',()=>res({ok:false})); req.write(body); req.end();
-    });
-}
+// /ban — bans a member until /unban
+const { api, target, guard, fail, logAction, link } = require('../mod');
+const { tr } = require('../lang/mod');
+const RIGHT = 'can_restrict_members';
 
 module.exports = {
-    name: 'ban',
-    aliases: ['block'],
-    description: 'Ban a user from the group',
-    category: 'Moderation',
-    usage: '/ban',
-    adminOnly: true,
-
+    name: 'ban', aliases: [], description: 'Ban a member from the group', category: 'Moderation',
+    usage: '/ban (reply) [reason]', adminOnly: true,
     handler: async (ctx) => {
-        if (!ctx.isGroup) return ctx.replyHTML(ctx.t('groups_only', {}));
-        if (!await ctx.isAdmin()) return ctx.replyHTML(ctx.t('admin_only', {}));
-
-        const reply = ctx.message?.reply_to_message;
-        const target = reply?.from;
-        if (!target) return ctx.replyHTML(`💡 Reply to someone\'s message to ban them.`);
-
-        const reason = ctx.args.join(' ') || 'No reason given';
-        const result = await tgApi(ctx.bridge.token, 'banChatMember', { chat_id: ctx.chatId, user_id: target.id });
-
-        const name = escapeHTML(target.first_name || target.username || 'User');
-        if (!result.ok) return ctx.replyHTML(ctx.t('ban_failed', {}));
-
-        await ctx.replyHTML(
-            `${ctx.t('ban_success', { name })}
-` +
-            `📝 ${escapeHTML(reason)}
-
-🦅 ARCHON CG-223`
-        );
-    }
+        const t = tr(ctx);
+        if (!(await guard(ctx, t, RIGHT))) return;
+        const who = target(ctx);
+        if (!who) return ctx.replyHTML(t('need_target', { cmd: '/ban' }));
+        if (who.bot) return ctx.replyHTML(t('no_bots'));
+        const reason = ctx.args.slice(who.fromArg ? 1 : 0).join(' ') || t('no_reason');
+        const r = await api(ctx.bridge.token, 'banChatMember', { chat_id: ctx.chatId, user_id: who.id });
+        if (!r.ok) return ctx.replyHTML(fail(t, r, RIGHT));
+        logAction(ctx, 'ban', who.id, reason);
+        return ctx.replyHTML(t('banned', { who_html: link(who), reason, id: who.id }));
+    },
 };

@@ -31,7 +31,7 @@ module.exports = {
             if (!text) return ctx.replyHTML(`💡 Usage: <code>/rules set Your rules here...</code>`);
             db[key] = text;
             saveRules(db);
-            return ctx.replyHTML(`✅ Group rules updated!\n\n🦅 ARCHON CG-223`);
+            return ctx.replyHTML(`✅ Group rules updated!`);
         }
 
         if (ctx.args[0]?.toLowerCase() === 'clear') {
@@ -43,6 +43,6 @@ module.exports = {
 
         const rules = db[key];
         if (!rules) return ctx.replyHTML(`📋 No rules set yet.\n\nAdmins can set rules with:\n<code>/rules set Your rules here</code>`);
-        await ctx.replyHTML(`📋 <b>Group Rules</b>\n━━━━━━━━━━━━━━━━\n\n${escapeHTML(rules)}\n\n🦅 ARCHON CG-223`);
+        await ctx.replyHTML(`📋 <b>Group Rules</b>\n\n${escapeHTML(rules)}`);
     }
 };

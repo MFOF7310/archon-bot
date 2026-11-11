@@ -1,48 +1,23 @@
-const https = require('https');
-
-function escapeHTML(s) { return !s || typeof s !== 'string' ? '' : s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function tgApi(token, method, params) {
-    return new Promise((res) => {
-        const body = JSON.stringify(params);
-        const req = https.request(`https://api.telegram.org/bot${token}/${method}`,
-            { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }, timeout: 10000 },
-            (r) => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>{ try{res(JSON.parse(d));}catch{res({ok:false});} }); }
-        );
-        req.on('error',()=>res({ok:false})); req.write(body); req.end();
-    });
-}
+// /kick — removes a member; they can come back with an invite
+const { api, target, guard, fail, logAction, link } = require('../mod');
+const { tr } = require('../lang/mod');
+const RIGHT = 'can_restrict_members';
 
 module.exports = {
-    name: 'kick',
-    aliases: ['remove'],
-    description: 'Kick a user from the group',
-    category: 'Moderation',
-    usage: '/kick',
-    adminOnly: true,
-
+    name: 'kick', aliases: ['remove'], description: 'Remove a member (they can rejoin)', category: 'Moderation',
+    usage: '/kick (reply) [reason]', adminOnly: true,
     handler: async (ctx) => {
-        if (!ctx.isGroup) return ctx.replyHTML(ctx.t('groups_only', {}));
-        if (!await ctx.isAdmin()) return ctx.replyHTML(ctx.t('admin_only', {}));
-
-        const reply = ctx.message?.reply_to_message;
-        const target = reply?.from;
-        if (!target) return ctx.replyHTML(ctx.t('kick_no_reply', {}));
-        if (target.is_bot) return ctx.replyHTML(`🤖 Can\'t kick bots this way!`);
-
-        const reason = ctx.args.join(' ') || 'No reason given';
-        const ban = await tgApi(ctx.bridge.token, 'banChatMember', { chat_id: ctx.chatId, user_id: target.id });
-        if (!ban.ok) return ctx.replyHTML(ctx.t('kick_failed', {}));
-
-        await tgApi(ctx.bridge.token, 'unbanChatMember', { chat_id: ctx.chatId, user_id: target.id, only_if_banned: true });
-
-        const name = escapeHTML(target.first_name || target.username || 'User');
-        await ctx.replyHTML(
-            `${ctx.t('kick_success', { name })}
-` +
-            `📝 ${escapeHTML(reason)}
-
-🦅 ARCHON CG-223`
-        );
-    }
+        const t = tr(ctx);
+        if (!(await guard(ctx, t, RIGHT))) return;
+        const who = target(ctx);
+        if (!who) return ctx.replyHTML(t('need_target', { cmd: '/kick' }));
+        if (who.bot) return ctx.replyHTML(t('no_bots'));
+        const reason = ctx.args.slice(who.fromArg ? 1 : 0).join(' ') || t('no_reason');
+        const tok = ctx.bridge.token;
+        const r = await api(tok, 'banChatMember', { chat_id: ctx.chatId, user_id: who.id, until_date: Math.floor(Date.now() / 1000) + 40 });
+        if (!r.ok) return ctx.replyHTML(fail(t, r, RIGHT));
+        await api(tok, 'unbanChatMember', { chat_id: ctx.chatId, user_id: who.id, only_if_banned: true });
+        logAction(ctx, 'kick', who.id, reason);
+        return ctx.replyHTML(t('kicked', { who_html: link(who), reason }));
+    },
 };

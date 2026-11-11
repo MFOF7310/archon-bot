@@ -26,12 +26,12 @@ module.exports = {
         if (arg === 'on') {
             db[key] = true;
             save(db);
-            return ctx.replyHTML(`🔒 <b>Antilink ON</b>\n\nI\'ll delete any links posted by non-admins.\n\n🦅 ARCHON CG-223`);
+            return ctx.replyHTML(`🔒 <b>Antilink ON</b>\n\nI\'ll delete any links posted by non-admins.`);
         }
         if (arg === 'off') {
             db[key] = false;
             save(db);
-            return ctx.replyHTML(`🔓 <b>Antilink OFF</b>\n\nLinks are allowed again.\n\n🦅 ARCHON CG-223`);
+            return ctx.replyHTML(`🔓 <b>Antilink OFF</b>\n\nLinks are allowed again.`);
         }
 
         const status = db[key] ? '🔒 ON' : '🔓 OFF';

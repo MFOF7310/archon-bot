@@ -181,7 +181,7 @@ module.exports = {
 
 I'll greet new members${settings.welcome_channel_id ? ' in the configured channel' : ' here'}.
 
-🦅 ARCHON CG-223`);
+`);
         }
 
         // ── OFF ──
@@ -189,7 +189,7 @@ I'll greet new members${settings.welcome_channel_id ? ' in the configured channe
             saveSettings(db, chatId, { welcome_enabled: 0 });
             return ctx.replyHTML(`🔴 <b>Welcome messages OFF.</b>
 
-🦅 ARCHON CG-223`);
+`);
         }
 
         // ── SET TEXT ──
@@ -208,7 +208,7 @@ I'll greet new members${settings.welcome_channel_id ? ' in the configured channe
 <b>Preview:</b>
 ${text.replace(/{name}/g, 'Friend').replace(/{group}/g, ctx.message?.chat?.title || 'Group')}
 
-🦅 ARCHON CG-223`);
+`);
         }
 
         // ── SET GOODBYE TEXT ──
@@ -218,7 +218,7 @@ ${text.replace(/{name}/g, 'Friend').replace(/{group}/g, ctx.message?.chat?.title
                 saveSettings(db, chatId, { goodbye_enabled: 1 });
                 return ctx.replyHTML(`✅ <b>Goodbye messages ON!</b>
 
-🦅 ARCHON CG-223`);
+`);
             }
             if (sub === 'off') {
                 saveSettings(db, chatId, { goodbye_enabled: 0 });
@@ -232,7 +232,7 @@ ${text.replace(/{name}/g, 'Friend').replace(/{group}/g, ctx.message?.chat?.title
 <b>Preview:</b>
 ${text.replace(/{name}/g, 'Friend')}
 
-🦅 ARCHON CG-223`);
+`);
         }
 
         // ── SET CHANNEL ──
@@ -251,7 +251,7 @@ ${text.replace(/{name}/g, 'Friend')}
             console.log('[SETCHANNEL] sending...');
             const tgBody = {
                 chat_id: ctx.chatId,
-                text: '📌 Welcome channel set!\n\nNew members will be greeted in ' + (threadId ? 'this topic' : chatTitle) + ' 🎉\n\n🦅 ARCHON CG-223',
+                text: '📌 Welcome channel set!\n\nNew members will be greeted in ' + (threadId ? 'this topic' : chatTitle) + ' 🎉',
                 parse_mode: 'HTML'
             };
             if (threadId) tgBody.message_thread_id = parseInt(threadId);
@@ -277,7 +277,7 @@ ${text.replace(/{name}/g, 'Friend')}
 
 Goodbye messages will be sent here.
 
-🦅 ARCHON CG-223`);
+`);
         }
 
         // ── SET GIF ──
@@ -300,7 +300,7 @@ Goodbye messages will be sent here.
 
 I'll send this GIF when new members join.
 
-🦅 ARCHON CG-223`);
+`);
         }
 
         // ── SET GOODBYE GIF ──
@@ -311,7 +311,7 @@ I'll send this GIF when new members join.
             saveSettings(db, chatId, { goodbye_gif_id: gif.file_id });
             return ctx.replyHTML(`✅ <b>Goodbye GIF set!</b>
 
-🦅 ARCHON CG-223`);
+`);
         }
 
         // ── CLEAR GIF ──
@@ -335,7 +335,6 @@ I'll send this GIF when new members join.
         const s = settings;
         await ctx.replyHTML(
             `👋 <b>Welcome & Goodbye Settings</b>
-━━━━━━━━━━━━━━━━
 
 ` +
             `<b>Welcome:</b> ${s.welcome_enabled ? '🟢 ON' : '🔴 OFF'}
@@ -352,8 +351,7 @@ I'll send this GIF when new members join.
             `<b>Goodbye GIF:</b> ${s.goodbye_gif_id ? '✅ Set' : '❌ None'}
 
 ` +
-            `━━━━━━━━━━━━━━━━
-` +
+            `` +
             `<code>/welcome on/off</code> — Toggle
 ` +
             `<code>/welcome set {name} welcome!</code> — Custom text
@@ -371,7 +369,7 @@ I'll send this GIF when new members join.
             `<code>/welcome test</code> — Preview
 
 ` +
-            `🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`
+            ``
         );
     }
 };

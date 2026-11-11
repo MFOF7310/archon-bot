@@ -1,43 +1,22 @@
-const https = require('https');
-function escapeHTML(t) { return !t || typeof t !== 'string' ? '' : t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-function tgApi(token, method, params) {
-    return new Promise((res) => {
-        const body = JSON.stringify(params);
-        const req = https.request(`https://api.telegram.org/bot${token}/${method}`,
-            { method: 'POST', headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) }, timeout: 10000 },
-            (r) => { let d=''; r.on('data',c=>d+=c); r.on('end',()=>{ try{res(JSON.parse(d));}catch{res({ok:false});} }); }
-        );
-        req.on('error',()=>res({ok:false})); req.write(body); req.end();
-    });
-}
+// /demote (reply) — takes admin away. Telegram only lets the bot demote admins it promoted itself.
+const { api, target, guard, fail, logAction, link } = require('../mod');
+const { tr } = require('../lang/mod');
+const RIGHT = 'can_promote_members';
+const ALL = ['can_manage_chat', 'can_delete_messages', 'can_restrict_members', 'can_pin_messages', 'can_invite_users',
+    'can_manage_video_chats', 'can_change_info', 'can_promote_members', 'can_post_stories', 'can_edit_stories', 'can_delete_stories', 'can_manage_topics'];
 
 module.exports = {
-    name: 'demote',
-    aliases: ['removeadmin'],
-    description: 'Demote an admin to member',
-    category: 'Moderation',
-    usage: '/demote',
-    adminOnly: true,
-
+    name: 'demote', aliases: ['removeadmin'], description: 'Remove admin from a member', category: 'Moderation',
+    usage: '/demote (reply)', adminOnly: true,
     handler: async (ctx) => {
-        if (!ctx.isGroup) return ctx.replyHTML(`⚠️ Groups only!`);
-        if (!await ctx.isAdmin()) return ctx.replyHTML(`⛔ Admins only.`);
-
-        const reply = ctx.message?.reply_to_message;
-        if (!reply) return ctx.replyHTML(`💡 Reply to an admin\'s message and use /demote.`);
-        const target = reply.from;
-
-        const result = await tgApi(ctx.bridge.token, 'promoteChatMember', {
-            chat_id: ctx.chatId,
-            user_id: target.id,
-            can_manage_chat: false,
-            can_delete_messages: false,
-            can_restrict_members: false,
-            can_pin_messages: false,
-        });
-
-        if (!result.ok) return ctx.replyHTML(`❌ Couldn\'t demote — check my permissions!`);
-        await ctx.replyHTML(`🔽 <b>${escapeHTML(target.first_name)}</b> has been demoted.\n\n🦅 ARCHON CG-223`);
-    }
+        const t = tr(ctx);
+        if (!(await guard(ctx, t, RIGHT))) return;
+        const who = target(ctx);
+        if (!who) return ctx.replyHTML(t('need_target', { cmd: '/demote' }));
+        if (String(who.id) === String(ctx.userId)) return ctx.replyHTML(t('target_admin'));
+        const r = await api(ctx.bridge.token, 'promoteChatMember', { chat_id: ctx.chatId, user_id: who.id, ...Object.fromEntries(ALL.map((k) => [k, false])) });
+        if (!r.ok) return ctx.replyHTML(fail(t, r, RIGHT));
+        logAction(ctx, 'demote', who.id);
+        return ctx.replyHTML(t('demoted', { who_html: link(who) }));
+    },
 };

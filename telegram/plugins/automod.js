@@ -285,7 +285,7 @@ module.exports = {
         if (!sub) {
             const s = getSettings(db, chatId);
             return ctx.replyHTML(
-                `🛡️ <b>AutoMod Settings</b>\n━━━━━━━━━━━━━━━━\n\n` +
+                `🛡️ <b>AutoMod Settings</b>\n\n` +
                 `🔗 Antilink: ${s.antilink_enabled ? '🟢 ON' : '🔴 OFF'}\n` +
                 `⚡ Antiflood: ${s.antiflood_enabled ? `🟢 ON (${s.antiflood_limit||5} msgs/10s)` : '🔴 OFF'}\n` +
                 `🤖 Anti-bot: ${s.anti_bot_enabled ? '🟢 ON' : '🔴 OFF'}\n` +
@@ -297,7 +297,7 @@ module.exports = {
                 `<code>/automod antibot on|off</code>\n` +
                 `<code>/automod verify on|off</code>\n` +
                 `<code>/automod warnings 3</code>\n\n` +
-                `🦅 ARCHON CG-223`
+                ``
             );
         }
 
@@ -310,7 +310,7 @@ module.exports = {
         else if (sub === 'verify' || sub === 'verification') updates.verification_enabled = toggle;
         else if (sub === 'warnings' && val && !isNaN(val)) {
             db.prepare('INSERT OR REPLACE INTO group_settings (chat_id, max_warnings) VALUES (?,?) ON CONFLICT(chat_id) DO UPDATE SET max_warnings=?').run(chatId, parseInt(val), parseInt(val));
-            return ctx.replyHTML(`⚠️ Max warnings set to <b>${val}</b>\n\n🦅 ARCHON CG-223`);
+            return ctx.replyHTML(`⚠️ Max warnings set to <b>${val}</b>`);
         }
 
         if (Object.keys(updates).length && toggle !== null) {
@@ -323,7 +323,7 @@ module.exports = {
                 db.prepare(`INSERT INTO group_settings (chat_id, ${key}) VALUES (?,?)`).run(chatId, toggle);
             }
             const status = toggle ? '🟢 ON' : '🔴 OFF';
-            return ctx.replyHTML(`✅ <b>${sub}</b> is now ${status}\n\n🦅 ARCHON CG-223`);
+            return ctx.replyHTML(`✅ <b>${sub}</b> is now ${status}`);
         }
 
         return ctx.replyHTML(`💡 Usage: <code>/automod antilink on</code>`);

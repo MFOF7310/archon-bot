@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════
 
 function escapeHTML(t) { return !t || typeof t !== 'string' ? '' : t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-const ACTION_EMOJI = { warn: '⚠️', kick: '👢', ban: '🚫', mute: '🔇', unmute: '🔊' };
+const ACTION_EMOJI = { warn: '⚠️', kick: '👢', ban: '🔨', unban: '✅', mute: '🔇', unmute: '🔊', promote: '⭐', demote: '🔽' };
 
 module.exports = {
     name: 'modlogs',
@@ -26,7 +26,7 @@ module.exports = {
 
         if (logs.length === 0) return ctx.replyHTML(`📋 No mod actions in this chat yet.`);
 
-        let msg = `📋 <b>RECENT MOD ACTIONS</b>\n━━━━━━━━━━━━━━━━━━━━\n\n`;
+        let msg = `📋 <b>Recent mod actions</b>\n\n`;
         logs.forEach(log => {
             const emoji = ACTION_EMOJI[log.action] || '📝';
             const date = new Date(log.timestamp * 1000).toLocaleDateString();

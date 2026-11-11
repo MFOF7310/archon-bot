@@ -28,7 +28,7 @@ module.exports = {
         // LIST
         if (cmd === 'filters') {
             const keys = [`c:${ctx.chatId}`, `g:${ctx.chatId}`, `pm`];
-            let msg = `🤖 <b>Active Filters</b>\n━━━━━━━━━━━━━━━━\n\n`;
+            let msg = `🤖 <b>Active Filters</b>\n\n`;
             let found = false;
             for (const k of keys) {
                 if (!db[k] || !Object.keys(db[k]).length) continue;
@@ -66,14 +66,14 @@ module.exports = {
 
         if (!keyword || !response) {
             return ctx.replyHTML(
-                `🤖 <b>Auto-Reply Filter</b>\n━━━━━━━━━━━━━━━━\n\n` +
+                `🤖 <b>Auto-Reply Filter</b>\n\n` +
                 `<code>/filter &lt;keyword&gt; &lt;response&gt;</code> — This chat only\n` +
                 `<code>/gfilter &lt;keyword&gt; &lt;response&gt;</code> — All groups\n` +
                 `<code>/pfilter &lt;keyword&gt; &lt;response&gt;</code> — Private chats\n` +
                 `<code>/stop &lt;keyword&gt;</code> — Remove filter\n` +
                 `<code>/filters</code> — List all\n\n` +
                 `💡 Example:\n<code>/filter website Check bamako-steel-dev.xyz!</code>\n\n` +
-                `🦅 ARCHON CG-223`
+                ``
             );
         }
 
@@ -88,7 +88,7 @@ module.exports = {
             `🔑 Keyword: <code>${escapeHTML(keyword)}</code>\n` +
             `💬 Response: ${escapeHTML(response.substring(0, 80))}${response.length > 80 ? '...' : ''}\n` +
             `📍 Scope: ${scopeLabel}\n\n` +
-            `🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`
+            ``
         );
     },
 

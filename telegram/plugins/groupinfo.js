@@ -33,7 +33,7 @@ module.exports = {
 
         const msg = [
             `🏠 <b>Group Info</b>`,
-            `━━━━━━━━━━━━━━━━`,
+            ``,
             `📛 <b>Name:</b> ${escapeHTML(g.title)}`,
             g.username ? `🔗 <b>Username:</b> @${g.username}` : '',
             `🆔 <b>ID:</b> <code>${ctx.chatId}</code>`,
@@ -41,7 +41,7 @@ module.exports = {
             g.description ? `📝 <b>Description:</b> ${escapeHTML(g.description.substring(0,100))}` : '',
             g.invite_link ? `🔗 <b>Invite:</b> ${g.invite_link}` : '',
             ``,
-            `🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`
+            ``
         ].filter(Boolean).join('\n');
 
         await ctx.replyHTML(msg);

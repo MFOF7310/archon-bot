@@ -35,7 +35,7 @@ function resetTimer(chatId, bridge) {
     panel.timer = setTimeout(() => {
         tgApi(bridge.token, 'editMessageText', {
             chat_id: chatId, message_id: panel.msgId,
-            text: '💤 Settings panel closed — no activity for 2 minutes.\n\nType /settings to reopen anytime! 😊\n\n🦅 ARCHON CG-223',
+            text: '💤 Settings panel closed — no activity for 2 minutes.\n\nType /settings to reopen anytime! 😊',
             parse_mode: 'HTML'
         }).catch(() => {});
         setTimeout(() => clearPanel(chatId, bridge), 5000);
@@ -88,7 +88,7 @@ function buildMainPanel(s, groupName, chatId) {
     const text =
         '⚙️ <b>Group Settings</b>\n' +
         '📍 <b>' + escapeHTML(groupName) + '</b>\n' +
-        '━━━━━━━━━━━━━━━━\n\n' +
+        '\n' +
         'Here\'s what I\'m managing right now 👇\n\n' +
         w + ' <b>Welcome</b>  ' + gif + ' ' + channel + '\n' +
         gb + ' <b>Goodbye</b>\n' +
@@ -98,7 +98,7 @@ function buildMainPanel(s, groupName, chatId) {
         '🤖 <b>Auto-Reply</b>  ' + (filters > 0 ? filters + ' active' : 'none') + '\n\n' +
         '💡 Tap anything to toggle or configure\n' +
         '⏱ Closes after 2min inactivity\n\n' +
-        '🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱';
+        '';
 
     const keyboard = {
         inline_keyboard: [
@@ -153,7 +153,7 @@ module.exports = {
         const timer = setTimeout(() => {
             tgApi(ctx.bridge.token, 'editMessageText', {
                 chat_id: ctx.chatId, message_id: msgId,
-                text: '💤 Settings panel closed — no activity for 2 minutes.\n\nType /settings anytime to reopen! 😊\n\n🦅 ARCHON CG-223',
+                text: '💤 Settings panel closed — no activity for 2 minutes.\n\nType /settings anytime to reopen! 😊',
                 parse_mode: 'HTML'
             }).catch(() => {});
             setTimeout(() => {
@@ -186,7 +186,7 @@ module.exports = {
         if (data === 'gs_close') {
             await tgApi(bridge.token, 'editMessageText', {
                 chat_id: chatId, message_id: msgId,
-                text: '✅ Settings closed!\n\nType /settings anytime 😊\n\n🦅 ARCHON CG-223',
+                text: '✅ Settings closed!\n\nType /settings anytime 😊',
                 parse_mode: 'HTML'
             });
             setTimeout(() => {
@@ -282,29 +282,29 @@ module.exports = {
         }
 
         if (data === 'gs_rules') {
-            const msg = '📋 <b>Group Rules</b>\n━━━━━━━━━━━━━━━━\n\n' +
+            const msg = '📋 <b>Group Rules</b>\n\n' +
                 (s.rules_text ? '<b>Current:</b>\n\n' + escapeHTML(s.rules_text) + '\n\n💡 Update: /rules set New rules here' : 'No rules set yet!\n\n💡 Add them:\n/rules set Be respectful!\nNo spam!\n\nMembers can type /rules to see them 😊') +
-                '\n\n🦅 ARCHON CG-223';
+                '';
             await bridge.editMessage(chatId, msgId, msg, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [backRow] } });
             return;
         }
 
         if (data === 'gs_admins') {
-            const msg = '👮 <b>Admin Toolkit</b>\n━━━━━━━━━━━━━━━━\n\n/kick — Remove someone\n/ban — Ban someone\n/unban — Let someone back\n/mute — Silence a member\n/warn — Warning (3 = ban)\n/pin — Pin a message\n/promote — Make admin\n/demote — Remove admin\n/admins — List all admins\n/tagall — Mention everyone\n\n🦅 ARCHON CG-223';
+            const msg = '👮 <b>Admin Toolkit</b>\n\n/kick — Remove someone\n/ban — Ban someone\n/unban — Let someone back\n/mute — Silence a member\n/warn — Give a warning\n/pin — Pin a message\n/promote — Make admin\n/demote — Remove admin\n/admins — List all admins\n/tagall — Notify the admins';
             await bridge.editMessage(chatId, msgId, msg, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [backRow] } });
             return;
         }
 
         if (data === 'gs_autoreply') {
             const fc = getFilterCount(chatId);
-            const msg = '🤖 <b>Auto-Reply</b> — ' + fc + ' active filter' + (fc !== 1 ? 's' : '') + '\n━━━━━━━━━━━━━━━━\n\nWhen someone says a keyword, I reply automatically!\n\n/filter website Check our site!\n↳ Replies when someone says "website"\n\n/filters — See all active\n/stop keyword — Remove filter\n\n🦅 ARCHON CG-223';
+            const msg = '🤖 <b>Auto-Reply</b> — ' + fc + ' active filter' + (fc !== 1 ? 's' : '') + '\n\nWhen someone says a keyword, I reply automatically!\n\n/filter website Check our site!\n↳ Replies when someone says "website"\n\n/filters — See all active\n/stop keyword — Remove filter';
             await bridge.editMessage(chatId, msgId, msg, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [backRow] } });
             return;
         }
 
         if (data === 'gs_stats') {
             const fc = getFilterCount(chatId);
-            const msg = '📊 <b>Full Overview</b>\n📍 <b>' + escapeHTML(gName) + '</b>\n━━━━━━━━━━━━━━━━\n\n' +
+            const msg = '📊 <b>Full Overview</b>\n📍 <b>' + escapeHTML(gName) + '</b>\n\n' +
                 '👋 Welcome: ' + (s.welcome_enabled ? 'ON 🟢' : 'OFF 🔴') + '\n' +
                 '• GIF: ' + (s.welcome_gif_id ? '🎬 Set' : 'None') + '\n' +
                 '• Channel: ' + (s.welcome_thread_id ? 'Topic #' + s.welcome_thread_id : 'Default') + '\n\n' +
@@ -313,7 +313,7 @@ module.exports = {
                 '⚡ Antiflood: ' + (s.antiflood_enabled ? 'ON 🟢 (' + (s.antiflood_limit||5) + ' msgs/10s)' : 'OFF 🔴') + '\n' +
                 '📋 Rules: ' + (s.rules_text ? 'Set ✅' : 'Not set') + '\n' +
                 '🤖 Filters: ' + fc + ' active\n\n' +
-                '🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱';
+                '';
             await bridge.editMessage(chatId, msgId, msg, { parse_mode: 'HTML', reply_markup: { inline_keyboard: [backRow] } });
             return;
         }
