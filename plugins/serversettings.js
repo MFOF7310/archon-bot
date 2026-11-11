@@ -408,7 +408,7 @@ async execute(interaction, client) {
                 invalidNumber: em('ic_off', em('ic_off', '❌')) + ' Nombre invalide. Utilisez une valeur entre 0.5 et 5.0',
                 invalidPrefix: em('ic_off', em('ic_off', '❌')) + ' Le préfixe doit faire entre 1 et 5 caractères.',
                 settingNotFound: em('ic_off', em('ic_off', '❌')) + ' Paramètre inconnu.',
-                viewAll: `💡 Tapez ${mentions(client, 'serversettings', 'view')} pour voir tous les paramètres.\n💬 Utilisez \`default\` comme valeur pour réinitialiser les messages au défaut système.`
+                viewAll: `${em('hint', '💡')} Tapez ${mentions(client, 'serversettings', 'view')} pour voir tous les paramètres.\n${em('note', '💬')} Utilisez \`default\` comme valeur pour réinitialiser les messages au défaut système.`
             },
             en: {
                 success: em('ic_ok', '✅') + ' Setting Updated',
@@ -419,7 +419,7 @@ async execute(interaction, client) {
                 invalidNumber: em('ic_off', em('ic_off', '❌')) + ' Invalid number. Use a value between 0.5 and 5.0',
                 invalidPrefix: em('ic_off', em('ic_off', '❌')) + ' Prefix must be 1-5 characters.',
                 settingNotFound: em('ic_off', em('ic_off', '❌')) + ' Unknown setting.',
-                viewAll: `💡 Type ${mentions(client, 'serversettings', 'view')} to see all settings.\n💬 Use \`default\` as value to reset messages to system default.`
+                viewAll: `${em('hint', '💡')} Type ${mentions(client, 'serversettings', 'view')} to see all settings.\n${em('note', '💬')} Use \`default\` as value to reset messages to system default.`
             }
         }[lang];
 
