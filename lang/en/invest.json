@@ -1,0 +1,20 @@
+{
+  "title": "Your investments",
+  "rule": "{step} % every 6 hours, up to +{cap} % after 24 hours. Up to 10,000 credits placed at once.",
+  "ago": "placed {h} h ago",
+  "full": "at the top",
+  "more": "…and {n} more",
+  "now": "A withdrawal now pays **{back}** 🪙 (+{profit})",
+  "bal": "Balance {bal} · room for {room} more",
+  "empty": "Nothing placed yet. Tap **Place** to start.",
+  "b_claim": "Withdraw",
+  "b_add": "Place",
+  "min": "The minimum is {min} credits.",
+  "max": "You can have at most {max} credits placed. Room left: {room}.",
+  "poor": "You only have {bal} credits.",
+  "placed": "{amount} credits placed.",
+  "nothing": "Nothing to withdraw yet.",
+  "claimed": "{back} credits back in your balance (+{profit}).",
+  "form_title": "Place credits",
+  "form_label": "How many? (up to {room})"
+}

@@ -3773,6 +3773,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isButton() && interaction.customId.startsWith('mylang:')) {
         return require('./plugins/mylang.js').handleComponent(interaction, client).catch(e => console.error('[MYLANG] component:', e.message));
     }
+    if ((interaction.isButton() || interaction.isModalSubmit()) && interaction.customId.startsWith('inv:')) {
+        return require('./plugins/invest.js').handleComponent(interaction, client).catch(e => console.error('[INVEST] component:', e.message));
+    }
     if ((interaction.isButton() || interaction.isStringSelectMenu()) && (interaction.customId.startsWith('meta:') || interaction.customId === 'meta_reroll')) {
         return require('./plugins/meta.js').handleComponent(interaction, client).catch(e => console.error('[META] component:', e.message));
     }

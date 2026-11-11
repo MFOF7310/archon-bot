@@ -1,0 +1,20 @@
+{
+  "title": "Tes placements",
+  "rule": "{step} % toutes les 6 heures, jusqu'à +{cap} % après 24 heures. Jusqu'à 10 000 crédits placés en même temps.",
+  "ago": "placé il y a {h} h",
+  "full": "au maximum",
+  "more": "…et {n} de plus",
+  "now": "Un retrait maintenant rapporte **{back}** 🪙 (+{profit})",
+  "bal": "Solde {bal} · encore {room} plaçables",
+  "empty": "Rien de placé pour l'instant. Appuie sur **Placer** pour commencer.",
+  "b_claim": "Retirer",
+  "b_add": "Placer",
+  "min": "Le minimum est de {min} crédits.",
+  "max": "Tu peux placer au plus {max} crédits. Il te reste {room}.",
+  "poor": "Tu n'as que {bal} crédits.",
+  "placed": "{amount} crédits placés.",
+  "nothing": "Rien à retirer pour l'instant.",
+  "claimed": "{back} crédits reviennent sur ton solde (+{profit}).",
+  "form_title": "Placer des crédits",
+  "form_label": "Combien ? (jusqu'à {room})"
+}
