@@ -3737,6 +3737,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return require('./plugins/livestream').handleToggle(interaction, client).catch(e => console.error('[LIVESTREAM] toggle:', e.message));
     }
     // /meta card: class filter, weapon picker, random pick, back to the list (and the old cards' "reroll" button)
+    if (interaction.isButton() && interaction.customId.startsWith('mylang:')) {
+        return require('./plugins/mylang.js').handleComponent(interaction, client).catch(e => console.error('[MYLANG] component:', e.message));
+    }
     if ((interaction.isButton() || interaction.isStringSelectMenu()) && (interaction.customId.startsWith('meta:') || interaction.customId === 'meta_reroll')) {
         return require('./plugins/meta.js').handleComponent(interaction, client).catch(e => console.error('[META] component:', e.message));
     }

@@ -11,5 +11,12 @@
   "serverAutoNone": "Ce serveur est en **Auto** : je suis la langue du serveur, ou la tienne dès que tu en choisis une.",
   "serverSame": "Ce serveur est aussi en **{lang}**.",
   "dm": "En message privé, ton choix s'applique toujours.",
-  "dmNone": "En message privé, je suis la langue de ton application Discord tant que tu n'en choisis pas."
+  "dmNone": "En message privé, je suis la langue de ton application Discord tant que tu n'en choisis pas.",
+  "doneSet": "C'est fait, ARCHON te répond maintenant en **{name}**.",
+  "doneReset": "C'est fait, tu es revenu en Auto.",
+  "lockedHere": "Un admin a réglé ce serveur en **{lang}** pour tout le monde, donc ici je parle {lang}. Pour choisir la langue de nos messages privés, utilise /mylang dans mes DM.",
+  "scopeServer": "Ton choix ne vaut que sur ce serveur. Les autres serveurs et les messages privés gardent le leur.",
+  "scopeDm": "Ton choix ne vaut que pour nos messages privés. Chaque serveur garde le sien.",
+  "tapHint": "Appuie sur une langue pour changer.",
+  "autoBtn": "Auto"
 }
