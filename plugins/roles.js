@@ -93,7 +93,7 @@ async function applyOne(client, guild, actor, key, roleId, lang, via) {
 // Prefix and slash share one entry point for set/remove
 function slotFromType(type) {
     const k = String(type || '').toLowerCase().replace(/[^a-z]/g, '');
-    const legacy = { muterole: 'mute', staffrole: 'staff', ticketstaff: 'staff', auto: 'autorole', joinrole: 'autorole' };
+    const legacy = { staffrole: 'staff', ticketstaff: 'staff', auto: 'autorole', joinrole: 'autorole' };
     return R.BY_KEY[k] ? k : legacy[k] || null;
 }
 

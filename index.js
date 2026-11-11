@@ -3171,7 +3171,10 @@ if (message.content && message.content.length > 4000) {
 
     // Leveling turned off on the dashboard: no XP and no level-up messages (it used to block only the commands)
     const levelingOn = !message.guild || serverSettings.leveling_enabled !== 0;
-    if (levelingOn && now - (userData.last_xp_gain || 0) > cooldown) {
+    const xpTick = levelingOn && now - (userData.last_xp_gain || 0) > cooldown;
+    // Every message counts for the profile, not only the ones that earn XP (once a minute at most)
+    if (!xpTick && message.guild && userData) queueUserUpdate(userId, guildId, { username: message.author.username, total_messages: (userData.total_messages || 0) + 1 });
+    if (xpTick) {
         const minGain = serverSettings.xpMinGain || 15;
         const maxGain = serverSettings.xpMaxGain || 35;
         const multiplier = parseFloat(serverSettings.xpMultiplier) || 1.0;

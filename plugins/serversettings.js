@@ -308,15 +308,13 @@ async execute(interaction, client) {
                     { text: `**${tr('afk')}** — ${bS(settings.afkEnabled)}`, isSet: settings.afkEnabled == 1 },
                     { text: `**${tr('ai')}** — ${bS(settings.aiEnabled)}`, isSet: settings.aiEnabled == 1 },
                     { text: `**${tr('log_channel')}** — ${chM(settings.logChannel, 'LOG_CHANNEL_ID')}`, isSet: !!settings.logChannel },
-                    { text: `**${tr('modlog_channel')}** — ${chM(settings.modLogChannel, 'MOD_LOG_CHANNEL_ID')}`, isSet: !!settings.modLogChannel },
-                    { text: `**${tr('mute_role')}** — ${roleM(settings.muteRoleId, 'MUTE_ROLE_ID')}`, isSet: !!settings.muteRoleId }
+                    { text: `**${tr('modlog_channel')}** — ${chM(settings.modLogChannel, 'MOD_LOG_CHANNEL_ID')}`, isSet: !!settings.modLogChannel }
                 ]
             },
             {
                 emoji: em('ic_role', '🎭'),
                 title: tr('cat_roles'),
                 lines: [
-                    { text: `**${tr('member_role')}** — ${roleM(settings.memberRole, 'MEMBER_ROLE')}`, isSet: !!settings.memberRole },
                     { text: `**${tr('auto_role')}** — ${roleM(settings.autoRoleId, 'AUTO_ROLE_ID')}`, isSet: !!settings.autoRoleId }
                 ]
             }
@@ -437,12 +435,9 @@ async execute(interaction, client) {
             modlog: { type: 'channel', col: 'modlog', name: lang === 'fr' ? 'Salon Logs Modération' : 'Mod Log Channel' },
             market: { type: 'channel', col: 'market', name: lang === 'fr' ? 'Salon du Marché' : 'Market Channel' },
             // Role settings
-            member: { type: 'role', col: 'member', name: lang === 'fr' ? 'Rôle Membre' : 'Member Role' },
-            muterole: { type: 'role', col: 'muterole', name: lang === 'fr' ? 'Rôle Muet' : 'Mute Role' },
             autorole: { type: 'role', col: 'autorole', name: lang === 'fr' ? 'Rôle Automatique' : 'Auto Role' },
             // Gaming & Economy Roles
             investorrole: { type: 'role', col: 'investorrole', name: lang === 'fr' ? 'Rôle Investisseur' : 'Investor Role' },
-            gamerrole: { type: 'role', col: 'gamerrole', name: lang === 'fr' ? 'Rôle Joueur' : 'Gamer Role' },
             quizmasterrole: { type: 'role', col: 'quizmasterrole', name: lang === 'fr' ? 'Rôle Quiz Master' : 'Quiz Master Role' },
             duelistrole: { type: 'role', col: 'duelistrole', name: lang === 'fr' ? 'Rôle Duelliste' : 'Duelist Role' },
             // Daily Streak Roles
