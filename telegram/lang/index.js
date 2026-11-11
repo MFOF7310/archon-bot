@@ -4,8 +4,9 @@ const en = require('./en');
 const fr = require('./fr');
 const bm = require('./bm');
 const zh = require('./zh');
+const ar = require('./ar');
 
-const LANGS = { en, fr, bm, zh };
+const LANGS = { en, fr, bm, zh, ar };
 
 // Map Telegram language codes to our lang files
 const LANG_MAP = {
@@ -13,6 +14,7 @@ const LANG_MAP = {
     'fr': 'fr', 'fr-FR': 'fr', 'fr-BE': 'fr',
     'zh': 'zh', 'zh-CN': 'zh', 'zh-TW': 'zh', 'zh-HK': 'zh',
     'bm': 'bm', 'bam': 'bm',
+    'ar': 'ar',
 };
 
 /**

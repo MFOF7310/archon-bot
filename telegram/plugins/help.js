@@ -1,56 +1,28 @@
-const { ButtonBuilder, mainMenu } = require('./_buttons');
-
-function escapeHTML(t) { return !t || typeof t !== 'string' ? '' : t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// /help — without a command: the same menu as /start. With a command: what it does and how to use it.
+const { m: M, langOf, startMenu, esc } = require('../lang/menu');
 
 module.exports = {
     name: 'help',
-    description: 'Full command guide with categories',
+    description: 'The menu, or the details of one command',
     category: 'System',
     usage: '/help [command]',
     aliases: ['h', 'cmd'], // 'menu' and 'commands' open the list (list.js)
 
     handler: async (ctx) => {
-        const args = ctx.args;
-        const bridge = ctx.bridge;
+        const lang = langOf(ctx.userId, ctx.message?.from?.language_code);
+        const asked = String(ctx.args[0] || '').replace(/^\//, '').toLowerCase();
 
-        // Specific command detail
-        if (args[0]) {
-            const cmd = bridge.getCommand(args[0].toLowerCase());
-            if (cmd) {
-                const aliases = cmd.aliases?.length ? `\nAliases: ${cmd.aliases.map(a => `/${a}`).join(', ')}` : '';
-                const msg =
-                    `📖 <b>/${cmd.name}</b>${aliases}\n━━━━━━━━━━━━━━━━\n\n` +
-                    `📋 ${escapeHTML(cmd.description)}\n` +
-                    `📂 Category: ${cmd.category}\n` +
-                    `📝 Usage: <code>${cmd.usage || `/${cmd.name}`}</code>\n` +
-                    `${cmd.ownerOnly ? '🔒 Owner Only\n' : ''}` +
-                    `${cmd.adminOnly ? '🛡️ Admin Only\n' : ''}`;
-                return ctx.replyHTML(msg);
-            }
-            return ctx.replyHTML(`❌ Unknown command: <code>/${escapeHTML(args[0])}</code>\n\nType /help to see all commands.`);
+        if (asked) {
+            const cmd = ctx.bridge.getCommand(asked);
+            if (!cmd) return ctx.replyHTML(M(lang, 'help_unknown', { cmd: esc(asked) }), { extra: { reply_markup: { inline_keyboard: [[{ text: M(lang, 'b_all'), callback_data: 'm:cmds' }]] } } });
+            const lines = [`<b>/${esc(cmd.name)}</b>`, esc(cmd.description || ''), '', `<code>${esc(cmd.usage || '/' + cmd.name)}</code>`];
+            if (cmd.aliases?.length) lines.push(`<i>${M(lang, 'help_also', { list: cmd.aliases.map((a) => '/' + esc(a)).join(' ') })}</i>`);
+            if (cmd.ownerOnly) lines.push(M(lang, 'help_owner'));
+            else if (cmd.adminOnly) lines.push(M(lang, 'help_admin'));
+            return ctx.replyHTML(lines.join('\n'));
         }
 
-        // Main help menu
-        const totalCmds = bridge.commands.size;
-        const msg =
-            `🦅 <b>ARCHON CG-223</b>\n` +
-            `📍 BAMAKO_223 🇲🇱\n━━━━━━━━━━━━━━━━\n\n` +
-            `Hey ${escapeHTML(ctx.username)}! 👋\n\n` +
-            `I'm your all-in-one bot with <b>${totalCmds} commands</b>.\n` +
-            `Tap a category below to explore:\n\n` +
-            `🤖 <b>AI</b> — Lydia smart assistant\n` +
-            `🎮 <b>Games</b> — Trivia, Word Guess, Dice\n` +
-            `💰 <b>Economy</b> — Credits, daily rewards\n` +
-            `🛡️ <b>Moderation</b> — Kick, ban, welcome\n` +
-            `🛠️ <b>Utility</b> — Weather, translate, ping\n` +
-            `🎬 <b>Media</b> — YouTube, IG, TW, Snap\n\n` +
-            `💡 <code>/help &lt;command&gt;</code> for details\n` +
-            `💡 <code>/list</code> for full command browser\n\n` +
-            `🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
-
-        await ctx.bridge.sendTo(ctx.chatId, msg, {
-            parse_mode: 'HTML',
-            extra: { reply_markup: mainMenu() }
-        });
-    }
+        const menu = startMenu(ctx.message?.from?.first_name || ctx.username, lang);
+        return ctx.bridge.sendTo(ctx.chatId, menu.text, { parse_mode: 'HTML', extra: { reply_markup: menu.markup } });
+    },
 };

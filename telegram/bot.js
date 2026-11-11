@@ -30,22 +30,14 @@ const levenshtein = (a, b) => { const m=[]; for(let i=0;i<=b.length;i++)m[i]=[i]
 //  SMOOTH UI — Edit in place
 // ═══════════════════════════════
 
-/** Build the welcome menu markup */
-function welcomeMarkup() {
-    return {
-        inline_keyboard: [
-            [{ text: '🤖 AI Assistant', callback_data: 'm:ai' }, { text: '🎮 Games', callback_data: 'm:games' }],
-            [{ text: '💰 Economy', callback_data: 'm:econ' }, { text: '🛠️ Utility', callback_data: 'm:util' }],
-            [{ text: '📋 All Commands', callback_data: 'm:cmds' }, { text: 'ℹ️ About', callback_data: 'm:about' }],
-        ]
-    };
-}
+const { m: M, langOf } = require('./lang/menu');
 
-/** Build submenu markup with back button */
-function subMarkup(buttons) {
-    const kb = [...buttons];
-    kb.push([{ text: '🔙 Back', callback_data: 'm:main' }]);
-    return { inline_keyboard: kb };
+/** The /start menu: six areas, then language and the full list */
+const welcomeMarkup = (lang = 'en') => require('./lang/menu').startMenu('', lang).markup;
+
+/** A page's buttons, with a way back to the menu */
+function subMarkup(buttons, lang = 'en') {
+    return { inline_keyboard: [...buttons, [{ text: M(lang, 'b_back'), callback_data: 'm:main' }]] };
 }
 
 /** Edit a message in place — smooth transition */
@@ -80,114 +72,16 @@ function answerCBQ(bridge, cbqId, text, showAlert = false, url = null) {
 //  WELCOME TEXT BUILDERS
 // ═══════════════════════════════
 
-function welcomeText(name) {
-    const h = new Date().getHours();
-    const greet = h>=5&&h<12?'Good Morning':h>=12&&h<17?'Good Afternoon':'Good Evening';
-    return `🦅 <b>ARCHON CG-223</b>
-━━━━━━━━━━━━━━━━━━━━━━
+const welcomeText = (name, lang = 'en') => require('./lang/menu').startMenu(name, lang).text;
 
-<b>${greet}, ${escapeHTML(name)}! 👋</b>
-
-Welcome to <b>Archon CG-223</b> — your multi-purpose command node serving <b>BAMAKO_223 🇲🇱</b> with digital sovereignty.
-
-━━━━━━━━━━━━━━━━━━━━━━
-  🤖 <b>AI Assistant</b> · Ask anything
-  🎮 <b>Games</b> · Trivia, Word Guess, Dice
-  💰 <b>Economy</b> · Credits, Daily, Shop
-  🛡️ <b>Moderation</b> · Mute, Purge, Welcome
-  🛠️ <b>Utility</b> · Weather, Crypto, Translate
-  📺 <b>Media</b> · Video Downloader
-  🔗 <b>Bridge</b> · Discord Sync
-━━━━━━━━━━━━━━━━━━━━━━
-
-💡 <i>Tap a button below, or type</i> <code>/help</code> <i>for all commands.</i>
-
-· @mfof7310 · BAMAKO_223 🇲🇱 ·`;
+// A menu page: title, one sentence, then the commands ("/cmd <arg> · what it does")
+function pageText(lang, key, extra = '') {
+    const lines = (M(lang, key + '_c') || []).map((l) => {
+        const [cmd, ...rest] = String(l).split(' · ');
+        return `<code>${escapeHTML(cmd)}</code> · ${escapeHTML(rest.join(' · '))}`;
+    });
+    return `<b>${M(lang, key + '_t')}</b>\n${M(lang, key + '_d')}\n\n${lines.join('\n')}${extra}`;
 }
-
-const PAGES = {
-    ai: `🤖 <b>AI ASSISTANT — LYDIA</b>
-━━━━━━━━━━━━━━━━━━━━━━
-
-Powered by <b>Gemini 2.0</b> via OpenRouter.
-
-<b>Commands:</b>
-  <code>/lydia &lt;msg&gt;</code> — Chat with me
-  <code>/lydia on</code> — Auto-reply mode
-  <code>/lydia off</code> — Disable auto-reply
-  <code>/lydia clear</code> — Reset memory
-  <code>/lydia status</code> — View status
-
-I remember 12 messages. Mention "archon", "bamako", or "cg223" for easter eggs!
-
-💡 <i>Just start typing in a group where I'm active!</i>`,
-
-    games: `🎮 <b>GAMES & FUN</b>
-━━━━━━━━━━━━━━━━━━━━━━
-
-<b>Commands:</b>
-  <code>/trivia</code> — Quiz with button answers 🎯
-  <code>/wordguess</code> — Hangman with letter keys 🔤
-  <code>/roll 6</code> — Roll dice 🎲
-  <code>/flip</code> — Coin flip 🪙
-  <code>/leaderboard</code> — Top players 🏆
-
-Earn XP, climb ranks, compete with friends!
-
-💡 <i>All games work in any chat — groups, channels, DMs!</i>`,
-
-    econ: `💰 <b>ECONOMY SYSTEM</b>
-━━━━━━━━━━━━━━━━━━━━━━
-
-Welcome to the <b>Bamako Economy</b>!
-
-<b>Commands:</b>
-  <code>/daily</code> — Claim daily reward
-  <code>/balance</code> — Your credits
-  <code>/rank</code> — Level & XP progress
-  <code>/profile</code> — Full stats
-  <code>/leaderboard</code> — Top players
-  <code>/invest</code> — Bamako Market
-  <code>/shop</code> — Browse items
-
-🔥 <b>Streaks:</b> 7d = +500 🪙 · 30d = +2000 🪙
-🏆 <b>Ranks:</b> 🌱Recruit → 👑Architect`,
-
-    util: `🛠️ <b>UTILITY TOOLS</b>
-━━━━━━━━━━━━━━━━━━━━━━
-
-<b>Commands:</b>
-  <code>/weather &lt;city&gt;</code> — Weather 🌤️
-  <code>/crypto &lt;coin&gt;</code> — Crypto prices 💎
-  <code>/translate &lt;text&gt; &lt;lang&gt;</code> — Translator 🌐
-  <code>/reminder &lt;time&gt; &lt;text&gt;</code> — Reminder ⏰
-  <code>/douyin &lt;url&gt;</code> — Video DL 🎬
-  <code>/joke</code> — Random joke 😂
-
-Also: <code>/id</code> · <code>/ping</code> · <code>/alive</code> · <code>/creator</code>`,
-
-    cmds: `📋 <b>ALL COMMANDS</b>
-━━━━━━━━━━━━━━━━━━━━━━`,
-
-    about: `🦅 <b>ABOUT ARCHON CG-223</b>
-━━━━━━━━━━━━━━━━━━━━━━
-
-<b>Architect:</b> Moussa Fofana
-<b>Telegram:</b> @mfof7310
-<b>Discord:</b> mfof7559
-<b>GitHub:</b> github.com/MFOF7310
-<b>Location:</b> Bamako, Mali 🇲🇱
-
-━━━━━━━━━━━━━━━━━━━━━━
-  <b>Node</b>     · BAMAKO_223 🇲🇱
-  <b>Version</b>  · ${bot_version}
-  <b>CPU</b>      · ${os.cpus()[0].model.split('@')[0].trim()}
-  <b>Cores</b>    · ${os.cpus().length}
-  <b>Uptime</b>   · {{UPTIME}}
-━━━━━━━━━━━━━━━━━━━━━━
-
-<i>"Digital Sovereignty · BAMAKO_223"</i>`,
-};
 
 // ═══════════════════════════════
 //  CALLBACK HANDLER — Smooth UI
@@ -230,74 +124,31 @@ async function handleCallback(update, bridge, client) {
     // Answer callback immediately to stop loading spinner
     answerCBQ(bridge, cbq.id);
 
+    // Language card: open it from the menu, or switch with one tap (the card is edited in place)
+    if (data.startsWith('lang:')) {
+        const sl = require('./plugins/setlang');
+        const code = data.split(':')[1];
+        let outcome = null;
+        if (code === 'auto' || sl.LANG_INFO[code]) { sl.setChoice(userId, code); outcome = code; }
+        const c = sl.card(userId, cbq.from?.language_code, outcome, true);
+        await editMsg(bridge, chatId, msgId, c.text, c.markup);
+        return;
+    }
+
     // /list category navigation
     if (data.startsWith('list_cat_') || data === 'list_main') {
-        // Answer callback first to stop loading spinner
-        await answerCBQ(bridge, cbq.id);
-        const ctx2 = buildContext(update, bridge, client);
-        if (!ctx2) return;
-        ctx2.args = data === 'list_main' ? [] : [data.replace('list_cat_', '')];
+        // The /list card changes in place, with the views list.js builds from the loaded commands
         try {
-            const listPlugin = require('./plugins/list.js');
-            // Edit existing message instead of sending new one
-            const cats = new Map();
-            const fs = require('fs');
-            const path = require('path');
-            const pluginsDir = path.join(__dirname, 'plugins');
-            const files = fs.readdirSync(pluginsDir).filter(f => f.endsWith('.js') && !f.startsWith('_') && f !== 'list.js');
-            for (const file of files) {
-                try {
-                    const p = require(path.join(pluginsDir, file));
-                    if (!p.name || p.hidden) continue;
-                    const cat = (p.category || 'General').toUpperCase();
-                    if (!cats.has(cat)) cats.set(cat, []);
-                    cats.get(cat).push(p);
-                } catch(e) {}
+            const L = require('./plugins/list.js');
+            const lang = langOf(userId, cbq.from?.language_code);
+            let view;
+            if (data === 'list_main') view = L.overview(bridge, lang);
+            else {
+                const found = L.areas(bridge).find(([cat]) => cat.toLowerCase() === data.replace('list_cat_', ''));
+                view = found ? L.area(bridge, lang, found[0], found[1]) : L.overview(bridge, lang);
             }
-            const CAT_EMOJI = { 'MEDIA': '🎬', 'SYSTEM': '⚙️', 'MODERATION': '🛡️', 'ECONOMY': '💰', 'GAMES': '🎮', 'UTILITY': '🛠️', 'AI': '🤖', 'GENERAL': '📋', 'MUSIC': '🎵' };
-
-            if (data === 'list_main') {
-                const totalCmds = [...cats.values()].reduce((s, c) => s + c.length, 0);
-                const msg = `🦅 <b>ARCHON CG-223</b>
-━━━━━━━━━━━━━━━━
-
-<b>${totalCmds} commands</b> across <b>${cats.size} categories</b>
-
-Tap a category:
-
-🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
-                const sorted = [...cats.entries()].sort((a,b) => b[1].length - a[1].length);
-                const rows = [];
-                for (let i = 0; i < sorted.length; i += 2) {
-                    const row = [];
-                    const [c1, cmds1] = sorted[i];
-                    row.push({ text: `${CAT_EMOJI[c1]||'📋'} ${c1} (${cmds1.length})`, callback_data: `list_cat_${c1.toLowerCase()}` });
-                    if (sorted[i+1]) { const [c2, cmds2] = sorted[i+1]; row.push({ text: `${CAT_EMOJI[c2]||'📋'} ${c2} (${cmds2.length})`, callback_data: `list_cat_${c2.toLowerCase()}` }); }
-                    rows.push(row);
-                }
-                await editMsg(bridge, chatId, msgId, msg, { inline_keyboard: rows });
-            } else {
-                const filter = data.replace('list_cat_', '');
-                const found = [...cats.entries()].find(([k]) => k.toLowerCase() === filter);
-                if (!found) return;
-                const [cat, cmds] = found;
-                const emoji = CAT_EMOJI[cat] || '📋';
-                let msg = `${emoji} <b>${cat}</b> (${cmds.length})
-━━━━━━━━━━━━━━━━
-
-`;
-                cmds.forEach(cmd => {
-                    const aliases = cmd.aliases?.length ? ` · ${cmd.aliases.slice(0,2).map(a => `/${a}`).join(' ')}` : '';
-                    msg += `<code>/${cmd.name}</code>${aliases}
-`;
-                    if (cmd.description) msg += `  <i>${cmd.description.substring(0,55)}</i>
-`;
-                });
-                msg += `
-🦅 ARCHON CG-223 • BAMAKO_223 🇲🇱`;
-                await editMsg(bridge, chatId, msgId, msg, { inline_keyboard: [[{ text: '← Back', callback_data: 'list_main' }]] });
-            }
-        } catch(e) { console.error('[LIST CB]', e.message); }
+            await editMsg(bridge, chatId, msgId, view.text, view.markup);
+        } catch (e) { console.error('[LIST CB]', e.message); }
         return;
     }
 
@@ -555,61 +406,49 @@ Tap a category:
     if (!data.startsWith('m:')) return;
 
     const page = data.split(':')[1];
+    const lang = langOf(userId, cbq.from?.language_code);
+    const b = (k, cmd) => ({ text: M(lang, k), callback_data: 'cmd:' + cmd });
 
     switch (page) {
         case 'main':
-            await editMsg(bridge, chatId, msgId, welcomeText(name), welcomeMarkup());
+            await editMsg(bridge, chatId, msgId, welcomeText(name, lang), welcomeMarkup(lang));
             break;
-
         case 'ai':
-            await editMsg(bridge, chatId, msgId, PAGES.ai, subMarkup([
-                [{ text: '💬 Ask Lydia AI', callback_data: 'cmd:lydia' }, { text: '🌐 Translate', callback_data: 'cmd:translate' }],
-            ]));
+            await editMsg(bridge, chatId, msgId, pageText(lang, 'ai'), subMarkup([[b('b_ask', 'lydia'), b('b_tr', 'translate')]], lang));
             break;
-
+        case 'dl':
+            await editMsg(bridge, chatId, msgId, pageText(lang, 'dl'), subMarkup([[b('b_search', 'yts')]], lang));
+            break;
         case 'games':
-            await editMsg(bridge, chatId, msgId, PAGES.games, subMarkup([
-                [{ text: '🎯 Trivia', callback_data: 'cmd:trivia' }, { text: '🔤 Word Guess', callback_data: 'cmd:wordguess' }],
-                [{ text: '🎲 Roll Dice', callback_data: 'cmd:roll' }, { text: '🪙 Coin Flip', callback_data: 'cmd:coinflip' }],
-            ]));
+            await editMsg(bridge, chatId, msgId, pageText(lang, 'games'), subMarkup([[b('b_trivia', 'trivia'), b('b_word', 'wordguess')], [b('b_roll', 'roll'), b('b_flip', 'flip')]], lang));
             break;
-
         case 'econ':
-            await editMsg(bridge, chatId, msgId, PAGES.econ, subMarkup([
-                [{ text: '🎁 Daily Reward', callback_data: 'cmd:daily' }, { text: '💰 Balance', callback_data: 'cmd:balance' }],
-                [{ text: '📊 Rank', callback_data: 'cmd:rank' }, { text: '📋 Profile', callback_data: 'cmd:profile' }],
-            ]));
+            await editMsg(bridge, chatId, msgId, pageText(lang, 'econ'), subMarkup([[b('b_daily', 'daily'), b('b_bal', 'balance')], [b('b_rank', 'rank'), b('b_prof', 'profile')]], lang));
             break;
-
+        case 'group':
+            await editMsg(bridge, chatId, msgId, pageText(lang, 'group'), subMarkup([[b('b_settings', 'settings'), b('b_admins', 'admins')]], lang));
+            break;
         case 'util':
-            await editMsg(bridge, chatId, msgId, PAGES.util, subMarkup([
-                [{ text: '🌤️ Weather', callback_data: 'cmd:weather' }, { text: '💎 Crypto', callback_data: 'cmd:crypto' }],
-                [{ text: '🌐 Translate', callback_data: 'cmd:translate' }, { text: '⏰ Reminder', callback_data: 'cmd:remind' }],
-            ]));
+            await editMsg(bridge, chatId, msgId, pageText(lang, 'util'), subMarkup([[b('b_weather', 'weather'), b('b_crypto', 'crypto')], [b('b_tr', 'translate'), b('b_remind', 'reminder')]], lang));
             break;
-
         case 'cmds': {
-            // Build dynamic command list
+            // Every command by area, built from what is really loaded
             const cats = new Map();
-            for (const [n, c] of bridge.commands) {
-                if (c.hidden) continue;
-                if (!cats.has(c.category)) cats.set(c.category, []);
-                cats.get(c.category).push(c);
+            for (const [, c] of bridge.commands) {
+                if (c.hidden || c.ownerOnly) continue;
+                const cat = c.category || 'Other';
+                if (!cats.has(cat)) cats.set(cat, []);
+                cats.get(cat).push(c);
             }
-            let txt = PAGES.cmds + '\n\n';
-            for (const [cat, cmds] of [...cats.entries()].sort()) {
-                txt += `<b>${escapeHTML(cat)}</b>: ${cmds.map(c=>`<code>/${c.name}</code>`).join(' ')}\n\n`;
-            }
-            txt += '<i>Type /help &lt;command&gt; for details</i>';
-            await editMsg(bridge, chatId, msgId, txt, subMarkup([]));
+            let txt = `<b>${M(lang, 'all_t')}</b>\n\n`;
+            for (const [cat, cmds] of [...cats.entries()].sort()) txt += `<b>${escapeHTML(cat)}</b>\n${cmds.map((c) => `/${c.name}`).join('  ')}\n\n`;
+            txt += `<i>${M(lang, 'all_hint')}</i>`;
+            await editMsg(bridge, chatId, msgId, txt, subMarkup([[{ text: M(lang, 'b_about'), callback_data: 'm:about' }]], lang));
             break;
         }
-
         case 'about': {
-            const txt = PAGES.about.replace('{{UPTIME}}', formatUptime(process.uptime()));
-            await editMsg(bridge, chatId, msgId, txt, subMarkup([
-                [{ text: '🔗 GitHub', url: 'https://github.com/MFOF7310' }],
-            ]));
+            const txt = `<b>${M(lang, 'about_t')}</b>\n${M(lang, 'about_d')}\n\n<i>${M(lang, 'about_up', { uptime: formatUptime(process.uptime()), version: bot_version })}</i>`;
+            await editMsg(bridge, chatId, msgId, txt, subMarkup([[{ text: '🔗 GitHub', url: 'https://github.com/MFOF7310' }, { text: '🌐 bamako-steel-dev.xyz', url: 'https://bamako-steel-dev.xyz' }]], lang));
             break;
         }
     }
@@ -737,7 +576,8 @@ async function handleBuiltin(ctx, cmdName, bridge) {
     switch (cmdName) {
         case 'start': {
             await ctx.action('typing');
-            const sent = await bridge.sendTo(ctx.chatId, welcomeText(ctx.username), { parse_mode: 'HTML', extra: { reply_markup: welcomeMarkup() } });
+            const _lang = langOf(ctx.userId, ctx.message?.from?.language_code);
+            const sent = await bridge.sendTo(ctx.chatId, welcomeText(ctx.message?.from?.first_name || ctx.username, _lang), { parse_mode: 'HTML', extra: { reply_markup: welcomeMarkup(_lang) } });
             // Store message ID for potential edit later
             if (sent?.success && sent.data?.message_id) {
                 bridge._welcomeMsgs = bridge._welcomeMsgs || new Map();
