@@ -372,20 +372,21 @@ async function webSearch(query, keyOverride = null) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 const MODEL_POOL = [
-  { id: 'anthropic/claude-sonnet-4-6',              emoji: '🤖', name: 'Claude Sonnet 4.6', tier: 'premium' },
+  { id: 'anthropic/claude-sonnet-5.5',              emoji: '🤖', name: 'Claude Sonnet 5.5', tier: 'premium' },
   { id: 'openai/gpt-4o',                            emoji: '🔵', name: 'GPT-4o', tier: 'premium' },
   { id: 'openai/gpt-4o-mini',                       emoji: '💙', name: 'GPT-4o mini', tier: 'fast' },
   { id: 'google/gemini-2.5-flash',                  emoji: '🎋', name: 'Gemini 2.5 Flash', tier: 'fast' },
   { id: 'deepseek/deepseek-chat-v3-0324',           emoji: '🔷', name: 'DeepSeek V3', tier: 'fast' },
   { id: 'meta-llama/llama-3.3-70b-instruct',        emoji: '🧠', name: 'Llama 3.3 70B', tier: 'fast' },
   { id: 'qwen/qwen-2.5-72b-instruct',               emoji: '🟡', name: 'Qwen 2.5 72B', tier: 'fast' },
-  { id: 'mistralai/mistral-large-2411',             emoji: '✨', name: 'Mistral Large', tier: 'reliable' },
+  { id: 'anthropic/claude-haiku-5.5',               emoji: '🤖', name: 'Claude Haiku 5.5', tier: 'fast' },
+  { id: 'mistralai/mistral-large-4-0',             emoji: '✨', name: 'Mistral Large 4', tier: 'reliable' },
 ];
 
 const PREMIUM_MODEL = {
-  id: 'anthropic/claude-sonnet-4-6',
+  id: 'anthropic/claude-sonnet-5.5',
   emoji: '🤖',
-  name: 'Claude Sonnet 4.6',
+  name: 'Claude Sonnet 5.5',
   tier: 'premium'
 };
 
