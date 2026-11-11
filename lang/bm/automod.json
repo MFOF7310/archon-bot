@@ -232,5 +232,10 @@
   "appeal_btnReject": "Reject",
   "appeal_btnBan": "Pause appeals",
   "sens_usage": "Choose low, medium or high, for example `.automod sensitivity medium`.",
-  "usage": "Use one of: status, enable, disable, sensitivity, whitelist, domains, channels, log, appeals."
+  "usage": "Use one of: status, enable, disable, sensitivity, whitelist, domains, channels, log, appeals.",
+  "cardTitleBan": "{ic_ban} I gɛn na ka bɔ {server} kɔnɔ pewu.",
+  "cardTitleTimeout": "{ic_wait} I balila sɛbɛni ci li ma fo nin waati {duration} la nin {server} kɔnɔ.",
+  "cardTitleWarn": "{ic_warn} Kankaridakan kelen nin {server} kɔnɔ.",
+  "cardClears": "{ic_calendar} Ɲanginiw bɛ jɔsi tile 30 kɔfɛ.",
+  "cardContact": "Ɲininkaliw? Ɲininkali kɛ {contact} la."
 }
