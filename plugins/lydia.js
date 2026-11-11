@@ -1742,4 +1742,4 @@ module.exports = {
   scrubSecrets,
 };
 
-console.log(`${C.green}[LYDIA]${C.reset} AI Engine v2.6 loaded — Beautiful formatting | Anti-hallucination | ${Object.keys(LANG_NAMES).length} languages | Parallel models | Response cache`);
+console.log(`${C.green}[LYDIA]${C.reset} AI Engine v2.6 loaded — Beautiful formatting | Anti-hallucination | ${Object.keys(LANG_NAMES).length} languages | Model fallback | Response cache`);
