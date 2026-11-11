@@ -60,7 +60,6 @@ const MALICIOUS = [
     /free\s*tokens?/i, /dm\s*(me|for)\s*(nitro|reward)/i, /self[-\s]?bot/i, /massdm/i,
     /\.(ru|tk|ml|ga|cf)\//i,
     /(?:https?:\/\/)?(?:www\.)?discord(?:app)?\.(?:com|gg)\/gift\/[a-zA-Z0-9]{16,}/i,
-    /t\.me\/\+?[a-zA-Z0-9_-]+/i,
 ];
 // Invites are caught with or without https:// ("discord.gg/abc" alone used to slip through)
 const INVITE_RE = /(?:discord\.gg|discord(?:app)?\.com\/invite)\/[a-zA-Z0-9_-]+/gi;
@@ -138,6 +137,14 @@ function parseDomainWhitelist(str) {
 }
 
 function key(uid, gid) { return `${uid}:${gid}`; }
+
+// Strikes are AutoMod's warnings (id AM-…, kept 30 days). They used to live only in memory and vanished after 10 minutes
+// of silence or a restart, so the escalation the member is told about (1 h, 24 h, 7 days, ban) almost never happened.
+function amStrikes(db, gid, uid) {
+    try {
+        return db.prepare("SELECT COUNT(*) AS n FROM warnings WHERE guild_id = ? AND user_id = ? AND id LIKE 'AM-%' AND active = 1 AND (expires_at IS NULL OR expires_at > strftime('%s','now'))").get(String(gid), String(uid))?.n || 0;
+    } catch { return 0; }
+}
 
 setInterval(() => {
     const cutoff = Date.now() - 600000;
@@ -462,7 +469,7 @@ async function takeAction(message, violations, client, db) {
     const uid = message.author.id, gid = message.guild.id;
     const k = key(uid, gid);
     const entry = history.get(k) || { messages: [], warns: 0, last: Date.now() };
-    entry.warns++;
+    entry.warns = amStrikes(db, gid, uid) + 1;   // this one is saved at the end
 
     // ── FIX 1: Store violation metadata so the tribunal embed can show real evidence ──
     entry.lastMessageContent = message.content?.substring(0, 1800) || '(attachment / image)';
@@ -776,7 +783,9 @@ async function scanMessage(message, client, db) {
     }
 
     // 5. @here/@everyone + link
-    if ((message.content.includes('@here') || message.content.includes('@everyone') || message.mentions.everyone) && record.hasLinks && !seen.has('promo')) {
+    // Only for links outside the allowed sites: @everyone with a YouTube link used to cost a strike too
+    if ((message.content.includes('@here') || message.content.includes('@everyone') || message.mentions.everyone) && record.hasLinks && !seen.has('promo')
+        && !isDomainWhitelisted(message.content, parseDomainWhitelist(ss?.autoModDomains))) {
         violations.push({ type: 'promotional spam', reason: '@here/@everyone + external link', source: 'promo', crossChannel: true });
         seen.add('promo');
     }
@@ -894,10 +903,8 @@ async function handleAppeal(message, client) {
             try {
                 const member = await guild.members.fetch(message.author.id).catch(() => null);
                 if (member) {
-                    const entry = history.get(key(message.author.id, guildId));
-                    if (entry && entry.warns > 0) {
-                        appeals.push({ guild, warns: Math.min(entry.warns, 4) });
-                    }
+                    const warns = amStrikes(client.db, guildId, message.author.id);
+                    if (warns > 0) appeals.push({ guild, warns: Math.min(warns, 4) });
                 }
             } catch (e) {}
         }
@@ -1040,7 +1047,7 @@ async function handleAppeal(message, client) {
                     id: message.author.id,
                     server: targetGuild.name,
                     reason,
-                    strikes: Math.min(entry?.warns || 1, 4),
+                    strikes: Math.min(amStrikes(client.db, targetGuild.id, message.author.id) || 1, 4),
                 }))
                 .addFields(
                     { name: _tS('appeal_tribunalViolation'), value: `\`${violationType}\``, inline: true },
@@ -1259,6 +1266,8 @@ async function handleAppealButton(interaction, client) {
         const k = key(vote.userId, vote.guildId);
         const entry = history.get(k);
         if (entry && entry.warns > 0) { entry.warns = Math.max(0, entry.warns - 1); history.set(k, entry); }
+        // An approved appeal removes the latest strike for good
+        try { client.db.prepare("UPDATE warnings SET active = 0 WHERE id = (SELECT id FROM warnings WHERE guild_id = ? AND user_id = ? AND id LIKE 'AM-%' AND active = 1 ORDER BY created_at DESC LIMIT 1)").run(String(vote.guildId), String(vote.userId)); } catch {}
 
         let timeoutLifted = false;
         if (guild) {
