@@ -53,5 +53,13 @@
   "prefix_usage": "Pick one: `ping`, `stats`, `activity`, `about` or `invite`. For example `{prefix}bot ping`.",
   "alive_title": "System Status",
   "alive_status": "Status",
-  "alive_resources": "System Resources"
+  "alive_resources": "System Resources",
+  "act_header": "Here since {since} · the last 7 days",
+  "act_week_cmds": "Commands",
+  "act_week_people": "Active members",
+  "act_top3": "Most used",
+  "act_quiet": "No command used here in the last 7 days.",
+  "act_totals": "Since the start · {cmds} commands · {ai} chats with Lydia · {people} members helped · {buttons} buttons pressed",
+  "act_level": "ARCHON is level {level}, ranked #{rank} of {total} on this server.",
+  "btn_insights": "See Insights"
 }

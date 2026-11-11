@@ -137,32 +137,66 @@ async function statsCard(client, lang, db, guildId) {
 }
 
 // ─── Activity (ARCHON's own level and counters in this server) ───
+// Commands used on this server between two times, with ".quiz" and "/trivia" counted as the same command
+function weekUsage(client, db, gid, from, to) {
+    const alias = new Map();
+    for (const c of client.commands?.values?.() || []) {
+        const name = String(c.name || c.data?.name || '').toLowerCase(); if (!name) continue;
+        for (const a of c.aliases || []) alias.set(String(a).toLowerCase(), name);
+        const slash = c.data?.name ? String(c.data.name).toLowerCase() : null;
+        if (slash && slash !== name) alias.set(slash, name);
+    }
+    const by = new Map(); let total = 0, people = 0;
+    try {
+        for (const r of db.prepare('SELECT command, COUNT(*) AS n FROM command_events WHERE guild_id = ? AND ts >= ? AND ts < ? GROUP BY command').all(gid, from, to)) {
+            const k = alias.get(String(r.command).toLowerCase()) || String(r.command).toLowerCase();
+            by.set(k, (by.get(k) || 0) + r.n); total += r.n;
+        }
+        people = db.prepare('SELECT COUNT(DISTINCT user_id) AS n FROM command_events WHERE guild_id = ? AND ts >= ? AND ts < ?').get(gid, from, to)?.n || 0;
+    } catch (e) { /* table created with the first command */ }
+    return { total, people, top: [...by].sort((a, b) => b[1] - a[1]).slice(0, 3) };
+}
+
+// /bot activity: what ARCHON did on this server this week, then the totals, then its level
 function activityCard(client, lang, db, guild) {
     const _ = tr(lang);
     if (!guild) return v2.card(COLOR.wait, [{ text: _('activity_dm') }]);
     const s = BotStats.getOrCreateBotStats(db, guild.id);
-    const p = BotStats.buildProgressBar(s.xp, s.level);
     const r = BotStats.getBotRank(db, guild.id);
-    const n = (x) => Number(x || 0).toLocaleString();
-    const cmds = (s.commands_served || 0) + (s.slash_commands_served || 0);
+    const n = (x) => Number(x || 0).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US');
+    const now = Date.now(), WEEK = 7 * 86400000;
+    const week = weekUsage(client, db, guild.id, now - WEEK, now + 1);
+    const prev = weekUsage(client, db, guild.id, now - 2 * WEEK, now - WEEK);
     const since = s.join_date ? `<t:${s.join_date}:R>` : '—';
 
-    return v2.card(0x7f77dd, [
+    let trend = '';
+    if (prev.total > 0) {
+        const pct = Math.round((week.total - prev.total) / prev.total * 100);
+        trend = pct > 0 ? ` · ${em('ic_chart', '📈')} +${pct} %` : pct < 0 ? ` · ${pct} %` : '';
+    }
+    const items = [
         { thumbnail: [
-            `## ${em('eagle', '🦅')} ${_('activity_title', { server: guild.name })}\n${_('activity_line', { level: s.level, rank: r.rank, total: r.total })}`,
+            `## ${em('eagle', '🦅')} ${_('activity_title', { server: guild.name })}\n-# ${_('act_header', { since })}`,
             client.user.displayAvatarURL({ size: 128 }),
         ] },
-        { text: `\`${ui.progressBar(Math.max(0, p.current), p.needed, 12)}\` ${p.percent}%\n-# ${_('activity_xp', { xp: n(s.xp), left: n(Math.max(0, p.toNext)), next: s.level + 1 })}` },
         { rule: true },
-        { text: [
-            `**${_('act_commands')}** ${em('dot_white', '·')} ${n(cmds)}`,
-            `**${_('act_top')}** ${em('dot_white', '·')} ${s.top_command ? '`' + s.top_command + '`' : '—'}`,
-            `**${_('act_ai')}** ${em('dot_white', '·')} ${n(s.ai_chats)}    ${em('dot_white', '·')} **${_('act_buttons')}** ${n(s.buttons_clicked)}`,
-            `**${_('act_helped')}** ${em('dot_white', '·')} ${n(Object.keys(s.users_helped || {}).length)}`,
-            `**${_('act_since').replace(/\*/g, '')}:** ${since}`,
-        ].join('\n') },
+        { text: `**${_('act_week_cmds')}** · ${n(week.total)}${trend}\n**${_('act_week_people')}** · ${n(week.people)}` },
+    ];
+    if (week.top.length) {
+        const max = week.top[0][1] || 1, w = Math.max(...week.top.map(([c]) => c.length));
+        const bars = week.top.map(([c, k]) => `${c.padEnd(w)}  ${'▰'.repeat(Math.max(1, Math.round(k / max * 8))).padEnd(8, ' ')} ${k}`);
+        items.push({ rule: true }, { text: `**${_('act_top3')}**\n\`\`\`\n${bars.join('\n')}\n\`\`\`` });
+    } else {
+        items.push({ rule: true }, { text: `-# ${_('act_quiet')}` });
+    }
+    const cmds = (s.commands_served || 0) + (s.slash_commands_served || 0);
+    items.push(
+        { rule: true },
+        { text: `-# ${_('act_totals', { cmds: n(cmds), ai: n(s.ai_chats), people: n(Object.keys(s.users_helped || {}).length), buttons: n(s.buttons_clicked) })}\n-# ${_('act_level', { level: s.level, rank: r.rank, total: r.total })}` },
+        { row: new ActionRowBuilder().addComponents(linkBtn(_('btn_insights'), `${DASHBOARD_URL}/dashboard/${guild.id}`, 'ic_chart', '📊')) },
         { text: foot(client) },
-    ]);
+    );
+    return v2.card(0x7f77dd, items);
 }
 
 // ─── About ───

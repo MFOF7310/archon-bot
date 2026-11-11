@@ -53,5 +53,13 @@
   "prefix_usage": "اختر واحداً: `ping` أو `stats` أو `activity` أو `about` أو `invite`. مثال: `{prefix}bot ping`.",
   "alive_title": "حالة النظام",
   "alive_status": "الحالة",
-  "alive_resources": "موارد النظام"
+  "alive_resources": "موارد النظام",
+  "act_header": "هنا منذ {since} · آخر 7 أيام",
+  "act_week_cmds": "الأوامر",
+  "act_week_people": "الأعضاء النشطون",
+  "act_top3": "الأكثر استخدامًا",
+  "act_quiet": "لم يُستخدم أي أمر هنا خلال آخر 7 أيام.",
+  "act_totals": "منذ البداية · {cmds} أمر · {ai} محادثة مع Lydia · {people} عضو تمت مساعدتهم · {buttons} ضغطة زر",
+  "act_level": "ARCHON في المستوى {level}، المرتبة #{rank} من {total} على هذا الخادم.",
+  "btn_insights": "عرض Insights"
 }

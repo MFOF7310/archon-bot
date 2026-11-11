@@ -53,5 +53,13 @@
   "prefix_usage": "请选择：`ping`、`stats`、`activity`、`about` 或 `invite`。例如 `{prefix}bot ping`。",
   "alive_title": "系统状态",
   "alive_status": "状态",
-  "alive_resources": "系统资源"
+  "alive_resources": "系统资源",
+  "act_header": "加入于 {since} · 最近 7 天",
+  "act_week_cmds": "命令",
+  "act_week_people": "活跃成员",
+  "act_top3": "最常用",
+  "act_quiet": "最近 7 天这里没有使用命令。",
+  "act_totals": "累计 · {cmds} 条命令 · 与 Lydia 对话 {ai} 次 · 帮助了 {people} 位成员 · 按钮点击 {buttons} 次",
+  "act_level": "ARCHON 等级 {level}，在本服务器排名 #{rank} / {total}。",
+  "btn_insights": "查看 Insights"
 }
