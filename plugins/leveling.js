@@ -446,37 +446,41 @@ function saveThemeDB(db, gid, data) {
 }
 
 // ================= HANDLERS =================
-async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) {
+// One announcement per level-up. The level-up channel if one is set, otherwise the channel where the member was talking
+// (a short line there disappears after 15 s). The server's own level-up message replaces the default line.
+async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db, opts = {}) {
     if (!member || !member.guild) return; // Guard: user may have left server
     const isMilestone = DEFAULT_THEMES[newLevel] || (newLevel > 25 && newLevel % 5 === 0);
+    const ss = client.getServerSettings?.(member.guild.id) || {};
+    const chId = ss.levelupChannel || ss.levelup_channel;
+    const ch = (chId ? member.guild.channels.cache.get(chId) : null) || opts.channel || member.guild.systemChannel;
+    if (!ch) return;
+    const _t = require('../lib/i18n').t;
+    const LANGS = ['en','fr','bm','zh','ar'];
+    const lang = LANGS.includes(ss.language) ? ss.language : (LANGS.includes(client.userLastLang?.get(member.id)) ? client.userLastLang.get(member.id) : 'en');
+    const tpl = String(opts.template || ss.levelupMessage || '').trim();
+    const line = tpl
+        ? tpl.replace(/{user}/gi, String(member)).replace(/{username}/gi, member.user.username).replace(/{level}/gi, String(newLevel))
+             .replace(/{xp}/gi, Number(opts.xp || 0).toLocaleString()).replace(/{server}/gi, member.guild.name).replace(/{tier}/gi, opts.tier || '')
+        : `${em('party', '🎉')} ${_t('leveling.levelUpLine', lang, { user: String(member), level: newLevel })}`;
+    const text = opts.roleLine ? `${line}\n${opts.roleLine}` : line;
+    const mentions = { parse: [], users: [member.id] };
+    const { safeSend, canSend } = require('../lib/safeSend');
 
     if (!isMilestone) {
-        const ss = client.getServerSettings?.(member.guild.id) || {};
-        const chId = ss.levelupChannel || ss.levelup_channel;
-        const ch = chId ? member.guild.channels.cache.get(chId) : member.guild.systemChannel;
-        if (!ch && !chId) return;
-        const lang = ['en','fr','bm','zh','ar'].includes(ss.language) ? ss.language : (['en','fr','bm','zh','ar'].includes(client.userLastLang?.get(member.id)) ? client.userLastLang.get(member.id) : 'en');
-        const text = require('../lib/i18n').t('leveling.levelUpLine', lang, { user: String(member), level: newLevel });
-        const msg = await require('../lib/safeSend').safeSend('levelup', ch, { content: text }, { guild: member.guild, channelId: chId, quiet: !chId });
-        if (msg) setTimeout(() => msg.delete().catch(() => {}), 15000);
+        const msg = await safeSend('levelup', ch, { content: text, allowedMentions: mentions }, { guild: member.guild, channelId: ch.id, quiet: !chId });
+        if (msg && !chId) setTimeout(() => msg.delete().catch(() => {}), 15000);
         return;
     }
     const added = await assignRoles(member, newLevel, db);
-    const ss = client.getServerSettings?.(member.guild.id) || {};
-    const chId = ss.levelupChannel || ss.levelup_channel;
-    const ch = chId ? member.guild.channels.cache.get(chId) : member.guild.systemChannel;
-    if (!ch && !chId) return;
-    const { safeSend, canSend } = require('../lib/safeSend');
     const _milestoneNeeds = require('../lib/canPost').neededFor('levelup-milestone');
-    if (!canSend('levelup-milestone', ch, _milestoneNeeds, { guild: member.guild, channelId: chId, quiet: !chId })) return;
+    if (!canSend('levelup-milestone', ch, _milestoneNeeds, { guild: member.guild, channelId: ch.id, quiet: !chId })) return;
     const customTheme = db ? getThemeDB(db, member.guild.id) : null;
     const png = await renderLevelBanner(member.user, newLevel, xpCurrent, xpNeeded, customTheme);
     const theme = getTheme(newLevel, customTheme);
-    const _t = require('../lib/i18n').t;
-    const lvLang = ['en','fr','bm','zh','ar'].includes(ss.language) ? ss.language : (['en','fr','bm','zh','ar'].includes(client.userLastLang?.get(member.id)) ? client.userLastLang.get(member.id) : 'en');
-    const embed = new EmbedBuilder().setColor(parseInt(theme.bg1.replace('#', ''), 16)).setDescription(_t('leveling.levelUpLine', lvLang, { user: member.user.tag, level: newLevel })).setImage('attachment://levelup.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
-    if (added.length) embed.addFields({ name: _t('leveling.newRolesLabel', lvLang), value: added.map(r => `• ${r}`).join('\n'), inline: false });
-    await safeSend('levelup-milestone', ch, toV2({ content: _t('leveling.levelUpLine', lvLang, { user: String(member), level: newLevel }), embeds: [embed], files: [new AttachmentBuilder(png, { name: 'levelup.png' })] }), { guild: member.guild, channelId: chId, quiet: !chId });
+    const embed = new EmbedBuilder().setColor(parseInt(theme.bg1.replace('#', ''), 16)).setImage('attachment://levelup.png');
+    if (added.length) embed.addFields({ name: _t('leveling.newRolesLabel', lang), value: added.map(r => `• ${r}`).join('\n'), inline: false });
+    await safeSend('levelup-milestone', ch, { ...toV2({ content: text, embeds: [embed], files: [new AttachmentBuilder(png, { name: 'levelup.png' })] }), allowedMentions: mentions }, { guild: member.guild, channelId: ch.id, quiet: !chId });
 }
 
 async function handleWelcome(member, client, db) {
@@ -649,8 +653,8 @@ module.exports = {
         setupDB(db);
         await handleWelcome(member, client, db);
     },
-    async onLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db) {
+    async onLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db, opts) {
         setupDB(db);
-        await handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db);
+        await handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db, opts);
     }
 };

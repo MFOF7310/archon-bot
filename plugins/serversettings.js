@@ -294,7 +294,7 @@ async execute(interaction, client) {
                 emoji: em('ic_economy', '💰'),
                 title: tr('cat_leveling'),
                 lines: [
-                    { text: `**${tr('level_channel')}** — ${chM(settings.levelChannel, 'LEVEL_CHANNEL_ID')}`, isSet: !!settings.levelChannel },
+                    { text: `**${tr('level_channel')}** — ${chM(settings.levelupChannel, 'LEVELUP_CHANNEL_ID')}`, isSet: !!settings.levelupChannel },
                     { text: `**${tr('xp_mult')}** — \`${settings.xpMultiplier || 1.0}x\``, isSet: settings.xpMultiplier != null },
                     { text: `**${tr('market')}** — ${bS(settings.marketEnabled)}`, isSet: settings.marketEnabled == 1 },
                     { text: `**${tr('market_channel')}** — ${chM(settings.marketChannel, 'MARKET_CHANNEL_ID')}`, isSet: !!settings.marketChannel },
@@ -433,7 +433,7 @@ async execute(interaction, client) {
             rules: { type: 'channel', col: 'rules', name: lang === 'fr' ? 'Salon Règles' : 'Rules Channel' },
             general: { type: 'channel', col: 'general', name: lang === 'fr' ? 'Salon Général' : 'General Channel' },
             goodbye: { type: 'channel', col: 'goodbye', name: lang === 'fr' ? 'Salon d\'Au Revoir' : 'Goodbye Channel' },
-            levelchan: { type: 'channel', col: 'levelchan', name: lang === 'fr' ? 'Salon des Niveaux' : 'Level-Up Channel' },
+            levelchan: { type: 'channel', col: 'levelupchan', name: lang === 'fr' ? 'Salon des Niveaux' : 'Level-Up Channel' },
             modlog: { type: 'channel', col: 'modlog', name: lang === 'fr' ? 'Salon Logs Modération' : 'Mod Log Channel' },
             market: { type: 'channel', col: 'market', name: lang === 'fr' ? 'Salon du Marché' : 'Market Channel' },
             // Role settings

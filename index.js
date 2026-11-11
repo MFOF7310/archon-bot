@@ -791,6 +791,12 @@ try {
     console.log(`${yellow}[MIGRATION]${reset} lydia_conversations check: ${err.message}`);
 }
 
+// Two columns existed for the level-up channel; the bot only posts to levelup_channel. A channel saved in the other one is carried over once.
+try {
+    const n = db.prepare("UPDATE server_settings SET levelup_channel = level_channel WHERE (levelup_channel IS NULL OR levelup_channel = '') AND level_channel IS NOT NULL AND level_channel != ''").run().changes;
+    if (n) console.log(`[SETTINGS] Level-up channel carried over for ${n} server(s)`);
+} catch (e) {}
+
 // ================= AUTO-REPAIR: Fix invalid XP multipliers =================
 try {
     const brokenRows = db.prepare(
@@ -3163,7 +3169,9 @@ if (message.content && message.content.length > 4000) {
     const now = Date.now();
     const cooldown = (serverSettings.xpCooldown || 60) * 1000;
 
-    if (now - (userData.last_xp_gain || 0) > cooldown) {
+    // Leveling turned off on the dashboard: no XP and no level-up messages (it used to block only the commands)
+    const levelingOn = !message.guild || serverSettings.leveling_enabled !== 0;
+    if (levelingOn && now - (userData.last_xp_gain || 0) > cooldown) {
         const minGain = serverSettings.xpMinGain || 15;
         const maxGain = serverSettings.xpMaxGain || 35;
         const multiplier = parseFloat(serverSettings.xpMultiplier) || 1.0;
@@ -3189,11 +3197,7 @@ if (message.content && message.content.length > 4000) {
         // ================= LEVEL UP DETECTED =================
         if (newLevel > oldLevel) {
             // ================= LEVELING PLUGIN: ON LEVEL UP =================
-            if (client.leveling?.onLevelUp) {
-                const xpCur = newXP - Math.pow((newLevel - 1) / 0.1, 2);
-                const xpNeed = Math.pow(newLevel / 0.1, 2) - Math.pow((newLevel - 1) / 0.1, 2);
-                await client.leveling.onLevelUp(message.member, newLevel, Math.floor(xpCur), Math.floor(xpNeed), client, db);
-            }
+            // (the announcement is sent further down, once the tier role is known: one message per level-up)
 
             const userLang = (['en','fr','bm','zh','ar'].includes(serverSettings?.language) ? serverSettings.language : null) || client.userLastLang?.get(message.author.id) || 'en';
             const isDM = !message.guild;
@@ -3264,7 +3268,15 @@ if (message.content && message.content.length > 4000) {
             const tierChanged = [6, 11, 21].includes(newLevel); // tier roles change here, never on a milestone
             const announce = isMilestone || tierChanged; // announce only these, but never exit: the sync and command handling below must run
 
-            if (announce) {
+            if (client.leveling?.onLevelUp && message.guild) {
+                // One announcement per level-up, from the leveling plugin: the banner on milestones, one line otherwise.
+                // Both this code and the plugin used to post, so milestones were announced twice.
+                const xpCur = newXP - Math.pow((newLevel - 1) / 0.1, 2);
+                const xpNeed = Math.pow(newLevel / 0.1, 2) - Math.pow((newLevel - 1) / 0.1, 2);
+                const roleLine = (tierChanged && roleResult?.ok && roleResult.role?.name) ? `${tierEmoji} ${require('./lib/i18n').t('leveling.levelUpRole', userLang, { role: roleResult.role.name })}` : null;
+                await client.leveling.onLevelUp(message.member, newLevel, Math.floor(xpCur), Math.floor(xpNeed), client, db,
+                    { channel: message.channel, template: serverSettings.levelupMessage, xp: newXP, tier: levelTier, roleLine }).catch((e) => console.log(`[LEVELUP] ${e.message}`));
+            } else if (announce) {
                 // ================= CUSTOM levelup_message TEMPLATE =================
                 const customTemplate = serverSettings.levelupMessage;
                 if (customTemplate && customTemplate.trim()) {
