@@ -5982,6 +5982,53 @@ apiApp.post('/api/ticket-config/:guildId', requireAdmin, async (req, res) => {
 });
 
 // ── TICKET CHANNEL AUTO-CREATE ──
+// The dashboard's Overview: what happened today and what is waiting for the staff. Numbers only.
+apiApp.get('/api/overview/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const a = await verifyActor(req.params.guildId, req.query.userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const g = a.guild, db = client.db, gid = g.id, now = Date.now(), day = now - 86400000;
+        const one = (sql, ...p) => { try { return db.prepare(sql).get(...p) || {}; } catch (e) { return {}; } }; // a table may not exist yet
+        const all = (sql, ...p) => { try { return db.prepare(sql).all(...p); } catch (e) { return []; } };
+
+        const joinedWeek = one('SELECT COUNT(*) AS n FROM member_joins WHERE guild_id = ? AND joined_at >= ?', gid, now - 7 * 86400000).n || 0;
+
+        // Commands in the last 24 hours; ".quiz" and "/trivia" count as the same command
+        const alias = new Map();
+        for (const c of client.commands?.values?.() || []) {
+            const name = String(c.name || c.data?.name || '').toLowerCase(); if (!name) continue;
+            for (const al of c.aliases || []) alias.set(String(al).toLowerCase(), name);
+            const slash = c.data?.name ? String(c.data.name).toLowerCase() : null;
+            if (slash && slash !== name) alias.set(slash, name);
+        }
+        const used = new Map(); let commands24h = 0;
+        for (const r of all('SELECT command, COUNT(*) AS n FROM command_events WHERE guild_id = ? AND ts >= ? GROUP BY command', gid, day)) {
+            const name = alias.get(String(r.command).toLowerCase()) || String(r.command).toLowerCase();
+            used.set(name, (used.get(name) || 0) + r.n); commands24h += r.n;
+        }
+        const topCommand = [...used].sort((x, y) => y[1] - x[1])[0]?.[0] || null;
+
+        const am = { total: 0, timeouts: 0, bans: 0 };
+        for (const r of all("SELECT action, COUNT(*) AS n FROM moderation_logs WHERE guild_id = ? AND moderator_id = ? AND reason LIKE 'AutoMod:%' AND timestamp >= ? GROUP BY action", gid, client.user.id, day)) {
+            am.total += r.n; if (r.action === 'timeout') am.timeouts += r.n; if (r.action === 'ban') am.bans += r.n;
+        }
+
+        const open = all("SELECT ticket_number AS number, claimed_by, created_at FROM tickets WHERE guild_id = ? AND (status IS NULL OR status = 'open') ORDER BY created_at ASC", gid);
+        const waiting = open.filter((r) => !r.claimed_by);
+        const vOn = !!one('SELECT verify_enabled AS v FROM server_settings WHERE guild_id = ?', gid).v;
+        const verifyPending = vOn ? (one('SELECT COUNT(*) AS n FROM verify_pending WHERE guild_id = ?', gid).n || 0) : 0;
+
+        res.json({
+            members: g.memberCount || 0, joinedWeek,
+            commands24h, topCommand,
+            automod24h: am.total, automodTimeouts: am.timeouts, automodBans: am.bans,
+            ticketsOpen: open.length, ticketsWaiting: waiting.length,
+            oldestWaiting: waiting[0] ? { number: waiting[0].number, since: Number(waiting[0].created_at) || null } : null,
+            verifyPending,
+        });
+    } catch (e) { console.error(`[OVERVIEW-API] guild=${req.params.guildId}:`, e.message); res.status(500).json({ error: 'internal' }); }
+});
+
 // Ticket numbers for the dashboard: open now, closed this week, rating, how long until someone takes a ticket
 apiApp.get('/api/ticket-stats/:guildId', requireAdmin, async (req, res) => {
     try {
