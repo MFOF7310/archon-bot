@@ -136,5 +136,10 @@
   "gxNo": "no",
   "gxNeedPrize": "Give the prize a name first.",
   "gxChannelGone": "That channel doesn't exist anymore.",
-  "gxLaunched": "Giveaway launched."
+  "gxLaunched": "Giveaway launched.",
+  "gxHostLineCredits": "Hosted by {host} · {n} winners, {each} each",
+  "gxHostLine": "Hosted by {host} · {n} winners",
+  "gxEndsLabel": "Ends",
+  "gxPeople": "Entered",
+  "gxEndedLine": "Ended · {n} entered"
 }

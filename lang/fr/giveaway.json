@@ -136,5 +136,10 @@
   "gxNo": "non",
   "gxNeedPrize": "Donne d'abord un nom au lot.",
   "gxChannelGone": "Ce salon n'existe plus.",
-  "gxLaunched": "Giveaway lancé."
+  "gxLaunched": "Giveaway lancé.",
+  "gxHostLineCredits": "Organisé par {host} · {n} gagnants, {each} chacun",
+  "gxHostLine": "Organisé par {host} · {n} gagnants",
+  "gxEndsLabel": "Fin",
+  "gxPeople": "Participants",
+  "gxEndedLine": "Terminé · {n} participants"
 }

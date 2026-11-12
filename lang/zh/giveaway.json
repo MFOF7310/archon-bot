@@ -136,5 +136,10 @@
   "gxNo": "否",
   "gxNeedPrize": "请先为奖品命名。",
   "gxChannelGone": "该频道已不存在。",
-  "gxLaunched": "抽奖已发布。"
+  "gxLaunched": "抽奖已发布。",
+  "gxHostLineCredits": "由 {host} 发起 · {n} 名获胜者，每人 {each}",
+  "gxHostLine": "由 {host} 发起 · {n} 名获胜者",
+  "gxEndsLabel": "结束",
+  "gxPeople": "参与人数",
+  "gxEndedLine": "已结束 · {n} 人参与"
 }

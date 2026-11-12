@@ -136,5 +136,10 @@
   "gxNo": "لا",
   "gxNeedPrize": "سمِّ الجائزة أولًا.",
   "gxChannelGone": "هذه القناة لم تعد موجودة.",
-  "gxLaunched": "تم إطلاق السحب."
+  "gxLaunched": "تم إطلاق السحب.",
+  "gxHostLineCredits": "من تنظيم {host} · {n} فائزين، {each} لكل فائز",
+  "gxHostLine": "من تنظيم {host} · {n} فائزين",
+  "gxEndsLabel": "ينتهي",
+  "gxPeople": "المشاركون",
+  "gxEndedLine": "انتهى · {n} مشاركين"
 }

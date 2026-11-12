@@ -174,51 +174,33 @@ function buildGiveawayCard(gw, client) {
     const entries = gw.entryCount ?? (gw.entries ? new Set(gw.entries).size : 0);
     const isActive = gw.status === 'active';
     const each = gw.winners > 0 ? Math.floor(gw.amount / gw.winners) : 0;
-    
-    const title = gw.amount > 0 ? t('mockLiveDrop', { amount: gw.amount.toLocaleString() }) : gw.prize;
-    const c = new ContainerBuilder().setAccentColor(isActive ? 0x00f0ff : 0xf1c40f);
-
-    // Header & Host
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${title}${!isActive ? ' `' + t('mockEnded') + '`' : ''}`));
-    
-    const hostUser = client.users.cache.get(gw.hostId);
-    const hostAvatar = hostUser ? hostUser.displayAvatarURL({ extension: 'png', size: 64 }) : client.user.displayAvatarURL();
-    
-    c.addSectionComponents(
-        new SectionBuilder()
-            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`👤 ${t('mockHostedBy', { host: gw.hostName })}`))
-            .setThumbnailAccessory(new ThumbnailBuilder().setURL(hostAvatar))
-    );
-
-    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    const title = gw.amount > 0 ? t('gxCreditsDrop', { n: gw.amount.toLocaleString() }) : gw.prize;
+    const c = new ContainerBuilder().setAccentColor(isActive ? 0xE6A817 : 0x3BA55D);
+    const txt = (x) => new TextDisplayBuilder().setContent(x);
+    const rule = () => c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
     if (isActive) {
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`⏰ ${t('mockEndsIn', { time: `<t:${Math.floor(gw.endTimestamp / 1000)}:R>` })}`));
-        if (gw.amount > 0) {
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`🏆 ${t('mockWinnersEach', { winners: gw.winners, each: each.toLocaleString() })}`));
-        } else {
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`🏆 ${t('gxWinnersN', { n: gw.winners })}`));
-        }
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`👥 ${t('mockPeopleEntered', { count: entries })}`));
-        
-        let reqText = '';
-        if (gw.minLevel > 0) reqText += t('gxNeedsLevel', { n: gw.minLevel }) + ' ';
-        if (gw.boosterBonus) reqText += t('gxBoosters');
-        if (reqText) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`🔒 ${reqText.trim()}`));
-        
+        // Prize, who hosts it and how it's split, with the host's avatar
+        const hostUser = client.users.cache.get(gw.hostId);
+        const avatar = hostUser ? hostUser.displayAvatarURL({ extension: 'png', size: 128 }) : client.user.displayAvatarURL();
+        const sub = gw.amount > 0 ? t('gxHostLineCredits', { host: gw.hostName, n: gw.winners, each: each.toLocaleString() }) : t('gxHostLine', { host: gw.hostName, n: gw.winners });
+        c.addSectionComponents(new SectionBuilder().addTextDisplayComponents(txt(`## ${title}\n-# ${sub}`)).setThumbnailAccessory(new ThumbnailBuilder().setURL(avatar)));
+        rule();
+        c.addTextDisplayComponents(txt(`${em('ic_wait', '⏳')} **${t('gxEndsLabel')}** <t:${Math.floor(gw.endTimestamp / 1000)}:R>\n${em('ic_users', '👥')} **${t('gxPeople')}** ${entries}`));
+        const req = [gw.minLevel > 0 ? t('gxNeedsLevel', { n: gw.minLevel }) : null, gw.boosterBonus ? t('gxBoosters') : null].filter(Boolean).join(' ');
+        if (req) c.addTextDisplayComponents(txt(`-# ${req}`));
         c.addActionRowComponents(new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`gw_enter_${gw.id}`).setLabel(t('mockEnterBtn')).setStyle(ButtonStyle.Primary)
+            new ButtonBuilder().setCustomId(`gw_enter_${gw.id}`).setLabel(t('mockEnterBtn')).setEmoji(require('../lib/ui/icons').icon('gift')).setStyle(ButtonStyle.Success)
         ));
     } else {
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('gxWinnersTitle')}**`));
+        // Same message once drawn: who won and what each one got
+        c.addTextDisplayComponents(txt(`## ${title}\n-# ${t('gxEndedLine', { n: entries })}`));
+        rule();
         const paidEach = gw.each ?? each;
-        const winText = (gw.winnersList || []).map((uid) => `🏆 <@${uid}>${gw.amount > 0 ? ` · +${paidEach.toLocaleString()} ${t('gxCredits')}` : ''}`).join('\n');
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(winText || t('gxNoEntries')));
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('mockEntriesHosted', { count: entries, host: gw.hostName })}`));
-        
-        // NO BUTTONS on ended cards, as requested in the mockup.
+        const trophy = em('trophy', '🏆');
+        const winText = (gw.winnersList || []).map((uid) => `${trophy} <@${uid}>${gw.amount > 0 ? ` · +${paidEach.toLocaleString()}` : ''}`).join('\n');
+        c.addTextDisplayComponents(txt(winText || t('gxNoEntries')));
     }
-
     return { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };
 }
 
