@@ -641,16 +641,16 @@ module.exports = {
                         if (res) {
                             session.channelId = res.values[0];
                             await res.update({ content: em('ic_ok', '✅') + ' ' + t('gxChannelOk'), components: [] });
-                            await msg.edit(buildDashboard());
+                            await interaction.editReply(buildDashboard()).catch(() => {});   // private card: msg.edit() can't reach it
                         }
                         return;
                     }
 
                     if (i.customId === 'gw_set_amount') {
-                        const modal = new ModalBuilder().setCustomId('modal_amount').setTitle(t('mockAmount').slice(0, 45))
+                        const modal = new ModalBuilder().setCustomId(`modal_amount_${i.id}`).setTitle(t('mockAmount').slice(0, 45))
                             .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('mockAmount').slice(0, 45)).setPlaceholder('50000').setStyle(TextInputStyle.Short).setRequired(true)));
                         await i.showModal(modal);
-                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
+                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id && m.customId.endsWith(`_${i.id}`) }).catch(() => null);
                         if (res) {
                             const val = parseInt(res.fields.getTextInputValue('val'));
                             if (isNaN(val) || val < 100) { await res.reply({ content: em('ic_off', '❌') + ' ' + t('gxBadAmount'), flags: 64 }); return; }
@@ -661,10 +661,10 @@ module.exports = {
                     }
                     
                     if (i.customId === 'gw_set_custom_name') {
-                        const modal = new ModalBuilder().setCustomId('modal_name').setTitle(t('mockCustom').slice(0, 45))
+                        const modal = new ModalBuilder().setCustomId(`modal_name_${i.id}`).setTitle(t('mockCustom').slice(0, 45))
                             .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('mockCustom').slice(0, 45)).setMaxLength(100).setStyle(TextInputStyle.Short).setRequired(true)));
                         await i.showModal(modal);
-                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
+                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id && m.customId.endsWith(`_${i.id}`) }).catch(() => null);
                         if (res) {
                             session.prizeName = res.fields.getTextInputValue('val');
                             await res.update(buildDashboard());
@@ -673,10 +673,10 @@ module.exports = {
                     }
 
                     if (i.customId === 'gw_set_dur') {
-                        const modal = new ModalBuilder().setCustomId('modal_dur').setTitle(t('mockDuration').slice(0, 45))
+                        const modal = new ModalBuilder().setCustomId(`modal_dur_${i.id}`).setTitle(t('mockDuration').slice(0, 45))
                             .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('mockDuration').slice(0, 45)).setPlaceholder('2h · 30m · 1d').setStyle(TextInputStyle.Short).setRequired(true)));
                         await i.showModal(modal);
-                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
+                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id && m.customId.endsWith(`_${i.id}`) }).catch(() => null);
                         if (res) {
                             const val = res.fields.getTextInputValue('val');
                             const ms = parseDuration(val);
@@ -689,10 +689,10 @@ module.exports = {
                     }
 
                     if (i.customId === 'gw_set_win') {
-                        const modal = new ModalBuilder().setCustomId('modal_win').setTitle(t('mockWinners').slice(0, 45))
+                        const modal = new ModalBuilder().setCustomId(`modal_win_${i.id}`).setTitle(t('mockWinners').slice(0, 45))
                             .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('mockWinners').slice(0, 45)).setPlaceholder('1-20').setStyle(TextInputStyle.Short).setRequired(true)));
                         await i.showModal(modal);
-                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
+                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id && m.customId.endsWith(`_${i.id}`) }).catch(() => null);
                         if (res) {
                             const val = parseInt(res.fields.getTextInputValue('val'));
                             if (isNaN(val) || val < 1 || val > 20) { await res.reply({ content: em('ic_off', '❌') + ' ' + t('gxBadWinners'), flags: 64 }); return; }
@@ -703,13 +703,13 @@ module.exports = {
                     }
                     
                     if (i.customId === 'gw_set_reqs') {
-                        const modal = new ModalBuilder().setCustomId('modal_reqs').setTitle(t('mockReqs').slice(0, 45))
+                        const modal = new ModalBuilder().setCustomId(`modal_reqs_${i.id}`).setTitle(t('mockReqs').slice(0, 45))
                             .addComponents(
                                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('level').setLabel(t('gxMinLevel').slice(0, 45)).setValue(String(session.minLevel)).setStyle(TextInputStyle.Short).setRequired(true)),
                                 new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('booster').setLabel(t('gxBoosterQ').slice(0, 45)).setValue(session.boosterBonus ? t('gxYes') : t('gxNo')).setStyle(TextInputStyle.Short).setRequired(true))
                             );
                         await i.showModal(modal);
-                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
+                        const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id && m.customId.endsWith(`_${i.id}`) }).catch(() => null);
                         if (res) {
                             const lvl = parseInt(res.fields.getTextInputValue('level'));
                             if (!isNaN(lvl) && lvl >= 0) session.minLevel = lvl;
