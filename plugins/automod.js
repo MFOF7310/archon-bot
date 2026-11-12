@@ -39,12 +39,46 @@ const EVERYONE_COOLDOWN = 30000;
 
 // ================= STATE =================
 const history = new Map();
-const appealCooldowns = new Map();
 const everyoneCooldowns = new Map();
 const APPEAL_COOLDOWN = 86400000;
 
+// A Map that is also written to SQLite, so pending appeals and appeal cooldowns survive a restart
+// (the bot restarts on every deploy, and every open appeal used to say "expired" afterwards).
+function savedMap(table) {
+    const mem = new Map(); let db = null;
+    const m = {
+        load(d) {
+            if (db || !d) return;
+            try {
+                d.prepare(`CREATE TABLE IF NOT EXISTS ${table} (k TEXT PRIMARY KEY, v TEXT)`).run();
+                for (const r of d.prepare(`SELECT k, v FROM ${table}`).all()) { try { mem.set(r.k, JSON.parse(r.v)); } catch {} }
+                db = d;
+            } catch (e) { console.error(`[AUTOMOD] could not load ${table}:`, e.message); }
+        },
+        get: (k) => mem.get(k),
+        has: (k) => mem.has(k),
+        set(k, v) { mem.set(k, v); try { db?.prepare(`INSERT OR REPLACE INTO ${table} (k, v) VALUES (?, ?)`).run(k, JSON.stringify(v)); } catch {} return m; },
+        delete(k) { const had = mem.delete(k); try { db?.prepare(`DELETE FROM ${table} WHERE k = ?`).run(k); } catch {} return had; },
+        [Symbol.iterator]: () => mem[Symbol.iterator](),
+    };
+    return m;
+}
+const appealCooldowns = savedMap('automod_appeal_cooldowns');   // "uid:gid" -> last appeal time, "ban:uid:gid" -> paused until
+
 // ================= APPEAL TRIBUNAL STATE =================
-const appealTribunal = new Map(); // appealId => { guildId, userId, ownerId, status, messageId, channelId, expiresAt }
+const appealTribunal = savedMap('automod_appeals'); // appealId => { guildId, userId, ownerId, status, messageId, channelId, expiresAt }
+function loadState(db) { appealTribunal.load(db); appealCooldowns.load(db); fixLogUnits(db); }
+
+// AutoMod used to write moderation_logs.timestamp in milliseconds while everything else uses seconds,
+// so the 30-day purge never removed those rows. Convert them once; the query is a no-op after that.
+let _unitsFixed = false;
+function fixLogUnits(db) {
+    if (_unitsFixed || !db) return; _unitsFixed = true;
+    try {
+        const r = db.prepare('UPDATE moderation_logs SET timestamp = timestamp / 1000 WHERE timestamp > 100000000000').run();
+        if (r.changes) console.log(`[AUTOMOD] ${r.changes} log row(s) converted from ms to seconds`);
+    } catch (e) { console.error('[AUTOMOD] log unit fix failed:', e.message); }
+}
 
 // Auto-cleanup expired tribunal entries every hour
 setInterval(() => {
@@ -465,10 +499,21 @@ function ruleReason(v, t) {
     } catch { return v?.reason || ''; }
 }
 
+// One spam burst = one strike. The messages of a burst arrive together and each one used to add a strike
+// (a 6-message flood could go straight to a ban). After a strike, the member's next messages for a short
+// while are only deleted.
+const STRIKE_GRACE = 15000;
+const _ownerPings = new Map();   // gid:whyNot -> last time the owner was told
 async function takeAction(message, violations, client, db) {
     const uid = message.author.id, gid = message.guild.id;
     const k = key(uid, gid);
     const entry = history.get(k) || { messages: [], warns: 0, last: Date.now() };
+    if (entry.graceUntil && Date.now() < entry.graceUntil) {
+        history.set(k, entry);
+        await message.delete().catch(() => {});
+        return;
+    }
+    entry.graceUntil = Date.now() + STRIKE_GRACE;   // set before any await, so messages handled in parallel see it
     entry.warns = amStrikes(db, gid, uid) + 1;   // this one is saved at the end
 
     // ── FIX 1: Store violation metadata so the tribunal embed can show real evidence ──
@@ -510,6 +555,8 @@ async function takeAction(message, violations, client, db) {
             }
         }
     }
+    // The burst is handled: start counting from zero, or the very next message would count as spam again
+    entry.messages = [];
 
     const member = await message.guild.members.fetch(uid).catch(() => null);
     const _L = require('../lib/botPerms').langOf({ guild: message.guild, client });
@@ -538,8 +585,7 @@ async function takeAction(message, violations, client, db) {
 
     // ── FIX 2: DM to user now includes an "Appeal This Action" button ──
     try {
-        const guildOwner = await message.guild.fetchOwner().catch(() => null);
-        const appealContact = guildOwner ? `<@${guildOwner.id}>` : _t('strikeContactFallback');
+        const appealContact = message.guild.ownerId ? `<@${message.guild.ownerId}>` : _t('strikeContactFallback');
         const actionEmoji = outcome === 'ban' ? (resolveEmoji('banAlert', client) || '🔨') : outcome === 'timeout' ? (resolveEmoji('lock', client) || '⏳') : (resolveEmoji('warning', client) || em('ic_warn', '⚠️'));
         const strikeNext = _next(displayWc);
         const _v2 = require('../lib/games/v2');
@@ -648,8 +694,12 @@ async function takeAction(message, violations, client, db) {
     }
 
     try {
-        const owner = await message.guild.fetchOwner().catch(() => null);
-        if (owner && !owner.user.bot && (outcome === 'ban' || whyNot)) {
+        // Bans always reach the owner. "I couldn't act" reaches them once per hour per server, not on every message.
+        const _whyKey = `${gid}:whyNot`, _lastWhy = _ownerPings.get(_whyKey) || 0;
+        const _ping = outcome === 'ban' || (whyNot && Date.now() - _lastWhy > 3600000);
+        const owner = _ping ? await message.guild.fetchOwner().catch(() => null) : null;
+        if (owner && !owner.user.bot) {
+            if (outcome !== 'ban') _ownerPings.set(_whyKey, Date.now());
             const _v2 = require('../lib/games/v2');
             const _accent = typeof actionColor === 'string' && actionColor.startsWith('#') ? parseInt(actionColor.slice(1), 16) : (typeof actionColor === 'number' ? actionColor : 0x2F3136);
             const _dmItems = [
@@ -666,7 +716,7 @@ async function takeAction(message, violations, client, db) {
         }
     } catch (e) {}
 
-    try { db.prepare(`INSERT INTO moderation_logs (guild_id,user_id,moderator_id,action,reason,timestamp) VALUES (?,?,?,?,?,?)`).run(gid, uid, client.user.id, action, `AutoMod: ${violations[0].reason}`, Date.now()); } catch (e) {}
+    try { db.prepare(`INSERT INTO moderation_logs (guild_id,user_id,moderator_id,action,reason,timestamp) VALUES (?,?,?,?,?,?)`).run(gid, uid, client.user.id, (outcome === 'ban' || outcome === 'timeout') ? outcome : 'warn', `AutoMod: ${violations[0].reason}`, Math.floor(Date.now() / 1000)); } catch (e) {}   // what really happened, not what was planned
     try { db.prepare(`INSERT INTO warnings (id,guild_id,user_id,moderator_id,reason,expires_at,active) VALUES (?,?,?,?,?,?,1)`).run(`AM-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`, gid, uid, client.user.id, `AutoMod: ${violations[0].reason}`, Math.floor(Date.now()/1000)+2592000); } catch (e) {}
 
     const cc = repeatV ? '[CROSS] ' : '';
@@ -687,7 +737,7 @@ function advancedAutomodOn(db, gid) {
 
 async function scanMessage(message, client, db) {
     if (!message.guild || message.author.bot || message.webhookId) return false;
-    if (!_migrated) { _migrated = true; migrateFilterSettings(db); client.settings?.clear?.(); }
+    if (!_migrated) { _migrated = true; migrateFilterSettings(db); loadState(db); client.settings?.clear?.(); }
     const ss = client.getServerSettings?.(message.guild.id);
     if (!ss?.autoModEnabled) return false;
     const member = message.member;
@@ -888,279 +938,198 @@ async function scanMessage(message, client, db) {
     return false;
 }
 
+// Servers where this person still has an active AutoMod strike. Read from the database: banned members
+// can't be fetched as members (they used to get "you're all clear"), and it no longer fetches every server.
+function strikeGuilds(client, uid) {
+    try {
+        return client.db.prepare("SELECT guild_id, COUNT(*) AS n FROM warnings WHERE user_id = ? AND id LIKE 'AM-%' AND active = 1 AND (expires_at IS NULL OR expires_at > strftime('%s','now')) GROUP BY guild_id").all(String(uid))
+            .map((r) => ({ guild: client.guilds.cache.get(r.guild_id), warns: Math.min(r.n, 4) }))
+            .filter((a) => a.guild);
+    } catch { return []; }
+}
+
+function userLang(user) {
+    const u = String(user?.locale || '').toLowerCase();
+    for (const l of ['en', 'fr', 'zh', 'ar']) if (u.startsWith(l)) return l;
+    return 'en';
+}
+
+function _note(color, title, desc) {
+    return toV2({ embeds: [new EmbedBuilder().setColor(color).setTitle(title).setDescription(desc)] });
+}
+
+// Sends one appeal to the server owner (DM, then log channel, then the /automod appeals queue).
+// Used by the DM text ("appeal Server | words") and by the Appeal button on the strike card.
+async function submitAppeal(client, user, targetGuild, reason, lang) {
+    loadState(client.db);
+    const _tU = (k, v) => require('../lib/i18n').t('automod.' + k, lang, v);
+    const _gl = (() => { try { return require('../lib/botPerms').langOf({ guild: targetGuild, client }); } catch { return lang; } })();
+    const _tS = (k, v) => require('../lib/i18n').t('automod.' + k, _gl, v);
+    const now = Date.now();
+
+    const banUntil = appealCooldowns.get(`ban:${user.id}:${targetGuild.id}`);
+    if (banUntil && now < banUntil) {
+        const d = Math.ceil((banUntil - now) / 86400000);
+        return _note(C.DARK, _tU('appeal_bannedTitle'), _tU('appeal_bannedDesc', { server: targetGuild.name, days: _tU(d === 1 ? 'daysOne' : 'daysMany', { n: d }) }));
+    }
+    const cdKey = `${user.id}:${targetGuild.id}`;
+    const lastAppeal = appealCooldowns.get(cdKey);
+    if (lastAppeal && now - lastAppeal < APPEAL_COOLDOWN) {
+        const h = Math.ceil((APPEAL_COOLDOWN - (now - lastAppeal)) / 3600000);
+        return _note(C.YELLOW, _tU('appeal_cooldownTitle'), _tU('appeal_cooldownDesc', { server: targetGuild.name, hours: _tU(h === 1 ? 'hoursOne' : 'hoursMany', { n: h }) }));
+    }
+
+    try {
+        const owner = await targetGuild.fetchOwner().catch(() => null);
+        const entry = history.get(key(user.id, targetGuild.id));
+        const evidence = entry?.lastMessageContent || '*(content unavailable)*';
+        const violationType = entry?.lastViolation || 'unknown';
+        const violationTime = entry?.lastViolationTime ? `<t:${Math.floor(entry.lastViolationTime / 1000)}:R>` : '—';
+
+        const appealId = `AP-${now.toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel(_tS('appeal_btnApprove')).setEmoji(icon('ok')).setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel(_tS('appeal_btnReject')).setEmoji(icon('no')).setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel(_tS('appeal_btnBan')).setEmoji(iconObj('ic_ban', null, '🔨')).setStyle(ButtonStyle.Secondary)
+        );
+        const _tn = (k, n) => _tS(Number(n) === 1 ? k + 'One' : k + 'Many', { n });
+        const _dur = (ms) => ms >= 86400000 ? _tn('days', Math.round(ms / 86400000)) : _tn('hours', Math.round(ms / 3600000));
+        const tribunalEmbed = new EmbedBuilder()
+            .setColor(C.BLURPLE)
+            .setAuthor({ name: _tS('appeal_tribunalAuthor'), iconURL: user.displayAvatarURL() })
+            .setTitle(_tS('appeal_tribunalTitle'))
+            .setDescription(_tS('appeal_tribunalFrom', {
+                user: user.tag, id: user.id, server: targetGuild.name, reason,
+                strikes: Math.min(amStrikes(client.db, targetGuild.id, user.id) || 1, 4),
+            }))
+            .addFields(
+                { name: _tS('appeal_tribunalViolation'), value: violationType === 'unknown' ? '—' : ruleName({ type: violationType }, _tS), inline: true },
+                { name: _tS('appeal_tribunalWhen'), value: violationTime, inline: true },
+                { name: _tS('appeal_tribunalAction'), value: entry?.lastAction ? (entry.lastAction === 'ban' ? _tS('strikeActBan') : _dur(entry.lastDuration)) : '—', inline: true },
+                { name: _tS('appeal_tribunalDeleted'), value: `\`\`\`${evidence.replace(/`/g, "'").substring(0, 900)}\`\`\`` }
+            )
+            .setTimestamp();
+
+        let sent = null, deliveryMethod = 'queued';
+        if (owner && !owner.user.bot) {
+            sent = await owner.send(toV2({ embeds: [tribunalEmbed], components: [row] })).catch(() => null);
+            if (sent) deliveryMethod = 'dm';
+        }
+        if (!sent) {
+            const settings = client.getServerSettings?.(targetGuild.id) || {};
+            const logId = settings.autoModLogChannel || settings.automodlog || settings.modlog;
+            const logCh = logId ? targetGuild.channels.cache.get(logId) : null;
+            if (logCh && require('../lib/canPost').log(targetGuild, logCh, targetGuild.members.me, 'automod-appeals').ok) {
+                sent = await logCh.send(toV2({ content: owner ? `<@${owner.id}>` : undefined, embeds: [tribunalEmbed], components: [row] })).catch(() => null);
+                if (sent) deliveryMethod = 'log_channel';
+            }
+        }
+        appealTribunal.set(appealId, {
+            guildId: targetGuild.id, userId: user.id, ownerId: owner?.id || targetGuild.ownerId || null,
+            status: 'pending', messageId: sent?.id || null, channelId: sent?.channel?.id || null,
+            expiresAt: now + 7 * 86400000, reason, deliveryMethod, userTag: user.tag, evidence, violationType,
+        });
+        appealCooldowns.set(cdKey, now);
+
+        const desc = deliveryMethod === 'dm' ? _tU('appeal_submittedDescDm', { server: targetGuild.name })
+            : deliveryMethod === 'log_channel' ? _tU('appeal_submittedDescLog', { server: targetGuild.name })
+            : _tU('appeal_submittedDescQueued', { server: targetGuild.name });
+        return _note(deliveryMethod === 'queued' ? C.YELLOW : C.GREEN,
+            _tU(deliveryMethod === 'queued' ? 'appeal_queuedTitle' : 'appeal_submittedTitle', deliveryMethod === 'queued' ? {} : { emoji: require('../config/emojis').success || em('ic_ok', '✅') }),
+            desc + '\n\n' + _tU('appeal_submittedFooter'));
+    } catch (e) {
+        console.error('[AUTOMOD APPEAL] submit failed:', e.message);
+        return _note(C.RED, _tU('appeal_failedTitle'), _tU('appeal_failedDesc'));
+    }
+}
+
 async function handleAppeal(message, client) {
     if (message.guild) return;
     if (message.author.bot) return;
 
     const content = message.content.trim();
     const lower = content.toLowerCase();
-    // Default language for pre-server messages (uses the user's Discord locale)
-    const _defaultLang = (() => {
-        const u = String(message.author.locale || '').toLowerCase();
-        for (const l of ['en', 'fr', 'zh', 'ar']) if (u.startsWith(l)) return l;
-        return 'en';
-    })();
-    const _t0 = (k, v) => require('../lib/i18n').t('automod.' + k, _defaultLang, v);
-    const _tGuild = (guild) => {
-        try { return require('../lib/botPerms').langOf({ guild, client }); }
-        catch { return _defaultLang; }
-    };
+    const lang = userLang(message.author);
+    const _t0 = (k, v) => require('../lib/i18n').t('automod.' + k, lang, v);
 
     if (lower === 'appeal' || lower === 'help') {
-        const appeals = [];
-        for (const [guildId, guild] of client.guilds.cache) {
-            try {
-                const member = await guild.members.fetch(message.author.id).catch(() => null);
-                if (member) {
-                    const warns = amStrikes(client.db, guildId, message.author.id);
-                    if (warns > 0) appeals.push({ guild, warns: Math.min(warns, 4) });
-                }
-            } catch (e) {}
-        }
-
-        if (appeals.length === 0) {
-            return message.reply(toV2({
-                embeds: [new EmbedBuilder()
-                    .setColor(C.GREY)
-                    .setTitle(_t0('appeal_noStrikesTitle'))
-                    .setDescription(_t0('appeal_noStrikesDesc'))
-                    .setFooter({ text: 'ARCHON CG-223' })]
-            })).catch(() => {});
-        }
+        const appeals = strikeGuilds(client, message.author.id);
+        if (appeals.length === 0) return message.reply(_note(C.GREY, _t0('appeal_noStrikesTitle'), _t0('appeal_noStrikesDesc'))).catch(() => {});
 
         const _v2 = require('../lib/games/v2');
         const items = [
-            { text: `## 🛡️ ${_t0('appeal_listTitle')}` },
+            { text: `## ${_t0('appeal_listTitle')}` },
             { text: _t0('appeal_listDesc') },
-            { rule: true }
+            { rule: true },
         ];
         for (const a of appeals.slice(0, 5)) {
-            const owner = await a.guild.fetchOwner().catch(() => null);
-            items.push({ text: `**${a.guild.name}**\nStrikes: ${a.warns}/4 · Contact: ${owner ? `<@${owner.id}>` : 'Server admin'}` });
+            items.push({ text: `**${a.guild.name}**\n${_t0('appeal_listLine', { n: a.warns, contact: `<@${a.guild.ownerId}>` })}` });
         }
         items.push({ rule: true });
         items.push({ text: `**${_t0('appeal_listFieldName')}**\n${_t0('appeal_listFieldValue')}` });
-        return message.reply(_v2.card(C.YELLOW, items)).catch(() => {});
+        return message.reply({ ..._v2.card(C.YELLOW, items), allowedMentions: { parse: [] } }).catch(() => {});
     }
 
-    if (lower.startsWith('appeal ')) {
-        const body = content.substring(7).trim();
-        const pipeIdx = body.indexOf('|');
-
-        let serverName, reason, usedFallback = false;
-        if (pipeIdx !== -1) {
-            serverName = body.substring(0, pipeIdx).trim();
-            reason = body.substring(pipeIdx + 1).trim() || 'No reason provided';
-        } else {
-            usedFallback = true;
-            const parts = body.split(' ');
-            serverName = parts[0];
-            reason = parts.slice(1).join(' ') || 'No reason provided';
-        }
-
-        if (!serverName) {
-            return message.reply(toV2({
-                embeds: [new EmbedBuilder()
-                    .setColor(C.RED)
-                    .setTitle(_t0('appeal_missingServerTitle'))
-                    .setDescription(_t0('appeal_missingServerDesc'))
-                    .setFooter({ text: 'ARCHON CG-223' })]
-            })).catch(() => {});
-        }
-
-        let targetGuild = null;
-        for (const [gid, guild] of client.guilds.cache) {
-            if (guild.name.toLowerCase().includes(serverName.toLowerCase())) {
-                targetGuild = guild;
-                break;
-            }
-        }
-
-        if (!targetGuild && usedFallback && body.split(' ').length > 1) {
-            return message.reply(toV2({
-                embeds: [new EmbedBuilder()
-                    .setColor(C.RED)
-                    .setTitle(_t0('appeal_ambiguousTitle'))
-                    .setDescription(_t0('appeal_ambiguousDesc'))
-                    .setFooter({ text: 'ARCHON CG-223' })]
-            })).catch(() => {});
-        }
-
-        if (!targetGuild) {
-            return message.reply(toV2({
-                embeds: [new EmbedBuilder()
-                    .setColor(C.RED)
-                    .setTitle(_t0('appeal_notFoundTitle'))
-                    .setDescription(_t0('appeal_notFoundDesc', { name: serverName }))
-                    .setFooter({ text: 'ARCHON CG-223' })]
-            })).catch(() => {});
-        }
-
-        const _tA = (k, v) => require('../lib/i18n').t('automod.' + k, _tGuild(targetGuild), v);
-        const cdKey = `${message.author.id}:${targetGuild.id}`;
-        const lastAppeal = appealCooldowns.get(cdKey);
-        const now = Date.now();
-
-        // ── Check for appeal ban (from 🔨 tribunal button) ──
-        const banKey = `ban:${message.author.id}:${targetGuild.id}`;
-        const banUntil = appealCooldowns.get(banKey);
-        if (banUntil && now < banUntil) {
-            const remainingMs = banUntil - now;
-            const remainingDays = Math.ceil(remainingMs / 86400000);
-            return message.reply(toV2({
-                embeds: [new EmbedBuilder()
-                    .setColor(C.DARK)
-                    .setTitle(_tA('appeal_bannedTitle'))
-                    .setDescription(_tA('appeal_bannedDesc', { server: targetGuild.name, days: _tA(remainingDays === 1 ? 'daysOne' : 'daysMany', { n: remainingDays }) }))
-                    .setFooter({ text: 'ARCHON CG-223' })]
-            })).catch(() => {});
-        }
-
-        if (lastAppeal && (now - lastAppeal) < APPEAL_COOLDOWN) {
-            const remainingMs = APPEAL_COOLDOWN - (now - lastAppeal);
-            const remainingHrs = Math.ceil(remainingMs / 3600000);
-            return message.reply(toV2({
-                embeds: [new EmbedBuilder()
-                    .setColor(C.YELLOW)
-                    .setTitle(_tA('appeal_cooldownTitle'))
-                    .setDescription(_tA('appeal_cooldownDesc', { server: targetGuild.name, hours: _tA(remainingHrs === 1 ? 'hoursOne' : 'hoursMany', { n: remainingHrs }) }))
-                    .setFooter({ text: 'ARCHON CG-223' })]
-            })).catch(() => {});
-        }
-
-        try {
-            const owner = await targetGuild.fetchOwner().catch(() => null);
-            const entry = history.get(key(message.author.id, targetGuild.id));
-
-            // ── FIX 1: Use stored violation metadata for rich tribunal embed ──
-            const evidence = entry?.lastMessageContent || '*(content unavailable)*';
-            const violationType = entry?.lastViolation || 'unknown';
-            const violationTime = entry?.lastViolationTime
-                ? `<t:${Math.floor(entry.lastViolationTime / 1000)}:R>`
-                : 'unknown';
-
-            const appealId = `AP-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel(_tA('appeal_btnApprove')).setEmoji(icon('ok')).setStyle(ButtonStyle.Success),
-                new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel(_tA('appeal_btnReject')).setEmoji(icon('no')).setStyle(ButtonStyle.Danger),
-                new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel(_tA('appeal_btnBan')).setEmoji(iconObj('ic_ban', null, '🔨')).setStyle(ButtonStyle.Secondary)
-            );
-
-            const _tS = (k, v) => require('../lib/i18n').t('automod.' + k, _tGuild(targetGuild), v);
-            const tribunalEmbed = new EmbedBuilder()
-                .setColor(C.BLURPLE)
-                .setAuthor({ name: _tS('appeal_tribunalAuthor'), iconURL: message.author.displayAvatarURL() })
-                .setTitle(_tS('appeal_tribunalTitle'))
-                .setDescription(_tS('appeal_tribunalFrom', {
-                    user: message.author.tag,
-                    id: message.author.id,
-                    server: targetGuild.name,
-                    reason,
-                    strikes: Math.min(amStrikes(client.db, targetGuild.id, message.author.id) || 1, 4),
-                }))
-                .addFields(
-                    { name: _tS('appeal_tribunalViolation'), value: `\`${violationType}\``, inline: true },
-                    { name: _tS('appeal_tribunalWhen'), value: violationTime, inline: true },
-                    { name: _tS('appeal_tribunalAction'), value: entry?.lastAction ? `${entry.lastAction} (${entry.lastDuration ? fmtDur(entry.lastDuration) : 'permanent'})` : 'unknown', inline: true },
-                    { name: _tS('appeal_tribunalDeleted'), value: `\`\`\`${evidence.substring(0, 900)}\`\`\`` }
-                )
-                .setFooter({ text: _tS('appeal_tribunalFooter') })
-                .setTimestamp();
-
-            // ── FIX 4: 3-tier appeal delivery: DM → log channel → queue ──
-            let sent = null;
-            let deliveryMethod = 'none';
-
-            // Tier 1: Try to DM the owner
-            if (owner && !owner.user.bot) {
-                sent = await owner.send(toV2({ embeds: [tribunalEmbed], components: [row] })).catch(() => null);
-                if (sent) deliveryMethod = 'dm';
-            }
-
-            // Tier 2: Fall back to the server's automod log channel
-            if (!sent) {
-                const settings = client.getServerSettings?.(targetGuild.id) || {};
-                const logId = settings.autoModLogChannel || settings.automodlog || settings.modlog;
-                if (logId) {
-                    const logCh = targetGuild.channels.cache.get(logId);
-                    if (logCh && require('../lib/canPost').log(targetGuild, logCh, targetGuild.members.me, 'automod-appeals').ok) {
-                        const ownerMention = owner ? `<@${owner.id}>` : 'Server owner';
-                        sent = await logCh.send(toV2({
-                            content: `${ownerMention} — an appeal was submitted but I couldn't DM you directly.`,
-                            embeds: [tribunalEmbed],
-                            components: [row]
-                        })).catch(() => null);
-                        if (sent) deliveryMethod = 'log_channel';
-                    }
-                }
-            }
-
-            // Tier 3: Queue for /automod appeals (always stored regardless)
-            if (sent) {
-                appealTribunal.set(appealId, {
-                    guildId: targetGuild.id,
-                    userId: message.author.id,
-                    ownerId: owner?.id || null,
-                    status: 'pending',
-                    messageId: sent.id,
-                    channelId: sent.channel.id,
-                    expiresAt: Date.now() + 7 * 86400000,
-                    reason,
-                    deliveryMethod,
-                    userTag: message.author.tag,
-                    evidence,
-                    violationType,
-                });
-            } else {
-                // No delivery succeeded — still queue so /automod appeals shows it
-                appealTribunal.set(appealId, {
-                    guildId: targetGuild.id,
-                    userId: message.author.id,
-                    ownerId: owner?.id || null,
-                    status: 'pending',
-                    messageId: null,
-                    channelId: null,
-                    expiresAt: Date.now() + 7 * 86400000,
-                    reason,
-                    deliveryMethod: 'queued',
-                    userTag: message.author.tag,
-                    evidence,
-                    violationType,
-                });
-                deliveryMethod = 'queued';
-            }
-
-            appealCooldowns.set(cdKey, now);
-
-            // Confirmation message varies by delivery method
-            const _tU = (k, v) => require('../lib/i18n').t('automod.' + k, _defaultLang, v);
-            const confirmDesc = deliveryMethod === 'dm'
-                ? _tU('appeal_submittedDescDm', { server: targetGuild.name })
-                : deliveryMethod === 'log_channel'
-                ? _tU('appeal_submittedDescLog', { server: targetGuild.name })
-                : _tU('appeal_submittedDescQueued', { server: targetGuild.name });
-
-            return message.reply(toV2({
-                embeds: [new EmbedBuilder()
-                    .setColor(deliveryMethod === 'queued' ? C.YELLOW : C.GREEN)
-                    .setTitle(_tU(deliveryMethod === 'queued' ? 'appeal_queuedTitle' : 'appeal_submittedTitle',
-                        deliveryMethod === 'queued' ? {} : { emoji: require('../config/emojis').success || em('ic_ok', '✅') }))
-                    .setDescription(confirmDesc + '\n\n' + _tU('appeal_submittedFooter'))
-                    .setFooter({ text: 'ARCHON CG-223' })]
-            })).catch(() => {});
-
-        } catch (e) {
-            return message.reply(toV2({
-                embeds: [new EmbedBuilder()
-                    .setColor(C.RED)
-                    .setTitle(_t0('appeal_failedTitle'))
-                    .setDescription(_t0('appeal_failedDesc'))
-                    .setFooter({ text: 'ARCHON CG-223' })]
-            })).catch(() => {});
-        }
+    if (!lower.startsWith('appeal ')) return;
+    const body = content.substring(7).trim();
+    const pipeIdx = body.indexOf('|');
+    let serverName, reason, usedFallback = false;
+    if (pipeIdx !== -1) {
+        serverName = body.substring(0, pipeIdx).trim();
+        reason = body.substring(pipeIdx + 1).trim();
+    } else {
+        usedFallback = true;
+        const parts = body.split(' ');
+        serverName = parts[0];
+        reason = parts.slice(1).join(' ');
     }
+    reason = (reason || '').slice(0, 500) || '—';
+    if (!serverName) return message.reply(_note(C.RED, _t0('appeal_missingServerTitle'), _t0('appeal_missingServerDesc'))).catch(() => {});
+
+    // Only servers where this person has a strike: anyone could send appeals to any server's owner before
+    const mine = strikeGuilds(client, message.author.id).map((a) => a.guild);
+    const q = serverName.toLowerCase();
+    const targetGuild = mine.find((g) => g.name.toLowerCase() === q) || mine.find((g) => g.name.toLowerCase().includes(q));
+
+    if (!targetGuild && usedFallback && body.split(' ').length > 1) return message.reply(_note(C.RED, _t0('appeal_ambiguousTitle'), _t0('appeal_ambiguousDesc'))).catch(() => {});
+    if (!targetGuild) return message.reply(_note(C.RED, _t0('appeal_notFoundTitle'), _t0('appeal_notFoundDesc', { name: serverName }))).catch(() => {});
+
+    return message.reply(await submitAppeal(client, message.author, targetGuild, reason, lang)).catch(() => {});
 }
 
+// The "Appeal" button on the strike card opens a form; this handles what the member sends.
+// Nothing handled it before, so the button always ended in "This interaction failed".
+async function handleAppealModal(interaction, client) {
+    if (!interaction.isModalSubmit?.() || !interaction.customId.startsWith('appeal_modal_')) return false;
+    const [, , userId, guildId] = interaction.customId.split('_');
+    const lang = userLang(interaction.user);
+    const _t0 = (k, v) => require('../lib/i18n').t('automod.' + k, lang, v);
+    if (interaction.user.id !== userId) { await interaction.reply({ content: require('../lib/i18n').t('appealNotYours', lang), flags: 1 << 6 }).catch(() => {}); return true; }
+    const guild = client.guilds.cache.get(guildId);
+    await interaction.deferReply().catch(() => {});
+    const reason = String(interaction.fields.getTextInputValue('appeal_reason') || '').trim().slice(0, 500) || '—';
+    const payload = guild ? await submitAppeal(client, interaction.user, guild, reason, lang) : _note(C.RED, _t0('appeal_failedTitle'), _t0('appeal_failedDesc'));
+    await interaction.editReply(payload).catch(() => {});
+    return true;
+}
+
+// The form itself, in the member's language
+function appealModal(userId, guildId, user) {
+    const { ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+    const lang = userLang(user);
+    const t = (k) => require('../lib/i18n').t('automod.' + k, lang);
+    return new ModalBuilder()
+        .setCustomId(`appeal_modal_${userId}_${guildId}`)
+        .setTitle(t('appeal_modalTitle').slice(0, 45))
+        .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder()
+            .setCustomId('appeal_reason')
+            .setLabel(t('appeal_modalLabel').slice(0, 45))
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(true)
+            .setMinLength(10)
+            .setMaxLength(500)
+            .setPlaceholder(t('appeal_modalPlaceholder').slice(0, 100))));
+}
 
 // ═══════════════════════════════════════════════════════
 //  STATUS CARD (Components V2) — build once, use for slash + prefix
@@ -1230,6 +1199,7 @@ async function handleAppealButton(interaction, client) {
     const parts = interaction.customId.split('_');
     const action = parts[1];
     const appealId = parts[2];
+    loadState(client.db);
     const vote = appealTribunal.get(appealId);
 
     // ── Defer immediately: 15-min window, no more 3s timeouts ──
@@ -1278,7 +1248,7 @@ async function handleAppealButton(interaction, client) {
         // An approved appeal removes the latest strike for good
         try { client.db.prepare("UPDATE warnings SET active = 0 WHERE id = (SELECT id FROM warnings WHERE guild_id = ? AND user_id = ? AND id LIKE 'AM-%' AND active = 1 ORDER BY created_at DESC LIMIT 1)").run(String(vote.guildId), String(vote.userId)); } catch {}
 
-        let timeoutLifted = false;
+        let timeoutLifted = false, banLifted = false;
         if (guild) {
             try {
                 const member = await guild.members.fetch(vote.userId).catch(() => null);
@@ -1286,12 +1256,20 @@ async function handleAppealButton(interaction, client) {
                     await member.timeout(null, `Appeal approved by ${interaction.user.tag}`);
                     timeoutLifted = true;
                 }
-            } catch (e) { console.error('[AUTOMOD APPEAL] timeout lift failed:', e.message); }
+                // An approved appeal after an AutoMod ban lifts the ban (approving used to leave them banned)
+                if (!member) {
+                    const ban = await guild.bans.fetch(vote.userId).catch(() => null);
+                    if (ban && String(ban.reason || '').startsWith('AutoMod:')) {
+                        await guild.bans.remove(vote.userId, `Appeal approved by ${interaction.user.tag}`);
+                        banLifted = true;
+                    }
+                }
+            } catch (e) { console.error('[AUTOMOD APPEAL] lifting the action failed:', e.message); }
         }
 
         if (targetUser) {
             const _tU = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
-            const lifted = timeoutLifted ? _tU('appeal_approvedTimeoutLifted') : _tU('appeal_approvedTimeoutExpired');
+            const lifted = banLifted ? _tU('appeal_approvedBanLifted', { server: guild?.name || '' }) : timeoutLifted ? _tU('appeal_approvedTimeoutLifted') : _tU('appeal_approvedTimeoutExpired');
             await targetUser.send(toV2({ embeds: [new EmbedBuilder()
                 .setColor(C.GREEN)
                 .setTitle(`${_E.verified || em('ic_ok', '✅')} ${_tU('appeal_approvedTitle')}`)
@@ -1313,6 +1291,8 @@ async function handleAppealButton(interaction, client) {
         const entry = history.get(k) || { messages: [], warns: 0, last: Date.now() };
         entry.warns++;
         history.set(k, entry);
+        // The "+1 strike" promised to the member was only kept in memory: strikes are read from the database
+        try { client.db.prepare('INSERT INTO warnings (id,guild_id,user_id,moderator_id,reason,expires_at,active) VALUES (?,?,?,?,?,?,1)').run(`AM-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,6)}`, String(vote.guildId), String(vote.userId), interaction.user.id, 'AutoMod: frivolous appeal', Math.floor(Date.now()/1000)+2592000); } catch {}
         if (targetUser) {
             const _tU = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
             await targetUser.send(toV2({ embeds: [new EmbedBuilder()
@@ -1734,6 +1714,7 @@ async function handleStatusButton(interaction, client) {
 }
 
 module.exports = {
+    handleAppealModal, appealModal,
     isElevated,
     name: 'automod', category: 'MODERATION', aliases: ['am', 'modai'],
     description: '🛡️ Discord-native AutoMod system with timeouts, AI toxicity detection, domain-based link blocking, image spam detection, @everyone protection, and appeals.',
@@ -2023,7 +2004,8 @@ function typeFromReason(reason) {
     return 'toxic content';
 }
 async function sendDigests(client, db, onlyGuilds = null) {
-    const since = Date.now() - 86400000;
+    fixLogUnits(db);
+    const since = Math.floor(Date.now() / 1000) - 86400;
     const rows = db.prepare("SELECT guild_id, user_id, action, reason FROM moderation_logs WHERE moderator_id = ? AND reason LIKE 'AutoMod:%' AND timestamp >= ?").all(client.user.id, since);
     const byGuild = new Map();
     for (const r of rows) { if (!byGuild.has(r.guild_id)) byGuild.set(r.guild_id, []); byGuild.get(r.guild_id).push(r); }
@@ -2066,6 +2048,7 @@ function localDayHour(tz) {
     } catch { const d = new Date(); return { day: d.toISOString().slice(0, 10), hour: d.getUTCHours() }; }
 }
 function startDigest(client, db) {
+    loadState(db);
     if (_digestTimer) return;
     const tick = async () => {
         try {

@@ -316,5 +316,10 @@
   "why_human_attachment_spam": "你发布了多张没有文字的图片。",
   "why_human_cross_channel_spam": "你在多个频道发布了同一条消息。",
   "why_human_rapid_fire": "你在几秒内向多个频道发送了大量消息。",
-  "why_human_toxic_content": "你的消息被判定为对他人有伤害。"
+  "why_human_toxic_content": "你的消息被判定为对他人有伤害。",
+  "appeal_listLine": "警告：{n}/4 · 联系：{contact}",
+  "appeal_modalTitle": "申诉此处罚",
+  "appeal_modalLabel": "为什么应撤销此处罚？",
+  "appeal_modalPlaceholder": "请平静地用几句话向服主说明情况。",
+  "appeal_approvedBanLifted": "\n\n🔓 你的封禁已解除，可以重新加入 **{server}**。"
 }

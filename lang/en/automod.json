@@ -316,5 +316,10 @@
   "why_human_attachment_spam": "You posted several images with no text.",
   "why_human_cross_channel_spam": "You posted the same message in several channels.",
   "why_human_rapid_fire": "You sent many messages across several channels in a few seconds.",
-  "why_human_toxic_content": "Your message was flagged as hurtful toward others."
+  "why_human_toxic_content": "Your message was flagged as hurtful toward others.",
+  "appeal_listLine": "Strikes: {n}/4 · Contact: {contact}",
+  "appeal_modalTitle": "Appeal this action",
+  "appeal_modalLabel": "Why should it be reversed?",
+  "appeal_modalPlaceholder": "Tell the owner what happened, calmly and in a few lines.",
+  "appeal_approvedBanLifted": "\n\n🔓 Your ban has been lifted. You can join **{server}** again."
 }

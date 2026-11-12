@@ -154,8 +154,8 @@ async function askConfirm({ message, client, db, gid, spec, lab, current, value,
 
   // Audit: who changed what (the member, not the bot), in seconds like every other moderation log
   try {
-    db.prepare('INSERT INTO moderation_logs (id, guild_id, user_id, moderator_id, action, reason, timestamp) VALUES (?,?,?,?,?,?,?)')
-      .run(`config_${Date.now()}_${message.author.id}`, gid, message.author.id, message.author.id, 'config', `Lydia: ${spec.label} ${current} → ${value}`, Math.floor(Date.now() / 1000));
+    db.prepare('INSERT INTO moderation_logs (guild_id, user_id, moderator_id, action, reason, timestamp) VALUES (?,?,?,?,?,?)')
+      .run(gid, message.author.id, message.author.id, 'config', `Lydia: ${spec.label} ${current} → ${value}`, Math.floor(Date.now() / 1000));
   } catch {}
   try {
     const logId = db.prepare('SELECT mod_log_channel AS c FROM server_settings WHERE guild_id = ?').get(gid)?.c;

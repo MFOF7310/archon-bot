@@ -3308,24 +3308,15 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             return interaction.reply({ content: require('./lib/i18n').t('appealNotYours', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
         }
 
-        const modal = new ModalBuilder()
-            .setCustomId(`appeal_modal_${userId}_${guildId}`)
-            .setTitle(`${em('note', '📝')} Appeal AutoMod Action`);
-
-        const reasonInput = new TextInputBuilder()
-            .setCustomId('appeal_reason')
-            .setLabel('Why should this action be reversed?')
-            .setStyle(TextInputStyle.Paragraph)
-            .setRequired(true)
-            .setMaxLength(500)
-            .setPlaceholder('Explain why this was a mistake...');
-
-        modal.addComponents(new ActionRowBuilder().addComponents(reasonInput));
+        const modal = require('./plugins/automod.js').appealModal(userId, guildId, interaction.user);
 
         return interaction.showModal(modal).catch(() => {});
     }
 
     // ================= APPEAL MODAL SUBMIT =================
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('appeal_modal_')) {
+        return require('./plugins/automod.js').handleAppealModal(interaction, client).catch(e => console.error('[APPEAL MODAL]', e.message));
+    }
     // ================= PREMIUM ACTIVATION & MODAL =================
     const premiumHandler = require('./lib/handlers/premium');
     if (await premiumHandler(interaction, client)) return;
@@ -4158,7 +4149,7 @@ apiApp.post('/api/premium/generate', requireAdmin, (req, res) => {
         }
         try {
             db.prepare(`INSERT INTO moderation_logs (guild_id,user_id,moderator_id,action,reason,timestamp) VALUES (?,?,?,?,?,?)`)
-              .run('GLOBAL', ownerId || 'owner', client.user?.id || 'bot', 'config', `Generated ${codes.length} premium code(s), ${Number(days) === 0 ? 'lifetime' : days + 'd'}`, Date.now());
+              .run('GLOBAL', ownerId || 'owner', client.user?.id || 'bot', 'config', `Generated ${codes.length} premium code(s), ${Number(days) === 0 ? 'lifetime' : days + 'd'}`, Math.floor(Date.now() / 1000));
         } catch {}
         res.json({ success: true, codes });
     } catch(e) {
@@ -5574,7 +5565,7 @@ apiApp.get('/api/overview/:guildId', requireAdmin, async (req, res) => {
         const topCommand = [...used].sort((x, y) => y[1] - x[1])[0]?.[0] || null;
 
         const am = { total: 0, timeouts: 0, bans: 0 };
-        for (const r of all("SELECT action, COUNT(*) AS n FROM moderation_logs WHERE guild_id = ? AND moderator_id = ? AND reason LIKE 'AutoMod:%' AND timestamp >= ? GROUP BY action", gid, client.user.id, day)) {
+        for (const r of all("SELECT action, COUNT(*) AS n FROM moderation_logs WHERE guild_id = ? AND moderator_id = ? AND reason LIKE 'AutoMod:%' AND timestamp >= ? GROUP BY action", gid, client.user.id, Math.floor(day / 1000))) {
             am.total += r.n; if (r.action === 'timeout') am.timeouts += r.n; if (r.action === 'ban') am.bans += r.n;
         }
 

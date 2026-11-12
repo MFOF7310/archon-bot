@@ -316,5 +316,10 @@
   "why_human_attachment_spam": "نشرت عدة صور بدون نص.",
   "why_human_cross_channel_spam": "نشرت الرسالة نفسها في عدة قنوات.",
   "why_human_rapid_fire": "أرسلت رسائل كثيرة في عدة قنوات خلال ثوانٍ.",
-  "why_human_toxic_content": "اعتُبرت رسالتك مسيئة للآخرين."
+  "why_human_toxic_content": "اعتُبرت رسالتك مسيئة للآخرين.",
+  "appeal_listLine": "الإنذارات: {n}/4 · التواصل: {contact}",
+  "appeal_modalTitle": "الاستئناف على هذا الإجراء",
+  "appeal_modalLabel": "لماذا يجب إلغاؤه؟",
+  "appeal_modalPlaceholder": "اشرح لمالك الخادم ما حدث بهدوء وفي بضعة أسطر.",
+  "appeal_approvedBanLifted": "\n\n🔓 تم رفع الحظر عنك. يمكنك الانضمام إلى **{server}** مجددًا."
 }

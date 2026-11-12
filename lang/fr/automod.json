@@ -316,5 +316,10 @@
   "why_human_attachment_spam": "Tu as publié plusieurs images sans texte.",
   "why_human_cross_channel_spam": "Tu as publié le même message dans plusieurs salons.",
   "why_human_rapid_fire": "Tu as envoyé beaucoup de messages dans plusieurs salons en quelques secondes.",
-  "why_human_toxic_content": "Ton message a été jugé blessant envers d'autres personnes."
+  "why_human_toxic_content": "Ton message a été jugé blessant envers d'autres personnes.",
+  "appeal_listLine": "Avertissements : {n}/4 · Contact : {contact}",
+  "appeal_modalTitle": "Contester cette sanction",
+  "appeal_modalLabel": "Pourquoi devrait-elle être annulée ?",
+  "appeal_modalPlaceholder": "Explique au propriétaire ce qui s'est passé, calmement et en quelques lignes.",
+  "appeal_approvedBanLifted": "\n\n🔓 Ton bannissement est levé. Tu peux rejoindre **{server}** à nouveau."
 }

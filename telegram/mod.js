@@ -63,8 +63,8 @@ function fail(t, res, right) {
 // Every action goes in moderation_logs so /modlogs shows the full history, not only warnings
 function logAction(ctx, action, userId, reason) {
     try {
-        ctx.client?.db?.prepare(`INSERT INTO moderation_logs (id, guild_id, user_id, moderator_id, action, reason, timestamp) VALUES (?,?,?,?,?,?,?)`)
-            .run(`${action}_${Date.now()}_${userId}`, `tg_${ctx.chatId}`, String(userId), String(ctx.userId), action, reason || null, Math.floor(Date.now() / 1000));
+        ctx.client?.db?.prepare(`INSERT INTO moderation_logs (guild_id, user_id, moderator_id, action, reason, timestamp) VALUES (?,?,?,?,?,?)`)
+            .run(`tg_${ctx.chatId}`, String(userId), String(ctx.userId), action, reason || null, Math.floor(Date.now() / 1000));
     } catch {}
 }
 
