@@ -5,6 +5,9 @@
 //    • dashboard repo → pull, build, restart architect-dashboard
 //  Nothing broken is ever left on disk: a failed check or build puts
 //  the previous commit back, and Telegram says what happened.
+//  The server always ends up exactly on GitHub's main: changes made by
+//  hand on the server are saved to ~/deploy-backups, then replaced.
+//  A failed deploy opens a "case"; Telegram says when it's solved.
 // ═══════════════════════════════════════════
 
 require('dotenv').config({ path: '/root/cloud-gaming-223-digital-engine/.env' });
@@ -77,7 +80,17 @@ function tgNotify(msg) {
 
 function report(target, info, ok, title, lines = []) {
     const top = `${ok ? '🚀' : '❌'} <b>${esc(target.name)}: ${esc(title)}</b>\nCommit <code>${esc(info.commit)}</code> by ${esc(info.author)}`;
-    const msg = [top, ...lines.filter(Boolean)].join('\n\n');
+    const extra = [];
+    if (ok) {
+        const was = closeCase(target);
+        if (was) extra.push(`✅ <b>Case closed</b>\nThe problem from commit <code>${esc(was.commit)}</code> (${esc(was.title)}) is solved, ${ago(Date.now() - was.since)} and ${was.attempts} failed deploy(s) later.`);
+    } else {
+        const c = openCase(target, info, title);
+        extra.push(c.attempts > 1
+            ? `📌 Open case, failing since ${ago(Date.now() - c.since)} (${c.attempts} deploys). You'll get a message here once it's solved.`
+            : `📌 Case opened. You'll get a message here once it's solved.`);
+    }
+    const msg = [top, ...lines.filter(Boolean), ...extra].join('\n\n');
     (ok ? console.log : console.error)(`[WEBHOOK] ${target.name}: ${title} (${info.commit})`);
     tgNotify(msg);
 }
@@ -94,13 +107,92 @@ async function deps(target, rev) {
 
 const head = async (target, env) => (await run('git', ['rev-parse', 'HEAD'], { cwd: target.dir, env })).out.trim();
 
+// ─── the server is a copy of GitHub ───
+// Anything changed by hand on the server (a file edited, an unfinished merge, a local commit) used to block every deploy
+// with a git conflict. Now it is saved first, then the server is put back exactly on GitHub's main.
+// Saved in ~/deploy-backups: a .diff with the changed files and a .patch with local commits (also kept on a backup branch).
+// Files git doesn't track (.env, config/emojis.js, the database, node_modules) are never touched.
+const BACKUPS = process.env.DEPLOY_BACKUP_DIR || path.join(process.env.HOME || '/root', 'deploy-backups');
+
+async function syncToGitHub(target, git) {
+    const fetched = await git('fetch', '--quiet', 'origin', BRANCH);
+    if (!fetched.ok) return { ok: false, error: tail(fetched.err) };
+
+    const conflicted = (await git('diff', '--name-only', '--diff-filter=U')).out.trim().split('\n').filter(Boolean);
+    const changed = [...new Set([...(await git('diff', '--name-only', 'HEAD')).out.split('\n'), ...conflicted])].map((x) => x.trim()).filter(Boolean);
+    const localCommits = (await git('log', '--oneline', 'FETCH_HEAD..HEAD')).out.trim().split('\n').filter(Boolean);
+    const saved = { conflicted, changed, localCommits, files: [] };
+
+    if (changed.length || localCommits.length) {
+        const when = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 19);
+        try {
+            fs.mkdirSync(BACKUPS, { recursive: true });
+            if (changed.length) {
+                const f = path.join(BACKUPS, `${target.kind}-${when}.diff`);
+                fs.writeFileSync(f, (await git('diff', 'HEAD')).out);
+                saved.files.push(f);
+            }
+            if (localCommits.length) {
+                const f = path.join(BACKUPS, `${target.kind}-${when}.patch`);
+                fs.writeFileSync(f, (await git('format-patch', '--stdout', 'FETCH_HEAD..HEAD')).out);
+                saved.files.push(f);
+                await git('branch', '-f', `backup/${when}`, 'HEAD');
+                saved.branch = `backup/${when}`;
+            }
+        } catch (e) {
+            return { ok: false, error: `couldn't save the server's own changes (${e.message}), so nothing was overwritten` };
+        }
+    }
+    // Finish whatever git was in the middle of, then line up with GitHub
+    await git('merge', '--abort'); await git('rebase', '--abort'); await git('cherry-pick', '--abort');
+    const reset = await git('reset', '--hard', 'FETCH_HEAD');
+    if (!reset.ok) return { ok: false, error: tail(reset.err), saved };
+    return { ok: true, saved };
+}
+
+// What the sync had to clean up, as lines for the Telegram message
+function cleanupLines(saved) {
+    if (!saved || (!saved.changed.length && !saved.localCommits.length)) return [];
+    const lines = ['🩹 <b>Fixed on the way</b>'];
+    if (saved.conflicted.length) lines.push(`A git conflict was blocking deploys (${saved.conflicted.map(esc).join(', ')}). It's cleared.`);
+    const edited = saved.changed.filter((f) => !saved.conflicted.includes(f));
+    if (edited.length) lines.push(`Files changed by hand on the server were replaced by GitHub's version: ${edited.slice(0, 8).map(esc).join(', ')}${edited.length > 8 ? '…' : ''}.`);
+    if (saved.localCommits.length) lines.push(`${saved.localCommits.length} commit(s) made on the server only were set aside${saved.branch ? ` on branch <code>${esc(saved.branch)}</code>` : ''}.`);
+    lines.push(`Nothing is lost, the old version is saved in:\n${saved.files.map((f) => `<code>${esc(f)}</code>`).join('\n')}`);
+    return [lines.join('\n')];
+}
+
+// ─── case tracking: a failed deploy stays open until a later deploy of the same repository succeeds ───
+const CASES = path.join(BACKUPS, 'open-cases.json');
+function readCases() { try { return JSON.parse(fs.readFileSync(CASES, 'utf8')); } catch { return {}; } }
+function writeCases(c) { try { fs.mkdirSync(BACKUPS, { recursive: true }); fs.writeFileSync(CASES, JSON.stringify(c, null, 2)); } catch (e) { console.error('[WEBHOOK] cases:', e.message); } }
+function openCase(target, info, title) {
+    const c = readCases();
+    const cur = c[target.kind];
+    c[target.kind] = cur ? { ...cur, attempts: (cur.attempts || 1) + 1, last: title, lastCommit: info.commit }
+        : { since: Date.now(), title, commit: info.commit, attempts: 1 };
+    writeCases(c);
+    return c[target.kind];
+}
+function closeCase(target) {
+    const c = readCases(); const was = c[target.kind];
+    if (!was) return null;
+    delete c[target.kind]; writeCases(c);
+    return was;
+}
+function ago(ms) {
+    const m = Math.round(ms / 60000);
+    return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`;
+}
+
 // ─── bot: pull, check every changed file, restart ───
 async function deployBot(target, info) {
     const env = { ...process.env, GIT_TERMINAL_PROMPT: '0' };
     const git = (...a) => run('git', a, { cwd: target.dir, env });
     const before = await head(target, env);
-    const pull = await git('pull', '--autostash', 'origin', BRANCH);
-    if (!pull.ok) return report(target, info, false, 'git pull failed, nothing was restarted', [`<code>${esc(tail(pull.err))}</code>`]);
+    const sync = await syncToGitHub(target, git);
+    if (!sync.ok) return report(target, info, false, 'update failed, nothing was restarted', [`<code>${esc(sync.error)}</code>`, ...cleanupLines(sync.saved)]);
+    const fixed = cleanupLines(sync.saved);
     const after = await head(target, env);
 
     const changed = new Set(info.files);
@@ -110,6 +202,7 @@ async function deployBot(target, info) {
         return report(target, info, false, 'new packages, not restarted', [
             'This push changes the packages the bot needs. The bot keeps running the previous code until you run:',
             `<code>cd ${esc(target.dir)} &amp;&amp; npm install &amp;&amp; pm2 restart ${esc(target.pm2)}</code>`,
+            ...fixed,
         ]);
     }
 
@@ -122,16 +215,17 @@ async function deployBot(target, info) {
         if (c.ok) continue;
         let undo = 'The bot keeps running the previous code.';
         if (before && after && before !== after) {
-            const back = await git('reset', '--keep', before);
+            const back = await git('reset', '--hard', before);
             undo = back.ok ? 'The code on the server was put back to the previous commit, and the bot keeps running it.'
                 : 'The code could not be put back automatically: fix it on the server before the next restart.';
         }
-        return report(target, info, false, `syntax error in ${f}, not restarted`, [`<code>${esc(tail(c.err, 500))}</code>`, undo]);
+        return report(target, info, false, `syntax error in ${f}, not restarted`, [`<code>${esc(tail(c.err, 500))}</code>`, undo, ...fixed]);
     }
 
     const rs = await run('pm2', ['restart', target.pm2, '--update-env'], { cwd: target.dir, timeout: 60000 });
-    if (!rs.ok) return report(target, info, false, 'restart failed', [`<code>${esc(tail(rs.err))}</code>`]);
+    if (!rs.ok) return report(target, info, false, 'restart failed', [`<code>${esc(tail(rs.err))}</code>`, ...fixed]);
     report(target, info, true, before === after ? 'restarted (nothing new to pull)' : 'deployed and restarted ✓', [
+        ...fixed,
         changed.has('webhook.js') ? 'webhook.js changed too: run <code>pm2 restart archon-webhook</code> to use the new version.' : '',
     ]);
 }
@@ -141,29 +235,18 @@ const stamp = (dir) => ['dist/boot.js', 'dist/public/index.html'].map((f) => { t
 
 async function deployDashboard(target, info) {
     const git = (...a) => run('git', a, { cwd: target.dir, env: PLAIN_ENV });
-    const dirty = (await git('status', '--porcelain', '--untracked-files=no')).out.trim();
-    if (dirty) {
-        return report(target, info, false, 'files were changed on the server, nothing was updated', [
-            `<code>${esc(dirty.split('\n').slice(0, 10).join('\n'))}</code>`,
-            'Commit or undo those changes on the server, then push again.',
-        ]);
-    }
     const before = await head(target, PLAIN_ENV);
-    const fetched = await git('fetch', '--quiet', 'origin', BRANCH);
-    if (!fetched.ok) return report(target, info, false, 'git fetch failed, nothing was updated', [`<code>${esc(tail(fetched.err))}</code>`]);
-    const merged = await git('merge', '--ff-only', 'FETCH_HEAD');
-    if (!merged.ok) {
-        return report(target, info, false, 'the server has commits GitHub does not have, nothing was updated', [
-            `Push them from the server first: <code>cd ${esc(target.dir)} &amp;&amp; git push origin ${BRANCH}</code>. That push deploys by itself.`,
-        ]);
-    }
+    const sync = await syncToGitHub(target, git);
+    if (!sync.ok) return report(target, info, false, 'update failed, nothing was updated', [`<code>${esc(sync.error)}</code>`, ...cleanupLines(sync.saved)]);
+    const fixed = cleanupLines(sync.saved);
     const after = await head(target, PLAIN_ENV);
-    if (before === after) return report(target, info, true, 'already up to date, nothing to build');
+    if (before === after) return report(target, info, true, 'already up to date, nothing to build', fixed);
 
     if ((await deps(target, before)) !== (await deps(target, after))) {
         return report(target, info, false, 'new packages, not built', [
             'The code is updated but the site still runs the previous build. Finish with:',
             `<code>cd ${esc(target.dir)} &amp;&amp; npm install &amp;&amp; npm run build &amp;&amp; pm2 restart ${esc(target.pm2)}</code>`,
+            ...fixed,
         ]);
     }
 
@@ -177,12 +260,12 @@ async function deployDashboard(target, info) {
             const again = await run('npm', ['run', 'build'], { cwd: target.dir, env: PLAIN_ENV, timeout: 15 * 60 * 1000 });
             state = again.ok ? 'The previous version was rebuilt; the site keeps it.' : 'The previous version could not be rebuilt either: check the server now.';
         }
-        return report(target, info, false, 'build failed, not deployed', [`<code>${esc(tail(build.out + '\n' + build.err, 700))}</code>`, state]);
+        return report(target, info, false, 'build failed, not deployed', [`<code>${esc(tail(build.out + '\n' + build.err, 700))}</code>`, state, ...fixed]);
     }
     // No --update-env: the dashboard keeps its own environment (PORT and the rest), never this process's
     const rs = await run('pm2', ['restart', target.pm2], { cwd: target.dir, env: PLAIN_ENV, timeout: 60000 });
-    if (!rs.ok) return report(target, info, false, 'built, but the restart failed', [`<code>${esc(tail(rs.err))}</code>`]);
-    report(target, info, true, 'built and restarted ✓');
+    if (!rs.ok) return report(target, info, false, 'built, but the restart failed', [`<code>${esc(tail(rs.err))}</code>`, ...fixed]);
+    report(target, info, true, 'built and restarted ✓', fixed);
 }
 
 // ─── one deploy at a time per repository; a push that arrives meanwhile runs right after ───
