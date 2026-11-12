@@ -1,324 +1,145 @@
-<div align="center">
+<p align="center">
+  <img src=".github/readme/header.png" alt="ARCHON CG-223, the Discord bot built in Bamako" width="100%">
+</p>
 
-<img src="https://cdn.discordapp.com/avatars/1472707869257367676/a_aa7dec778d53a895daadd74ddf7c9700.gif" width="120" height="120" style="border-radius: 50%"/>
+<p align="center">
+  <a href="https://discord.com/oauth2/authorize?client_id=1472707869257367676&permissions=2253174475189494&scope=bot%20applications.commands"><img src=".github/readme/btn-add.png" alt="Add ARCHON to Discord" width="32%"></a>
+  <a href="https://top.gg/bot/1472707869257367676/vote"><img src=".github/readme/btn-vote.png" alt="Vote on Top.gg" width="32%"></a>
+  <a href="https://bamako-steel-dev.xyz"><img src=".github/readme/btn-dashboard.png" alt="Open the dashboard" width="32%"></a>
+</p>
 
-# 🦅 ARCHON CG-223
+<p align="center">
+  <img src="https://img.shields.io/badge/version-3.2.0-E6A817?style=flat-square" alt="Version 3.2.0">
+  <img src="https://img.shields.io/badge/discord.js-v14-5865F2?style=flat-square&logo=discord&logoColor=white" alt="discord.js v14">
+  <img src="https://img.shields.io/badge/node-%E2%89%A518-3C873A?style=flat-square&logo=node.js&logoColor=white" alt="Node 18 or later">
+  <img src="https://img.shields.io/badge/languages-EN%20%C2%B7%20FR%20%C2%B7%20ZH%20%C2%B7%20AR-E6A817?style=flat-square" alt="English, French, Chinese, Arabic">
+  <img src="https://img.shields.io/badge/license-MIT-lightgrey?style=flat-square" alt="MIT licence">
+</p>
 
-**The Neural Architect — Multi-Platform Discord & Telegram Bot**
-
-[![Discord](https://img.shields.io/badge/Discord-Eagle%20Community-5865F2?style=flat&logo=discord&logoColor=white)](https://discord.gg/NFSMFJajp9)
-[![Telegram](https://img.shields.io/badge/Telegram-archon223-26A5E4?style=flat&logo=telegram&logoColor=white)](https://t.me/architect223bot?start=_tgr_TUbY9E0wZjBk)
-[![Dashboard](https://img.shields.io/badge/Dashboard-Live-00f0ff?style=flat&logo=vercel&logoColor=white)](https://bamako-steel-dev.xyz)
-[![Version](https://img.shields.io/badge/Version-v3.1.1-00ff88?style=flat)](#)
-[![Servers](https://img.shields.io/badge/Servers-14-f1c40f?style=flat)](#)
-[![Users](https://img.shields.io/badge/Users-138-ff6b6b?style=flat)](#)
-[![Made in Mali](https://img.shields.io/badge/Made%20in-Bamako%2C%20Mali%20🇲🇱-green?style=flat)](#)
-
-*Built from scratch in Bamako, Mali — developed entirely from a phone via Termux + SSH*
-
-</div>
-
----
-
-## ✨ Features
-
-### 🎮 Discord — 121 plugins · 93 slash commands
-
-<details>
-<summary><b>🧠 AI & Language</b></summary>
-
-- Lydia AI — 28 languages, multi-agent system, dynamic changelog reader
-- Per-server language setting: EN / FR / BM / AR / ZH
-- Auto-detected locale fallback
-
-</details>
-
-<details>
-<summary><b>💰 Economy & Progression</b></summary>
-
-- Credits, XP, daily rewards, investments, duels
-- Shop, inventory, loadouts, custom roles
-- Per-server leveling config via dashboard
-
-</details>
-
-<details>
-<summary><b>🛡️ Moderation</b></summary>
-
-- AutoMod with attachment detection, @everyone guard
-- Warnings, mutes, kicks, bans with audit logs
-- Ticket system v2 — priority flags, ratings, ANSI embeds
-- Captcha verification
-
-</details>
-
-<details>
-<summary><b>🎵 Music</b></summary>
-
-- SoundCloud primary + YouTube yt-dlp fallback
-- Queue management, loop, skip, volume
-- 530+ curated tracks including Mali legends, Arabic, Chinese artists
-
-</details>
-
-<details>
-<summary><b>🎉 Social & Fun</b></summary>
-
-- Giveaways — booster 2x entries, DM notifications, ANSI embeds
-- Birthday announcements with per-server channel
-- Welcome / goodbye canvas cards with Mali gold theme
-- AFK system, auto-reply per channel, profile cards with custom backgrounds
-- Games — Trivia, Word Guess, Dice, Coin Flip, Duel
-
-</details>
-
-<details>
-<summary><b>📊 Dashboard</b></summary>
-
-- Discord OAuth2 login with full guild isolation
-- Server settings — language, welcome/goodbye, leveling, automod
-- User profiles with rank, XP, badges, economy stats
-- Live at [bamako-steel-dev.xyz](https://bamako-steel-dev.xyz)
-
-</details>
+<p align="center">
+  <b>One bot for your whole Discord server.</b><br>
+  Tickets, AI chat, welcome cards, verification, economy and Call of Duty Mobile tools,<br>
+  set up from Discord or from the dashboard. Built and run from a phone in Bamako, Mali 🇲🇱
+</p>
 
 ---
 
-### 🆕 Recent updates (v3.1.1)
+## What it does
 
-- **Components V2 everywhere** — automod, welcome, ping, alive, claim, reminder, mylang rebuilt as V2 cards
-- **Emoji migration** — 130 guild emojis moved to Discord Application Emojis (render in every server the bot is in, no permission quirks)
-- **i18n unified** — one language resolver (`pickLang`): server `setlang` → user `mylang` → Discord locale → English
-- **Auto-broadcast** — every deploy posts a V2 update card to opted-in servers, with AI-generated notes and a clickable GitHub commit link
-- **Automod admin panel** — status, domains, channels, log, raid config all runnable via buttons and modals
-- **Live telemetry** — `/ping` and `/alive` show real REST/gateway latency with progress bars
+<p align="center"><img src=".github/readme/tickets.png" alt="Tickets: live setup card, claim, transcripts and ratings" width="100%"></p>
 
----
+**Tickets.** Set everything up from one live card in Discord: where tickets open, the staff role, transcripts, auto-close, the limit per member. Members open a ticket with a button, staff claim it, and every closed ticket leaves a transcript and a 5-star rating.
 
-### 📱 Telegram — 67 plugins
+<p align="center"><img src=".github/readme/lydia.png" alt="Lydia, the AI assistant" width="100%"></p>
 
-<details>
-<summary><b>🎬 Media Downloads</b></summary>
+**Lydia, the AI assistant.** Mention her and she answers in the member's own language, remembers what members ask her to, searches the web when a question needs it, and can change server settings after an admin confirms. Free servers get 30 messages per member per day.
 
-- YouTube, Instagram, Twitter/X, TikTok, Facebook, Snapchat, Vimeo
-- Auto quality selection, file size handling
+<p align="center"><img src=".github/readme/welcome.png" alt="Welcome and goodbye cards" width="100%"></p>
 
-</details>
+**Welcome and goodbye.** A card with your banner, the new member's avatar, who invited them and how old their account is, with buttons to your rules and channels. When someone leaves, a short card says how long they stayed.
 
-<details>
-<summary><b>🌍 Multilingual & Group Tools</b></summary>
+<p align="center"><img src=".github/readme/verify.png" alt="Captcha verification and raid protection" width="100%"></p>
 
-- EN / FR / Bamanankan / ZH — auto-detected per user
-- Welcome/goodbye with GIF support, per-topic channel, auto-close
-- Smart group settings panel with 2-min auto-close
-- Auto-reply filters — per-chat, per-group, private isolation
+**Verification and AutoMod.** New members solve a captcha in their DMs before they see the server. AutoMod handles spam, links, invites and mass mentions with a clear strike ladder, members can appeal from the strike card, and the owner gets one summary a day instead of a ping for every message.
 
-</details>
+<p align="center"><img src=".github/readme/votes.png" alt="Votes, streaks and credits" width="100%"></p>
 
-<details>
-<summary><b>🎮 Games & System</b></summary>
+**Votes and economy.** Credits, daily rewards, a shop, investments, giveaways and leaderboards, kept separately for each server. Voting on Top.gg pays credits, doubled on weekends, with streaks and an opt-in reminder.
 
-- Trivia v3 — Mali / Africa / Tech / Gaming / General categories
-- /sysctl — PM2 restart, logs, monit directly from Telegram
-- GitHub commit tracking with auto-broadcast on deploy
+<p align="center"><img src=".github/readme/codm.png" alt="Call of Duty Mobile weapon meta" width="100%"></p>
 
-</details>
+**Call of Duty Mobile.** Weapon tier lists, loadouts, scrims and game profiles, made with clan players from a Malian CODM community.
 
----
+### Also inside
 
-## 🛠️ Tech Stack
+- **Dashboard** at [bamako-steel-dev.xyz](https://bamako-steel-dev.xyz): Discord login, every module on its own page, works on a phone
+- **Alerts** for YouTube uploads, YouTube lives and TikTok posts
+- **Moderation**: warnings, timeouts, kicks, bans, logs and raid detection
+- **Leveling** with role rewards, birthdays, polls, reminders and mini-games
+- **Telegram**: a companion bot for groups, with moderation, welcome messages and filters
+- **Four languages** for every card and message: English, French, Chinese and Arabic
 
-| Layer | Technology |
-|-------|------------|
-| Runtime | Node.js 22 |
-| Discord | Discord.js v14 |
-| Telegram | Custom polling engine |
-| Database | SQLite via better-sqlite3 |
-| Dashboard | React + TypeScript + Tailwind + tRPC |
-| API | Express + Hono |
-| Hosting | Hetzner CPX22 VPS |
-| Proxy | Nginx + Cloudflare |
-| Process | PM2 |
-| Media | yt-dlp + ffmpeg |
-| Auth | Discord OAuth2 |
+### Premium
+
+Free covers everything above. Premium, at **$3.40 per server per month**, adds Lydia's server actions, AI model choice, raid detection, captcha verification, advanced AutoMod (image spam, `@everyone` spam) and priority support.
 
 ---
 
-## 📊 Stats
+## Run it yourself
 
-![Plugins](https://img.shields.io/badge/Discord%20Plugins-121-5865F2?style=for-the-badge&logo=discord&logoColor=white)
-![Telegram](https://img.shields.io/badge/Telegram%20Plugins-67-26A5E4?style=for-the-badge&logo=telegram&logoColor=white)
-![Commands](https://img.shields.io/badge/Slash%20Commands-93-00ff88?style=for-the-badge)
-![Servers](https://img.shields.io/badge/Servers-14-f1c40f?style=for-the-badge)
-![Users](https://img.shields.io/badge/Users-138-ff6b6b?style=for-the-badge)
-![Languages](https://img.shields.io/badge/Languages-EN%20%7C%20FR%20%7C%20BM%20%7C%20AR%20%7C%20ZH-green?style=for-the-badge)
-
----
-
-## 🚀 Self-Hosting
-
-### Prerequisites
-
-- Node.js 22+
-- Python 3.x
-- ffmpeg + yt-dlp installed globally
-- PM2 (`npm install -g pm2`)
-- Discord application + bot token from [discord.com/developers](https://discord.com/developers)
-- Telegram bot token from [@BotFather](https://t.me/BotFather)
-
-### Environment Variables
-
-Copy `.env.example` to `.env` and fill in:
-
-```env
-DISCORD_TOKEN=your_bot_token
-CLIENT_ID=your_application_id
-CLIENT_SECRET=your_oauth2_secret
-DASHBOARD_URL=http://localhost:3000
-ANTHROPIC_API_KEY=your_key
-GUILD_ID=your_main_guild_id
-API_ADMIN_SECRET=a_strong_secret
-```
-
----
-
-<details>
-<summary><b>🐧 Linux / VPS (Recommended)</b></summary>
+You need Node.js 18 or later and a Discord application ([developer portal](https://discord.com/developers/applications)).
 
 ```bash
 git clone https://github.com/MFOF7310/archon-bot.git
 cd archon-bot
 npm install
-cp .env.example .env
-# fill in .env
-node scripts/deploy-commands.js
+cp .env.example .env      # fill in DISCORD_TOKEN, CLIENT_ID and OWNER_ID
+npm start
+```
+
+Only those three values are required. Every other line of `.env.example` turns on an optional feature and explains itself (AI keys, Top.gg, Telegram, the dashboard API, payments).
+
+To keep it running on a server:
+
+```bash
+npm install -g pm2
 pm2 start index.js --name Architect-CG223
 pm2 save && pm2 startup
 ```
 
-</details>
-
 <details>
-<summary><b>📱 Termux (Android — no root required)</b></summary>
+<summary><b>Android (Termux)</b></summary>
 
 ```bash
-pkg update && pkg upgrade
-pkg install nodejs python ffmpeg git
-pip install yt-dlp
-npm install -g pm2
+pkg update && pkg install nodejs git python ffmpeg
 git clone https://github.com/MFOF7310/archon-bot.git
-cd archon-bot
-npm install
+cd archon-bot && npm install
 cp .env.example .env
-node scripts/deploy-commands.js
-pm2 start index.js --name Architect-CG223
+npm start
 ```
 
 </details>
 
 <details>
-<summary><b>🪟 Windows</b></summary>
+<summary><b>Optional tools</b></summary>
 
-1. Install [Node.js 22](https://nodejs.org) and [Git](https://git-scm.com)
-2. Install [ffmpeg](https://ffmpeg.org/download.html) and add to PATH
-3. Run:
-
-```bash
-git clone https://github.com/MFOF7310/archon-bot.git
-cd archon-bot
-npm install
-copy .env.example .env
-node scripts/deploy-commands.js
-npm install -g pm2
-pm2 start index.js --name Architect-CG223
-```
+- **ffmpeg** and **yt-dlp** for media features and the YouTube fallback
+- **An OpenRouter key** (`OPENROUTER_API_KEY`) for Lydia and AI moderation
+- **The dashboard** lives in its own repository and reads the bot's API
 
 </details>
 
-<details>
-<summary><b>🍎 macOS</b></summary>
+### Project layout
 
-```bash
-brew install node ffmpeg git python3
-pip3 install yt-dlp
-npm install -g pm2
-git clone https://github.com/MFOF7310/archon-bot.git
-cd archon-bot
-npm install
-cp .env.example .env
-node scripts/deploy-commands.js
-pm2 start index.js --name Architect-CG223
-```
-
-</details>
-
-<details>
-<summary><b>📊 Dashboard Setup (Optional)</b></summary>
-
-```bash
-cd /path/to/dashboard
-npm install
-npm run build
-pm2 start dist/boot.js --name architect-dashboard
-```
-
-Requires its own `.env` with `DATABASE_URL`, `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, and `SESSION_SECRET`.
-
-</details>
+| Folder | What's in it |
+|---|---|
+| `plugins/` | One file per command or module |
+| `lib/` | Shared code: settings, i18n, cards, handlers |
+| `lang/` | Every text the bot shows, one folder per language |
+| `telegram/` | The Telegram bot and its plugins |
+| `config/` | Changelog, emoji map (`emojis.example.js`) |
+| `scripts/` | Command deploy and database backup |
 
 ---
 
-### Deploying Slash Commands
+## Translations
 
-After any plugin change:
+| Language | Status |
+|---|---|
+| English | Complete |
+| French | Complete |
+| Chinese (Simplified) | Complete |
+| Arabic | Complete |
+| Bambara | Started, needs native speakers |
 
-```bash
-node scripts/deploy-commands.js
-```
-
-Only plugins with a valid `SlashCommandBuilder` export are registered. Each plugin logs as `✅ deployed` or `⏭️ skipped (prefix-only)`.
-
----
-
-## 🌍 Translations
-
-ARCHON CG-223 is fully internationalized across 5 locales:
-
-| Code | Language | Status |
-|------|----------|--------|
-| `en` | English | ✅ Complete |
-| `fr` | French | ✅ Complete |
-| `bm` | Bambara (Bamanankan) | 🚧 Draft — needs native review |
-| `zh` | Chinese (Simplified) | ✅ Complete |
-| `ar` | Arabic | ✅ Complete |
-
-Want to add a new language or improve an existing one? See [TRANSLATING.md](TRANSLATING.md) for the full guide.
+Want to help? Read [TRANSLATING.md](TRANSLATING.md). Bug reports and ideas are welcome too: see [CONTRIBUTING.md](CONTRIBUTING.md), and report security issues privately as [SECURITY.md](SECURITY.md) explains.
 
 ---
 
-## 🌍 About
+## About
 
-ARCHON CG-223 is built by **Moussa Fofana** ([@MFOF7310](https://github.com/MFOF7310)) from **Bamako, Mali** 🇲🇱
+ARCHON CG-223 is written by **Moussa Fofana** ([@MFOF7310](https://github.com/MFOF7310)) in Bamako, Mali. It isn't a fork: it was built from scratch, entirely from a Samsung Galaxy Z Fold through Termux and SSH.
 
-- **Built entirely from a phone** — Samsung Galaxy Z Fold 5, Termux + SSH into Hetzner VPS
-- **Not a fork** — built from scratch, every line written by hand
-- **Dual platform** — Discord + Telegram from a single codebase
-- **Production ready** — serving 14 servers and 138 active users
-- **Multilingual core** — EN / FR / Bamanankan / AR / ZH
+Questions or feedback: join the [Eagle Community](https://discord.gg/NFSMFJajp9) on Discord.
 
----
-
-## 📄 License
-
-MIT License — see [LICENSE](LICENSE) for details.
-
----
-
-<div align="center">
-
-🦅 **ARCHON CG-223** • BAMAKO_223 🇲🇱
-
-*Neural Grid v3.1.1 — All systems nominal*
-
-</div>
-
+<p align="center">MIT licence · see <a href="LICENSE">LICENSE</a></p>
