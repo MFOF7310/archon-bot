@@ -851,7 +851,8 @@ function buildEmbed(reply, message, options = {}) {
   const { isError = false, isThinking = false, theme = THEMES.default, model = null, latency = null, tokens = null, sources = [], lang = 'en' } = options;
 
   const themeKey = Object.keys(THEMES).find(k => THEMES[k].name === theme.name) || 'default';
-  const embedColor = isError ? 0xff4757 : parseInt(getSentimentColor(themeKey, reply).replace('#', ''), 16);
+  // Red only for real errors: picking the colour from words in the answer ("bug", "fix") made friendly replies look like alerts
+  const embedColor = isError ? 0xff4757 : parseInt((PALETTE[themeKey] || PALETTE.default).base.replace('#', ''), 16);
 
   const c = new ContainerBuilder().setAccentColor(embedColor);
 
