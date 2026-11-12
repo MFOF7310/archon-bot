@@ -113,7 +113,13 @@ async function tail(p, n = 30, errorsOnly = false) {
         .map((l) => l.replace(/^\s*\d+\|[\w.-]+\s*\|\s*/, '').trimEnd())
         .filter((l) => l.trim() && !/^\[TAILING\]|last \d+ lines|\.pm2\/logs\//i.test(l));
     if (errorsOnly) rows = rows.filter((l) => /error|fail|exception|unhandled|crash|ERR_|at\s+\S+\s+\(/i.test(l));
-    rows = rows.slice(-n);
+    // The same line repeated (one per restart, one per retry) shows once with a count
+    const merged = [];
+    for (const l of rows) {
+        const last = merged[merged.length - 1];
+        if (last && last.text === l) last.n++; else merged.push({ text: l, n: 1 });
+    }
+    rows = merged.map((m) => m.n > 1 ? `${m.text}  ×${m.n}` : m.text).slice(-n);
     let body = rows.join('\n');
     if (body.length > 3400) body = '…' + body.slice(-3400);
     return body || (errorsOnly ? 'No errors in the recent log.' : 'The log is empty.');

@@ -787,9 +787,9 @@ function startPolling(bridge, client) {
                         if (json.ok && json.result?.length > 0) {
                             for (const u of json.result) {
                                 lastId = Math.max(lastId, u.update_id);
-                                // Debug — log update types
-                                const uType = Object.keys(u).filter(k => k !== 'update_id')[0];
-                                if (uType !== 'message' || u.message?.new_chat_members || u.message?.left_chat_member) {
+                                // Set TG_DEBUG=1 in .env to see every raw update (button presses filled the log otherwise)
+                                if (process.env.TG_DEBUG === '1') {
+                                    const uType = Object.keys(u).filter(k => k !== 'update_id')[0];
                                     console.log('[TG DEBUG] update type:', uType, JSON.stringify(u).substring(0, 100));
                                 }
                                 await handleUpdate(u, bridge, client);
