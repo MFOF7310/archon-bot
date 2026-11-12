@@ -1132,24 +1132,40 @@ client.db = db;
 // All credit operations are strictly scoped to a guildId.
 // In DMs, guildId falls back to 'DM' so the user's balance is preserved.
 
-// Atomically add credits to a user's guild-scoped balance
+// The balance to start from. Batched user writes wait up to 30 s in memory before they reach the database, so while
+// one is waiting the newest balance is in memory. Starting from the database then lost credits: a /claim followed by
+// any payout within 30 s, or a payout to someone who had just chatted (the waiting write put the old balance back).
+function liveCredits(userId, guildId) {
+    const key = `${userId}:${guildId}`;
+    const pending = client.pendingUserUpdates?.get(key);
+    if (pending) {
+        const cached = client.userDataCache?.get(key);
+        return Math.max(0, Number((cached ?? pending).credits) || 0);
+    }
+    return Math.max(0, Number(getUser(userId, guildId)?.credits) || 0);
+}
+// Memory follows the database: the cache, and the waiting write if there is one
+function rememberCredits(userId, guildId, value) {
+    const key = `${userId}:${guildId}`;
+    const cached = client.userDataCache?.get(key);
+    if (cached) { cached.credits = value; cached._lastAccess = Date.now(); }
+    const pending = client.pendingUserUpdates?.get(key);
+    if (pending) pending.credits = value;
+}
+const saveCredits = (userId, guildId, value) => db.prepare('UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?').run(value, userId, guildId);
+
+// Add credits to a member's balance on one server
 function addCredits(userId, guildId, amount) {
     if (!guildId) guildId = 'DM';
     const safeAmount = Math.max(0, Math.floor(amount || 0));
     if (safeAmount === 0) return { ok: true, previous: 0, current: 0, added: 0 };
 
     try {
-        const row = getOrCreateUser(userId, guildId, 'Unknown');
-        const previous = row?.credits || 0;
+        getOrCreateUser(userId, guildId, 'Unknown');
+        const previous = liveCredits(userId, guildId);
         const current = previous + safeAmount;
-
-        db.prepare('UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?').run(current, userId, guildId);
-
-        // Update cache if present
-        const compositeKey = `${userId}:${guildId}`;
-        const cached = client.userDataCache.get(compositeKey);
-        if (cached) { cached.credits = current; cached._lastAccess = Date.now(); }
-
+        saveCredits(userId, guildId, current);
+        rememberCredits(userId, guildId, current);
         return { ok: true, previous, current, added: safeAmount };
     } catch (err) {
         console.error(`${red}[ECONOMY]${reset} addCredits failed for ${userId}@${guildId}:`, err.message);
@@ -1157,27 +1173,21 @@ function addCredits(userId, guildId, amount) {
     }
 }
 
-// Atomically remove credits from a user's guild-scoped balance
+// Remove credits from a member's balance on one server (refused when they don't have enough)
 function removeCredits(userId, guildId, amount) {
     if (!guildId) guildId = 'DM';
     const safeAmount = Math.max(0, Math.floor(amount || 0));
     if (safeAmount === 0) return { ok: true, previous: 0, current: 0, removed: 0 };
 
     try {
-        const row = getOrCreateUser(userId, guildId, 'Unknown');
-        const previous = row?.credits || 0;
+        getOrCreateUser(userId, guildId, 'Unknown');
+        const previous = liveCredits(userId, guildId);
         if (previous < safeAmount) {
             return { ok: false, error: 'INSUFFICIENT_FUNDS', previous, required: safeAmount };
         }
         const current = previous - safeAmount;
-
-        db.prepare('UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?').run(current, userId, guildId);
-
-        // Update cache if present
-        const compositeKey = `${userId}:${guildId}`;
-        const cached = client.userDataCache.get(compositeKey);
-        if (cached) { cached.credits = current; cached._lastAccess = Date.now(); }
-
+        saveCredits(userId, guildId, current);
+        rememberCredits(userId, guildId, current);
         return { ok: true, previous, current, removed: safeAmount };
     } catch (err) {
         console.error(`${red}[ECONOMY]${reset} removeCredits failed for ${userId}@${guildId}:`, err.message);
@@ -1185,8 +1195,43 @@ function removeCredits(userId, guildId, amount) {
     }
 }
 
+// Move credits from one member to another on one server: both balances change together or not at all,
+// and the transfer is written to the transfers table (with the server, so each server has its own history).
+let _transfersReady = false;
+function transferCredits(fromId, toId, guildId, amount, names = {}) {
+    if (!guildId) guildId = 'DM';
+    const n = Math.floor(Number(amount) || 0);
+    if (n <= 0) return { ok: false, error: 'INVALID_AMOUNT' };
+    if (String(fromId) === String(toId)) return { ok: false, error: 'SAME_USER' };
+    try {
+        if (!_transfersReady) {
+            _transfersReady = true;
+            try { db.prepare('ALTER TABLE transfers ADD COLUMN guild_id TEXT').run(); } catch (e) { /* the column is already there */ }
+        }
+        getOrCreateUser(fromId, guildId, names.from || 'Unknown');
+        getOrCreateUser(toId, guildId, names.to || 'Unknown');
+        const fromBefore = liveCredits(fromId, guildId);
+        if (fromBefore < n) return { ok: false, error: 'INSUFFICIENT_FUNDS', previous: fromBefore, required: n };
+        const toBefore = liveCredits(toId, guildId);
+        db.transaction(() => {
+            saveCredits(fromId, guildId, fromBefore - n);
+            saveCredits(toId, guildId, toBefore + n);
+            db.prepare('INSERT INTO transfers (sender_id, receiver_id, amount, timestamp, platform, guild_id) VALUES (?, ?, ?, ?, ?, ?)')
+                .run(fromId, toId, n, Date.now(), names.platform || 'discord', guildId);
+        })();
+        rememberCredits(fromId, guildId, fromBefore - n);
+        rememberCredits(toId, guildId, toBefore + n);
+        return { ok: true, amount: n, from: { previous: fromBefore, current: fromBefore - n }, to: { previous: toBefore, current: toBefore + n } };
+    } catch (err) {
+        console.error(`${red}[ECONOMY]${reset} transferCredits failed ${fromId} -> ${toId}@${guildId}:`, err.message);
+        return { ok: false, error: err.message };
+    }
+}
+
 client.addCredits = addCredits;
 client.removeCredits = removeCredits;
+client.transferCredits = transferCredits;
+client.liveCredits = (userId, guildId) => liveCredits(userId, guildId || 'DM');
 
 // ================= UNIFIED ROLE GATEKEEPER =================
 const ROLE_SOURCES = {
@@ -3347,6 +3392,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return require('./plugins/livestream').handleToggle(interaction, client).catch(e => console.error('[LIVESTREAM] toggle:', e.message));
     }
     // /meta card: class filter, weapon picker, random pick, back to the list (and the old cards' "reroll" button)
+    if ((interaction.isButton() || interaction.isUserSelectMenu() || interaction.isModalSubmit()) && interaction.customId.startsWith('credit:')) {
+        return require('./plugins/credit.js').handleComponent(interaction, client).catch(e => console.error('[CREDIT] component:', e.message));
+    }
     if (interaction.isButton() && interaction.customId.startsWith('claim:')) {
         return require('./plugins/claim.js').handleComponent(interaction, client).catch(e => console.error('[CLAIM] button:', e.message));
     }

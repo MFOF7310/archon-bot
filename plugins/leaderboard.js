@@ -186,3 +186,10 @@ module.exports = {
         }
     }
 };
+
+// The same card for other plugins (the Leaderboard button of /credit): null when the server has nobody ranked yet
+module.exports.cardFor = async (client, guild, userId, type, lang, context) => {
+    const { orderCol, tKey } = getSortType(type, lang);
+    const data = await getLeaderboardData(client.db, guild.id, orderCol, userId);
+    return data ? buildV2Card(data, guild.name?.toUpperCase() || 'ARCHON CG-223', tKey, lang, context) : null;
+};

@@ -190,8 +190,9 @@ module.exports = {
     },
 
     // ================= SLASH COMMAND =================
-    execute: async (interaction, client) => {
-        await interaction.deferReply();
+    // opts.private: the shop opens for this member only (the Shop button of /credit)
+    execute: async (interaction, client, opts) => {
+        await interaction.deferReply(opts && opts.private === true ? { flags: 64 } : {});
         const guildId = interaction.guild?.id || 'DM';
         const lang = pickLang(client, guildId, interaction);
         const version = client.version || '1.7.0';

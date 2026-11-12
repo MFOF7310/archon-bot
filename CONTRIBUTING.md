@@ -57,7 +57,7 @@ The dashboard works the same way from its own repository: a push to its `main` p
 
 ### Data
 
-- Credits go through `client.addCredits()` and `client.removeCredits()`. Writing the `users` table directly is undone by the cache flush.
+- Credits go through `client.addCredits()`, `client.removeCredits()` and `client.transferCredits()`; read a balance with `client.liveCredits()`. Writing the `users` table directly is undone by the cache flush.
 - Server settings go through `client.updateServerSetting()` with a mapped key (`automodEnabled`, not `automod_enabled`).
 - `moderation_logs.timestamp` is in **seconds**. Let SQLite fill `id`.
 
