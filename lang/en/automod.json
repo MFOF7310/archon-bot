@@ -321,5 +321,16 @@
   "appeal_modalTitle": "Appeal this action",
   "appeal_modalLabel": "Why should it be reversed?",
   "appeal_modalPlaceholder": "Tell the owner what happened, calmly and in a few lines.",
-  "appeal_approvedBanLifted": "\n\n🔓 Your ban has been lifted. You can join **{server}** again."
+  "appeal_approvedBanLifted": "\n\n🔓 Your ban has been lifted. You can join **{server}** again.",
+  "tb_title": "{user} asks for a review",
+  "tb_sub": "{server} · {n}/4 strikes",
+  "tb_timedOut": "timed out {duration}",
+  "tb_expires": "Expires {when}",
+  "tb_approved": "Appeal approved by {mod}",
+  "tb_rejected": "Appeal rejected by {mod}",
+  "tb_paused": "Appeals paused by {mod}",
+  "tb_outApproved": "One strike removed.",
+  "tb_outBanLifted": "Ban lifted.",
+  "tb_outRejected": "The action stays. They can appeal again in 24 hours.",
+  "tb_outPaused": "No appeals for 7 days, one strike added."
 }

@@ -321,5 +321,16 @@
   "appeal_modalTitle": "申诉此处罚",
   "appeal_modalLabel": "为什么应撤销此处罚？",
   "appeal_modalPlaceholder": "请平静地用几句话向服主说明情况。",
-  "appeal_approvedBanLifted": "\n\n🔓 你的封禁已解除，可以重新加入 **{server}**。"
+  "appeal_approvedBanLifted": "\n\n🔓 你的封禁已解除，可以重新加入 **{server}**。",
+  "tb_title": "{user} 请求复审",
+  "tb_sub": "{server} · {n}/4 次警告",
+  "tb_timedOut": "禁言 {duration}",
+  "tb_expires": "{when}过期",
+  "tb_approved": "{mod} 已接受申诉",
+  "tb_rejected": "{mod} 已拒绝申诉",
+  "tb_paused": "{mod} 已暂停申诉",
+  "tb_outApproved": "已撤销一次警告。",
+  "tb_outBanLifted": "封禁已解除。",
+  "tb_outRejected": "处罚维持不变，24 小时后可再次申诉。",
+  "tb_outPaused": "7 天内不能申诉，并增加一次警告。"
 }

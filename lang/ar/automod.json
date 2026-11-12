@@ -321,5 +321,16 @@
   "appeal_modalTitle": "الاستئناف على هذا الإجراء",
   "appeal_modalLabel": "لماذا يجب إلغاؤه؟",
   "appeal_modalPlaceholder": "اشرح لمالك الخادم ما حدث بهدوء وفي بضعة أسطر.",
-  "appeal_approvedBanLifted": "\n\n🔓 تم رفع الحظر عنك. يمكنك الانضمام إلى **{server}** مجددًا."
+  "appeal_approvedBanLifted": "\n\n🔓 تم رفع الحظر عنك. يمكنك الانضمام إلى **{server}** مجددًا.",
+  "tb_title": "{user} يطلب المراجعة",
+  "tb_sub": "{server} · {n}/4 إنذارات",
+  "tb_timedOut": "كتم {duration}",
+  "tb_expires": "ينتهي {when}",
+  "tb_approved": "قبل {mod} الاستئناف",
+  "tb_rejected": "رفض {mod} الاستئناف",
+  "tb_paused": "أوقف {mod} الاستئنافات",
+  "tb_outApproved": "تمت إزالة إنذار واحد.",
+  "tb_outBanLifted": "تم رفع الحظر.",
+  "tb_outRejected": "يبقى الإجراء. يمكنه الاستئناف مجددًا بعد 24 ساعة.",
+  "tb_outPaused": "لا استئناف لمدة 7 أيام، وأُضيف إنذار."
 }

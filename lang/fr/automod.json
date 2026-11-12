@@ -321,5 +321,16 @@
   "appeal_modalTitle": "Contester cette sanction",
   "appeal_modalLabel": "Pourquoi devrait-elle être annulée ?",
   "appeal_modalPlaceholder": "Explique au propriétaire ce qui s'est passé, calmement et en quelques lignes.",
-  "appeal_approvedBanLifted": "\n\n🔓 Ton bannissement est levé. Tu peux rejoindre **{server}** à nouveau."
+  "appeal_approvedBanLifted": "\n\n🔓 Ton bannissement est levé. Tu peux rejoindre **{server}** à nouveau.",
+  "tb_title": "{user} demande une révision",
+  "tb_sub": "{server} · {n}/4 avertissements",
+  "tb_timedOut": "exclu {duration}",
+  "tb_expires": "Expire {when}",
+  "tb_approved": "Appel accepté par {mod}",
+  "tb_rejected": "Appel refusé par {mod}",
+  "tb_paused": "Appels bloqués par {mod}",
+  "tb_outApproved": "Un avertissement retiré.",
+  "tb_outBanLifted": "Bannissement levé.",
+  "tb_outRejected": "La sanction reste. Nouvel appel possible dans 24 heures.",
+  "tb_outPaused": "Plus d'appel pendant 7 jours, un avertissement ajouté."
 }

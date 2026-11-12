@@ -10,7 +10,7 @@ const ui = require('../lib/games/ui');
 const EMOJIS = require('../config/emojis');
 
 // ================= THRESHOLDS =================
-const SPAM_THRESHOLD = 3;   // default; each server sets its own (spam_threshold, 3–15)
+const SPAM_THRESHOLD = 5;   // default; each server sets its own (spam_threshold, 3–15)
 const SPAM_WINDOW = 5000;
 const CAPS_RATIO = 0.7;
 const EMOJI_RATIO = 0.75;
@@ -22,13 +22,21 @@ const clampInt = (v, min, max, dflt) => { const n = parseInt(v, 10); return Numb
 // values are set to what AutoMod really did, so nothing changes until an admin changes them.
 function migrateFilterSettings(db) {
     try {
-        if (db.prepare("SELECT 1 FROM bot_state WHERE key = 'automod_settings_live'").get()) return;
-        db.transaction(() => {
-            db.prepare('UPDATE server_settings SET spam_threshold = ?, mention_limit = ?, link_filter_enabled = 1, invite_filter_enabled = 1').run(SPAM_THRESHOLD, MENTION_LIMIT);
-            db.prepare("INSERT OR REPLACE INTO bot_state (key, value) VALUES ('automod_settings_live', '1')").run();
-        })();
-        console.log('[AUTOMOD] Saved spam, mention, link and invite settings aligned with what AutoMod enforced');
+        if (!db.prepare("SELECT 1 FROM bot_state WHERE key = 'automod_settings_live'").get()) {
+            db.transaction(() => {
+                db.prepare('UPDATE server_settings SET spam_threshold = ?, mention_limit = ?, link_filter_enabled = 1, invite_filter_enabled = 1').run(SPAM_THRESHOLD, MENTION_LIMIT);
+                db.prepare("INSERT OR REPLACE INTO bot_state (key, value) VALUES ('automod_settings_live', '1')").run();
+            })();
+            console.log('[AUTOMOD] Saved spam, mention, link and invite settings aligned with what AutoMod enforced');
+        }
     } catch (e) { console.error('[AUTOMOD] settings alignment failed:', e.message); }
+    // 3 messages in 5 s caught people chatting fast. Servers still on 3 move to 5, once; an admin can set 3 again.
+    try {
+        if (db.prepare("SELECT 1 FROM bot_state WHERE key = 'automod_spam_5'").get()) return;
+        const r = db.prepare('UPDATE server_settings SET spam_threshold = 5 WHERE spam_threshold IS NULL OR spam_threshold < 5').run();
+        db.prepare("INSERT OR REPLACE INTO bot_state (key, value) VALUES ('automod_spam_5', '1')").run();
+        console.log(`[AUTOMOD] spam threshold moved to 5 on ${r.changes} server(s)`);
+    } catch (e) { console.error('[AUTOMOD] spam threshold update failed:', e.message); }
 }
 let _migrated = false;
 const REPEAT_WINDOW = 15000;
@@ -994,25 +1002,29 @@ async function submitAppeal(client, user, targetGuild, reason, lang) {
         );
         const _tn = (k, n) => _tS(Number(n) === 1 ? k + 'One' : k + 'Many', { n });
         const _dur = (ms) => ms >= 86400000 ? _tn('days', Math.round(ms / 86400000)) : _tn('hours', Math.round(ms / 3600000));
-        const tribunalEmbed = new EmbedBuilder()
-            .setColor(C.BLURPLE)
-            .setAuthor({ name: _tS('appeal_tribunalAuthor'), iconURL: user.displayAvatarURL() })
-            .setTitle(_tS('appeal_tribunalTitle'))
-            .setDescription(_tS('appeal_tribunalFrom', {
-                user: user.tag, id: user.id, server: targetGuild.name, reason,
-                strikes: Math.min(amStrikes(client.db, targetGuild.id, user.id) || 1, 4),
-            }))
-            .addFields(
-                { name: _tS('appeal_tribunalViolation'), value: violationType === 'unknown' ? '—' : ruleName({ type: violationType }, _tS), inline: true },
-                { name: _tS('appeal_tribunalWhen'), value: violationTime, inline: true },
-                { name: _tS('appeal_tribunalAction'), value: entry?.lastAction ? (entry.lastAction === 'ban' ? _tS('strikeActBan') : _dur(entry.lastDuration)) : '—', inline: true },
-                { name: _tS('appeal_tribunalDeleted'), value: `\`\`\`${evidence.replace(/`/g, "'").substring(0, 900)}\`\`\`` }
-            )
-            .setTimestamp();
+        const _v2 = require('../lib/games/v2');
+        const strikes = Math.min(amStrikes(client.db, targetGuild.id, user.id) || 1, 4);
+        const facts = [
+            violationType === 'unknown' ? null : ruleName({ type: violationType }, _tS),
+            entry?.lastViolationTime ? violationTime : null,
+            entry?.lastAction ? (entry.lastAction === 'ban' ? _tS('strikeActBan') : _tS('tb_timedOut', { duration: _dur(entry.lastDuration) })) : null,
+        ].filter(Boolean).join(' · ');
+        const tribunal = (mention) => {
+            const items = [];
+            if (mention) items.push({ text: mention });
+            items.push({ thumbnail: [`### ${_tS('tb_title', { user: user.username })}\n-# ${_tS('tb_sub', { server: targetGuild.name, n: strikes })}`, user.displayAvatarURL({ size: 128 })] });
+            items.push({ rule: true });
+            items.push({ text: String(reason).split('\n').slice(0, 6).map((l) => `> ${l}`).join('\n') });
+            if (facts) items.push({ text: `-# ${facts}` });
+            if (entry?.lastMessageContent) items.push({ text: `\`\`\`${evidence.replace(/`/g, "'").substring(0, 600)}\`\`\`` });
+            items.push({ row });
+            items.push({ text: `-# ${_tS('tb_expires', { when: `<t:${Math.floor((now + 7 * 86400000) / 1000)}:R>` })}` });
+            return { ..._v2.card(C.BLURPLE, items), allowedMentions: { users: owner ? [owner.id] : [] } };
+        };
 
         let sent = null, deliveryMethod = 'queued';
         if (owner && !owner.user.bot) {
-            sent = await owner.send(toV2({ embeds: [tribunalEmbed], components: [row] })).catch(() => null);
+            sent = await owner.send(tribunal()).catch(() => null);
             if (sent) deliveryMethod = 'dm';
         }
         if (!sent) {
@@ -1020,7 +1032,7 @@ async function submitAppeal(client, user, targetGuild, reason, lang) {
             const logId = settings.autoModLogChannel || settings.automodlog || settings.modlog;
             const logCh = logId ? targetGuild.channels.cache.get(logId) : null;
             if (logCh && require('../lib/canPost').log(targetGuild, logCh, targetGuild.members.me, 'automod-appeals').ok) {
-                sent = await logCh.send(toV2({ content: owner ? `<@${owner.id}>` : undefined, embeds: [tribunalEmbed], components: [row] })).catch(() => null);
+                sent = await logCh.send(tribunal(owner ? `<@${owner.id}>` : null)).catch(() => null);
                 if (sent) deliveryMethod = 'log_channel';
             }
         }
@@ -1241,6 +1253,7 @@ async function handleAppealButton(interaction, client) {
     }
 
     // ── Action-specific side effects ──
+    let timeoutLifted = false, banLifted = false;
     if (action === 'approve') {
         const k = key(vote.userId, vote.guildId);
         const entry = history.get(k);
@@ -1248,7 +1261,6 @@ async function handleAppealButton(interaction, client) {
         // An approved appeal removes the latest strike for good
         try { client.db.prepare("UPDATE warnings SET active = 0 WHERE id = (SELECT id FROM warnings WHERE guild_id = ? AND user_id = ? AND id LIKE 'AM-%' AND active = 1 ORDER BY created_at DESC LIMIT 1)").run(String(vote.guildId), String(vote.userId)); } catch {}
 
-        let timeoutLifted = false, banLifted = false;
         if (guild) {
             try {
                 const member = await guild.members.fetch(vote.userId).catch(() => null);
@@ -1306,23 +1318,16 @@ async function handleAppealButton(interaction, client) {
     vote.status = statusLabel;
     appealTribunal.set(appealId, vote);
 
-    // ── Replace the tribunal embed with a decision embed, keep disabled buttons ──
-    const decisionText = `${_E[emojiKey] || ''} ${_T(langKey, { user: interaction.user.tag })}`.trim();
-    const decided = new EmbedBuilder()
-        .setColor(color)
-        .setAuthor({ name: 'ARCHON CG-223 · Tribunal', iconURL: client.user.displayAvatarURL() })
-        .setDescription(decisionText)
-        .setFooter({ text: `${guild?.name || 'Server'} · ${appealId}` })
-        .setTimestamp();
-
-    // Rebuild the same three buttons, all disabled
-    const lockedRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`appeal_approve_${appealId}`).setLabel(_T('appeal_btnApprove')).setEmoji(icon('ok')).setStyle(ButtonStyle.Success).setDisabled(true),
-        new ButtonBuilder().setCustomId(`appeal_reject_${appealId}`).setLabel(_T('appeal_btnReject')).setEmoji(icon('no')).setStyle(ButtonStyle.Danger).setDisabled(true),
-        new ButtonBuilder().setCustomId(`appeal_ban_${appealId}`).setLabel(_T('appeal_btnBan')).setEmoji(iconObj('ic_ban', null, '🔨')).setStyle(ButtonStyle.Secondary).setDisabled(true)
-    );
-
-    await interaction.editReply(fit(interaction.message, { embeds: [decided], components: [lockedRow] }))
+    // The same message shrinks to one line: who decided, and what it changed. The buttons go away.
+    const _ic = action === 'approve' ? (_E.ic_ok || '✅') : action === 'reject' ? (_E.ic_no || '❌') : (_E.ic_ban || '🔨');
+    const _out = action === 'approve'
+        ? [_T('tb_outApproved'), banLifted ? _T('tb_outBanLifted') : timeoutLifted ? _T('appeal_resultExtraLifted') : ''].filter(Boolean).join(' ')
+        : action === 'reject' ? _T('tb_outRejected') : _T('tb_outPaused');
+    const decided = require('../lib/games/v2').card(color, [
+        { text: `### ${_ic} ${_T(action === 'approve' ? 'tb_approved' : action === 'reject' ? 'tb_rejected' : 'tb_paused', { mod: interaction.user.username })}` },
+        { text: `-# ${vote.userTag || vote.userId} · ${guild?.name || ''} · ${_out}` },
+    ]);
+    await interaction.editReply({ ...decided, allowedMentions: { parse: [] } })
         .then(() => console.log(`[TRIBUNAL] ${appealId} → ${statusLabel} by ${interaction.user.tag}`))
         .catch((e) => console.error('[TRIBUNAL] edit failed:', e.message));
 
