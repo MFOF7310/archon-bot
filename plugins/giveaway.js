@@ -190,7 +190,7 @@ function buildGiveawayCard(gw, client) {
         const req = [gw.minLevel > 0 ? t('gxNeedsLevel', { n: gw.minLevel }) : null, gw.boosterBonus ? t('gxBoosters') : null].filter(Boolean).join(' ');
         if (req) c.addTextDisplayComponents(txt(`-# ${req}`));
         c.addActionRowComponents(new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`gw_enter_${gw.id}`).setLabel(t('mockEnterBtn')).setEmoji(require('../lib/ui/icons').icon('gift')).setStyle(ButtonStyle.Success)
+            new ButtonBuilder().setCustomId(`gw_enter_${gw.id}`).setLabel(t('mockEnterBtn')).setEmoji(require('../lib/ui/icons').icon('enter')).setStyle(ButtonStyle.Success)
         ));
     } else {
         // Same message once drawn: who won and what each one got
