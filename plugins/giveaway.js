@@ -17,14 +17,42 @@ function parseDuration(str) {
     return n * mult[unit];
 }
 
+// Boosters have two tickets: they are more likely to win, but nobody can win twice
+// (the same person used to be drawn twice and paid twice, leaving fewer winners)
 function selectWinners(entries, count) {
-    if (entries.length === 0) return [];
-    const pool = [...entries];
-    for (let i = pool.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pool[i], pool[j]] = [pool[j], pool[i]];
+    const pool = [...entries], out = [];
+    while (pool.length && out.length < count) {
+        const pick = pool[require('crypto').randomInt(pool.length)];
+        out.push(pick);
+        for (let i = pool.length - 1; i >= 0; i--) if (pool[i] === pick) pool.splice(i, 1);
     }
-    return pool.slice(0, Math.min(count, pool.length));
+    return out;
+}
+
+// Credits go through the bot's cache-aware helpers: writing the users table directly was undone by the next cache flush
+const pay = (client, uid, gid, n) => { if (n > 0) client.addCredits?.(uid, gid, n); };
+const charge = (client, uid, gid, n) => client.removeCredits ? client.removeCredits(uid, gid, n) : { ok: false };
+const people = (db, id) => db.prepare('SELECT COUNT(DISTINCT user_id) AS c FROM giveaway_entries WHERE giveaway_id = ?').get(id).c;
+
+// The card is edited at most once every 4 s per giveaway, so 100 people entering at once don't hit Discord's limits
+const _pendingEdit = new Map();
+function refreshCardSoon(id, client, db) {
+    if (_pendingEdit.has(id)) return;
+    _pendingEdit.set(id, setTimeout(async () => {
+        _pendingEdit.delete(id);
+        const gw = db.prepare('SELECT * FROM giveaways WHERE id = ?').get(id);
+        if (!gw || gw.status !== 'active') return;
+        const channel = await client.channels.fetch(gw.channel_id).catch(() => null);
+        const msg = await channel?.messages.fetch(gw.message_id).catch(() => null);
+        if (!msg) return;
+        const hostUser = await client.users.fetch(gw.host_id).catch(() => null);
+        await msg.edit(buildGiveawayCard({
+            id: gw.id, guildId: gw.guild_id, channelId: gw.channel_id, messageId: gw.message_id, hostId: gw.host_id,
+            hostName: hostUser ? hostUser.username : 'Host', prize: gw.prize, amount: gw.amount, winners: gw.winners,
+            minLevel: gw.min_level, minCredits: gw.min_credits, boosterBonus: gw.booster_bonus === 1, status: 'active',
+            endTimestamp: gw.end_timestamp, entryCount: people(db, gw.id),
+        }, client)).catch(() => {});
+    }, 4000));
 }
 
 // getLang removed in favor of pickLang
@@ -108,7 +136,7 @@ function init(client, db) {
                     return interaction.reply({ content: t('alreadyIn'), flags: 64 });
                 }
 
-                const user = db.prepare('SELECT level, credits FROM users WHERE id = ? AND guild_id = ?').get(interaction.user.id, gw.guild_id);
+                const user = client.userDataCache?.get(`${interaction.user.id}:${gw.guild_id}`) || db.prepare('SELECT level, credits FROM users WHERE id = ? AND guild_id = ?').get(interaction.user.id, gw.guild_id);
                 if (gw.min_level > 0 && (!user || user.level < gw.min_level)) {
                     return interaction.reply({ content: t('needLevel').replace('{level}', gw.min_level), flags: 64 });
                 }
@@ -124,40 +152,13 @@ function init(client, db) {
                     db.prepare('INSERT INTO giveaway_entries (giveaway_id, user_id) VALUES (?, ?)').run(id, interaction.user.id);
                 }
 
-                const newEntriesCount = db.prepare('SELECT COUNT(*) as c FROM giveaway_entries WHERE giveaway_id = ?').get(id).c;
-                
-                // Update message
-                const channel = await client.channels.fetch(gw.channel_id).catch(() => null);
-                const msg = await channel?.messages.fetch(gw.message_id).catch(() => null);
-                if (msg) {
-                    const hostUser = await client.users.fetch(gw.host_id).catch(() => null);
-                    const gwObj = {
-                        id: gw.id,
-                        guildId: gw.guild_id,
-                        channelId: gw.channel_id,
-                        messageId: gw.message_id,
-                        hostId: gw.host_id,
-                        hostName: hostUser ? hostUser.username : 'Host',
-                        prize: gw.prize,
-                        amount: gw.amount,
-                        winners: gw.winners,
-                        minLevel: gw.min_level,
-                        minCredits: gw.min_credits,
-                        boosterBonus: gw.booster_bonus === 1,
-                        status: 'active',
-                        endTimestamp: gw.end_timestamp,
-                        entries: new Array(newEntriesCount).fill(null),
-                        lang: pickLang(client, gw.guild_id)
-                    };
-                    const card = buildGiveawayCard(gwObj, client);
-                    await msg.edit(card).catch(() => {});
-                }
+                refreshCardSoon(id, client, db);
 
                 await interaction.reply({ content: t('enterOk'), flags: 64 });
             } catch (e) {
                 console.error('[GIVEAWAY BUTTON]', e);
                 if (!interaction.replied && !interaction.deferred) {
-                    await interaction.reply({ content: em('ic_warn', em('ic_warn', '⚠️')) + ' Error.', flags: 64 }).catch(() => {});
+                    await interaction.reply({ content: i18n.t('genericError', pickLang(client, interaction.guildId, interaction)), flags: 64 }).catch(() => {});
                 }
             }
         });
@@ -170,7 +171,7 @@ function init(client, db) {
 function buildGiveawayCard(gw, client) {
     const lang = pickLang(client, gw.guildId, null);
     const t = (k, v) => i18n.t('giveaway.' + k, lang, v);
-    const entries = gw.entries ? gw.entries.length : 0;
+    const entries = gw.entryCount ?? (gw.entries ? new Set(gw.entries).size : 0);
     const isActive = gw.status === 'active';
     const each = gw.winners > 0 ? Math.floor(gw.amount / gw.winners) : 0;
     
@@ -196,33 +197,29 @@ function buildGiveawayCard(gw, client) {
         if (gw.amount > 0) {
             c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`🏆 ${t('mockWinnersEach', { winners: gw.winners, each: each.toLocaleString() })}`));
         } else {
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`🏆 ${gw.winners} winners`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`🏆 ${t('gxWinnersN', { n: gw.winners })}`));
         }
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`👥 ${t('mockPeopleEntered', { count: entries })}`));
         
         let reqText = '';
-        if (gw.minLevel > 0) reqText += `Needs level ${gw.minLevel}+. `;
-        if (gw.boosterBonus) reqText += `Boosters get double entries.`;
+        if (gw.minLevel > 0) reqText += t('gxNeedsLevel', { n: gw.minLevel }) + ' ';
+        if (gw.boosterBonus) reqText += t('gxBoosters');
         if (reqText) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`🔒 ${reqText.trim()}`));
         
         c.addActionRowComponents(new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(`gw_enter_${gw.id}`).setLabel(t('mockEnterBtn')).setStyle(ButtonStyle.Primary)
         ));
     } else {
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**Winners**`));
-        let winText = '';
-        for (const uid of gw.winnersList) {
-            const user = client.users.cache.get(uid);
-            const name = user ? user.username : 'Unknown';
-            winText += `**${name.charAt(0).toUpperCase()}** ${name} ${gw.amount > 0 ? `+${each.toLocaleString()} credits` : ''}\n`;
-        }
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(winText || 'No valid entries.'));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('gxWinnersTitle')}**`));
+        const paidEach = gw.each ?? each;
+        const winText = (gw.winnersList || []).map((uid) => `🏆 <@${uid}>${gw.amount > 0 ? ` · +${paidEach.toLocaleString()} ${t('gxCredits')}` : ''}`).join('\n');
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(winText || t('gxNoEntries')));
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('mockEntriesHosted', { count: entries, host: gw.hostName })}`));
         
         // NO BUTTONS on ended cards, as requested in the mockup.
     }
 
-    return { components: [c], flags: MessageFlags.IsComponentsV2 };
+    return { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };
 }
 
 // ═══════════════════════════════════════════════════════
@@ -242,6 +239,7 @@ async function endGiveawayDb(id, client, db) {
     }
 
     const lang = pickLang(client, gwRow.guild_id, null);
+    const t = (k, v) => i18n.t('giveaway.' + k, lang, v);
     const hostUser = await client.users.fetch(gwRow.host_id).catch(() => null);
     const gw = {
         id: gwRow.id,
@@ -263,17 +261,14 @@ async function endGiveawayDb(id, client, db) {
         winnersList: winners
     };
 
-    if (winners.length > 0 && gw.amount > 0) {
-        const each = Math.floor(gw.amount / winners.length);
-        for (const uid of winners) {
-            const existing = db.prepare('SELECT id FROM users WHERE id = ? AND guild_id = ?').get(uid, gw.guildId);
-            if (!existing) {
-                db.prepare('INSERT INTO users (id, guild_id, username, xp, level, credits) VALUES (?, ?, ?, 0, 1, ?)').run(uid, gw.guildId, 'Agent', each);
-            } else {
-                db.prepare('UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?').run(each, uid, gw.guildId);
-            }
-        }
+    // Fewer people than winners: the pot is split between those who entered, nothing is lost.
+    // Nobody entered: the host gets the credits back (they used to vanish).
+    const each = winners.length ? Math.floor(gw.amount / winners.length) : 0;
+    if (gw.amount > 0) {
+        if (winners.length) for (const uid of winners) pay(client, uid, gw.guildId, each);
+        else pay(client, gw.hostId, gw.guildId, gw.amount);
     }
+    gw.each = each;
 
     try {
         const channel = await client.channels.fetch(gw.channelId).catch(() => null);
@@ -290,32 +285,27 @@ async function endGiveawayDb(id, client, db) {
         await msg.edit(card).catch(() => {});
 
         if (winners.length > 0) {
-            const each = Math.floor(gw.amount / gw.winners);
             const mention = winners.map(w => `<@${w}>`).join(' ');
-            const announce = new EmbedBuilder()
-                .setColor(0xf1c40f)
-                .setTitle('🎊 Giveaway Results')
-                .setDescription(`**${gw.amount > 0 ? gw.amount.toLocaleString() + ' credits drop' : gw.prize}**\n\n` +
-                    winners.map(w => `🏆 <@${w}>${gw.amount > 0 ? ` — +${each.toLocaleString()} 🪙` : ''}`).join('\n'))
-                .setFooter({ text: `Hosted by ${gw.hostName}` });
-            await require('../lib/safeSend').safeSend('giveaway', channel, { content: `${mention} 🎊`, embeds: [announce] });
+            const prizeTxt = gw.amount > 0 ? t('gxCreditsDrop', { n: gw.amount.toLocaleString() }) : gw.prize;
+            await require('../lib/safeSend').safeSend('giveaway', channel, {
+                content: `🎊 ${t('gxCongrats', { users: mention, prize: prizeTxt })}${gw.amount > 0 ? `\n-# ${t('gxEachPaid', { n: each.toLocaleString() })}` : ''}`,
+                allowedMentions: { users: winners },
+            });
 
             for (const uid of winners) {
                 const user = await client.users.fetch(uid).catch(() => null);
                 if (!user) continue;
-                const guildName = client.guilds.cache.get(gw.guildId)?.name || 'Unknown';
+                const guildName = client.guilds.cache.get(gw.guildId)?.name || '';
                 const dm = new EmbedBuilder()
                     .setColor(0xf1c40f)
-                    .setTitle('🎊 You won a giveaway!')
-                    .setDescription(
-                        `**Prize:** ${gw.amount > 0 ? gw.amount.toLocaleString() + ' credits' : gw.prize}\n` +
-                        `**Server:** ${guildName}\n\n` +
-                        (gw.amount > 0 ? `Credits have been added to your account!` : `You won the custom prize! Contact the host to claim it.`)
-                    );
+                    .setTitle(`🎊 ${t('gxDmTitle')}`)
+                    .setDescription(gw.amount > 0
+                        ? t('gxDmCredits', { n: each.toLocaleString(), server: guildName })
+                        : t('gxDmPrize', { prize: gw.prize, server: guildName, host: gw.hostName }));
                 await user.send(toV2({ embeds: [dm] })).catch(() => {});
             }
         } else {
-            await require('../lib/safeSend').safeSend('giveaway', channel, { content: 'No one entered the giveaway.' });
+            await require('../lib/safeSend').safeSend('giveaway', channel, { content: t(gw.amount > 0 ? 'gxNobodyRefund' : 'gxNobody'), allowedMentions: { parse: [] } });
         }
     } catch (e) {
         console.error('[GIVEAWAY END ERROR]', e);
@@ -341,7 +331,7 @@ async function rerollGiveaway(id, client, db) {
     if (!msg) return null;
 
     const lang = pickLang(client, gwRow.guild_id, null);
-    
+    const t = (k, v) => i18n.t('giveaway.' + k, lang, v);
     const hostUser = await client.users.fetch(gwRow.host_id).catch(() => null);
     const gw = { ...gwRow, entries, winnersList: winners, status: 'ended', endTimestamp: gwRow.end_timestamp, hostName: hostUser ? hostUser.username : 'Host', lang: lang };
 
@@ -349,7 +339,7 @@ async function rerollGiveaway(id, client, db) {
     await msg.edit(card).catch(() => {});
 
     const mention = winners.map(w => `<@${w}>`).join(' ');
-    await channel.send({ content: `🔄 **Reroll!** New winners: ${mention || 'None'}` }).catch(() => {});
+    await channel.send({ content: `🔄 ${t('gxRerolled', { users: mention || '—' })}`, allowedMentions: { users: winners } }).catch(() => {});
 
     return winners;
 }
@@ -412,27 +402,27 @@ module.exports = {
         const db = dbArg || client.db;
         init(client, db);
         
-        const guildId = message.guild?.id ?? 'DM';
+        if (!message.guild) return;
+        const guildId = message.guild.id;
+        const tp = (k, v) => i18n.t('giveaway.' + k, pickLang(client, guildId, null, message.author.id), v);
         if (!message.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-            return message.reply(em('ic_off', em('ic_off', '❌')) + ' You need Manage Server permission.').catch(() => {});
+            return message.reply(em('ic_off', '❌') + ' ' + tp('gxNeedPerm')).catch(() => {});
         }
-        const usage = '`.giveaway <time> <amount> <winners> <prize>`\nExample: `.giveaway 1h 50000 3 Weekend drop`';
+        const usage = tp('gxUsage');
         if (args.length < 4) return message.reply(usage).catch(() => {});
 
         const duration = parseDuration(args[0]);
-        if (!duration) return message.reply(em('ic_off', em('ic_off', '❌')) + ' Invalid time. Use: `10s`, `5m`, `2h`, `1d`').catch(() => {});
+        if (!duration) return message.reply(em('ic_off', '❌') + ' ' + tp('gxBadTime')).catch(() => {});
         const amount = parseInt(args[1]);
         const winners = parseInt(args[2]);
         const prize = args.slice(3).join(' ');
-        if (isNaN(amount) || amount < 100) return message.reply(em('ic_off', em('ic_off', '❌')) + ' Invalid amount (min 100).').catch(() => {});
-        if (isNaN(winners) || winners < 1 || winners > 20) return message.reply(em('ic_off', em('ic_off', '❌')) + ' Winners must be 1-20.').catch(() => {});
+        if (isNaN(amount) || amount < 100) return message.reply(em('ic_off', '❌') + ' ' + tp('gxBadAmount')).catch(() => {});
+        if (isNaN(winners) || winners < 1 || winners > 20) return message.reply(em('ic_off', '❌') + ' ' + tp('gxBadWinners')).catch(() => {});
 
-        const user = db.prepare('SELECT credits FROM users WHERE id = ? AND guild_id = ?').get(message.author.id, guildId);
-        if (!user || user.credits < amount) {
-            return message.reply(`${em('ic_off', '❌')} You do not have enough credits to host this giveaway. You have ${user?.credits?.toLocaleString() || 0}, need ${amount.toLocaleString()}.`).catch(() => {});
+        const paid = charge(client, message.author.id, guildId, amount);
+        if (!paid.ok) {
+            return message.reply(`${em('ic_off', '❌')} ${tp('noCredits', { have: (paid.previous || 0).toLocaleString(), need: amount.toLocaleString() })}`).catch(() => {});
         }
-        
-        db.prepare('UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?').run(amount, message.author.id, guildId);
 
         await startGiveaway({
             client, db,
@@ -449,9 +439,11 @@ module.exports = {
 
         const sub = interaction.options.getSubcommand();
         const guildId = interaction.guildId;
+        const tt = (k, v) => i18n.t('giveaway.' + k, pickLang(client, guildId, interaction, interaction.user.id), v);
+        const no = (k) => ({ content: em('ic_off', '❌') + ' ' + tt(k), flags: 64 });
 
         if (!interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-            return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' You need Manage Server permission.', flags: 64 });
+            return interaction.reply(no('gxNeedPerm'));
         }
 
         if (sub === 'end') {
@@ -463,34 +455,34 @@ module.exports = {
                 gw = db.prepare('SELECT * FROM giveaways WHERE guild_id = ? AND status = ? ORDER BY end_timestamp ASC LIMIT 1').get(guildId, 'active');
             }
 
-            if (!gw) return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' No active giveaway found.', flags: 64 });
+            if (!gw) return interaction.reply(no('gxNoneActive'));
             if (interaction.user.id !== gw.host_id && !interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-                return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Only the host or moderators can end this.', flags: 64 });
+                return interaction.reply(no('gxOnlyHost'));
             }
 
             await interaction.deferReply({ flags: 64 });
             await endGiveawayDb(gw.id, client, db);
-            await interaction.editReply({ content: em('ic_ok', '✅') + ' Giveaway ended.' });
+            await interaction.editReply({ content: em('ic_ok', '✅') + ' ' + tt('gxEndedOk') });
         }
         else if (sub === 'reroll') {
             const msgId = interaction.options.getString('message_id');
             const gw = db.prepare('SELECT * FROM giveaways WHERE message_id = ? AND guild_id = ?').get(msgId, guildId);
             if (!gw || gw.status !== 'ended') {
-                return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Ended giveaway not found.', flags: 64 });
+                return interaction.reply(no('gxNoneEnded'));
             }
             if (gw.amount > 0) {
-                return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Reroll is only available for custom prizes.', flags: 64 });
+                return interaction.reply(no('gxRerollCustom'));
             }
             if (interaction.user.id !== gw.host_id && !interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-                return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Only the host or moderators can reroll.', flags: 64 });
+                return interaction.reply(no('gxOnlyHost'));
             }
 
             await interaction.deferReply({ flags: 64 });
             const newWinners = await rerollGiveaway(gw.id, client, db);
             if (newWinners) {
-                await interaction.editReply({ content: em('ic_ok', '✅') + ' Rerolled successfully!' });
+                await interaction.editReply({ content: em('ic_ok', '✅') + ' ' + tt('gxRerollOk') });
             } else {
-                await interaction.editReply({ content: em('ic_off', em('ic_off', '❌')) + ' Failed to reroll.' });
+                await interaction.editReply(no('gxRerollFail'));
             }
         }
         else if (sub === 'cancel') {
@@ -502,32 +494,25 @@ module.exports = {
                 gw = db.prepare('SELECT * FROM giveaways WHERE guild_id = ? AND status = ? ORDER BY end_timestamp ASC LIMIT 1').get(guildId, 'active');
             }
 
-            if (!gw) return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' No active giveaway found.', flags: 64 });
+            if (!gw) return interaction.reply(no('gxNoneActive'));
             if (interaction.user.id !== gw.host_id && !interaction.member?.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-                return interaction.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Only the host or moderators can cancel this.', flags: 64 });
+                return interaction.reply(no('gxOnlyHost'));
             }
 
             await interaction.deferReply({ flags: 64 });
 
-            if (gw.amount > 0) {
-                const user = db.prepare('SELECT id FROM users WHERE id = ? AND guild_id = ?').get(gw.host_id, gw.guild_id);
-                if (!user) {
-                    db.prepare('INSERT INTO users (id, guild_id, username, xp, level, credits) VALUES (?, ?, ?, 0, 1, ?)').run(gw.host_id, gw.guild_id, 'Agent', gw.amount);
-                } else {
-                    db.prepare('UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?').run(gw.amount, gw.host_id, gw.guild_id);
-                }
-            }
-
+            if (gw.status !== 'active') return interaction.editReply({ content: em('ic_off', '❌') + ' ' + tt('gxNoneActive') });
             db.prepare('UPDATE giveaways SET status = ? WHERE id = ?').run('cancelled', gw.id);
+            if (gw.amount > 0) pay(client, gw.host_id, gw.guild_id, gw.amount);
             
             const channel = await client.channels.fetch(gw.channel_id).catch(() => null);
             const msg = await channel?.messages.fetch(gw.message_id).catch(() => null);
             if (msg) {
-                const c = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ❌ Giveaway Cancelled\nThis giveaway was cancelled by the host.`));
+                const c = new ContainerBuilder().setAccentColor(0x95a5a6).addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${gw.amount > 0 ? tt('gxCreditsDrop', { n: gw.amount.toLocaleString() }) : gw.prize}\n${tt('gxCancelledCard')}`));
                 await msg.edit({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
             }
 
-            await interaction.editReply({ content: em('ic_ok', '✅') + ' Giveaway cancelled and credits refunded.' });
+            await interaction.editReply({ content: em('ic_ok', '✅') + ' ' + tt(gw.amount > 0 ? 'gxCancelledRefund' : 'gxCancelledOk') });
         }
         else if (sub === 'start') {
             await interaction.deferReply({ flags: MessageFlags.Ephemeral | MessageFlags.IsComponentsV2 });
@@ -569,14 +554,14 @@ module.exports = {
                     const each = session.winners > 0 ? Math.floor(session.amount / session.winners) : 0;
                     c.addSectionComponents(
                         new SectionBuilder()
-                            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockAmount')}**\n${session.amount.toLocaleString()} credits, ${each.toLocaleString()} each`))
-                            .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_amount').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+                            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockAmount')}**\n${t('gxAmountEach', { n: session.amount.toLocaleString(), each: each.toLocaleString() })}`))
+                            .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_amount').setLabel(t('gxEdit')).setStyle(ButtonStyle.Secondary))
                     );
                 } else {
                     c.addSectionComponents(
                         new SectionBuilder()
-                            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockCustom')}**\n${session.prizeName || 'Not set'}`))
-                            .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_custom_name').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+                            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockCustom')}**\n${session.prizeName || t('gxNotSet')}`))
+                            .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_custom_name').setLabel(t('gxEdit')).setStyle(ButtonStyle.Secondary))
                     );
                 }
                 c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
@@ -585,7 +570,7 @@ module.exports = {
                 c.addSectionComponents(
                     new SectionBuilder()
                         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockDuration')}**\n${session.durationStr}`))
-                        .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_dur').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+                        .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_dur').setLabel(t('gxEdit')).setStyle(ButtonStyle.Secondary))
                 );
                 c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
@@ -593,7 +578,7 @@ module.exports = {
                 c.addSectionComponents(
                     new SectionBuilder()
                         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockWinners')}**\n${session.winners}`))
-                        .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_win').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+                        .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_win').setLabel(t('gxEdit')).setStyle(ButtonStyle.Secondary))
                 );
                 c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
@@ -601,20 +586,20 @@ module.exports = {
                 c.addSectionComponents(
                     new SectionBuilder()
                         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockChannel')}**\n<#${session.channelId}>`))
-                        .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_channel').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+                        .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_channel').setLabel(t('gxEdit')).setStyle(ButtonStyle.Secondary))
                 );
                 c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
                 // Requirements
                 let reqText = '';
-                if (session.minLevel > 0) reqText += `Level ${session.minLevel}+, `;
-                if (session.boosterBonus) reqText += `boosters get double entries`;
-                if (session.minLevel === 0 && !session.boosterBonus) reqText += `None`;
+                if (session.minLevel > 0) reqText += t('gxNeedsLevel', { n: session.minLevel }) + ' ';
+                if (session.boosterBonus) reqText += t('gxBoosters');
+                if (session.minLevel === 0 && !session.boosterBonus) reqText += t('gxNone');
                 
                 c.addSectionComponents(
                     new SectionBuilder()
                         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('mockReqs')}**\n${reqText.trim()}`))
-                        .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_reqs').setLabel('Edit').setStyle(ButtonStyle.Secondary))
+                        .setButtonAccessory(new ButtonBuilder().setCustomId('gw_set_reqs').setLabel(t('gxEdit')).setStyle(ButtonStyle.Secondary))
                 );
                 c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
@@ -624,8 +609,8 @@ module.exports = {
                 }
                 
                 const rowLaunch = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('gw_launch').setLabel('Launch giveaway').setStyle(ButtonStyle.Success),
-                    new ButtonBuilder().setCustomId('gw_cancel_setup').setLabel('Cancel').setStyle(ButtonStyle.Secondary)
+                    new ButtonBuilder().setCustomId('gw_launch').setLabel(t('gxLaunch')).setStyle(ButtonStyle.Success),
+                    new ButtonBuilder().setCustomId('gw_cancel_setup').setLabel(t('gxCancel')).setStyle(ButtonStyle.Secondary)
                 );
                 c.addActionRowComponents(rowLaunch);
 
@@ -639,13 +624,13 @@ module.exports = {
 
             collector.on('collect', async (i) => {
                 if (i.user.id !== interaction.user.id) {
-                    return i.reply({ content: 'Not your setup.', flags: 64 }).catch(() => {});
+                    return i.reply({ content: t('gxNotYours'), flags: 64 }).catch(() => {});
                 }
 
                 try {
                     if (i.customId === 'gw_cancel_setup') {
                         collector.stop();
-                        const c = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(t('dashExpired') || 'Setup cancelled.'));
+                        const c = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(t('gxSetupCancelled')));
                         return await i.update({ components: [c], flags: MessageFlags.IsComponentsV2 });
                     }
 
@@ -661,7 +646,7 @@ module.exports = {
                     if (i.customId === 'gw_set_channel') {
                         const channelSelect = new ChannelSelectMenuBuilder()
                             .setCustomId('gw_channel_select')
-                            .setPlaceholder('Select a channel')
+                            .setPlaceholder(t('gxPickChannel'))
                             .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
 
                         await i.reply({ components: [new ActionRowBuilder().addComponents(channelSelect)], flags: 64 });
@@ -673,20 +658,20 @@ module.exports = {
 
                         if (res) {
                             session.channelId = res.values[0];
-                            await res.update({ content: em('ic_ok', '✅') + ' Channel updated!', components: [] });
+                            await res.update({ content: em('ic_ok', '✅') + ' ' + t('gxChannelOk'), components: [] });
                             await msg.edit(buildDashboard());
                         }
                         return;
                     }
 
                     if (i.customId === 'gw_set_amount') {
-                        const modal = new ModalBuilder().setCustomId('modal_amount').setTitle('Set Amount')
-                            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel('Amount').setPlaceholder('e.g. 50000').setStyle(TextInputStyle.Short).setRequired(true)));
+                        const modal = new ModalBuilder().setCustomId('modal_amount').setTitle(t('mockAmount').slice(0, 45))
+                            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('mockAmount').slice(0, 45)).setPlaceholder('50000').setStyle(TextInputStyle.Short).setRequired(true)));
                         await i.showModal(modal);
                         const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
                         if (res) {
                             const val = parseInt(res.fields.getTextInputValue('val'));
-                            if (isNaN(val) || val < 100) { await res.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Invalid amount (min 100).', flags: 64 }); return; }
+                            if (isNaN(val) || val < 100) { await res.reply({ content: em('ic_off', '❌') + ' ' + t('gxBadAmount'), flags: 64 }); return; }
                             session.amount = val;
                             await res.update(buildDashboard());
                         }
@@ -694,8 +679,8 @@ module.exports = {
                     }
                     
                     if (i.customId === 'gw_set_custom_name') {
-                        const modal = new ModalBuilder().setCustomId('modal_name').setTitle('Set Prize Name')
-                            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel('Prize Name').setStyle(TextInputStyle.Short).setRequired(true)));
+                        const modal = new ModalBuilder().setCustomId('modal_name').setTitle(t('mockCustom').slice(0, 45))
+                            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('mockCustom').slice(0, 45)).setMaxLength(100).setStyle(TextInputStyle.Short).setRequired(true)));
                         await i.showModal(modal);
                         const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
                         if (res) {
@@ -706,14 +691,14 @@ module.exports = {
                     }
 
                     if (i.customId === 'gw_set_dur') {
-                        const modal = new ModalBuilder().setCustomId('modal_dur').setTitle('Set Duration')
-                            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel('Duration').setPlaceholder('e.g. 2h, 30m, 1d').setStyle(TextInputStyle.Short).setRequired(true)));
+                        const modal = new ModalBuilder().setCustomId('modal_dur').setTitle(t('mockDuration').slice(0, 45))
+                            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('mockDuration').slice(0, 45)).setPlaceholder('2h · 30m · 1d').setStyle(TextInputStyle.Short).setRequired(true)));
                         await i.showModal(modal);
                         const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
                         if (res) {
                             const val = res.fields.getTextInputValue('val');
                             const ms = parseDuration(val);
-                            if (!ms) { await res.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Invalid duration. Use 10s, 5m, 2h, 1d.', flags: 64 }); return; }
+                            if (!ms) { await res.reply({ content: em('ic_off', '❌') + ' ' + t('gxBadTime'), flags: 64 }); return; }
                             session.durationStr = val;
                             session.durationMs = ms;
                             await res.update(buildDashboard());
@@ -722,13 +707,13 @@ module.exports = {
                     }
 
                     if (i.customId === 'gw_set_win') {
-                        const modal = new ModalBuilder().setCustomId('modal_win').setTitle('Set Winners')
-                            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel('Number of Winners').setStyle(TextInputStyle.Short).setRequired(true)));
+                        const modal = new ModalBuilder().setCustomId('modal_win').setTitle(t('mockWinners').slice(0, 45))
+                            .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('val').setLabel(t('mockWinners').slice(0, 45)).setPlaceholder('1-20').setStyle(TextInputStyle.Short).setRequired(true)));
                         await i.showModal(modal);
                         const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
                         if (res) {
                             const val = parseInt(res.fields.getTextInputValue('val'));
-                            if (isNaN(val) || val < 1 || val > 20) { await res.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Winners must be 1-20.', flags: 64 }); return; }
+                            if (isNaN(val) || val < 1 || val > 20) { await res.reply({ content: em('ic_off', '❌') + ' ' + t('gxBadWinners'), flags: 64 }); return; }
                             session.winners = val;
                             await res.update(buildDashboard());
                         }
@@ -736,10 +721,10 @@ module.exports = {
                     }
                     
                     if (i.customId === 'gw_set_reqs') {
-                        const modal = new ModalBuilder().setCustomId('modal_reqs').setTitle('Set Requirements')
+                        const modal = new ModalBuilder().setCustomId('modal_reqs').setTitle(t('mockReqs').slice(0, 45))
                             .addComponents(
-                                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('level').setLabel('Minimum Level (0 for none)').setValue(String(session.minLevel)).setStyle(TextInputStyle.Short).setRequired(true)),
-                                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('booster').setLabel('Boosters get 2x entries? (yes/no)').setValue(session.boosterBonus ? 'yes' : 'no').setStyle(TextInputStyle.Short).setRequired(true))
+                                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('level').setLabel(t('gxMinLevel').slice(0, 45)).setValue(String(session.minLevel)).setStyle(TextInputStyle.Short).setRequired(true)),
+                                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('booster').setLabel(t('gxBoosterQ').slice(0, 45)).setValue(session.boosterBonus ? t('gxYes') : t('gxNo')).setStyle(TextInputStyle.Short).setRequired(true))
                             );
                         await i.showModal(modal);
                         const res = await i.awaitModalSubmit({ time: 60000, filter: m => m.user.id === interaction.user.id }).catch(() => null);
@@ -747,7 +732,7 @@ module.exports = {
                             const lvl = parseInt(res.fields.getTextInputValue('level'));
                             if (!isNaN(lvl) && lvl >= 0) session.minLevel = lvl;
                             const bst = res.fields.getTextInputValue('booster').toLowerCase();
-                            session.boosterBonus = bst === 'yes' || bst === 'y' || bst === 'true';
+                            session.boosterBonus = ['yes', 'y', 'true', 'oui', 'o', '是', 'نعم', '1'].includes(bst.trim());
                             await res.update(buildDashboard());
                         }
                         return;
@@ -755,26 +740,27 @@ module.exports = {
 
                     if (i.customId === 'gw_launch') {
                         if (session.prizeType === 'credits') {
-                            const user = db.prepare('SELECT credits FROM users WHERE id = ? AND guild_id = ?').get(interaction.user.id, guild.id);
-                            if (!user || user.credits < session.amount) {
-                                return await i.reply({ content: `${em('ic_off', '❌')} You don't have enough credits. You have ${user?.credits?.toLocaleString() || 0}, need ${session.amount.toLocaleString()}.`, flags: 64 });
+                            const have = (client.userDataCache?.get(`${interaction.user.id}:${guild.id}`) || db.prepare('SELECT credits FROM users WHERE id = ? AND guild_id = ?').get(interaction.user.id, guild.id))?.credits || 0;
+                            if (have < session.amount) {
+                                return await i.reply({ content: `${em('ic_off', '❌')} ${t('noCredits', { have: have.toLocaleString(), need: session.amount.toLocaleString() })}`, flags: 64 });
                             }
                         } else {
                             if (!session.prizeName) {
-                                return await i.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Please set a custom prize name.', flags: 64 });
+                                return await i.reply({ content: em('ic_off', '❌') + ' ' + t('gxNeedPrize'), flags: 64 });
                             }
                         }
 
                         const targetChannel = guild.channels.cache.get(session.channelId);
                         if (!targetChannel) {
-                            return await i.reply({ content: em('ic_off', em('ic_off', '❌')) + ' The selected channel no longer exists.', flags: 64 });
+                            return await i.reply({ content: em('ic_off', '❌') + ' ' + t('gxChannelGone'), flags: 64 });
                         }
                         
                         await i.deferUpdate();
                         collector.stop();
 
                         if (session.prizeType === 'credits') {
-                            db.prepare('UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?').run(session.amount, interaction.user.id, guild.id);
+                            const paid = charge(client, interaction.user.id, guild.id, session.amount);
+                            if (!paid.ok) return await i.editReply({ components: [new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(`${em('ic_off', '❌')} ${t('noCredits', { have: (paid.previous || 0).toLocaleString(), need: session.amount.toLocaleString() })}`))], flags: MessageFlags.IsComponentsV2 });
                         }
 
                         await startGiveaway({
@@ -792,12 +778,12 @@ module.exports = {
                             boosterBonus: session.boosterBonus
                         });
 
-                        const c = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(em('ic_ok', '✅') + ' Giveaway launched!'));
+                        const c = new ContainerBuilder().addTextDisplayComponents(new TextDisplayBuilder().setContent(em('ic_ok', '✅') + ' ' + t('gxLaunched')));
                         await i.editReply({ components: [c], flags: MessageFlags.IsComponentsV2 });
                     }
                 } catch (err) {
                     console.error('[DASHBOARD ERROR]', err);
-                    if (!i.replied && !i.deferred) await i.reply({ content: em('ic_warn', em('ic_warn', '⚠️')) + ' Error.', flags: 64 }).catch(() => {});
+                    if (!i.replied && !i.deferred) await i.reply({ content: i18n.t('genericError', lang), flags: 64 }).catch(() => {});
                 }
             });
         }
