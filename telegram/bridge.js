@@ -327,6 +327,27 @@ class TelegramBridge {
         });
     }
 
+    // Send a file from the server as a document (multipart). filename is what Telegram shows.
+    async sendDocumentBuffer(chatId, buffer, filename, options = {}) {
+        if (!this.token) return { success: false };
+        const boundary = '----ArchonDoc' + Date.now().toString(16);
+        const field = (k, v) => `--${boundary}\r\nContent-Disposition: form-data; name="${k}"\r\n\r\n${v}\r\n`;
+        let head = field('chat_id', chatId);
+        if (options.caption) head += field('caption', options.caption);
+        if (options.parse_mode) head += field('parse_mode', options.parse_mode);
+        if (options.reply_to) head += field('reply_to_message_id', options.reply_to);
+        const safeName = String(filename || 'file').replace(/["\r\n]/g, '_');
+        head += `--${boundary}\r\nContent-Disposition: form-data; name="document"; filename="${safeName}"\r\nContent-Type: application/octet-stream\r\n\r\n`;
+        const body = Buffer.concat([Buffer.from(head, 'utf8'), buffer, Buffer.from(`\r\n--${boundary}--\r\n`, 'utf8')]);
+        return new Promise((resolve) => {
+            const req = https.request(`https://api.telegram.org/bot${this.token}/sendDocument`,
+                { method: 'POST', headers: { 'Content-Type': `multipart/form-data; boundary=${boundary}`, 'Content-Length': body.length }, timeout: 120000 },
+                (res) => { let d = ''; res.on('data', (c) => d += c); res.on('end', () => { try { const j = JSON.parse(d); resolve({ success: j.ok, data: j.result, error: j.description }); } catch { resolve({ success: false }); } }); });
+            req.on('error', () => resolve({ success: false }));
+            req.end(body);
+        });
+    }
+
     async sendDocument(chatId, document, options = {}) {
         if (!this.token) return { success: false };
         return this._sendMedia(chatId, 'sendDocument', { document, caption: options.caption, parse_mode: options.parse_mode });

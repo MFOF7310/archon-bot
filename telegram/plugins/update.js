@@ -95,7 +95,7 @@ module.exports = {
 
                 await ctx.replyHTML(
                     `✅ <b>Update pulled!</b>\n\n<code>${escapeHTML(clean)}</code>\n\n` +
-                    `⚡ Use <code>/sysctl restart arch</code> to apply changes!\n\n` +
+                    `⚡ Use <code>/sysctl restart bot</code> to apply changes!\n\n` +
                     `🦅 ARCHON CG-223`
                 );
             } catch(e) {

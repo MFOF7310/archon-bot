@@ -397,6 +397,13 @@ async function handleCallback(update, bridge, client) {
         return;
     }
 
+    // Server card buttons (owner only, checked inside)
+    if (data.startsWith('sys:')) {
+        const ctx = buildContext(update, bridge, client);
+        if (ctx) { try { await require('./plugins/sysctl').onButton(ctx, data, msgId); } catch (e) { console.error('[SYSCTL]', e.message); } }
+        return;
+    }
+
     // Menu navigation — smooth edit in place
     if (!data.startsWith('m:')) return;
 
@@ -618,82 +625,16 @@ async function handleBuiltin(ctx, cmdName, bridge) {
             return true;
         }
 
-        case 'logs': {
-            if (!ctx.isOwner()) return ctx.replyHTML('⛔ <b>Owner only</b>');
-            await ctx.action('typing');
-            const { execSync } = require('child_process');
-            const filter = ctx.args[0]?.toLowerCase() || 'all';
-            const numLines = Math.min(500, Math.max(1, parseInt(ctx.args[1], 10) || 20)); // only a number reaches the shell
-            const LOG_PROCS = {
-                'arch': 'Architect-CG223', 'bot': 'Architect-CG223', 'all': 'Architect-CG223',
-                'dash': 'architect-dashboard', 'dashboard': 'architect-dashboard',
-                'lava': 'lavalink', 'lavalink': 'lavalink',
-                'wa': 'archon-wa', 'whatsapp': 'archon-wa',
-            };
-            const procName = LOG_PROCS[filter] || 'Architect-CG223';
-            const isErr = filter === 'errors' || filter === 'err';
-            try {
-                let raw;
-                if (isErr) {
-                    raw = execSync(`pm2 logs Architect-CG223 --lines ${numLines} --nostream 2>&1 | grep -i error`).toString();
-                } else {
-                    raw = execSync(`pm2 logs ${procName} --lines ${numLines} --nostream 2>&1`).toString();
-                }
-                const cleaned = raw.trim().split('\n')
-                    .filter(l => l.trim())
-                    .map(l => l.replace(/\x1b\[[0-9;]*m/g, '').replace(/^\d+\|[\w-]+\s*\|\s*/, '').trim())
-                    .filter(Boolean).slice(-parseInt(numLines)).join('\n');
-                const label = isErr ? '🔴 ERRORS' : filter === 'dash' || filter === 'dashboard' ? '🖥️ DASHBOARD' : filter === 'lava' || filter === 'lavalink' ? '🎵 LAVALINK' : '📋 BOT';
-                await ctx.replyHTML(`${label} <b>${procName}</b> (${numLines} lines)\n━━━━━━━━━━━━━━━━\n<pre>${escapeHTML(cleaned.substring(0, 3500))}</pre>\n<i>${new Date().toLocaleTimeString()} · BAMAKO_223 🇲🇱</i>`);
-            } catch(e) {
-                await ctx.replyHTML(`❌ <b>Log read failed</b>\n<code>${escapeHTML(e.message)}</code>`);
-            }
-            return true;
-        }
-
+        // Server tools live in plugins/sysctl.js (the card, logs, files, restarts)
+        case 'logs':
+        case 'pm2':
         case 'restart': {
-            if (!ctx.isOwner()) return ctx.replyHTML('⛔ <b>Owner only</b>');
-            const target = ctx.args[0]?.toLowerCase();
-            if (!target) return ctx.replyHTML('⚠️ Usage: <code>/restart bot</code> or <code>/restart dash</code>');
-            await ctx.action('typing');
-            const { execSync } = require('child_process');
-            try {
-                if (target === 'bot') {
-                    execSync('pm2 restart Architect-CG223 --update-env', { timeout: 15000 });
-                    await ctx.replyHTML('⚡ <b>BOT RESTARTING</b>\n━━━━━━━━━━━━━━━━━━━━\n\n🔄 Architect-CG223 restart signal sent\n⏳ Back online in ~10 seconds\n\n<i>· BAMAKO_223 🇲🇱 ·</i>');
-                } else if (target === 'dash') {
-                    execSync('pm2 restart architect-dashboard', { timeout: 15000 });
-                    await ctx.replyHTML('⚡ <b>DASHBOARD RESTARTING</b>\n━━━━━━━━━━━━━━━━━━━━\n\n🔄 architect-dashboard restart signal sent\n⏳ Back online in ~5 seconds\n\n<i>· BAMAKO_223 🇲🇱 ·</i>');
-                } else {
-                    await ctx.replyHTML('⚠️ Unknown target. Use <code>bot</code> or <code>dash</code>');
-                }
-            } catch(e) {
-                await ctx.replyHTML(`❌ <b>Restart failed</b>\n<code>${escapeHTML(e.message)}</code>`);
-            }
-            return true;
-        }
-
-        case 'pm2': {
-            if (!ctx.isOwner()) return ctx.replyHTML('⛔ <b>Owner only</b>');
-            await ctx.action('typing');
-            const { execSync } = require('child_process');
-            try {
-                const raw = execSync('pm2 jlist 2>/dev/null').toString();
-                const list = JSON.parse(raw);
-                let msg = '📊 <b>PM2 PROCESSES</b>\n━━━━━━━━━━━━━━━━━━━━\n\n';
-                list.forEach(p => {
-                    const status = p.pm2_env?.status === 'online' ? '🟢' : '🔴';
-                    const mem = Math.round((p.monit?.memory || 0) / 1024 / 1024);
-                    const cpu = p.monit?.cpu || 0;
-                    const restarts = p.pm2_env?.restart_time || 0;
-                    msg += `${status} <b>${escapeHTML(p.name)}</b> <i>(id:${p.pm_id})</i>\n`;
-                    msg += `   RAM: ${mem}MB · CPU: ${cpu}% · ↺ ${restarts}\n\n`;
-                });
-                msg += `<i>${new Date().toLocaleTimeString()} · BAMAKO_223 🇲🇱</i>`;
-                await ctx.replyHTML(msg);
-            } catch(e) {
-                await ctx.replyHTML(`❌ <b>PM2 read failed</b>\n<code>${escapeHTML(e.message)}</code>`);
-            }
+            if (!ctx.isOwner()) { await ctx.replyHTML('⛔ Owner only.'); return true; }
+            const sys = require('./plugins/sysctl');
+            if (cmdName === 'logs') ctx.calledAs = 'tail';
+            if (cmdName === 'pm2') ctx.calledAs = 'sysctl';
+            if (cmdName === 'restart') { ctx.calledAs = 'sysctl'; ctx.args = ['restart', ...(ctx.args || [])]; }
+            await sys.handler(ctx);
             return true;
         }
 
