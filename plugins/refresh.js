@@ -212,6 +212,13 @@ async function executeWipe(interaction, type, t, client, db, message, targetUser
         } else result = db.prepare('UPDATE users SET xp = 0, level = 1, credits = 0').run();
 
         if (client.userDataCache) client.userDataCache.clear();
+        // Saves still waiting in memory carry the old numbers: reset them too, or the next automatic save would put them back
+        if (client.pendingUserUpdates && !['lydia', 'light'].includes(type)) {
+            for (const row of client.pendingUserUpdates.values()) {
+                if (type !== 'credits') { row.xp = 0; row.level = 1; }
+                if (type !== 'xp') row.credits = 0;
+            }
+        }
 
         let desc = i18n.t('refresh.success', 'en', { type: type.toUpperCase(), count: result.changes, ts: new Date().toISOString() });
         if (type === 'light' && client.getDatabaseHealth) {

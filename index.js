@@ -1135,15 +1135,13 @@ client.db = db;
 // The balance to start from. Batched user writes wait up to 30 s in memory before they reach the database, so while
 // one is waiting the newest balance is in memory. Starting from the database then lost credits: a /claim followed by
 // any payout within 30 s, or a payout to someone who had just chatted (the waiting write put the old balance back).
-function liveCredits(userId, guildId) {
+function liveUser(userId, guildId) {
     const key = `${userId}:${guildId}`;
     const pending = client.pendingUserUpdates?.get(key);
-    if (pending) {
-        const cached = client.userDataCache?.get(key);
-        return Math.max(0, Number((cached ?? pending).credits) || 0);
-    }
-    return Math.max(0, Number(getUser(userId, guildId)?.credits) || 0);
+    if (pending) return client.userDataCache?.get(key) ?? pending;
+    return getUser(userId, guildId) || null;
 }
+const liveCredits = (userId, guildId) => Math.max(0, Number(liveUser(userId, guildId)?.credits) || 0);
 // Memory follows the database: the cache, and the waiting write if there is one
 function rememberCredits(userId, guildId, value) {
     const key = `${userId}:${guildId}`;
@@ -1232,6 +1230,44 @@ client.addCredits = addCredits;
 client.removeCredits = removeCredits;
 client.transferCredits = transferCredits;
 client.liveCredits = (userId, guildId) => liveCredits(userId, guildId || 'DM');
+client.liveUser = (userId, guildId) => liveUser(userId, guildId || 'DM');
+
+// Change a member's numbers the safe way (a purchase, a sale, a reward): `add` is applied to the newest values,
+// `set` replaces them (a function gets the row after `add`). The database, the cache and any waiting write all
+// receive the result, so nothing is put back 30 seconds later. Credits can't go below zero: the change is refused.
+const USER_NUMBERS = new Set(['credits', 'xp', 'level', 'games_played', 'games_won', 'total_winnings', 'streak_days',
+    'streak_protections', 'total_messages', 'highest_streak', 'total_dailies', 'last_daily']);
+function changeUser(userId, guildId, { add = {}, set = {} } = {}, username = 'Unknown') {
+    if (!guildId) guildId = 'DM';
+    try {
+        getOrCreateUser(userId, guildId, username);
+        const base = liveUser(userId, guildId) || {};
+        const next = {};
+        for (const [col, n] of Object.entries(add)) {
+            if (!USER_NUMBERS.has(col)) throw new Error(`"${col}" can't be changed this way`);
+            if (Number(n)) next[col] = (Number(base[col]) || 0) + Math.trunc(Number(n));
+        }
+        for (const [col, v] of Object.entries(set)) {
+            if (!USER_NUMBERS.has(col)) throw new Error(`"${col}" can't be changed this way`);
+            next[col] = typeof v === 'function' ? v({ ...base, ...next }) : v;
+        }
+        if ('credits' in next && next.credits < 0) return { ok: false, error: 'INSUFFICIENT_FUNDS', previous: Number(base.credits) || 0 };
+        const cols = Object.keys(next);
+        if (cols.length) {
+            db.prepare(`UPDATE users SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ? AND guild_id = ?`).run(...cols.map((c) => next[c]), userId, guildId);
+            const key = `${userId}:${guildId}`;
+            const cached = client.userDataCache?.get(key);
+            if (cached) { Object.assign(cached, next); cached._lastAccess = Date.now(); }
+            const pending = client.pendingUserUpdates?.get(key);
+            if (pending) Object.assign(pending, next);
+        }
+        return { ok: true, previous: base, user: { ...base, ...next } };
+    } catch (err) {
+        console.error(`${red}[ECONOMY]${reset} changeUser failed for ${userId}@${guildId}:`, err.message);
+        return { ok: false, error: err.message };
+    }
+}
+client.changeUser = changeUser;
 
 // ================= UNIFIED ROLE GATEKEEPER =================
 const ROLE_SOURCES = {
@@ -1347,7 +1383,15 @@ function getUserData(userId, guildId) {
         cached._lastAccess = Date.now();
         return cached;
     }
-    
+
+    // No cached copy, but a write is still waiting: that one is newer than the database (reading the database here
+    // gave the old numbers, and the next save built on them)
+    const waiting = client.pendingUserUpdates?.get(compositeKey);
+    if (waiting) {
+        cacheUserData(userId, guildId, waiting);
+        return client.userDataCache.get(compositeKey);
+    }
+
     const dbUser = getUser(userId, guildId);
     if (dbUser) {
         cacheUserData(userId, guildId, dbUser);
@@ -1357,7 +1401,7 @@ function getUserData(userId, guildId) {
 
 function queueUserUpdate(userId, guildId, updateData) {
     const compositeKey = `${userId}:${guildId}`;
-    let fullUserData = client.userDataCache.get(compositeKey);
+    let fullUserData = client.userDataCache.get(compositeKey) || client.pendingUserUpdates.get(compositeKey);
     
     if (!fullUserData) {
         fullUserData = getUser(userId, guildId);
@@ -1391,7 +1435,40 @@ function queueUserUpdate(userId, guildId, updateData) {
         flushUserUpdates(0);
     }
 }
-// Flush pending user updates to database using INSERT OR REPLACE
+// The statement that saves a batched user row (the 30-second flush and the flush at shutdown both use it).
+// Only the columns listed here are saved. The row itself stays, so the columns this save doesn't carry (active badge,
+// join date, last reminder...) keep their values; "INSERT OR REPLACE" rebuilt the whole row and reset them on every save.
+const USERS_SAVE_SQL = `
+    INSERT INTO users (
+    id, guild_id, username, xp, level, total_messages, last_xp_gain,
+    games_played, games_won, total_winnings, gaming, credits,
+    streak_days, last_daily, total_dailies, highest_streak, streak_protections, avatar
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(id, guild_id) DO UPDATE SET
+    username = excluded.username, xp = excluded.xp, level = excluded.level,
+    total_messages = excluded.total_messages, last_xp_gain = excluded.last_xp_gain,
+    games_played = excluded.games_played, games_won = excluded.games_won,
+    total_winnings = excluded.total_winnings, gaming = excluded.gaming, credits = excluded.credits,
+    streak_days = excluded.streak_days, last_daily = excluded.last_daily,
+    total_dailies = excluded.total_dailies, highest_streak = excluded.highest_streak,
+    streak_protections = excluded.streak_protections, avatar = COALESCE(excluded.avatar, users.avatar)
+`;
+function prepareUserSave() {
+    try { return db.prepare(USERS_SAVE_SQL); }
+    catch (e) {
+        // A users table without the (id, guild_id) key can't take the statement above: save the old way rather than not at all
+        console.error(`${red}[DB BATCH]${reset} upsert not possible (${e.message}), saving with INSERT OR REPLACE`);
+        return db.prepare(`
+            INSERT OR REPLACE INTO users (
+                id, guild_id, username, xp, level, total_messages, last_xp_gain,
+                games_played, games_won, total_winnings, gaming, credits,
+                streak_days, last_daily, total_dailies, highest_streak, streak_protections, avatar
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+    }
+}
+
+// Flush pending user updates to the database
 // Composite key (id, guild_id) is destructured from the Map key
 async function flushUserUpdates(retryCount = 0, retryId = null) {
     if (client.dbHealth.circuitOpen) {
@@ -1421,13 +1498,7 @@ async function flushUserUpdates(retryCount = 0, retryId = null) {
     try {
         if (WRITE_STRATEGY.USE_TRANSACTIONS) {
             client.safeDbWrite(() => {
-                const updateStmt = db.prepare(`
-                    INSERT OR REPLACE INTO users (
-                        id, guild_id, username, xp, level, total_messages, last_xp_gain, 
-                        games_played, games_won, total_winnings, gaming, credits, 
-                        streak_days, last_daily, total_dailies, highest_streak, streak_protections, avatar
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                `);
+                const updateStmt = prepareUserSave();
                 
                 db.transaction(() => {
                     for (const [compositeKey, userData] of updates) {
@@ -3853,13 +3924,7 @@ async function gracefulShutdown(signal) {
         try {
             const updates = Array.from(client.pendingUserUpdates.entries());
 
-            const updateStmt = db.prepare(`
-                INSERT OR REPLACE INTO users (
-                    id, guild_id, username, xp, level, total_messages, last_xp_gain, 
-                    games_played, games_won, total_winnings, gaming, credits, 
-                    streak_days, last_daily, total_dailies, highest_streak, streak_protections, avatar
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `);
+            const updateStmt = prepareUserSave();
 
             db.transaction(() => {
                 for (const [compositeKey, userData] of updates) {

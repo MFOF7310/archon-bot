@@ -10,6 +10,22 @@ const { pickLang } = require('../lib/pick-lang');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const em = (k, fb) => resolveEmoji(k, global.client) || fb;
 
+// The member's newest numbers: what is in memory while an automatic save is waiting, the database otherwise
+function live(client, db, userId, guildId, userName) {
+    const u = client.liveUser ? (client.getOrCreateUser?.(userId, guildId, userName), client.liveUser(userId, guildId))
+        : db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+    return u || { credits: 0, xp: 0, level: 1, streak_protections: 0 };
+}
+
+// Takes the price and gives the item's bonuses in one change. false when the member can't pay.
+function pay(client, db, userId, guildId, item, newLevel) {
+    const add = { credits: (item.effect?.credits || 0) - item.price, xp: item.effect?.xp || 0, streak_protections: item.effect?.streak_protection ? 1 : 0 };
+    if (client.changeUser) return client.changeUser(userId, guildId, { add, set: { level: newLevel } }).ok;
+    const r = db.prepare('UPDATE users SET credits = credits + ?, xp = xp + ?, level = ?, streak_protections = COALESCE(streak_protections, 0) + ? WHERE id = ? AND guild_id = ? AND credits + ? >= 0')
+        .run(add.credits, add.xp, newLevel, add.streak_protections, userId, guildId, add.credits);
+    return r.changes > 0;
+}
+
 module.exports = {
     name: 'shop',
     aliases: ['store', 'market', 'boutique', 'magasin'],
@@ -86,11 +102,7 @@ module.exports = {
         const userId = message.author.id;
         const userName = message.author.username;
 
-        let userData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
-        if (!userData) {
-            db.prepare('INSERT INTO users (id, guild_id, username, xp, level, credits, streak_days, last_daily, total_dailies, highest_streak) VALUES (?, ?, ?, 0, 1, 0, 0, 0, 0, 0)').run(userId, guildId, userName);
-            userData = { credits: 0, xp: 0, level: 1, streak_protections: 0 };
-        }
+        const userData = live(client, db, userId, guildId, userName);
 
         const inventory = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
         const ownedItems = new Set(inventory.map(i => i.item_id));
@@ -118,7 +130,7 @@ module.exports = {
 
             if (i.customId === 'shop_refresh') {
                 try {
-                    const freshData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                    const freshData = live(client, db, userId, guildId, userName);
                     const freshInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
                     const freshOwned = new Set(freshInv.map(x => x.item_id));
                     const freshView = module.exports.buildView(client, freshData, freshOwned, lang, guildName, version);
@@ -134,7 +146,7 @@ module.exports = {
                 const selectedItem = (client.shopItems || []).find(item => item.id === selectedId);
                 if (!selectedItem) return;
 
-                const fd = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                const fd = live(client, db, userId, guildId, userName);
                 const curBal = fd?.credits || 0;
                 const curLvl = fd?.level || 1;
 
@@ -151,9 +163,11 @@ module.exports = {
                 const newXP = (fd?.xp || 0) + bonusXP;
                 const newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
 
-                db.prepare('UPDATE users SET credits = ?, xp = ?, level = ? WHERE id = ? AND guild_id = ?').run(newCredits, newXP, newLevel, userId, guildId);
-                if (selectedItem.effect?.streak_protection) {
-                    db.prepare('UPDATE users SET streak_protections = COALESCE(streak_protections, 0) + 1 WHERE id = ? AND guild_id = ?').run(userId, guildId);
+                // One safe change: the price, the bonuses and the protection land together, in memory and in the database
+                // (the old direct write was put back by the next automatic save: the item was free)
+                const paid = pay(client, db, userId, guildId, selectedItem, newLevel);
+                if (!paid) {
+                    return i.followUp({ content: t('shop.insufficientFunds', lang, { price: selectedItem.price.toLocaleString(), balance: curBal.toLocaleString() }), flags: 64 }).catch(() => {});
                 }
 
                 const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, selectedId);
@@ -162,7 +176,6 @@ module.exports = {
                 } else {
                     db.prepare('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity, active) VALUES (?, ?, ?, 1, 1)').run(userId, guildId, selectedId);
                 }
-                if (client.userDataCache) client.userDataCache.delete(userId + ':' + guildId);
 
                 const itemName = selectedItem[lang]?.name || selectedItem.en.name;
                 const successContainer = new ContainerBuilder().setAccentColor(0x2ecc71);
@@ -172,7 +185,7 @@ module.exports = {
                 
                 await i.followUp({ components: [successContainer], flags: 64 | MessageFlags.IsComponentsV2 }).catch(() => {});
 
-                const finalData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                const finalData = live(client, db, userId, guildId, userName);
                 const finalInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
                 const finalOwned = new Set(finalInv.map(x => x.item_id));
                 const finalView = module.exports.buildView(client, finalData, finalOwned, lang, guildName, version);
@@ -201,11 +214,7 @@ module.exports = {
         const userName = interaction.user.username;
         const db = client.db;
 
-        let userData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
-        if (!userData) {
-            db.prepare('INSERT OR IGNORE INTO users (id, guild_id, username, xp, level, credits) VALUES (?, ?, ?, 0, 1, 0)').run(userId, guildId, userName);
-            userData = { credits: 0, xp: 0, level: 1, streak_protections: 0 };
-        }
+        const userData = live(client, db, userId, guildId, userName);
 
         const inventory = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
         const ownedItems = new Set(inventory.map(i => i.item_id));
@@ -231,7 +240,7 @@ module.exports = {
             }
 
             if (i.customId === 'shop_refresh') {
-                const freshData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                const freshData = live(client, db, userId, guildId, userName);
                 const freshInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
                 const freshOwned = new Set(freshInv.map(x => x.item_id));
                 const freshView = module.exports.buildView(client, freshData, freshOwned, lang, guildName, version);
@@ -243,7 +252,7 @@ module.exports = {
                 const selectedItem = (client.shopItems || []).find(item => item.id === selectedId);
                 if (!selectedItem) return;
 
-                const fd = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                const fd = live(client, db, userId, guildId, userName);
                 const curBal = fd?.credits || 0;
                 const curLvl = fd?.level || 1;
 
@@ -260,9 +269,11 @@ module.exports = {
                 const newXP = (fd?.xp || 0) + bonusXP;
                 const newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
 
-                db.prepare('UPDATE users SET credits = ?, xp = ?, level = ? WHERE id = ? AND guild_id = ?').run(newCredits, newXP, newLevel, userId, guildId);
-                if (selectedItem.effect?.streak_protection) {
-                    db.prepare('UPDATE users SET streak_protections = COALESCE(streak_protections, 0) + 1 WHERE id = ? AND guild_id = ?').run(userId, guildId);
+                // One safe change: the price, the bonuses and the protection land together, in memory and in the database
+                // (the old direct write was put back by the next automatic save: the item was free)
+                const paid = pay(client, db, userId, guildId, selectedItem, newLevel);
+                if (!paid) {
+                    return i.followUp({ content: t('shop.insufficientFunds', lang, { price: selectedItem.price.toLocaleString(), balance: curBal.toLocaleString() }), flags: 64 }).catch(() => {});
                 }
 
                 const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, selectedId);
@@ -271,7 +282,6 @@ module.exports = {
                 } else {
                     db.prepare('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity, active) VALUES (?, ?, ?, 1, 1)').run(userId, guildId, selectedId);
                 }
-                if (client.userDataCache) client.userDataCache.delete(userId + ':' + guildId);
 
                 const itemName = selectedItem[lang]?.name || selectedItem.en.name;
                 const successContainer = new ContainerBuilder().setAccentColor(0x2ecc71);
@@ -281,7 +291,7 @@ module.exports = {
                 
                 await i.followUp({ components: [successContainer], flags: 64 | MessageFlags.IsComponentsV2 }).catch(() => {});
 
-                const finalData = db.prepare('SELECT credits, xp, level, streak_protections FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+                const finalData = live(client, db, userId, guildId, userName);
                 const finalInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
                 const finalOwned = new Set(finalInv.map(x => x.item_id));
                 const finalView = module.exports.buildView(client, finalData, finalOwned, lang, guildName, version);

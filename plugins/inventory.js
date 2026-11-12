@@ -158,7 +158,9 @@ async function handleBuy(message, args, client, db, lang, guildId) {
     const item = (client.shopItems || []).find((x) => x.id === itemId);
     if (!item) return message.reply(t('inventory.itemNotFound', lang) || 'Item not found.').catch(() => {});
 
-    const fd = db.prepare('SELECT credits, xp, level FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+    // The newest numbers (memory while an automatic save is waiting), not the database alone
+    const fd = client.liveUser ? (client.getOrCreateUser?.(userId, guildId, message.author.username), client.liveUser(userId, guildId))
+        : db.prepare('SELECT credits, xp, level FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
     const bal = fd?.credits || 0;
     const lvl = fd?.level || 1;
     if (item.requirement?.level && lvl < item.requirement.level) {
@@ -170,20 +172,45 @@ async function handleBuy(message, args, client, db, lang, guildId) {
     const newCredits = bal - item.price + (item.effect?.credits || 0);
     const newXP = (fd?.xp || 0) + (item.effect?.xp || 0);
     const newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
-    db.prepare('UPDATE users SET credits = ?, xp = ?, level = ? WHERE id = ? AND guild_id = ?').run(newCredits, newXP, newLevel, userId, guildId);
-    if (item.effect?.streak_protection) {
-        db.prepare('UPDATE users SET streak_protections = COALESCE(streak_protections, 0) + 1 WHERE id = ? AND guild_id = ?').run(userId, guildId);
+    // One safe change for the price, the bonuses and the protection (a direct write was put back by the next automatic save)
+    if (client.changeUser) {
+        const paid = client.changeUser(userId, guildId, {
+            add: { credits: (item.effect?.credits || 0) - item.price, xp: item.effect?.xp || 0, streak_protections: item.effect?.streak_protection ? 1 : 0 },
+            set: { level: newLevel },
+        });
+        if (!paid.ok) return message.reply(t('shop.insufficientFunds', lang, { price: item.price.toLocaleString(), balance: bal.toLocaleString() })).catch(() => {});
+    } else {
+        db.prepare('UPDATE users SET credits = ?, xp = ?, level = ? WHERE id = ? AND guild_id = ?').run(newCredits, newXP, newLevel, userId, guildId);
+        if (item.effect?.streak_protection) {
+            db.prepare('UPDATE users SET streak_protections = COALESCE(streak_protections, 0) + 1 WHERE id = ? AND guild_id = ?').run(userId, guildId);
+        }
     }
     const owned = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, itemId);
     if (owned) db.prepare('UPDATE user_inventory SET quantity = quantity + 1, active = 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, itemId);
     else db.prepare('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity, active) VALUES (?, ?, ?, 1, 1)').run(userId, guildId, itemId);
-    if (client.userDataCache) client.userDataCache.delete(userId + ':' + guildId);
 
     const name = item[lang]?.name || item.en?.name || itemId;
     const c = new ContainerBuilder().setAccentColor(0x2ecc71)
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ✅ ${t('shop.purchaseComplete', lang)}\n**${item.emoji || '🛒'} ${name}** · ${item.price.toLocaleString()} 🪙`))
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang)} : ${newCredits.toLocaleString()} 🪙`));
     return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
+}
+
+// Removes one copy of an item from a member's inventory. false when they don't have one (already sold, never owned).
+function takeOne(db, userId, guildId, itemId) {
+    const owned = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND active = 1').get(userId, guildId, itemId);
+    if (!owned || owned.quantity <= 0) return false;
+    const r = owned.quantity > 1
+        ? db.prepare('UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ? AND quantity > 1').run(userId, guildId, itemId)
+        : db.prepare('DELETE FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, itemId);
+    return r.changes > 0;
+}
+
+// Adds credits the safe way and returns the new balance
+function giveCredits(client, db, userId, guildId, amount) {
+    if (client.addCredits) { const r = client.addCredits(userId, guildId, amount); if (r?.ok) return r.current; }
+    db.prepare('UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?').run(amount, userId, guildId);
+    return db.prepare('SELECT credits FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId)?.credits || 0;
 }
 
 // ================= SELL (.sell <item-id>) — half the price back =================
@@ -245,25 +272,20 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
                 const selectedItem = catalog.find(x => x.id === selectedId);
                 await i.deferUpdate();
                 
-                // On exécute la vente directement
-                const sellPrice = Math.floor(selectedItem.price * 0.5);
-                const userData = db.prepare('SELECT credits FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId) || { credits: 0 };
-                const newCredits = (userData.credits || 0) + sellPrice;
-                
-                db.prepare('UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?').run(newCredits, userId, guildId);
-                
-                const owned = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, selectedId);
-                if (owned.quantity > 1) {
-                    db.prepare('UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, selectedId);
-                } else {
-                    db.prepare('DELETE FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, selectedId);
+                if (!selectedItem) return;
+                // The item leaves the inventory first, and only a sale that really removed one is paid.
+                // (It used to pay first and never check: picking the same item again in the menu paid again, for nothing.)
+                if (!takeOne(db, userId, guildId, selectedId)) {
+                    return i.editReply({ content: t('inventory.notOwnedSell', lang), components: [] }).catch(() => {});
                 }
+                const sellPrice = Math.floor(selectedItem.price * 0.5);
+                const newCredits = giveCredits(client, db, userId, guildId, sellPrice);
                 
                 const c = new ContainerBuilder().setAccentColor(0xe67e22)
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', em('ic_ok', '✅'))} ${t('inventory.sellSuccess', lang) || 'Item Sold!'}\n**${em('ic_bag', '📦')} ${selectedItem[lang]?.name || selectedItem.id}** · ${t('inventory.soldFor', lang) || 'Sold for'} ${sellPrice.toLocaleString()} ${em('ic_credit', '🪙')}`))
                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang) || 'New balance'} : ${newCredits.toLocaleString()} ${em('ic_credit', '🪙')}`));
                 
-                return i.editReply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(e => console.error('[SELL ERROR]', e));
+                return i.editReply({ content: null, components: [c], flags: MessageFlags.IsComponentsV2 }).catch(e => console.error('[SELL ERROR]', e));   // content: null, a card can't keep the menu's text
             });
         }
         return;
@@ -277,14 +299,9 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
     try { owned = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND active = 1').get(userId, guildId, itemId); } catch (e) {}
     if (!owned || owned.quantity <= 0) return message.reply(t('inventory.notOwnedSell', lang)).catch(() => {});
 
-    const userData = (client.getUserData ? client.getUserData(userId, guildId) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId)) || { credits: 0 };
+    if (!takeOne(db, userId, guildId, itemId)) return message.reply(t('inventory.notOwnedSell', lang)).catch(() => {});
     const sellPrice = Math.floor(item.price * 0.5);
-    const newCredits = (userData.credits || 0) + sellPrice;
-    db.prepare('UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?').run(newCredits, userId, guildId);
-    if (client.queueUserUpdate) client.queueUserUpdate(userId, guildId, { ...userData, credits: newCredits });
-    if (client.userDataCache) client.userDataCache.delete(`${userId}:${guildId}`);
-    if (owned.quantity > 1) db.prepare('UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, itemId);
-    else db.prepare('DELETE FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, itemId);
+    const newCredits = giveCredits(client, db, userId, guildId, sellPrice);
 
     const name = item[lang]?.name || item.en?.name || itemId;
     const c = new ContainerBuilder().setAccentColor(0xe67e22)

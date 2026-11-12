@@ -6,6 +6,16 @@ const T = {
     fr: { title: '🎨 Boutique de Rôles Personnalisés', balanceCheck: '💰 Vous avez besoin de **{cost}** crédits. Votre solde : **{balance}**', purchased: '🎉 Rôle créé et attribué !', removed: em('ic_off', em('ic_off', '❌')) + ' Rôle supprimé.', exists: em('ic_off', em('ic_off', '❌')) + ' Vous avez déjà un rôle personnalisé.', notFound: em('ic_off', em('ic_off', '❌')) + ' Rôle introuvable.', invalidColor: em('ic_off', em('ic_off', '❌')) + ' Couleur invalide. Utilisez un hex : `#FF5733`', noPermission: em('ic_off', em('ic_off', '❌')) + ' Le bot a besoin de la permission Gérer les Rôles.', footer: 'Boutique de Rôles • v{version}', availableColors: '🎨 Couleurs Disponibles', presetColors: { red: '#FF0000', blue: '#0000FF', green: '#00FF00', purple: '#9B59B6', gold: '#FFD700', pink: '#FF69B4', cyan: '#00FFFF', orange: '#FFA500' }, cost: 5000 }
 };
 
+// Takes the price through the bot's safe path. false when the member can't pay.
+function takeCost(client, db, userId, guildId, cost) {
+    if (client.removeCredits) return !!client.removeCredits(userId, guildId, cost)?.ok;
+    return db.prepare('UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ? AND credits >= ?').run(cost, userId, guildId, cost).changes > 0;
+}
+function giveBack(client, db, userId, guildId, cost) {
+    if (client.addCredits) client.addCredits(userId, guildId, cost);
+    else db.prepare('UPDATE users SET credits = credits + ? WHERE id = ? AND guild_id = ?').run(cost, userId, guildId);
+}
+
 module.exports = {
     name: 'customrole', aliases: ['colorrole', 'myrole', 'buyrole'],
     description: '🎨 Buy a custom color role with credits — express yourself!',
@@ -47,19 +57,18 @@ module.exports = {
 
         const roleName = 'CR: ' + args.slice(1).join(' ').substring(0, 30);
 
+        // The credits are taken first, through the bot's safe path, and given back if the role can't be created.
+        // (Taking them after, straight in the database, could be undone by the next automatic save: a free role.)
+        if (!takeCost(client, db, user.id, guildId, t.cost)) return message.reply(t.balanceCheck.replace('{cost}', t.cost.toLocaleString()).replace('{balance}', balance.toLocaleString())).catch(() => {});
         try {
             const role = await guild.roles.create({ name: roleName, colors: [colorInput], reason: `Custom role purchased by ${user.tag}`, position: guild.members.me.roles.highest.position - 1 });
             await guild.members.cache.get(user.id).roles.add(role);
-
-            // Deduct credits
-            db.prepare("UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?").run(t.cost, user.id, guildId);
-            if (client.queueUserUpdate) client.queueUserUpdate(user.id, guildId, { ...userData, credits: balance - t.cost });
 
             const embed = new EmbedBuilder().setColor(colorInput).setTitle(t.purchased).setDescription(
                 `**Role:** <@&${role.id}>\n**Color:** \`${colorInput}\`\n**Cost:** ${t.cost.toLocaleString()} 🪙\n**New Balance:** ${(balance - t.cost).toLocaleString()} 🪙`
             ).setFooter({ text: t.footer.replace('{version}', client.version || '2.0') }).setTimestamp();
             message.reply({ embeds: [embed] }).catch(() => {});
-        } catch (e) { message.reply(t.noPermission).catch(() => {}); }
+        } catch (e) { giveBack(client, db, user.id, guildId, t.cost); message.reply(t.noPermission).catch(() => {}); }
     },
     execute: async (interaction, client) => {
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
@@ -84,12 +93,12 @@ module.exports = {
 
         const roleName = 'CR: ' + roleNameInput.substring(0, 30);
 
+        if (!takeCost(client, client.db, interaction.user.id, guildId, t.cost)) return interaction.editReply(t.balanceCheck.replace('{cost}', t.cost.toLocaleString()).replace('{balance}', balance.toLocaleString()));
         try {
             const role = await guild.roles.create({ name: roleName, colors: [colorInput], reason: `Custom role purchased by ${interaction.user.tag}`, position: guild.members.me.roles.highest.position - 1 });
             await guild.members.cache.get(interaction.user.id).roles.add(role);
-            if (client.db) client.db.prepare("UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ?").run(t.cost, interaction.user.id, guildId);
             const embed = new EmbedBuilder().setColor(colorInput).setTitle(t.purchased).setDescription(`**Role:** <@&${role.id}>\n**Color:** \`${colorInput}\`\n**Cost:** ${t.cost.toLocaleString()} 🪙\n**New Balance:** ${(balance - t.cost).toLocaleString()} 🪙`).setFooter({ text: t.footer.replace('{version}', client.version || '2.0') }).setTimestamp();
             interaction.editReply({ embeds: [embed] });
-        } catch (e) { interaction.editReply(t.noPermission); }
+        } catch (e) { giveBack(client, client.db, interaction.user.id, guildId, t.cost); interaction.editReply(t.noPermission); }
     }
 };

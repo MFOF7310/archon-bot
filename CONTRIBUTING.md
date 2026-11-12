@@ -57,7 +57,8 @@ The dashboard works the same way from its own repository: a push to its `main` p
 
 ### Data
 
-- Credits go through `client.addCredits()`, `client.removeCredits()` and `client.transferCredits()`; read a balance with `client.liveCredits()`. Writing the `users` table directly is undone by the cache flush.
+- Credits go through `client.addCredits()`, `client.removeCredits()` and `client.transferCredits()`; read a balance with `client.liveCredits()`.
+- A change to several numbers at once (a purchase: price, XP, level) goes through `client.changeUser(userId, guildId, { add, set })`, and `client.liveUser()` reads the newest row. Writing the `users` table directly is undone by the automatic save, 30 seconds later.
 - Server settings go through `client.updateServerSetting()` with a mapped key (`automodEnabled`, not `automod_enabled`).
 - `moderation_logs.timestamp` is in **seconds**. Let SQLite fill `id`.
 

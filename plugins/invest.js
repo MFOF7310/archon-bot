@@ -29,11 +29,18 @@ const num = (n, lang) => Number(n || 0).toLocaleString(lang === 'fr' ? 'fr-FR' :
 const bar = (pct, cap) => { const f = Math.round(Math.min(1, pct / cap) * 10); return '▰'.repeat(f) + '▱'.repeat(10 - f); };
 
 function balance(client, db, uid, gid) {
+    if (client.liveCredits) return client.liveCredits(uid, gid);
     const u = client.getUserData ? client.getUserData(uid, gid) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(uid, gid);
     return Number(u?.credits || 0);
 }
-// Writes the new balance the same way the rest of the bot does (the pending-writes queue keeps it, the cache is refreshed)
+// Sets the new balance through the bot's safe path: memory, the waiting save and the database all get it
 function setBalance(client, db, uid, gid, credits) {
+    if (client.addCredits && client.removeCredits && client.liveCredits) {
+        const now = client.liveCredits(uid, gid);
+        if (credits > now) client.addCredits(uid, gid, credits - now);
+        else if (credits < now) client.removeCredits(uid, gid, now - credits);
+        return;
+    }
     db.prepare('UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?').run(credits, uid, gid);
     if (client.queueUserUpdate) client.queueUserUpdate(uid, gid, { credits });
     const c = client.userDataCache?.get?.(`${uid}:${gid}`); if (c) c.credits = credits;
