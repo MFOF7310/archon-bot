@@ -40,7 +40,7 @@
 
 <p align="center"><img src=".github/readme/verify.png" alt="Captcha verification and raid protection" width="100%"></p>
 
-**Verification and AutoMod.** New members solve a captcha in their DMs before they see the server. AutoMod handles spam, links, invites and mass mentions with a clear strike ladder, members can appeal from the strike card, and the owner gets one summary a day instead of a ping for every message.
+**Verification and AutoMod.** New members can be asked to solve a captcha in their DMs before they see the server (Premium). AutoMod handles spam, links, invites and mass mentions with a clear strike ladder, members can appeal from the strike card, and the owner gets one summary a day instead of a ping for every message.
 
 <p align="center"><img src=".github/readme/votes.png" alt="Votes, streaks and credits" width="100%"></p>
 
@@ -61,7 +61,7 @@
 
 ### Premium
 
-Free covers everything above. Premium, at **$3.40 per server per month**, adds Lydia's server actions, AI model choice, raid detection, captcha verification, advanced AutoMod (image spam, `@everyone` spam) and priority support.
+Everything above is free except where it says Premium. Premium, at **$3.40 per server per month**, adds Lydia's server actions, AI model choice, raid detection, captcha verification, advanced AutoMod (image spam, `@everyone` spam) and priority support.
 
 ---
 
