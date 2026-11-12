@@ -117,5 +117,20 @@
   "memory_forgot": "Done. {n} memories about you were deleted.",
   "memory_forget_none": "I don't remember anything about you yet.",
   "memory_forget_hint": "Use /lydia forget to delete them.",
-  "daily_limit": "You've used your {n} messages with Archon for today. It starts again at midnight (Bamako time). Servers with Premium have no limit."
+  "daily_limit": "You've used your {n} messages with Archon for today. It starts again at midnight (Bamako time). Servers with Premium have no limit.",
+  "st_on": "Answering here",
+  "st_off": "Not answering here",
+  "st_on_desc": "I answer in {channel}. Members talk to me like this:",
+  "st_off_desc": "I stay quiet in {channel}. Turn me on with {cmd}.",
+  "how_mention": "Mention me, `@{bot} your question`, or start with my name: `{bot} your question`",
+  "how_memory": "Ask me to remember something, or to remind you in 10 minutes",
+  "srv_title": "On this server",
+  "srv_channels": "Answering in {list}",
+  "srv_none": "Not answering in any channel yet",
+  "plan_free": "Free plan · {n} messages per member per day",
+  "plan_premium": "Premium · no daily limit",
+  "ai_off_server": "AI is turned off for the whole server, so I answer nowhere. Turn it back on from the dashboard.",
+  "on_title": "Archon now answers here",
+  "off_title": "Archon stopped answering here",
+  "off_back": "Turn me back on with {cmd}."
 }

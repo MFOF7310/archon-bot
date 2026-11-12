@@ -10,19 +10,20 @@ const i18n = require('../lib/i18n');
 const pickLang = (l) => ({ en: 'en', fr: 'fr', zh: 'zh', ar: 'ar', bm: 'fr' })[l] || null;
 
 const ALLOWED = {
-  prefix:         { col: 'prefix',           type: 'string', label: 'Command prefix',   validate: v => typeof v === 'string' && v.length >= 1 && v.length <= 5 && !/\s/.test(v) },
-  language:       { col: 'language',         type: 'string', label: 'Language',         validate: v => ['auto','en','fr','ar','bm','zh'].includes(v) },
-  automod:        { col: 'automod_enabled',  type: 'bool',   label: 'AutoMod' },
-  linkFilter:     { col: 'link_filter_enabled', type: 'bool', label: 'Link filter' },
-  inviteFilter:   { col: 'invite_filter_enabled', type: 'bool', label: 'Invite filter' },
-  welcome:        { col: 'welcome_enabled',  type: 'bool',   label: 'Welcome messages' },
-  goodbye:        { col: 'goodbye_enabled',  type: 'bool',   label: 'Goodbye messages' },
-  market:         { col: 'market_enabled',   type: 'bool',   label: 'Market' },
-  ai:             { col: 'ai_enabled',       type: 'bool',   label: 'Lydia AI' },
-  maxWarnings:    { col: 'max_warnings',     type: 'int',    label: 'Max warnings',     min: 1,  max: 10 },
-  mentionLimit:   { col: 'mention_limit',    type: 'int',    label: 'Mention limit',    min: 3,  max: 20 },
-  xpMultiplier:   { col: 'xp_multiplier',    type: 'num',    label: 'XP multiplier',    min: 0.5, max: 5 },
-  dailyBonus:     { col: 'daily_bonus',      type: 'int',    label: 'Daily bonus',      min: 0,  max: 100000 },
+  // set = the name client.updateServerSetting accepts (it refused raw column names such as automod_enabled)
+  prefix:         { set: 'prefix', col: 'prefix',           type: 'string', label: 'Command prefix',   validate: v => typeof v === 'string' && v.length >= 1 && v.length <= 5 && !/\s/.test(v) },
+  language:       {set: 'language', col: 'language',         type: 'string', label: 'Language',         validate: v => ['auto','en','fr','ar','bm','zh'].includes(v) },
+  automod:        {set: 'automodEnabled', col: 'automod_enabled',  type: 'bool',   label: 'AutoMod' },
+  linkFilter:     {set: 'linkFilterEnabled', col: 'link_filter_enabled', type: 'bool', label: 'Link filter' },
+  inviteFilter:   {set: 'inviteFilterEnabled', col: 'invite_filter_enabled', type: 'bool', label: 'Invite filter' },
+  welcome:        {set: 'welcomeEnabled', col: 'welcome_enabled',  type: 'bool',   label: 'Welcome messages' },
+  goodbye:        {set: 'goodbyeEnabled', col: 'goodbye_enabled',  type: 'bool',   label: 'Goodbye messages' },
+  market:         {set: 'marketEnabled', col: 'market_enabled',   type: 'bool',   label: 'Market' },
+  ai:             {set: 'aiEnabled', col: 'ai_enabled',       type: 'bool',   label: 'Lydia AI' },
+  maxWarnings:    {set: 'maxWarnings', col: 'max_warnings',     type: 'int',    label: 'Max warnings',     min: 1,  max: 10 },
+  mentionLimit:   {set: 'mentionLimit', col: 'mention_limit',    type: 'int',    label: 'Mention limit',    min: 3,  max: 20 },
+  xpMultiplier:   {set: 'xpMultiplier', col: 'xp_multiplier',    type: 'num',    label: 'XP multiplier',    min: 0.5, max: 5 },
+  dailyBonus:     {set: 'dailyBonus', col: 'daily_bonus',      type: 'int',    label: 'Daily bonus',      min: 0,  max: 100000 },
 };
 
 const CONFIRM_MS = 90_000;
@@ -93,7 +94,7 @@ async function handleIntent({ reply, message, client, db, isPremium, isElevated,
   const lab = spec ? tr(`labels.${intent.key}`) : '';
   const note = (s) => `> ${s}`;
 
-  if (!gid || !spec) return note(`${gearEmoji} ${tr('notAllowed', { key: intent.key })}`);
+  if (!gid || !spec) return note(`${gearEmoji} ${tr('notAllowed', { key: String(intent.key || '?').replace(/[^\w-]/g, '').slice(0, 30) })}`);
   if (!isPremium(db, gid)) return note(`${gearEmoji} ${tr('premiumOnly')}`);
 
   const member = message.member;
@@ -107,68 +108,61 @@ async function handleIntent({ reply, message, client, db, isPremium, isElevated,
   try { current = db.prepare(`SELECT ${spec.col} AS v FROM server_settings WHERE guild_id = ?`).get(gid)?.v ?? null; } catch {}
   if (String(current) === String(value)) return note(`${gearEmoji} ${tr('already', { label: lab, value: showVal(spec, value, tr) })}`);
 
-  // --- CARTE CONFIRMATION ---
-  const confirmCard = new ContainerBuilder().setAccentColor(0xfbbf24);
-  confirmCard.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${gearEmoji} ${tr('titleConfirm')}**\n\n**${tr('paramLabel')} :** ${lab}\n**${tr('changeLabel')} :** ${showVal(spec, current, tr)} ➔ ${showVal(spec, value, tr)}`));
-  confirmCard.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-  
+  // The confirmation runs on its own: Lydia's answer is shown at once (it used to wait up to 90 s for the click)
+  askConfirm({ message, client, db, gid, spec, lab, current, value, tr, gearEmoji, checkEmoji }).catch((e) => console.log('[LYDIA ACTION] confirm:', e.message));
+  return text;
+}
+
+async function askConfirm({ message, client, db, gid, spec, lab, current, value, tr, gearEmoji, checkEmoji }) {
+  const card = (color, text, row = null, foot = null) => {
+    const c = new ContainerBuilder().setAccentColor(color);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(text));
+    if (row) { c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small)); c.addActionRowComponents(row); }
+    if (foot) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${foot}`));
+    return { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };
+  };
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId('lydia_confirm').setLabel(tr('confirmBtn')).setStyle(ButtonStyle.Success).setEmoji(icon('ok')),
     new ButtonBuilder().setCustomId('lydia_cancel').setLabel(tr('cancelBtn')).setStyle(ButtonStyle.Secondary),
   );
-  confirmCard.addActionRowComponents(row);
-  confirmCard.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${tr('requestedBy', { user: message.author.username, guild: message.guild.name })}`));
+  const prompt = await message.reply(card(0xfbbf24,
+    `**${gearEmoji} ${tr('titleConfirm')}**\n\n**${tr('paramLabel')} :** ${lab}\n**${tr('changeLabel')} :** ${showVal(spec, current, tr)} ➔ ${showVal(spec, value, tr)}`,
+    row, tr('requestedBy', { user: message.author.username, guild: message.guild.name })));
 
-  const prompt = await message.reply({ components: [confirmCard], flags: MessageFlags.IsComponentsV2 });
+  // Only the member who asked can answer; anyone else gets a private note instead of "This interaction failed"
+  const choice = await new Promise((resolve) => {
+    const col = prompt.createMessageComponentCollector({ componentType: ComponentType.Button, time: CONFIRM_MS });
+    col.on('collect', async (i) => {
+      if (i.user.id !== message.author.id) return i.reply({ content: tr('notYours'), flags: 64 }).catch(() => {});
+      await i.deferUpdate().catch(() => {});
+      col.stop(i.customId);
+    });
+    col.on('end', (_, reason) => resolve(reason === 'lydia_confirm' ? 'yes' : reason === 'lydia_cancel' ? 'no' : 'timeout'));
+  });
+  const finish = (payload) => prompt.edit(payload).catch(() => {}).then(() => setTimeout(() => prompt.delete().catch(() => {}), 15000));
 
-  const confirmed = await prompt.awaitMessageComponent({
-    componentType: ComponentType.Button,
-    filter: (i) => i.user.id === message.author.id && ['lydia_confirm','lydia_cancel'].includes(i.customId),
-    time: CONFIRM_MS,
-  }).then(async (i) => { await i.deferUpdate().catch(() => {}); return i.customId === 'lydia_confirm'; }).catch(() => false);
-  
-  await prompt.edit({ components: [] }).catch(() => {});
-  setTimeout(() => prompt.delete().catch(() => {}), 8000);
+  if (choice !== 'yes') return finish(card(0x71717a, `**${gearEmoji} ${tr('cancelled', { label: lab })}**`));
 
-  if (!confirmed) {
-    const cancelCard = new ContainerBuilder().setAccentColor(0x71717a);
-    cancelCard.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${gearEmoji} ${tr('cancelled', { label: lab })}**`));
-    await prompt.edit({ components: [cancelCard], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
-    return text;
+  // The member may have lost Manage Server while the card was open
+  const still = await message.guild.members.fetch(message.author.id).catch(() => null);
+  if (!still || !(message.guild.ownerId === still.id || still.permissions.has(PermissionsBitField.Flags.ManageGuild))) {
+    return finish(card(0xf87171, `**${gearEmoji} ${tr('needManage', { label: lab })}**`));
   }
-
-  const ok = client.updateServerSetting?.(gid, spec.col, String(value));
-  
-  if (!ok) {
-    const failCard = new ContainerBuilder().setAccentColor(0xf87171);
-    failCard.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${gearEmoji} ${tr('titleError')}**\n\n${tr('failed', { label: lab })}`));
-    await prompt.edit({ components: [failCard], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
-    return text;
-  }
+  const ok = client.updateServerSetting?.(gid, spec.set, String(value));
+  if (!ok) return finish(card(0xf87171, `**${gearEmoji} ${tr('titleError')}**\n\n${tr('failed', { label: lab })}`));
   client.settings?.delete(gid);
 
+  // Audit: who changed what (the member, not the bot), in seconds like every other moderation log
   try {
-    db.prepare(`INSERT INTO moderation_logs (guild_id,user_id,moderator_id,action,reason,timestamp) VALUES (?,?,?,?,?,?)`)
-      .run(gid, message.author.id, client.user.id, 'config', `Lydia: ${spec.label} ${current} → ${value}`, Date.now());
+    db.prepare('INSERT INTO moderation_logs (id, guild_id, user_id, moderator_id, action, reason, timestamp) VALUES (?,?,?,?,?,?,?)')
+      .run(`config_${Date.now()}_${message.author.id}`, gid, message.author.id, message.author.id, 'config', `Lydia: ${spec.label} ${current} → ${value}`, Math.floor(Date.now() / 1000));
   } catch {}
-
   try {
     const logId = db.prepare('SELECT mod_log_channel AS c FROM server_settings WHERE guild_id = ?').get(gid)?.c;
     const ch = logId && message.guild.channels.cache.get(logId);
-    if (ch?.isTextBased()) {
-      const logCard = new ContainerBuilder().setAccentColor(0x00cc66);
-      logCard.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${gearEmoji} ${tr('titleLog')}**\n\n**Action :** ${lab}\n**${tr('oldValue')} :** ${showVal(spec, current, tr)}\n**${tr('newValue')} :** ${showVal(spec, value, tr)}`));
-      logCard.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-      logCard.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${tr('modlog', { id: message.author.id })}`));
-      await ch.send({ components: [logCard], flags: MessageFlags.IsComponentsV2 });
-    }
+    if (ch?.isTextBased()) await ch.send(card(0x00cc66, `**${gearEmoji} ${tr('titleLog')}**\n\n**${lab}** · ${showVal(spec, current, tr)} ➔ ${showVal(spec, value, tr)}`, null, tr('modlog', { id: message.author.id })));
   } catch {}
-
-  const doneCard = new ContainerBuilder().setAccentColor(0x00cc66);
-  doneCard.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${checkEmoji} ${tr('titleSuccess')}**\n\n${tr('done', { label: lab, to: showVal(spec, value, tr) })}`));
-  await prompt.edit({ components: [doneCard], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
-
-  return text;
+  return finish(card(0x00cc66, `**${checkEmoji} ${tr('titleSuccess')}**\n\n${tr('done', { label: lab, to: showVal(spec, value, tr) })}`));
 }
 
 const INTENT_INSTRUCTIONS = `

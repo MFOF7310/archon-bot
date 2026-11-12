@@ -37,5 +37,6 @@
   "oldValue": "Old",
   "newValue": "New",
   "paramLabel": "Parameter",
-  "changeLabel": "Change"
+  "changeLabel": "Change",
+  "notYours": "This confirmation is for the member who asked."
 }

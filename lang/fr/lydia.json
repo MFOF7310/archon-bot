@@ -117,5 +117,20 @@
   "memory_forgot": "C'est fait. {n} souvenirs sur toi ont été effacés.",
   "memory_forget_none": "Je ne retiens encore rien sur toi.",
   "memory_forget_hint": "Utilise /lydia forget pour les effacer.",
-  "daily_limit": "Tu as utilisé tes {n} messages avec Archon pour aujourd'hui. Ça repart à minuit (heure de Bamako). Les serveurs Premium n'ont pas de limite."
+  "daily_limit": "Tu as utilisé tes {n} messages avec Archon pour aujourd'hui. Ça repart à minuit (heure de Bamako). Les serveurs Premium n'ont pas de limite.",
+  "st_on": "Je réponds ici",
+  "st_off": "Je ne réponds pas ici",
+  "st_on_desc": "Je réponds dans {channel}. Les membres me parlent comme ça :",
+  "st_off_desc": "Je reste silencieux dans {channel}. Active-moi avec {cmd}.",
+  "how_mention": "Mentionne-moi, `@{bot} ta question`, ou commence par mon nom : `{bot} ta question`",
+  "how_memory": "Demande-moi de retenir quelque chose, ou de te rappeler un truc dans 10 minutes",
+  "srv_title": "Sur ce serveur",
+  "srv_channels": "Je réponds dans {list}",
+  "srv_none": "Je ne réponds encore dans aucun salon",
+  "plan_free": "Offre gratuite · {n} messages par membre et par jour",
+  "plan_premium": "Premium · pas de limite par jour",
+  "ai_off_server": "L'IA est désactivée pour tout le serveur, donc je ne réponds nulle part. Réactive-la depuis le dashboard.",
+  "on_title": "Archon répond maintenant ici",
+  "off_title": "Archon ne répond plus ici",
+  "off_back": "Réactive-moi avec {cmd}."
 }

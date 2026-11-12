@@ -768,8 +768,8 @@ async function handleLydiaMessage(message, client, database) {
       const staticMsg = lang === 'fr' ? t('lydia.greeting_fr', lang, { user: userName })
         : (greetings[lang] || t('lydia.greeting_en', lang, { user: userName }));
       const staticEmbeds = buildEmbed(staticMsg, message, { isError: false, theme, lang });
-      if (thinkingMsg) await thinkingMsg.edit({ components: staticEmbeds, flags: MessageFlags.IsComponentsV2 });
-      else await message.reply({ components: staticEmbeds, flags: MessageFlags.IsComponentsV2 });
+      if (thinkingMsg) await thinkingMsg.edit({ components: staticEmbeds, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
+      else await message.reply({ components: staticEmbeds, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
       messageProcessingLocks.delete(key);
       return;
     }
@@ -798,7 +798,7 @@ async function handleLydiaMessage(message, client, database) {
         const notice = used === CFG.FREE_DAILY_LIMIT ? t('lydia.daily_limit', lang, { n: CFG.FREE_DAILY_LIMIT }) : null;
         try { database.prepare('UPDATE lydia_usage SET n = n + 1 WHERE user_id = ? AND guild_id = ? AND day = ?').run(message.author.id, message.guild.id, day); } catch {}
         if (thinkingMsg) {
-          if (notice) await thinkingMsg.edit({ components: buildEmbed(notice, message, { theme, lang }), flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+          if (notice) await thinkingMsg.edit({ components: buildEmbed(notice, message, { theme, lang }), flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
           else await thinkingMsg.delete().catch(() => {});
         }
         messageProcessingLocks.delete(key);
@@ -871,8 +871,8 @@ async function handleLydiaMessage(message, client, database) {
     if (!aiResult) {
       const errorMsg = !process.env.OPENROUTER_API_KEY ? t('lydia.ai_no_key', lang) : t('lydia.ai_unavailable', lang);
       const errorEmbeds = buildEmbed(errorMsg, message, { isError: true, theme, lang });
-      if (thinkingMsg) await thinkingMsg.edit({ components: errorEmbeds, flags: MessageFlags.IsComponentsV2 });
-      else await message.reply({ components: errorEmbeds, flags: MessageFlags.IsComponentsV2 });
+      if (thinkingMsg) await thinkingMsg.edit({ components: errorEmbeds, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
+      else await message.reply({ components: errorEmbeds, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
       messageProcessingLocks.delete(key);
       return;
     }
@@ -916,8 +916,8 @@ async function handleLydiaMessage(message, client, database) {
       isError: false, theme, model, latency, tokens, sources: searchSources, lang
     });
 
-    if (thinkingMsg) await thinkingMsg.edit({ components: finalEmbeds, flags: MessageFlags.IsComponentsV2 });
-    else await message.reply({ components: finalEmbeds, flags: MessageFlags.IsComponentsV2 });
+    if (thinkingMsg) await thinkingMsg.edit({ components: finalEmbeds, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
+    else await message.reply({ components: finalEmbeds, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
 
     if (client.botStats && message.guild) {
       client.botStats.onLydiaChatProcessed?.(database, message.guild.id);
@@ -926,8 +926,8 @@ async function handleLydiaMessage(message, client, database) {
   } catch (err) {
     console.error(`${C.red}[LYDIA]${C.reset} ${err.message}`);
     const errorEmbeds = buildEmbed(t('lydia.ai_error', lang), message, { isError: true });
-    if (thinkingMsg) await thinkingMsg.edit({ components: errorEmbeds, flags: MessageFlags.IsComponentsV2 }).catch(() => {});
-    else await message.reply({ components: errorEmbeds, flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+    if (thinkingMsg) await thinkingMsg.edit({ components: errorEmbeds, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
+    else await message.reply({ components: errorEmbeds, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
   } finally {
     messageProcessingLocks.delete(key);
   }
@@ -951,91 +951,64 @@ function pruneOldConversations(database) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 async function handleLydiaToggle(client, channelId, guildId, userId, action, respondFn = null) {
-  const _ssT = client.getServerSettings?.(guildId) || {};
-  const lang = _ssT.language && _ssT.language !== 'auto' ? _ssT.language : 'en';
   if (!client.lydiaChannels) client.lydiaChannels = {};
-
+  const lang = pickLang(client, guildId, null, userId) || 'en';
+  const L = (k, v) => t('lydia.' + k, lang, v || {});
   const channel = await client.channels.fetch(channelId).catch(() => null);
   if (!channel?.guild) {
-    if (respondFn) await respondFn({ content: t('lydia.lydia_channel_missing', lang), flags: 64 });
+    if (respondFn) await respondFn({ content: L('lydia_channel_missing'), flags: 64 });
     return;
   }
-
   const guild = channel.guild;
-  const botName = guild.members.me?.displayName || client.user?.displayName || client.user?.username || 'Archon';
-  const prefix = client.getServerSettings?.(guildId)?.prefix || process.env.PREFIX || '.';
+  const bot = guild.members.me?.displayName || client.user?.username || 'Archon';
+  const cmdId = client.application?.commands?.cache?.find((c) => c.name === 'lydia')?.id;
+  const cmd = (sub) => (cmdId ? `</lydia ${sub}:${cmdId}>` : `\`/lydia ${sub}\``);
+  const how = `> ${L('how_mention', { bot })}\n> ${L('how_memory')}`;
+  const card = (color, items) => {
+    const c = new ContainerBuilder().setAccentColor(color);
+    for (const it of items) {
+      if (it === '---') c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+      else c.addTextDisplayComponents(new TextDisplayBuilder().setContent(it));
+    }
+    return { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };
+  };
 
   if (action === 'status') {
-    const isEnabled = !!client.lydiaChannels[channelId];
-    // Explicit pickLang to ensure we respect the server's 'auto' setting
-    const resolvedLang = pickLang(client, guildId, null, userId) || lang;
-
-    const c = new ContainerBuilder().setAccentColor(isEnabled ? 0x2ecc71 : 0x95a5a6);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${botName} • ${isEnabled ? (t('lydia.badgeActive', resolvedLang) || 'ACTIVE') : (t('lydia.badgeStandby', resolvedLang) || 'STANDBY')}`));
-    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    
-    const desc = isEnabled 
-      ? t('lydia.statusActiveDesc', resolvedLang, { channel: `#${channel.name}` })
-      : t('lydia.statusStandbyDesc', resolvedLang, { botName });
-      
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(desc));
-    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-
-    const body = isEnabled
-      ? t('lydia.statusActiveBody', resolvedLang, { prefix })
-      : t('lydia.statusStandbyBody', resolvedLang, { prefix });
-      
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# #${channel.name} • ${new Date().toLocaleTimeString('en-US', { timeZone: 'Africa/Bamako' })}`));
-
-    if (respondFn) await respondFn({ components: [c], flags: MessageFlags.IsComponentsV2 });
+    const on = !!client.lydiaChannels[channelId];
+    const ss = client.getServerSettings?.(guildId) || {};
+    const serverOff = ss.ai_enabled === 0 || ss.aiEnabled === false;   // the dashboard switch: then she answers nowhere
+    const here = Object.keys(client.lydiaChannels).filter((id) => guild.channels.cache.has(id));
+    const premium = isPremium(client.db, guildId);
+    const items = [
+      `## ${on && !serverOff ? '🟢' : '⚪'} ${bot} · ${on && !serverOff ? L('st_on') : L('st_off')}`,
+      on ? `${L('st_on_desc', { channel: `<#${channelId}>` })}\n${how}` : L('st_off_desc', { channel: `<#${channelId}>`, cmd: cmd('on') }),
+      '---',
+      `**${L('srv_title')}**\n${here.length ? L('srv_channels', { list: here.slice(0, 10).map((id) => `<#${id}>`).join(', ') + (here.length > 10 ? '…' : '') }) : L('srv_none')}\n${premium ? L('plan_premium') : L('plan_free', { n: CFG.FREE_DAILY_LIMIT })}`,
+    ];
+    if (serverOff) items.push(`⚠️ **${L('ai_off_server')}**`);
+    if (respondFn) await respondFn(card(serverOff ? 0xBA7517 : on ? 0x2ecc71 : 0x95a5a6, items));
     return;
   }
 
   if (action === 'on') {
     if (client.lydiaChannels[channelId]) {
-      if (respondFn) await respondFn({ content: t('lydia.lydia_on_already', lang), flags: 64 });
+      if (respondFn) await respondFn({ content: L('lydia_on_already'), flags: 64 });
       return;
     }
-
     client.lydiaChannels[channelId] = true;
-    try {
-      client.db?.prepare(`INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at) VALUES (?, ?, 1, ?)`).run(channelId, 'default', Math.floor(Date.now() / 1000));
-    } catch (e) {}
-
-    const c = new ContainerBuilder().setAccentColor(0x2ecc71);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🟢 ${t('lydia.onAuthor', lang)}`));
-    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('lydia.onDesc', lang, { botName, channel: channel.name }) + t('lydia.onBody', lang, { botName, prefix })));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# #${channel.name} • ${t('lydia.onFooter', lang)}`));
-
-    if (respondFn) await respondFn({ components: [c], flags: MessageFlags.IsComponentsV2 });
+    try { client.db?.prepare(`INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at) VALUES (?, ?, 1, ?)`).run(channelId, 'default', Math.floor(Date.now() / 1000)); } catch (e) {}
+    if (respondFn) await respondFn(card(0x2ecc71, [`## 🟢 ${L('on_title')}`, `${L('st_on_desc', { channel: `<#${channelId}>` })}\n${how}`]));
     return;
   }
 
   if (action === 'off') {
     if (!client.lydiaChannels[channelId]) {
-      if (respondFn) await respondFn({ content: t('lydia.lydia_off_already', lang), flags: 64 });
+      if (respondFn) await respondFn({ content: L('lydia_off_already'), flags: 64 });
       return;
     }
-
     delete client.lydiaChannels[channelId];
-    try {
-      client.db?.prepare(`UPDATE lydia_agents SET is_active = 0 WHERE channel_id = ?`).run(channelId);
-    } catch (e) {}
-
-    const c = new ContainerBuilder().setAccentColor(0xe74c3c);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🔴 ${t('lydia.offAuthor', lang)}`));
-    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    
-    // Récupération de l'ID de la commande pour le rendu cliquable
-    const cmdId = client.application.commands.cache.find(cmd => cmd.name === 'lydia')?.id;
-    const cmdMention = cmdId ? `</lydia on:${cmdId}>` : '`/lydia on`';
-    
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('lydia.offDesc', lang, { botName, channel: channel.name }) + t('lydia.offBody', lang, { prefix, cmd: cmdMention })));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# #${channel.name} • ${t('lydia.offFooter', lang)}`));
-
-    if (respondFn) await respondFn({ components: [c], flags: MessageFlags.IsComponentsV2 });
+    try { client.db?.prepare(`UPDATE lydia_agents SET is_active = 0 WHERE channel_id = ?`).run(channelId); } catch (e) {}
+    if (respondFn) await respondFn(card(0x95a5a6, [`## ⚪ ${L('off_title')}`, L('off_back', { cmd: cmd('on') })]));
     return;
   }
 }

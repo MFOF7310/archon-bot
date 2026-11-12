@@ -37,5 +37,6 @@
   "oldValue": "旧值",
   "newValue": "新值",
   "paramLabel": "参数",
-  "changeLabel": "更改"
+  "changeLabel": "更改",
+  "notYours": "这个确认只属于提出请求的成员。"
 }

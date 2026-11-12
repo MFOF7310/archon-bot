@@ -117,5 +117,20 @@
   "memory_forgot": "已完成。已删除 {n} 条关于你的记忆。",
   "memory_forget_none": "我还没有记住任何关于你的信息。",
   "memory_forget_hint": "使用 /lydia forget 删除它们。",
-  "daily_limit": "你今天和 Archon 的 {n} 条消息已用完，午夜（巴马科时间）重置。高级版服务器没有限制。"
+  "daily_limit": "你今天和 Archon 的 {n} 条消息已用完，午夜（巴马科时间）重置。高级版服务器没有限制。",
+  "st_on": "在这里回复",
+  "st_off": "不在这里回复",
+  "st_on_desc": "我在 {channel} 回复。成员可以这样和我聊天：",
+  "st_off_desc": "我在 {channel} 保持安静。用 {cmd} 开启我。",
+  "how_mention": "提及我：`@{bot} 你的问题`，或以我的名字开头：`{bot} 你的问题`",
+  "how_memory": "让我记住一件事，或在 10 分钟后提醒你",
+  "srv_title": "在本服务器",
+  "srv_channels": "在 {list} 回复",
+  "srv_none": "还没有在任何频道回复",
+  "plan_free": "免费版 · 每位成员每天 {n} 条消息",
+  "plan_premium": "高级版 · 无每日限制",
+  "ai_off_server": "整个服务器的 AI 已关闭，所以我不会在任何地方回复。请在控制面板重新开启。",
+  "on_title": "Archon 现在在这里回复",
+  "off_title": "Archon 不再在这里回复",
+  "off_back": "用 {cmd} 重新开启我。"
 }

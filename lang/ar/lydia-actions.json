@@ -37,5 +37,6 @@
   "oldValue": "القديم",
   "newValue": "الجديد",
   "paramLabel": "المعامل",
-  "changeLabel": "التغيير"
+  "changeLabel": "التغيير",
+  "notYours": "هذا التأكيد خاص بالعضو الذي طلب التغيير."
 }
