@@ -683,7 +683,10 @@ async function handleUpdate(update, bridge, client) {
     if (!ctx || ctx.isBot) return;
 
     if (ctx.text?.startsWith('/')) {
-        console.log(`${cyan}[TG]${reset} ${ctx.username}: ${ctx.text.split(' ')[0]}`);
+        // One line per command: who, what, where, when
+        const _where = ctx.isPrivate ? 'in a DM' : `in ${ctx.isChannel ? 'channel' : 'group'} "${ctx.message?.chat?.title || ctx.chatId}"`;
+        const _time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Bamako' });
+        console.log(`${cyan}[TG]${reset} ${_time} · ${ctx.username} (${ctx.userId}) used ${ctx.text.split(' ')[0]} ${_where}`);
     }
 
     const { text } = ctx;
@@ -724,12 +727,6 @@ async function handleUpdate(update, bridge, client) {
             if (cmd.ownerOnly && !ctx.isOwner()) return ctx.replyHTML(`⛔ <b>Owner only</b>`);
             if (cmd.adminOnly && !(await ctx.isAdmin())) return ctx.replyHTML(`⛔ <b>Admin only</b>`);
             try {
-                const _user = ctx.username + (ctx.userId ? ` (id:${ctx.userId})` : '');
-                const _chat = ctx.isPrivate ? 'DM' :
-                              ctx.isChannel ? `Channel: ${ctx.message?.chat?.title || ctx.chatId}` :
-                              ctx.isGroup ? `Group: ${ctx.message?.chat?.title || ctx.chatId}` : `id:${ctx.chatId}`;
-                const _time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-                console.log(`${cyan}[TG CMD]${reset} /${cmdName} • ${_user} • ${_chat} • ${_time}`);
                 await cmd.handler(ctx);
                 bridge.stats.commandsUsed++;
             } catch (err) {
