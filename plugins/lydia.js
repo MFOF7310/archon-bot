@@ -19,7 +19,8 @@ const lydiaActions = require('./lydia-actions');
 const { isElevated: _isElevated } = (() => { try { return require('./automod'); } catch { return { isElevated: () => false }; } })();
 
 // Per-guild custom API keys (premium) — falls back to global .env when unset
-function getGuildKey(database, guildId, service) {
+function getGuildKey() { return null; }   // custom keys were removed (unused); kept so older callers still work
+function _unusedGuildKey(database, guildId, service) {
   try {
     if (!database || !guildId) return null;
     const row = database.prepare('SELECT api_key FROM lydia_keys WHERE guild_id = ? AND service = ?').get(String(guildId), service);
@@ -40,21 +41,16 @@ const CFG = {
   MAX_HISTORY: 8,
   MAX_MEMORY_PER_USER: 25,
   CHANNEL_COOLDOWN: 1500,
-  MAX_EMBED_DESC: 3800,
   MAX_TOKENS: 700,
   RESPONSE_TIMEOUT: 15000,
-  CACHE_TTL_MS: 120000,
-  MAX_CONCURRENT_MODELS: 3,
-  MAX_EMBEDS_PER_MSG: 4,
-  PARAGRAPH_MAX_LINES: 4,
-  MAX_SENTENCES_PER_PARA: 3,
+  MAX_REPLY_CHARS: 3600,     // a Components V2 message holds 4000 characters of text in total
+  FREE_DAILY_LIMIT: 30,      // messages per member per day on servers without Premium (protects the OpenRouter bill)
 };
 
 let isLydiaInitialized = false;
 const userCooldowns = new Map();
 const channelCooldowns = new Map();
 const messageProcessingLocks = new Set();
-const responseCache = new Map();
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANSI COLORS
@@ -65,58 +61,9 @@ const C = {
   cyan: '\x1b[36m', magenta: '\x1b[35m', blue: '\x1b[34m', reset: '\x1b[0m'
 };
 
-// ═══════════════════════════════════════════════════════════════════════════════
-// SENTIMENT COLOR ENGINE
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const PALETTE = {
-  default:  { base: '#5865F2', urgent: '#ff4757', calm: '#747d8c', alert: '#ffa502' },
-  tech:     { base: '#00d4ff', urgent: '#ff3838', calm: '#7bed9f', alert: '#eccc68' },
-  intel:    { base: '#9b59b6', urgent: '#ff4757', calm: '#a29bfe', alert: '#fd79a8' },
-  tactical: { base: '#f39c12', urgent: '#ff4757', calm: '#55efc4', alert: '#ffeaa7' },
-  medical:  { base: '#e74c3c', urgent: '#ff4757', calm: '#fab1a0', alert: '#ff7675' },
-  academic: { base: '#2ecc71', urgent: '#ff4757', calm: '#55efc4', alert: '#fdcb6e' },
-  police:   { base: '#34495e', urgent: '#c0392b', calm: '#7f8c8d', alert: '#f1c40f' }
-};
-
-function getSentimentColor(themeKey, text = '') {
-  const t = PALETTE[themeKey] || PALETTE.default;
-  const lower = (text || '').toLowerCase();
-  const critical = ['error', 'bug', 'crash', 'fail', 'broken', 'hack', 'virus', 'attack', 'emergency', 'critical', 'not working', 'fatal', 'panic', 'breach'];
-  if (critical.some(k => lower.includes(k))) return t.urgent;
-  const alert = ['warning', 'caution', 'careful', 'alert', 'attention', 'verify', 'suspicious', 'unauthorized', 'banned', 'kick', 'mute'];
-  if (alert.some(k => lower.includes(k))) return t.alert;
-  const calm = ['success', 'done', 'complete', 'working', 'perfect', 'great', 'thanks', 'love', 'happy', 'congratulations', 'welcome'];
-  if (calm.some(k => lower.includes(k))) return t.calm;
-  return t.base;
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// THEME ENGINE
-// ═══════════════════════════════════════════════════════════════════════════════
-
-const THEMES = {
-  default:  { name: 'Monitor',        emoji: '\u2728', tone: 'friendly, helpful, conversational' },
-  tech:     { name: 'Tech Analyst',   emoji: '\u{1F4BB}', tone: 'expert developer, clear explanations, production-ready code' },
-  intel:    { name: 'Intel Officer',  emoji: '\u{1F50D}', tone: 'informative, well-sourced, factual, structured briefing' },
-  tactical: { name: 'Field Guide',    emoji: '\u{1F4CB}', tone: 'clear, actionable, step-by-step, mission-oriented' },
-  medical:  { name: 'Health Advisor', emoji: '\u{1F3E5}', tone: 'caring, cautious, recommends professional help when needed' },
-  academic: { name: 'Scholar',        emoji: '\u{1F4DA}', tone: 'patient, thorough, breaks down complex topics' },
-  police:   { name: 'System Monitor', emoji: '\u{1F6E1}\u{FE0F}', tone: 'authoritative, precise, security-conscious, monitor-style' }
-};
-
-function detectTheme(userPrompt) {
-  const p = userPrompt.toLowerCase();
-  const scores = {};
-  scores.police = ['police', 'security', 'threat', 'breach', 'banned', 'kick', 'mute', 'warn', 'automod', 'raid', 'guardian', 'monitor', 'log', 'audit', 'suspicious', 'hack', 'attack', 'intruder'].filter(k => p.includes(k)).length;
-  scores.tech = ['code', 'javascript', 'python', 'bug', 'error', 'function', 'api', 'database', 'sql', 'node', 'discord.js', 'html', 'css', 'react', 'deploy', 'server', 'json', 'async', 'await', 'promise', 'fix', 'debug', 'script', 'plugin'].filter(k => p.includes(k)).length;
-  scores.intel = ['who is', 'what is', 'news', 'latest', 'weather', 'search', 'find', 'where', 'when', 'why', 'how to', 'price', 'stock', 'crypto', 'update', 'current', 'research', 'data', 'report'].filter(k => p.includes(k)).length;
-  scores.tactical = ['how do i', 'steps', 'guide', 'tutorial', 'solve', 'install', 'setup', 'configure', 'build', 'create', 'make', 'recipe', 'plan', 'strategy', 'use', 'command', 'daily', 'shop', 'buy', 'claim'].filter(k => p.includes(k)).length;
-  scores.medical = ['pain', 'sick', 'doctor', 'medicine', 'health', 'symptom', 'disease', 'virus', 'treatment', 'dose', 'vaccine', 'mental', 'therapy', 'diet', 'exercise', 'injury', 'hospital'].filter(k => p.includes(k)).length;
-  scores.academic = ['explain', 'define', 'theory', 'concept', 'history', 'science', 'math', 'physics', 'chemistry', 'biology', 'philosophy', 'literature', 'study', 'exam', 'thesis', 'research', 'learn'].filter(k => p.includes(k)).length;
-  const winner = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
-  return winner[1] > 0 ? THEMES[winner[0]] : THEMES.default;
-}
+// One look for every answer: ARCHON's gold, red only for real errors
+const THEMES = { default: { name: 'Archon', emoji: '\u2728' } };
+const detectTheme = () => THEMES.default;
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // UNIVERSAL LANGUAGE DETECTOR
@@ -505,36 +452,6 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// RESPONSE CACHE
-// ═══════════════════════════════════════════════════════════════════════════════
-
-function getCacheKey(userId, prompt) {
-  const normalized = prompt.toLowerCase().trim().replace(/\s+/g, ' ').substring(0, 100);
-  return `${userId}:${normalized}`;
-}
-
-function getCachedResponse(userId, prompt) {
-  const key = getCacheKey(userId, prompt);
-  const entry = responseCache.get(key);
-  if (!entry) return null;
-  if (Date.now() - entry.ts > CFG.CACHE_TTL_MS) {
-    responseCache.delete(key);
-    return null;
-  }
-  console.log(`${C.cyan}[CACHE]${C.reset} Hit for ${key.substring(0, 40)}...`);
-  return entry.data;
-}
-
-function setCachedResponse(userId, prompt, data) {
-  const key = getCacheKey(userId, prompt);
-  responseCache.set(key, { ts: Date.now(), data });
-  if (responseCache.size > 200) {
-    const oldest = responseCache.keys().next().value;
-    responseCache.delete(oldest);
-  }
-}
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // MEMORY SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════════
 
@@ -598,235 +515,27 @@ function parseAndScheduleReminder(response, userId, channelId, client, database,
   return cleanedResponse.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-function rehydrateReminders(client, database) {
-  try {
-    const pending = database.prepare(`
-      SELECT * FROM reminders WHERE delivered = 0 AND execute_at > ?
-    `).all(Math.floor(Date.now() / 1000));
-
-    for (const r of pending) {
-      const ms = (r.execute_at * 1000) - Date.now();
-      if (ms <= 0) {
-        client.channels.fetch(r.channel_id)
-          .then(ch => {
-            if (ch?.isTextBased?.()) {
-              ch.send({
-                content: `\u{1F514} **OVERDUE** <@${r.user_id}>: ${r.message}`,
-                allowedMentions: { users: [r.user_id] }
-              }).catch(() => {});
-            }
-          }).catch(() => {});
-        database.prepare(`UPDATE reminders SET delivered = 1 WHERE id = ?`).run(r.id);
-      } else {
-        setTimeout(async () => {
-          try {
-            const user = await client.users.fetch(r.user_id).catch(() => null);
-            if (user) {
-              await user.send({
-                embeds: [new EmbedBuilder()
-                  .setColor('#f1c40f')
-                  .setAuthor({ name: '\u{1F514} Reminder', iconURL: client.user?.displayAvatarURL() })
-                  .setDescription(`**${r.message}**`)
-                  .setFooter({ text: 'Architect CG-223 \u2022 Reminder' })
-                  .setTimestamp()
-                ]
-              }).catch(() => {});
-            }
-            const ch = await client.channels.fetch(r.channel_id).catch(() => null);
-            if (ch?.isTextBased?.()) {
-              await ch.send({
-                content: `\u{1F514} <@${r.user_id}> **Reminder:** ${r.message}`,
-                allowedMentions: { users: [r.user_id] }
-              }).catch(() => {});
-            }
-            database.prepare(`UPDATE reminders SET delivered = 1 WHERE id = ?`).run(r.id);
-          } catch (e) {
-            console.log(`${C.yellow}[REHYDRATE FAIL]${C.reset} ${e.message}`);
-          }
-        }, ms);
-      }
-    }
-
-    if (pending.length > 0) console.log(`${C.green}[REHYDRATE]${C.reset} ${pending.length} reminders restored`);
-  } catch (e) {
-    console.log(`${C.yellow}[REHYDRATE ERR]${C.reset} ${e.message}`);
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════════════
-// DISCORD RESPONSE FORMATTER v3.0 — Beautiful multi-embed splitting
+// RESPONSE FORMATTER — light touch: the model's own layout is kept, code blocks are never changed
 // ═══════════════════════════════════════════════════════════════════════════════
-
-/**
- * Post-processes raw AI text into beautifully formatted Discord markdown.
- * - Adds blank lines between paragraphs
- * - Ensures headers are bold and spaced
- * - Properly spaces numbered/bullet lists
- * - Wraps code blocks
- * - Keeps paragraphs short and readable
- */
-
-// Split prose at sentence boundaries — max 3 sentences per paragraph
-function splitIntoShortParagraphs(text) {
-  const MAX_S = 3;
-  const lines = text.split('\n');
-  const result = [];
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || /^\*\*.+\*\*$/.test(trimmed) ||
-        /^\s*(\d+\.|[-*\u2022])\s/.test(trimmed) ||
-        /^```/.test(trimmed) || trimmed.startsWith('>')) {
-      result.push(line); continue;
-    }
-    const parts = trimmed.split(/(?<=[.!?])\s+(?=[A-Z\u00C0-\u024F"'])/);
-    if (parts.length <= MAX_S) { result.push(trimmed); continue; }
-    for (let i = 0; i < parts.length; i += MAX_S) {
-      const chunk = parts.slice(i, i + MAX_S).join(' ').trim();
-      if (chunk) { result.push(chunk); if (i + MAX_S < parts.length) result.push(''); }
-    }
-  }
-  return result.join('\n');
-}
 
 function formatDiscordResponse(text) {
   if (!text) return '';
-
-  // Strip <think> blocks
-  let formatted = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
-
-  // Normalize line endings
-  formatted = formatted.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-  // Convert markdown headers (##, ###) to Discord bold with visual separator
-  formatted = formatted.replace(/^#{2,3}\s+(.+)$/gm, '\n\n**$1**\n');
-
-  // Ensure numbered lists have spacing: "1. Item" -> proper format
-  formatted = formatted.replace(/^(\d+)\.\s*\*\*(.+?)\*\*/gm, '$1. **$2**');
-
-  // Add blank line before numbered lists if missing
-  formatted = formatted.replace(/([^\n])(\n\d+\.\s)/g, '$1\n$2');
-
-  // Add blank line before bullet lists if missing
-  formatted = formatted.replace(/([^\n])(\n[\-\*\u2022\u25CB])\s/g, '$1\n$2 ');
-
-  // Ensure paragraphs are separated by blank lines
-  formatted = formatted.replace(/\n{3,}/g, '\n\n');
-
-  // Split very long paragraphs (no newlines for 8+ lines)
-  formatted = splitIntoShortParagraphs(formatted);
-
-  // Add spacing between distinct ideas (detect short bold phrases as mini-headers)
-  formatted = formatted.replace(/(\n[A-Z][^\n]{5,50}?\n)(?=\n[A-Z])/g, '$1\n');
-
-  // Clean up excessive whitespace
-  formatted = formatted.replace(/[ \t]+\n/g, '\n').replace(/\n[ \t]+/g, '\n');
-  formatted = formatted.replace(/\n{5,}/g, '\n\n\n\n');
-
-  return formatted.trim();
+  const parts = String(text).replace(/<think>[\s\S]*?<\/think>/gi, '').replace(/\r\n?/g, '\n').split(/(```[\s\S]*?```)/g);
+  return parts.map((p, i) => (i % 2 === 1 ? p : p
+    .replace(/^#{1,3}\s+(.+)$/gm, '**$1**')          // # titles read as shouting in a chat card
+    .replace(/[ \t]+\n/g, '\n')
+    .replace(/\n{3,}/g, '\n\n'))).join('').trim();
 }
 
-/**
- * Splits very long paragraphs (no line break for N lines) into smaller chunks.
- * This prevents walls of text in Discord.
- */
-function splitLongParagraphs(text) {
-  const lines = text.split('\n');
-  const result = [];
-  let currentPara = [];
-
-  for (const line of lines) {
-    const isEmpty = !line.trim();
-    const isHeader = /^\*\*.+\*\*$/.test(line);
-    const isListItem = /^\s*(\d+\.|[\-\*\u2022\u25CB])\s/.test(line);
-    const isCodeBlock = /^```/.test(line);
-
-    if (isEmpty || isHeader || isListItem || isCodeBlock) {
-      // Flush current paragraph if it's getting long
-      if (currentPara.length >= CFG.PARAGRAPH_MAX_LINES) {
-        const mid = Math.floor(currentPara.length / 2);
-        result.push(...currentPara.slice(0, mid));
-        result.push('');
-        result.push(...currentPara.slice(mid));
-      } else if (currentPara.length > 0) {
-        result.push(...currentPara);
-      }
-      currentPara = [];
-      result.push(line);
-      continue;
-    }
-
-    currentPara.push(line);
-
-    // Flush if paragraph is getting too long
-    if (currentPara.length >= CFG.PARAGRAPH_MAX_LINES) {
-      result.push(...currentPara);
-      result.push('');
-      currentPara = [];
-    }
-  }
-
-  // Flush remaining
-  if (currentPara.length > 0) {
-    result.push(...currentPara);
-  }
-
-  return result.join('\n');
-}
-
-/**
- * Splits formatted text into multiple embed-sized chunks.
- * Returns array of { title, content } objects.
- */
-function splitIntoEmbeds(text, options = {}) {
-  const { botName, themeName, isFirst = true } = options;
-  const maxLen = CFG.MAX_EMBED_DESC;
-
-  if (text.length <= maxLen) {
-    return isFirst
-      ? [{ title: null, content: text }]
-      : [{ title: null, content: text }];
-  }
-
-  const chunks = [];
-  // Split by double newlines first (paragraph boundaries)
-  const paragraphs = text.split(/\n\n/);
-  let current = '';
-
-  for (const para of paragraphs) {
-    const separator = current ? '\n\n' : '';
-    if ((current + separator + para).length > maxLen) {
-      if (current) {
-        chunks.push({ title: null, content: current.trim() });
-        current = para;
-      } else {
-        // Single paragraph too long — split by lines
-        const lines = para.split('\n');
-        for (const line of lines) {
-          const sep = current ? '\n' : '';
-          if ((current + sep + line).length > maxLen) {
-            chunks.push({ title: null, content: current.trim() });
-            current = line;
-          } else {
-            current = current + sep + line;
-          }
-        }
-      }
-    } else {
-      current = current + separator + para;
-    }
-  }
-
-  if (current) chunks.push({ title: null, content: current.trim() });
-
-  // Add titles to chunks
-  if (chunks.length > 1 && isFirst) {
-    chunks[0].title = botName || 'Response';
-    for (let i = 1; i < chunks.length; i++) {
-      chunks[i].title = `Continued (${i + 1}/${chunks.length})`;
-    }
-  }
-
-  return chunks;
+// One card per answer: Discord refuses a V2 message over 4000 characters, so a long answer stops at a paragraph
+function fitReply(text) {
+  if (text.length <= CFG.MAX_REPLY_CHARS) return text;
+  let cut = text.slice(0, CFG.MAX_REPLY_CHARS);
+  const at = cut.lastIndexOf('\n\n');
+  if (at > CFG.MAX_REPLY_CHARS * 0.6) cut = cut.slice(0, at);
+  if ((cut.match(/```/g) || []).length % 2) cut += '\n```';   // close a code block cut in the middle
+  return cut + '\n\n…';
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -840,19 +549,11 @@ function _uiLang(client, message, personLang) {
     const guildId = message.guild?.id || message.guildId;
     return pickLang(client, guildId, message, userId) || personLang || 'en';
 }
-function _tx(key, lang, fallback) {
-  try {
-    const v = require('../lib/i18n').t(key, lang === 'bm' ? 'fr' : lang);
-    return v && !String(v).includes(key) ? v : fallback;
-  } catch { return fallback; }
-}
-
 function buildEmbed(reply, message, options = {}) {
   const { isError = false, isThinking = false, theme = THEMES.default, model = null, latency = null, tokens = null, sources = [], lang = 'en' } = options;
 
-  const themeKey = Object.keys(THEMES).find(k => THEMES[k].name === theme.name) || 'default';
   // Red only for real errors: picking the colour from words in the answer ("bug", "fix") made friendly replies look like alerts
-  const embedColor = isError ? 0xff4757 : parseInt((PALETTE[themeKey] || PALETTE.default).base.replace('#', ''), 16);
+  const embedColor = isError ? 0xff4757 : 0xE6A817;
 
   const c = new ContainerBuilder().setAccentColor(embedColor);
 
@@ -861,43 +562,17 @@ function buildEmbed(reply, message, options = {}) {
     return c;
   }
 
-  const formattedReply = formatDiscordResponse(reply);
-  const botName = message.client?.user?.username || 'Archon';
-  const chunks = splitIntoEmbeds(formattedReply, { botName, themeName: theme.name, isFirst: true });
-
-  const containers = [];
-  for (let i = 0; i < chunks.length && i < CFG.MAX_EMBEDS_PER_MSG; i++) {
-    const { title, content } = chunks[i];
-    const cChunk = new ContainerBuilder().setAccentColor(embedColor);
-
-    if (i > 0) {
-      cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${title || 'Continued'}**`));
-      cChunk.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    }
-
-    cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(content));
-
-    if (i === chunks.length - 1 || i === CFG.MAX_EMBEDS_PER_MSG - 1) {
-      cChunk.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-
-      // Which model answered: honest, and useful when a server compares answers
-      const footerText = `-# ${theme.emoji} Archon${model?.name && !isError ? ` · ${model.name}` : ''}`;
-
-      if (sources.length > 0 && !isError) {
-        const sourceLinks = sources.slice(0, 4).map((s, idx) => {
-          const tTitle = s.title.length > 80 ? s.title.substring(0, 80) + '...' : s.title;
-          return `[[${idx + 1}]](${s.url}) ${tTitle}`;
-        }).join('\n');
-        cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${require('../lib/i18n').t('lydia.sourcesTitle', lang)}**\n${sourceLinks}`));
-      }
-
-      cChunk.addTextDisplayComponents(new TextDisplayBuilder().setContent(footerText));
-    }
-
-    containers.push(cChunk);
+  const content = fitReply(formatDiscordResponse(reply));
+  const card = new ContainerBuilder().setAccentColor(embedColor);
+  card.addTextDisplayComponents(new TextDisplayBuilder().setContent(content));
+  card.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+  if (sources.length > 0 && !isError) {
+    const links = sources.slice(0, 4).map((src, idx) => `[[${idx + 1}]](${src.url}) ${src.title.length > 80 ? src.title.slice(0, 80) + '…' : src.title}`).join('\n');
+    card.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${require('../lib/i18n').t('lydia.sourcesTitle', lang)}**\n${links}`));
   }
-
-  return containers;
+  // Which model answered: honest, and useful when a server compares answers
+  card.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${theme.emoji} Archon${model?.name && !isError ? ` · ${model.name}` : ''}`));
+  return [card];
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1002,7 +677,6 @@ LIVE CONTEXT:
 - Server: ${guild.name}
 - Talking to: ${userName}${ownerTag}
 - Date: ${dateStr} | ${bamakoTime} Bamako time
-- Mode: ${theme.name}
 - Prefix: ${prefix} (or use slash commands). You ALREADY KNOW the current prefix, it is "${prefix}". Never say you don't know it or tell the user to check it elsewhere.
 - Language: respond in ${langName} — follow the user, always
 ${allCommandsBlock(commands, isOwner === 'dev')}${(() => { const rc = relevantCommands(userMessage, commands); return rc ? `\nRELEVANT COMMANDS (the signatures of the commands that match this message; every command that exists is named under ALL COMMANDS):\n${rc}` : ''; })()}
@@ -1018,27 +692,6 @@ Cite web sources as [1], [2] when search results are provided.${premiumActions ?
 // MESSAGE HANDLER (Updated — uses new buildEmbed which returns array)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-
-// HARD formatter — runs AFTER AI response, forces readable structure no matter what
-function hardFormatResponse(text) {
-  if (!text || text.length < 100) return text;
-
-  // Split into sentences using punctuation boundaries
-  const sentenceEnd = /(?<=[.!?])\s+(?=[A-Z"'\u00C0-\u024F])/g;
-  const sentences = text.split(sentenceEnd).filter(s => s.trim().length > 0);
-
-  if (sentences.length <= 3) return text;
-
-  const result = [];
-  const GROUP = 2; // max sentences per paragraph
-
-  for (let i = 0; i < sentences.length; i += GROUP) {
-    const chunk = sentences.slice(i, i + GROUP).join(' ').trim();
-    if (chunk) result.push(chunk);
-  }
-
-  return result.join('\n\n');
-}
 
 async function handleLydiaMessage(message, client, database) {
   if (!message.guild || message.author.bot) return;
@@ -1121,19 +774,6 @@ async function handleLydiaMessage(message, client, database) {
       return;
     }
 
-    const cacheId = `${message.guild.id}:${message.author.id}`;
-    const cached = getCachedResponse(cacheId, userPrompt);
-    if (cached && !imageUrl) {
-      const cacheEmbeds = buildEmbed(cached.content, message, {
-        isError: false, theme, model: cached.model, latency: 0, tokens: cached.tokens,
-        sources: cached.sources || [], lang
-      });
-      if (thinkingMsg) await thinkingMsg.edit({ components: cacheEmbeds, flags: MessageFlags.IsComponentsV2 });
-      else await message.reply({ components: cacheEmbeds, flags: MessageFlags.IsComponentsV2 });
-      messageProcessingLocks.delete(key);
-      return;
-    }
-
     let memories = [];
     try {
       memories = database.prepare(`
@@ -1146,6 +786,27 @@ async function handleLydiaMessage(message, client, database) {
     // introduced as the developer, and the owner was looked up with two Discord API calls on every message.
     const envOwnerId = process.env.OWNER_ID || process.env.DEVELOPER_ID || process.env.BOT_OWNER;
     const isOwner = envOwnerId && message.author.id === envOwnerId ? 'dev' : message.author.id === message.guild.ownerId ? 'server' : null;
+    // Daily limit on servers without Premium: one short notice when it's reached, then silence until tomorrow
+    if (isOwner !== 'dev' && !isPremium(database, message.guild.id)) {
+      const day = new Date().toISOString().slice(0, 10);
+      let used = 0;
+      try {
+        database.prepare('CREATE TABLE IF NOT EXISTS lydia_usage (user_id TEXT, guild_id TEXT, day TEXT, n INTEGER DEFAULT 0, PRIMARY KEY (user_id, guild_id, day))').run();
+        used = database.prepare('SELECT n FROM lydia_usage WHERE user_id = ? AND guild_id = ? AND day = ?').get(message.author.id, message.guild.id, day)?.n || 0;
+      } catch {}
+      if (used >= CFG.FREE_DAILY_LIMIT) {
+        const notice = used === CFG.FREE_DAILY_LIMIT ? t('lydia.daily_limit', lang, { n: CFG.FREE_DAILY_LIMIT }) : null;
+        try { database.prepare('UPDATE lydia_usage SET n = n + 1 WHERE user_id = ? AND guild_id = ? AND day = ?').run(message.author.id, message.guild.id, day); } catch {}
+        if (thinkingMsg) {
+          if (notice) await thinkingMsg.edit({ components: buildEmbed(notice, message, { theme, lang }), flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+          else await thinkingMsg.delete().catch(() => {});
+        }
+        messageProcessingLocks.delete(key);
+        return;
+      }
+      try { database.prepare('INSERT INTO lydia_usage (user_id, guild_id, day, n) VALUES (?, ?, ?, 1) ON CONFLICT(user_id, guild_id, day) DO UPDATE SET n = n + 1').run(message.author.id, message.guild.id, day); } catch {}
+    }
+
     const serverPrefix = client.getServerSettings?.(message.guild.id)?.prefix || process.env.PREFIX || '.';
 
     const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang, client.commands?.size || 0, message.content, client.commands, !!(message.guild?.id && isPremium(database, message.guild.id)), client.moduleStats);
@@ -1258,12 +919,6 @@ async function handleLydiaMessage(message, client, database) {
     if (thinkingMsg) await thinkingMsg.edit({ components: finalEmbeds, flags: MessageFlags.IsComponentsV2 });
     else await message.reply({ components: finalEmbeds, flags: MessageFlags.IsComponentsV2 });
 
-    if (!imageUrl && finalReply.length > 20) {
-      setCachedResponse(cacheId, userPrompt, {
-        content: finalReply, model, latency, tokens, sources: searchSources
-      });
-    }
-
     if (client.botStats && message.guild) {
       client.botStats.onLydiaChatProcessed?.(database, message.guild.id);
     }
@@ -1312,12 +967,6 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
 
   if (action === 'status') {
     const isEnabled = !!client.lydiaChannels[channelId];
-    let keyMode = '🌍 Shared keys (free tier)';
-    try {
-      if (getGuildKey(client.db, guildId, 'openrouter')) keyMode = '🔑 Custom key (AI brain)';
-      else if (getGuildKey(client.db, guildId, 'brave')) keyMode = '🔑 Custom key (web search)';
-    } catch(e) {}
-    
     // Explicit pickLang to ensure we respect the server's 'auto' setting
     const resolvedLang = pickLang(client, guildId, null, userId) || lang;
 
@@ -1333,7 +982,7 @@ async function handleLydiaToggle(client, channelId, guildId, userId, action, res
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
 
     const body = isEnabled
-      ? t('lydia.statusActiveBody', resolvedLang, { prefix, keyMode })
+      ? t('lydia.statusActiveBody', resolvedLang, { prefix })
       : t('lydia.statusStandbyBody', resolvedLang, { prefix });
       
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
@@ -1551,13 +1200,6 @@ function setupLydia(client, database) {
       )
     `).run();
 
-    database.prepare(`
-      CREATE TABLE IF NOT EXISTS lydia_introductions (
-        user_id TEXT, channel_id TEXT, introduced_at INTEGER,
-        PRIMARY KEY (user_id, channel_id)
-      )
-    `).run();
-
     try {
       const cols = database.prepare('PRAGMA table_info(lydia_conversations)').all().map(c => c.name);
       if (!cols.includes('guild_id')) {
@@ -1621,11 +1263,7 @@ const slashCommand = new SlashCommandBuilder()
   .addSubcommand(s => s.setName('status').setDescription('\u{1F4CA} Show Archon status'))
   .addSubcommand(s => s.setName('memory').setDescription('\u{1F9E0} View your stored memories'))
   .addSubcommand(s => s.setName('forget').setDescription('\u{1F5D1}\u{FE0F} Delete everything Archon remembers about you'))
-  .addSubcommand(s => s.setName('setkey').setDescription('\u{1F511} [PREMIUM] Power this server with your own API key')
-    .addStringOption(o => o.setName('service').setDescription('Which service the key is for').setRequired(true)
-      .addChoices({ name: 'OpenRouter (AI brain)', value: 'openrouter' }, { name: 'Brave (web search)', value: 'brave' }))
-    .addStringOption(o => o.setName('key').setDescription('Your API key — do this in a private channel').setRequired(true)))
-  .addSubcommand(s => s.setName('delkey').setDescription('\u{1F5D1}\u{FE0F} Remove this server\'s custom keys'));
+;
 
 async function executeSlashCommand(interaction, client) {
   const _ssX = client.getServerSettings?.(interaction.guild?.id) || {};
@@ -1650,48 +1288,6 @@ async function executeSlashCommand(interaction, client) {
     const database = client.db;
     if (!database) return interaction.reply({ content: t('lydia.db_offline', lang), flags: 64 });
     return await handleMemorySubcommand(interaction, database, true, client);
-  }
-
-  if (sub === 'setkey') {
-    const database = client.db;
-    if (!database) return interaction.reply({ content: t('lydia.db_offline', lang), flags: 64 });
-    if (!isPremium(database, interaction.guildId)) {
-      return interaction.reply({ content: t('lydia.premium_required', lang), flags: 64 });
-    }
-    const service = interaction.options.getString('service', true);
-    const key = (interaction.options.getString('key', true) || '').trim();
-    if (key.length < 20 || /\s/.test(key)) {
-      return interaction.reply({ content: t('lydia.key_invalid', lang), flags: 64 });
-    }
-    // One key per server — a new key always replaces the previous one
-    let replaced = null;
-    try {
-      const prev = database.prepare('SELECT service FROM lydia_keys WHERE guild_id = ?').get(String(interaction.guildId));
-      if (prev && prev.service !== service) replaced = prev.service;
-      database.prepare('DELETE FROM lydia_keys WHERE guild_id = ?').run(String(interaction.guildId));
-      database.prepare(`INSERT INTO lydia_keys (guild_id, service, api_key, set_by, set_at)
-        VALUES (?, ?, ?, ?, strftime('%s','now'))`)
-        .run(String(interaction.guildId), service, key, interaction.user.id);
-    } catch (e) {
-      return interaction.reply({ content: t('lydia.key_db_error', lang), flags: 64 });
-    }
-    const label = service === 'openrouter' ? 'AI brain (OpenRouter)' : 'web search (Brave)';
-    const replacedNote = replaced ? t('lydia.key_replaced_note', lang, { service: replaced === 'openrouter' ? 'OpenRouter' : 'Brave' })
-      : '';
-    return interaction.reply({ content: t('lydia.key_saved', lang, { label }) + replacedNote + '\n-# ' + t('lydia.key_saved_tip', lang), flags: 64 });
-  }
-
-  if (sub === 'delkey') {
-    const database = client.db;
-    if (!database) return interaction.reply({ content: t('lydia.db_offline', lang), flags: 64 });
-    try {
-      const r = database.prepare('DELETE FROM lydia_keys WHERE guild_id = ?').run(String(interaction.guildId));
-      return interaction.reply({ content: r.changes > 0
-        ? t('lydia.key_removed', lang)
-        : t('lydia.key_none', lang), flags: 64 });
-    } catch (e) {
-      return interaction.reply({ content: t('lydia.key_db_error_remove', lang), flags: 64 });
-    }
   }
 
   // All other subcommands need defer first

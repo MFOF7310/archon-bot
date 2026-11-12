@@ -4,8 +4,6 @@
   "sub_off": "🔴 Mettre l'IA Archon en veille",
   "sub_status": "📊 Afficher le statut de Archon",
   "sub_memory": "🧠 Voir tes souvenirs enregistrés",
-  "sub_setkey": "🔑 [PREMIUM] Alimenter ce serveur avec ta propre clé API",
-  "sub_delkey": "🗑️ Supprimer les clés personnalisées de ce serveur",
   "opt_service": "Le service concerné par la clé",
   "opt_key": "Ta clé API — fais ça dans un salon privé",
   "lydia_on_already": "🎧 Je suis déjà réveillée et à l'écoute ici — parle-moi !",
@@ -118,5 +116,6 @@
   "sub_forget": "🗑️ Effacer tout ce qu'Archon retient sur toi",
   "memory_forgot": "C'est fait. {n} souvenirs sur toi ont été effacés.",
   "memory_forget_none": "Je ne retiens encore rien sur toi.",
-  "memory_forget_hint": "Utilise /lydia forget pour les effacer."
+  "memory_forget_hint": "Utilise /lydia forget pour les effacer.",
+  "daily_limit": "Tu as utilisé tes {n} messages avec Archon pour aujourd'hui. Ça repart à minuit (heure de Bamako). Les serveurs Premium n'ont pas de limite."
 }

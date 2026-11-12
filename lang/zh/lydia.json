@@ -4,8 +4,6 @@
   "sub_off": "🔴 关闭 Archon AI",
   "sub_status": "📊 查看 Archon 状态",
   "sub_memory": "🧠 查看你存储的记忆",
-  "sub_setkey": "🔑 [PREMIUM] 用你自己的 API key 为本服务器供电",
-  "sub_delkey": "🗑️ 移除本服务器的自定义 key",
   "opt_service": "这个 key 属于哪个服务",
   "opt_key": "你的 API key — 请在私密频道操作",
   "lydia_on_already": "🎧 我已经醒着啦，就在这儿听着 — 直接跟我说话！",
@@ -118,5 +116,6 @@
   "sub_forget": "🗑️ 删除 Archon 记住的关于你的一切",
   "memory_forgot": "已完成。已删除 {n} 条关于你的记忆。",
   "memory_forget_none": "我还没有记住任何关于你的信息。",
-  "memory_forget_hint": "使用 /lydia forget 删除它们。"
+  "memory_forget_hint": "使用 /lydia forget 删除它们。",
+  "daily_limit": "你今天和 Archon 的 {n} 条消息已用完，午夜（巴马科时间）重置。高级版服务器没有限制。"
 }

@@ -4,8 +4,6 @@
   "sub_off": "🔴 Put Archon AI to sleep",
   "sub_status": "📊 Show Archon status",
   "sub_memory": "🧠 View your stored memories",
-  "sub_setkey": "🔑 [PREMIUM] Power this server with your own API key",
-  "sub_delkey": "🗑️ Remove this server's custom keys",
   "opt_service": "Which service the key is for",
   "opt_key": "Your API key — do this in a private channel",
   "lydia_on_already": "🎧 I'm already awake and listening right here — just talk to me!",
@@ -118,5 +116,6 @@
   "sub_forget": "🗑️ Delete everything Archon remembers about you",
   "memory_forgot": "Done. {n} memories about you were deleted.",
   "memory_forget_none": "I don't remember anything about you yet.",
-  "memory_forget_hint": "Use /lydia forget to delete them."
+  "memory_forget_hint": "Use /lydia forget to delete them.",
+  "daily_limit": "You've used your {n} messages with Archon for today. It starts again at midnight (Bamako time). Servers with Premium have no limit."
 }
