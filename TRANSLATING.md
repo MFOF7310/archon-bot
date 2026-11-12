@@ -1,108 +1,71 @@
-# Contributing Translations to ARCHON CG-223
+# Translating ARCHON CG-223
 
-Thanks for helping make ARCHON accessible in more languages. This guide covers everything you need to know before you start.
+Thanks for helping members read ARCHON in their own language.
 
----
-
-## Supported locales
+## Languages
 
 | Code | Language | Status |
-|------|----------|--------|
-| `en` | English | ✅ Complete |
-| `fr` | French | ✅ Complete |
-| `bm` | Bambara | 🚧 Draft — needs native review |
-| `zh` | Chinese (Simplified) | ✅ Complete |
-| `ar` | Arabic | ✅ Complete |
+|---|---|---|
+| `en` | English | Complete, the reference |
+| `fr` | French | Complete |
+| `zh` | Chinese (Simplified) | Complete |
+| `ar` | Arabic | Complete |
+| `bm` | Bambara | Started, needs native speakers |
 
-To add a new language, open an issue first so we can discuss scope before you invest time.
+Any key missing in a language falls back to **English**.
 
----
+## Where the texts are
 
-## Bambara (`bm`) — needs native review
+| Path | What's in it |
+|---|---|
+| `lang/<code>/<module>.json` | Bot texts, one file per module (`ticket.json`, `automod.json`, `giveaway.json`…) |
+| `lib/lang/<code>.json` | Older shared texts, still in use |
+| `config/changelog.json` | Release notes, one line per language |
+| `telegram/lang/` | Telegram bot texts |
 
-Bambara is the most recent locale. The strings were drafted by pattern-matching the existing `bm` corpus and **have not been reviewed by a native speaker**. They work in context but a fluent speaker will likely rewrite some of them.
+Open the English file of a module, then the same file in your language, and translate key by key.
 
-**Files to review first** (in order of user visibility):
+## Rules
 
-1. `lib/lang/bm.json` — `supreme.*`, `daily.*`, `alive.*`, `mylang.*` blocks
-2. `lang/bm/reminder.json` — daily reminder card
-3. `lang/bm/mylang.json` — language chooser card
+**Keep exactly as written**
 
-**Vocabulary already established** (do not change without reason):
+| What | Examples |
+|---|---|
+| Variables | `{user}` `{server}` `{n}` `{amount}` `{duration}` |
+| Brand names | `ARCHON CG-223`, `Lydia`, `Top.gg`, `CODM` |
+| Commands | `/ticket`, `.giveaway`, `/meta weapon` |
+| Markdown | `**bold**`, `` `code` ``, `-#` at the start of a line, `>` for quotes |
+| Custom emoji codes | `<:name:123…>` |
+
+**Write like a person**
+
+- Short, plain sentences. Say what happened and what the member can do next.
+- Use the familiar form when the English speaks to a member (`tu` in French), unless the module already uses another form.
+- Plurals use two keys: `xxxOne` and `xxxMany`. Translate both.
+- Button labels: 1 to 3 words. Discord cuts form titles and labels at 45 characters.
+- Keep a loan word (`Boost`, `Premium`, `streak`) if that's what gamers say in your language.
+
+## Bambara
+
+Bambara has a small set of drafted texts that no native speaker has reviewed yet. If you speak it, you're the person we need: start with `lib/lang/bm.json` and `lang/bm/mylang.json`, the texts members see first.
+
+Already-chosen words (keep them unless you have a good reason):
 
 | Bambara | Meaning |
 |---|---|
 | `don` | day |
 | `bonusi` | bonus |
-| `kɔnɔ` | in |
 | `sɔrɔ` | get / receive |
-| `tɛ` | not / no |
-| `b'i kan` | on you |
-| `ɲɔgɔnna` | in a row / consecutive |
-| `kɛlɛla` | veteran (lit. warrior) |
+| `ɲɔgɔnna` | in a row |
+| `kɛlɛla` | veteran (literally warrior) |
 
-**Rule for `bm` fallback:** if a key is missing in `bm.json`, the framework falls back to French (not English). That's intentional — French is more accessible in Mali than English.
+## Sending your work
 
-If you are a native speaker and want to review, open a PR against this repo. Every fix is welcome.
+1. Fork the repository.
+2. Translate the files of one or more modules.
+3. Check that each JSON file is still valid (no missing comma, no stray quote).
+4. Open a pull request titled `i18n(<code>): <module>`.
 
----
+Once merged, the bot restarts by itself and your texts are live a minute later.
 
-## File structure
-
-Each locale lives in `lang/<code>/` and contains three files:
-lang/
-en/
-shop.json       — Shop interface, item names, purchase messages
-use.json        — Inventory and item activation interface
-inventory.json  — Inventory display and sell interface
-Start with `shop.json` — it covers the most visible user-facing strings. `use.json` and `inventory.json` can follow.
-
----
-
-## Rules — read these before translating
-
-### 1. Never translate these — leave them exactly as written
-
-| What | Examples |
-|------|---------|
-| Token placeholders | `{price}` `{balance}` `{level}` `{user}` `{item}` `{amount}` `{type}` `{rank}` |
-| Brand names | `ARCHON CG-223` `BAMAKO-STEEL-NODE` `Neural` |
-| Command names | `.buy` `.bal` `.credits` |
-| Emoji | 🪙 ⚡ 🛡️ 🎖️ 📦 |
-| Markdown formatting | `**bold**` `` `code` `` |
-
-### 2. Intentional loan words — your call
-
-These words are used as loans in some locales. You can keep them or find a native equivalent:
-
-- `Boost` / `Streak` / `Badge` / `VIP` / `Stock` / `Permanent`
-
-### 3. Priority tiers
-
-**Tier 1 — Critical (do these first)**
-- `insufficientFunds` `levelRequirement` `purchaseError` `accessDenied`
-- `itemNotFound` `purchaseComplete` `purchaseSuccessful`
-- All `items.*` names and descriptions
-
-**Tier 2 — Important**
-- Button labels: `inventory` `refresh` `close` `backToInventory`
-- Status strings: `owned` `locked` `depleted` `processing`
-
-**Tier 3 — Polish**
-- Footer strings, notification authors, hint text
-
----
-
-## How to submit
-
-1. Fork the repo
-2. Copy `lang/en/` to `lang/<your-code>/`
-3. Translate strings following the rules above
-4. Open a PR with the title: `i18n(<code>): <language> translations`
-5. Note any loan words you kept and why
-
----
-
-## Questions
-
-Open an issue or reach out on [Discord](https://discord.gg/NFSMFJajp9). The maintainer speaks EN, FR, AR, ZH, and BM.
+Questions: open an issue or ask in the [Eagle Community](https://discord.gg/NFSMFJajp9) on Discord.
