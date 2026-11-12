@@ -185,5 +185,10 @@
   "btn_stats": "Stats",
   "live_noperm": "Seuls les membres avec « Gérer le serveur » peuvent modifier ceci.",
   "live_posted": "Panneau posté dans {ch}.",
-  "live_post_fail": "Je n'ai pas pu poster le panneau ici : {why}"
+  "live_post_fail": "Je n'ai pas pu poster le panneau ici : {why}",
+  "stats_title": "Statistiques des tickets",
+  "stats_total": "Tickets au total",
+  "stats_open": "Ouverts en ce moment",
+  "stats_avg": "Note moyenne",
+  "myrating_title": "Tes notes"
 }

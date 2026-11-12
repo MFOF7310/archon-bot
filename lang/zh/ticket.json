@@ -181,5 +181,10 @@
   "btn_stats": "统计",
   "live_noperm": "只有拥有“管理服务器”权限的成员可以修改。",
   "live_posted": "面板已发布到 {ch}。",
-  "live_post_fail": "无法在这里发布面板：{why}"
+  "live_post_fail": "无法在这里发布面板：{why}",
+  "stats_title": "工单统计",
+  "stats_total": "工单总数",
+  "stats_open": "当前进行中",
+  "stats_avg": "平均评分",
+  "myrating_title": "你的评分"
 }

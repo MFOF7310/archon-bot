@@ -185,5 +185,10 @@
   "btn_stats": "Stats",
   "live_noperm": "Only members with Manage Server can change this.",
   "live_posted": "Panel posted in {ch}.",
-  "live_post_fail": "I couldn't post the panel here: {why}"
+  "live_post_fail": "I couldn't post the panel here: {why}",
+  "stats_title": "Ticket stats",
+  "stats_total": "Total tickets",
+  "stats_open": "Open now",
+  "stats_avg": "Average rating",
+  "myrating_title": "Your ratings"
 }

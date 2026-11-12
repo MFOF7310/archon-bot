@@ -202,22 +202,45 @@ async function fetchLiveFallback(channelId) {
     }
 }
 
-// ─── Upload check via RSS ───
+// ─── Upload check: YouTube's channel feed, then the uploads-playlist feed, then yt-dlp ───
+// YouTube's RSS feeds often answer 404/500 for hours. Each failure used to print a line per channel every few
+// minutes; now one line when a channel's feed breaks and one when it comes back.
+const _feedDown = new Map();   // channelId -> since (ms)
+function parseFeed(xml, channelId) {
+    const first = String(xml).split('<entry>')[1];
+    if (!first) return null;
+    const id = (first.match(/<yt:videoId>([^<]+)<\/yt:videoId>/) || [])[1];
+    if (!id) return null;
+    const title = (first.match(/<title>([^<]+)<\/title>/) || [])[1];
+    const published = (first.match(/<published>([^<]+)<\/published>/) || [])[1];
+    const author = (first.match(/<name>([^<]+)<\/name>/) || [])[1];
+    const thumb = (first.match(/<media:thumbnail url="([^"]+)"/) || [])[1];
+    return { id, title: title || 'Untitled', published, author: author || channelId, thumbnail: thumb, url: `https://youtube.com/watch?v=${id}` };
+}
 async function fetchLatestUpload(channelId) {
+    const headers = { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36' };
+    const urls = [`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`];
+    if (/^UC[\w-]{22}$/.test(channelId)) urls.push(`https://www.youtube.com/feeds/videos.xml?playlist_id=UU${channelId.slice(2)}`);
+    let why = null;
+    for (const url of urls) {
+        try {
+            const res = await axios.get(url, { timeout: 10000, headers });
+            const up = parseFeed(res.data, channelId);
+            if (up) { if (_feedDown.delete(channelId)) console.log(`[YOUTUBE] feed back for ${channelId}`); return up; }
+        } catch (e) { why = e.response?.status || e.code || e.message; }
+    }
+    // Last resort: the channel's newest video through yt-dlp (slower, but it doesn't depend on the feeds)
     try {
-        const res = await axios.get(`https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`, { timeout: 10000 });
-        const xml = String(res.data);
-        const entries = xml.split('<entry>').slice(1);
-        if (!entries.length) return null;
-        const first = entries[0];
-        const id = (first.match(/<yt:videoId>([^<]+)<\/yt:videoId>/) || [])[1];
-        const title = (first.match(/<title>([^<]+)<\/title>/) || [])[1];
-        const published = (first.match(/<published>([^<]+)<\/published>/) || [])[1];
-        const author = (first.match(/<name>([^<]+)<\/name>/) || [])[1];
-        const thumb = (first.match(/<media:thumbnail url="([^"]+)"/) || [])[1];
-        if (!id) return null;
-        return { id, title: title || 'Untitled', published, author: author || channelId, thumbnail: thumb, url: `https://youtube.com/watch?v=${id}` };
-    } catch (e) { console.log(`[YOUTUBE] feed error for ${channelId}: ${e.response?.status || e.code || e.message}`); return null; }
+        const { stdout } = await execFileAsync('yt-dlp', ['--flat-playlist', '--playlist-items', '1', '--no-warnings', '--cookies', COOKIE_FILE,
+            '--print', '%(id)s\t%(title)s', `https://www.youtube.com/channel/${channelId}/videos`], { timeout: YTDLP_TIMEOUT_MS });
+        const [id, title] = String(stdout).trim().split('\t');
+        if (id && /^[\w-]{11}$/.test(id)) {
+            if (_feedDown.delete(channelId)) console.log(`[YOUTUBE] feed back for ${channelId} (yt-dlp)`);
+            return { id, title: title || 'Untitled', published: null, author: channelId, thumbnail: `https://i.ytimg.com/vi/${id}/hqdefault.jpg`, url: `https://youtube.com/watch?v=${id}` };
+        }
+    } catch (e) { why = why || String(e.message).slice(0, 80); }
+    if (!_feedDown.has(channelId)) { _feedDown.set(channelId, Date.now()); console.log(`[YOUTUBE] feed unavailable for ${channelId} (${why}); retrying quietly`); }
+    return null;
 }
 
 // ─── Cards ───
