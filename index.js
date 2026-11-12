@@ -3347,6 +3347,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return require('./plugins/livestream').handleToggle(interaction, client).catch(e => console.error('[LIVESTREAM] toggle:', e.message));
     }
     // /meta card: class filter, weapon picker, random pick, back to the list (and the old cards' "reroll" button)
+    if (interaction.isButton() && interaction.customId.startsWith('claim:')) {
+        return require('./plugins/claim.js').handleComponent(interaction, client).catch(e => console.error('[CLAIM] button:', e.message));
+    }
     if (interaction.isButton() && interaction.customId.startsWith('mylang:')) {
         return require('./plugins/mylang.js').handleComponent(interaction, client).catch(e => console.error('[MYLANG] component:', e.message));
     }
