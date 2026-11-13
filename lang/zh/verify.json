@@ -99,5 +99,9 @@
   "v2_panel_posted": "{small_check} 验证面板已发布到 {ch}。",
   "inviteBtn": "打开 #{channel}",
   "sysChanPing": "{user}，请进行验证！",
-  "logFooter": "ARCHON CG-223 • 验证"
+  "logFooter": "ARCHON CG-223 • 验证",
+  "cantPostGone": "⛔ 我找不到 {ch} 了，请选择另一个频道。",
+  "cantPostWrongType": "⛔ 我无法在 {ch} 发布验证面板：它是论坛、媒体频道或分类。请选择一个文字频道。",
+  "cantPostThreadLocked": "⛔ {ch} 是一个已锁定的子区。请解锁它，或给 **{bot}** **{perms}** 权限。",
+  "cantPostTimeout": "⛔ 我在这个服务器被禁言了，无法发送任何内容。请在成员列表中右键点击 **{bot}**，解除禁言后再试一次。"
 }

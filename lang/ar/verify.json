@@ -99,5 +99,9 @@
   "v2_panel_posted": "{small_check} تم نشر لوحة التحقق في {ch}.",
   "inviteBtn": "افتح #{channel}",
   "sysChanPing": "{user}، يرجى التحقق!",
-  "logFooter": "ARCHON CG-223 • التحقق"
+  "logFooter": "ARCHON CG-223 • التحقق",
+  "cantPostGone": "⛔ لم أعد أجد {ch}. اختر قناة أخرى.",
+  "cantPostWrongType": "⛔ لا أستطيع نشر لوحة التحقق في {ch}: إنها منتدى أو قناة وسائط أو فئة. اختر قناة نصية.",
+  "cantPostThreadLocked": "⛔ {ch} موضوع مقفل. افتحه أو امنح **{bot}** صلاحية **{perms}**.",
+  "cantPostTimeout": "⛔ أنا في مهلة (تايم آوت) على هذا الخادم، لذا لا أستطيع نشر أي شيء. انقر بزر الماوس الأيمن على **{bot}** في قائمة الأعضاء، وأزل المهلة، ثم حاول مجددًا."
 }
