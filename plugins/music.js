@@ -355,7 +355,7 @@ function buildPanelEmbed(q, client) {
 
     return new EmbedBuilder()
         .setColor(isPaused ? ARCHON.gold : 0x5865F2)
-        .setTitle(isPaused ? tx('music.paused_title', lang) : tx('music.now_playing', lang))
+        .setTitle(isPaused ? `${icon('mc_pause', null)} ${String(tx('music.paused_title', lang)).replace(/^⏸️?\s*/, '')}` : tx('music.now_playing', lang))
         .setDescription(
             `${trackLink}\n\n` +
             `• ${tx('music.added_by', lang)} ${requester}\n` +
@@ -442,7 +442,7 @@ function buildPanelContainer(q, client) {
 
     const header = new SectionBuilder()
         .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent((isPaused ? `## ${em('mc_pause', '⏸️')} ` : `## ${resolveEmoji('music', q._client) || em('music', '🎵')} `) + (isPaused ? tx('music.paused_title', lang) : tx('music.now_playing', lang))),
+            new TextDisplayBuilder().setContent((isPaused ? `## ${em('mc_pause', '⏸️')} ` : `## ${resolveEmoji('music', q._client) || em('music', '🎵')} `) + (isPaused ? String(tx('music.paused_title', lang)).replace(/^⏸️?\s*/, '') : tx('music.now_playing', lang))),
             new TextDisplayBuilder().setContent(
                 `${displayTitle}\n` +
                 `[${tx('music.open_on', lang, { site: t.spotifyUrl ? 'Spotify' : 'YouTube' })}](${sourceUrl})\n\n` +
