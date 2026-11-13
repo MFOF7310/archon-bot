@@ -3634,6 +3634,7 @@ safeOn(Events.GuildCreate, async (guild) => {
     try {
         try { ensureDepartures(); db.prepare('DELETE FROM guild_departures WHERE guild_id = ?').run(guild.id); } catch (_) {}
         try { ensureGuildHistory(); db.prepare('DELETE FROM guild_history WHERE guild_id = ?').run(guild.id); } catch (_) {}
+        try { recordArrival(guild); } catch (_) {}
         // ── Sync global_server_stats ──
         try {
             db.prepare(`
@@ -3678,6 +3679,21 @@ function purgeGuildData(gid) {
     }
     db.prepare('DELETE FROM guild_departures WHERE guild_id = ?').run(gid);
     return n;
+}
+
+// Where new servers come from. Each tracked link (site.xyz/go/tiktok…) logs a click; a server added within 30 minutes
+// of a click is credited to the newest click not yet used. It's an estimate, but a good one at ARCHON's size.
+const ensureArrivals = () => {
+    db.prepare('CREATE TABLE IF NOT EXISTS invite_clicks (id INTEGER PRIMARY KEY AUTOINCREMENT, src TEXT, at INTEGER, used INTEGER DEFAULT 0)').run();
+    db.prepare('CREATE TABLE IF NOT EXISTS guild_arrivals (guild_id TEXT PRIMARY KEY, name TEXT, icon TEXT, members INTEGER, joined_at INTEGER, src TEXT)').run();
+};
+function recordArrival(guild) {
+    ensureArrivals();
+    const click = db.prepare('SELECT id, src FROM invite_clicks WHERE used = 0 AND at > ? ORDER BY at DESC LIMIT 1').get(Date.now() - 30 * 60 * 1000);
+    if (click) db.prepare('UPDATE invite_clicks SET used = 1 WHERE id = ?').run(click.id);
+    db.prepare('INSERT OR REPLACE INTO guild_arrivals (guild_id, name, icon, members, joined_at, src) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(guild.id, guild.name || null, guild.iconURL?.({ size: 64 }) || null, guild.memberCount || 0, Date.now(), click?.src || null);
+    console.log(`[ARRIVAL] ${guild.name} (${guild.id}) from ${click?.src || 'unknown source'}`);
 }
 
 // Servers ARCHON left or was removed from, kept for the owner's dashboard (guild_departures above is only a 7-day grace queue).
@@ -4548,6 +4564,37 @@ apiApp.get('/api/user/:userId', (req, res) => {
 });
 
 // ── ADMIN ENDPOINTS ──────────────────────────────────────────
+// Tracked invite links: the dashboard logs a click here, then sends the visitor to Discord
+apiApp.post('/api/admin/invite-click', requireAdmin, (req, res) => {
+    try {
+        const src = String(req.body?.src || '').toLowerCase();
+        if (!/^[a-z0-9-]{1,20}$/.test(src)) return res.status(400).json({ ok: false });
+        ensureArrivals();
+        db.prepare('INSERT INTO invite_clicks (src, at) VALUES (?, ?)').run(src, Date.now());
+        db.prepare('DELETE FROM invite_clicks WHERE at < ?').run(Date.now() - 180 * 86400000);
+        res.json({ ok: true });
+    } catch (err) { res.status(500).json({ ok: false }); }
+});
+// Clicks and new servers per source over the last N days, plus the latest arrivals
+apiApp.get('/api/admin/arrivals', requireAdmin, (req, res) => {
+    try {
+        ensureArrivals();
+        const days = Math.min(365, Math.max(1, parseInt(req.query.days, 10) || 30));
+        const since = Date.now() - days * 86400000;
+        const clicks = db.prepare('SELECT src, COUNT(*) AS n FROM invite_clicks WHERE at > ? GROUP BY src').all(since);
+        const joins = db.prepare("SELECT COALESCE(src, '') AS src, COUNT(*) AS n FROM guild_arrivals WHERE joined_at > ? GROUP BY COALESCE(src, '')").all(since);
+        const map = new Map();
+        for (const c of clicks) map.set(c.src, { src: c.src, clicks: c.n, joins: 0 });
+        for (const j of joins) { const k = j.src; const e = map.get(k) || { src: k, clicks: 0, joins: 0 }; e.joins = j.n; map.set(k, e); }
+        const recent = db.prepare('SELECT guild_id AS id, name, icon, members, joined_at AS joinedAt, src FROM guild_arrivals ORDER BY joined_at DESC LIMIT 100').all()
+            .map(r => ({ ...r, still: client.guilds.cache.has(r.id) }));
+        res.json({ days, sources: [...map.values()].sort((a, b) => b.joins - a.joins || b.clicks - a.clicks), recent });
+    } catch (err) {
+        console.error('[API /api/admin/arrivals]', err.message);
+        res.json({ days: 30, sources: [], recent: [] });
+    }
+});
+
 // Servers ARCHON is no longer in (owner dashboard). The first call also adds old ones found in the stats table.
 apiApp.get('/api/admin/departures', requireAdmin, (req, res) => {
     try {
