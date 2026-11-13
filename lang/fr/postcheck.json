@@ -107,7 +107,18 @@
     "giveaway_channel": "Giveaway en cours",
     "verify_role_id": "Rôle vérifié",
     "verify_unverified_role_id": "Rôle non vérifié",
-    "auto_role_id": "Rôle automatique"
+    "auto_role_id": "Rôle automatique",
+    "member_role": "Rôle membre",
+    "join_role_id": "Rôle d'arrivée",
+    "mute_role_id": "Rôle muet",
+    "daily_initiate_role": "Quotidien : Initié",
+    "daily_warrior_role": "Quotidien : Guerrier",
+    "daily_champion_role": "Quotidien : Champion",
+    "daily_legend_role": "Quotidien : Légende",
+    "investor_role": "Rôle investisseur",
+    "quiz_master_role": "Rôle maître du quiz",
+    "duelist_role": "Rôle duelliste",
+    "gamer_role": "Rôle gamer"
   },
   "short": {
     "private": "salon privé, ARCHON n'y est pas",
@@ -123,5 +134,8 @@
   "groupCore": "Essentiel",
   "groupFeature": "Selon la fonctionnalité",
   "countOf": "{ok} sur {total} en place",
-  "checkedShort": "vérifié {when}"
+  "checkedShort": "vérifié {when}",
+  "secHierarchy": "**Où se trouve mon rôle**",
+  "lowRole": "Mon rôle **{bot}** est sous tes {above} rôles. Je peux publier normalement, mais je ne peux pas encore donner de rôles, exclure temporairement, expulser ni bannir.",
+  "lowRoleFix": "Pour corriger : Paramètres du serveur → Rôles, puis fais glisser **{bot}** au-dessus des rôles que je dois donner (par exemple {roles})."
 }

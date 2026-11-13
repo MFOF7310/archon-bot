@@ -119,6 +119,7 @@ function allChannels(guild, db, lang, hint, where) {
         ...(chLines.length ? section('secChannels', chLines) : [{ rule: true }, { text: T('noChannels', lang) }]),
         ...section('secPerms', permLines),
         ...section('secRoles', roleLines),
+        ...(h.hierarchy?.lowest ? [{ rule: true }, { text: `${T('secHierarchy', lang)}\n${icon('warn', where)} ${require('../lib/role-check').lowRoleText(guild, lang, h.hierarchy)}` }] : []),
         ...section('secFailures', failLines),
         { rule: true },
         { text: `-# ${hint}` },

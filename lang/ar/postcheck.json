@@ -107,7 +107,18 @@
     "giveaway_channel": "السحب الجاري",
     "verify_role_id": "دور التحقق",
     "verify_unverified_role_id": "دور غير المتحقق",
-    "auto_role_id": "دور تلقائي"
+    "auto_role_id": "دور تلقائي",
+    "member_role": "رتبة العضو",
+    "join_role_id": "رتبة الانضمام",
+    "mute_role_id": "رتبة الكتم",
+    "daily_initiate_role": "يومي: مبتدئ",
+    "daily_warrior_role": "يومي: محارب",
+    "daily_champion_role": "يومي: بطل",
+    "daily_legend_role": "يومي: أسطورة",
+    "investor_role": "رتبة المستثمر",
+    "quiz_master_role": "رتبة سيد الاختبار",
+    "duelist_role": "رتبة المبارز",
+    "gamer_role": "رتبة اللاعب"
   },
   "short": {
     "private": "قناة خاصة، ARCHON ليس فيها",
@@ -123,5 +134,8 @@
   "groupCore": "أساسي",
   "groupFeature": "حسب الميزة",
   "countOf": "{ok} من {total} في المكان",
-  "checkedShort": "تم الفحص {when}"
+  "checkedShort": "تم الفحص {when}",
+  "secHierarchy": "**موقع رتبتي**",
+  "lowRole": "رتبتي **{bot}** تحت جميع رتبك الـ {above}. أستطيع النشر بشكل عادي، لكن لا أستطيع بعد منح الرتب أو الإسكات المؤقت أو الطرد أو الحظر.",
+  "lowRoleFix": "للإصلاح: إعدادات الخادم ← الرتب، ثم اسحب **{bot}** فوق الرتب التي يجب أن أمنحها (مثل {roles})."
 }

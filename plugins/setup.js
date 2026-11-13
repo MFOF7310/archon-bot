@@ -48,6 +48,31 @@ function pickLang(client, guildId, interaction) {
     return LANGS.includes(raw) ? raw : 'en';
 }
 
+// ── suggestions: a channel or role whose name already fits the question, offered as a one-tap button ──
+const NAME_HINTS = {
+    rules: /rule|r[eè]gle|regl|info|规则|قوانين|قواعد/i,
+    welcome: /welcome|bienvenue|accueil|arriv|hello|欢迎|ترحيب/i,
+    log: /log|journal|audit|mod-?log|staff|日志|سجل/i,
+    member: /member|membre|verified|v[ée]rifi|citizen|成员|عضو/i,
+};
+function suggestFor(guild, step) {
+    const hint = NAME_HINTS[step.key];
+    if (!hint) return null;
+    const me = guild.members?.me;
+    if (step.kind === 'role') {
+        const top = me?.roles?.highest?.position ?? 0;
+        const r = [...(guild.roles?.cache?.values?.() || [])]
+            .filter((x) => x.id !== guild.id && !x.managed && x.position < top && hint.test(x.name) && !POWERFUL.some(([, bit]) => x.permissions?.has(bit)))
+            .sort((a, b) => b.position - a.position)[0];
+        return r ? { id: r.id, label: `@${safeName(r.name)}` } : null;
+    }
+    const ok = (c) => !step.needsPost || !me || canPost.diagnose(guild, c, me, canPost.neededFor(step.needsPost)).ok;
+    const list = [...(guild.channels?.cache?.values?.() || [])].filter((c) => (c.type === ChannelType.GuildText || c.type === ChannelType.GuildAnnouncement) && hint.test(c.name))
+        .sort((a, b) => (a.rawPosition ?? 0) - (b.rawPosition ?? 0));
+    const c = list.find(ok) || list[0];
+    return c ? { id: c.id, label: `#${safeName(c.name)}` } : null;
+}
+
 // ── the screens ──────────────────────────────────────
 function welcomeScreen(lang, guild, client) {
     const embed = new EmbedBuilder().setColor(GOLD)
@@ -59,7 +84,7 @@ function welcomeScreen(lang, guild, client) {
     return toV2({ embeds: [embed], components: [row] });
 }
 
-function questionScreen(lang, guild, idx, notice) {
+function questionScreen(lang, guild, idx, notice, suggestion = suggestFor(guild, STEPS[idx])) {
     const step = STEPS[idx];
     const embed = new EmbedBuilder().setColor(GOLD)
         .setTitle(T(lang, `q.${step.key}.title`))
@@ -67,7 +92,9 @@ function questionScreen(lang, guild, idx, notice) {
         .setFooter({ text: T(lang, 'footer', { server: safeName(guild.name), n: idx + 1, total: STEPS.length }) });
     const picker = step.kind === 'role' ? new RoleSelectMenuBuilder() : new ChannelSelectMenuBuilder().setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
     picker.setCustomId('setup_pick').setPlaceholder(T(lang, step.kind === 'role' ? 'placeholderRole' : 'placeholderChannel')).setMinValues(1).setMaxValues(1);
-    const buttons = new ActionRowBuilder().addComponents(
+    const buttons = new ActionRowBuilder();
+    if (suggestion) buttons.addComponents(new ButtonBuilder().setCustomId(`setup_use:${suggestion.id}`).setLabel(T(lang, 'useSuggestion', { name: suggestion.label }).slice(0, 80)).setStyle(ButtonStyle.Success));
+    buttons.addComponents(
         new ButtonBuilder().setCustomId('setup_skip').setLabel(T(lang, 'skip')).setStyle(ButtonStyle.Secondary),
         new ButtonBuilder().setCustomId('setup_cancel').setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary));
     return toV2({ embeds: [embed], components: [new ActionRowBuilder().addComponents(picker), buttons] });
@@ -166,6 +193,8 @@ module.exports = {
             if (idx < STEPS.length) return i.update(questionScreen(lang, guild, idx)).catch(() => {});
             collector.stop('done');
             const warnings = STEPS.filter((s) => s.needsPost && state[s.key]).map((s) => channelWarning(lang, guild, s, state[s.key])).filter(Boolean);
+            const low = require('../lib/role-check').lowRoleText(guild, lang);
+            if (low) warnings.push(low);
             let prefix = '.';
             try { prefix = client.getServerSettings(guild.id)?.prefix || '.'; } catch { /* the default prefix */ }
             return i.update(summaryScreen(lang, guild, state, warnings, prefix)).catch(() => {});
@@ -177,12 +206,12 @@ module.exports = {
                 if (i.customId === 'setup_cancel') { collector.stop('cancelled'); return i.update(plainScreen(lang, savedCount() ? 'cancelledSaved' : 'cancelled')).catch(() => {}); }
                 if (i.customId === 'setup_start' && idx === -1) return advance(i);
                 if (i.customId === 'setup_skip' && idx >= 0) return advance(i);
-                if (i.customId === 'setup_pick' && idx >= 0) {
+                if ((i.customId === 'setup_pick' || i.customId.startsWith('setup_use:')) && idx >= 0) {
                     const step = STEPS[idx];
-                    const id = i.values[0];
+                    const id = i.customId === 'setup_pick' ? i.values[0] : i.customId.split(':')[1];
                     if (step.kind === 'role') {
                         const problem = roleProblem(lang, guild, guild.roles.cache.get(id));
-                        if (problem) return i.update(questionScreen(lang, guild, idx, problem)).catch(() => {});   // stay on this question
+                        if (problem) return i.update(questionScreen(lang, guild, idx, problem, null)).catch(() => {});   // stay on this question
                     }
                     client.updateServerSetting(guild.id, step.setting, id);
                     for (const [k, v] of step.extra || []) client.updateServerSetting(guild.id, k, v);

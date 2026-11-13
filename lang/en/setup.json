@@ -48,5 +48,6 @@
   "needAdmin": "You need the Administrator permission to run the setup.",
   "guildOnly": "Setup only works inside a server.",
   "notYours": "This setup was started by someone else. Run /setup to start your own.",
-  "error": "Something went wrong. Please try /setup again."
+  "error": "Something went wrong. Please try /setup again.",
+  "useSuggestion": "Use {name}"
 }

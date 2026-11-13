@@ -107,7 +107,18 @@
     "giveaway_channel": "Running giveaway",
     "verify_role_id": "Verified role",
     "verify_unverified_role_id": "Unverified role",
-    "auto_role_id": "Auto role"
+    "auto_role_id": "Auto role",
+    "member_role": "Member role",
+    "join_role_id": "Join role",
+    "mute_role_id": "Mute role",
+    "daily_initiate_role": "Daily: Initiate",
+    "daily_warrior_role": "Daily: Warrior",
+    "daily_champion_role": "Daily: Champion",
+    "daily_legend_role": "Daily: Legend",
+    "investor_role": "Investor role",
+    "quiz_master_role": "Quiz master role",
+    "duelist_role": "Duelist role",
+    "gamer_role": "Gamer role"
   },
   "short": {
     "private": "private channel, ARCHON is not in it",
@@ -123,5 +134,8 @@
   "groupCore": "Essential",
   "groupFeature": "Depending on the feature",
   "countOf": "{ok} of {total} in place",
-  "checkedShort": "checked {when}"
+  "checkedShort": "checked {when}",
+  "secHierarchy": "**Where my role sits**",
+  "lowRole": "My role **{bot}** is under all {above} of your roles. I can post normally, but I can't give roles, time out, kick or ban anyone yet.",
+  "lowRoleFix": "To fix it: Server Settings → Roles, then drag **{bot}** above the roles I should give (for example {roles})."
 }

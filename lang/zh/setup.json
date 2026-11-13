@@ -48,5 +48,6 @@
   "needAdmin": "你需要拥有管理员权限才能运行设置。",
   "guildOnly": "设置只能在服务器内使用。",
   "notYours": "这次设置是别人发起的。想设置你自己的，请运行 /setup。",
-  "error": "出错了，请再运行一次 /setup。"
+  "error": "出错了，请再运行一次 /setup。",
+  "useSuggestion": "使用 {name}"
 }

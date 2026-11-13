@@ -107,7 +107,18 @@
     "giveaway_channel": "正在进行的抽奖",
     "verify_role_id": "已验证角色",
     "verify_unverified_role_id": "未验证角色",
-    "auto_role_id": "自动角色"
+    "auto_role_id": "自动角色",
+    "member_role": "成员身份组",
+    "join_role_id": "加入身份组",
+    "mute_role_id": "禁言身份组",
+    "daily_initiate_role": "每日：新手",
+    "daily_warrior_role": "每日：战士",
+    "daily_champion_role": "每日：冠军",
+    "daily_legend_role": "每日：传奇",
+    "investor_role": "投资者身份组",
+    "quiz_master_role": "问答大师身份组",
+    "duelist_role": "决斗者身份组",
+    "gamer_role": "玩家身份组"
   },
   "short": {
     "private": "私有频道，ARCHON 不在其中",
@@ -123,5 +134,8 @@
   "groupCore": "基本",
   "groupFeature": "取决于功能",
   "countOf": "已就绪 {ok}/{total}",
-  "checkedShort": "检查于 {when}"
+  "checkedShort": "检查于 {when}",
+  "secHierarchy": "**我的身份组位置**",
+  "lowRole": "我的身份组 **{bot}** 位于你全部 {above} 个身份组之下。我可以正常发消息，但暂时无法分配身份组、禁言、踢出或封禁任何人。",
+  "lowRoleFix": "修复方法：服务器设置 → 身份组，然后把 **{bot}** 拖到我需要分配的身份组之上（例如 {roles}）。"
 }

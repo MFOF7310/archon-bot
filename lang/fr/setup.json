@@ -48,5 +48,6 @@
   "needAdmin": "Il faut la permission Administrateur pour lancer la configuration.",
   "guildOnly": "La configuration ne fonctionne que dans un serveur.",
   "notYours": "Cette configuration a été lancée par quelqu'un d'autre. Lance /setup pour démarrer la tienne.",
-  "error": "Quelque chose s'est mal passé. Réessaie avec /setup."
+  "error": "Quelque chose s'est mal passé. Réessaie avec /setup.",
+  "useSuggestion": "Utiliser {name}"
 }
