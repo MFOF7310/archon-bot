@@ -25,5 +25,11 @@
   "nowActive": "Ce serveur est redevenu actif, ARCHON reste.",
   "busy": "Je suis déjà en train de quitter des serveurs, patiente un instant.",
   "ownerOnly": "Cette commande est réservée au propriétaire du bot.",
-  "dmClosed": "Je n'ai pas pu t'envoyer de MP. Ouvre tes MP ou utilise /ghostclean."
+  "dmClosed": "Je n'ai pas pu t'envoyer de MP. Ouvre tes MP ou utilise /ghostclean.",
+  "showActive": "Serveurs actifs",
+  "showQuiet": "Serveurs inactifs",
+  "activeTitle": "Serveurs actifs",
+  "activeSummary": "**{n}** serveurs sur {total} ont utilisé le bot ces {days} derniers jours.",
+  "activeLine": "{members} membres · dernière activité il y a {quiet} jours",
+  "noActive": "Aucun serveur actif pour l'instant."
 }

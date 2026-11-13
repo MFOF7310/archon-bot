@@ -3633,6 +3633,7 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
 safeOn(Events.GuildCreate, async (guild) => {
     try {
         try { ensureDepartures(); db.prepare('DELETE FROM guild_departures WHERE guild_id = ?').run(guild.id); } catch (_) {}
+        try { ensureGuildHistory(); db.prepare('DELETE FROM guild_history WHERE guild_id = ?').run(guild.id); } catch (_) {}
         // ── Sync global_server_stats ──
         try {
             db.prepare(`
@@ -3679,7 +3680,22 @@ function purgeGuildData(gid) {
     return n;
 }
 
+// Servers ARCHON left or was removed from, kept for the owner's dashboard (guild_departures above is only a 7-day grace queue).
+// reason: 'left' = the owner left with /ghostclean · 'removed' = someone kicked the bot · 'unknown' = found in old stats at boot
+const ensureGuildHistory = () => db.prepare(`CREATE TABLE IF NOT EXISTS guild_history (
+    guild_id TEXT PRIMARY KEY, name TEXT, icon TEXT, members INTEGER, joined_at INTEGER, left_at INTEGER, reason TEXT)`).run();
+function recordDeparture(guild) {
+    try {
+        ensureGuildHistory();
+        const reason = client.ghostLeaving?.has(guild.id) ? 'left' : 'removed';
+        client.ghostLeaving?.delete(guild.id);
+        db.prepare('INSERT OR REPLACE INTO guild_history (guild_id, name, icon, members, joined_at, left_at, reason) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            .run(guild.id, guild.name || null, guild.iconURL?.({ size: 64 }) || null, guild.memberCount || 0, guild.joinedTimestamp || null, Date.now(), reason);
+    } catch (e) { console.error('[GUILD HISTORY]', e.message); }
+}
 safeOn(Events.GuildDelete, async (guild) => {
+    // available === false means a Discord outage, not a departure
+    if (guild.available !== false) recordDeparture(guild);
     try {
         ensureDepartures();
         db.prepare('INSERT OR REPLACE INTO guild_departures (guild_id, left_at) VALUES (?, ?)').run(guild.id, Date.now());
@@ -4532,6 +4548,25 @@ apiApp.get('/api/user/:userId', (req, res) => {
 });
 
 // ── ADMIN ENDPOINTS ──────────────────────────────────────────
+// Servers ARCHON is no longer in (owner dashboard). The first call also adds old ones found in the stats table.
+apiApp.get('/api/admin/departures', requireAdmin, (req, res) => {
+    try {
+        ensureGuildHistory();
+        if (!client._historyBackfilled) {
+            client._historyBackfilled = true;
+            const rows = db.prepare("SELECT guild_id, guild_name, total_members, last_active FROM global_server_stats WHERE guild_id != 'DM'").all();
+            const ins = db.prepare("INSERT OR IGNORE INTO guild_history (guild_id, name, members, left_at, reason) VALUES (?, ?, ?, ?, 'unknown')");
+            for (const r of rows) if (!client.guilds.cache.has(r.guild_id)) ins.run(r.guild_id, r.guild_name || null, r.total_members || 0, (Number(r.last_active) || 0) * 1000 || null);
+        }
+        const list = db.prepare('SELECT guild_id AS id, name, icon, members, joined_at AS joinedAt, left_at AS leftAt, reason FROM guild_history ORDER BY left_at DESC LIMIT 300').all()
+            .filter(r => !client.guilds.cache.has(r.id));
+        res.json({ list });
+    } catch (err) {
+        console.error('[API /api/admin/departures]', err.message);
+        res.json({ list: [] });
+    }
+});
+
 apiApp.get('/api/admin/dashboard-users', requireAdmin, (req, res) => {
     try {
         const users = db.prepare(`

@@ -50,7 +50,8 @@ function scan(client, days) {
         all.push({ id: g.id, name: g.name, members: g.memberCount || 0, quiet: Math.floor((now - last) / 86400) });
     }
     const ghosts = all.filter(s => s.quiet >= days).sort((a, b) => b.quiet - a.quiet || a.members - b.members);
-    return { ghosts, total: client.guilds.cache.size };
+    const active = all.filter(s => s.quiet < days).sort((a, b) => b.members - a.members);
+    return { ghosts, active, total: client.guilds.cache.size };
 }
 
 const btn = (id, label, style, emoji) => {
@@ -72,7 +73,9 @@ function listCard(client, lang, days) {
         return v2.card(GREEN, [
             { text: head },
             { text: `${em('ic_ok', '✅')} ${T(lang, 'clear', { days, total: fmt(total, lang) })}` },
-            { row: new ActionRowBuilder().addComponents(btn(`ghost:list:${days}`, T(lang, 'refresh'), ButtonStyle.Secondary, emojiOf('ic_refresh', '🔄'))) },
+            { row: new ActionRowBuilder().addComponents(
+                btn(`ghost:active:${days}`, T(lang, 'showActive'), ButtonStyle.Secondary, emojiOf('ic_online', '🟢')),
+                btn(`ghost:list:${days}`, T(lang, 'refresh'), ButtonStyle.Secondary, emojiOf('ic_refresh', '🔄'))) },
         ]);
     }
     const lines = ghosts.slice(0, SHOWN).map((s, i) =>
@@ -98,9 +101,25 @@ function listCard(client, lang, days) {
         { row: new ActionRowBuilder().addComponents(menu) },
         { row: new ActionRowBuilder().addComponents(
             btn(`ghost:all:${days}`, T(lang, 'leaveAll', { n: ghosts.length }), ButtonStyle.Danger),
+            btn(`ghost:active:${days}`, T(lang, 'showActive'), ButtonStyle.Secondary, emojiOf('ic_online', '🟢')),
             btn(`ghost:list:${days}`, T(lang, 'refresh'), ButtonStyle.Secondary, emojiOf('ic_refresh', '🔄')),
         ) },
         { text: `-# ${T(lang, 'note')}` },
+    ]);
+}
+
+// ── Active servers (read only) ──
+function activeCard(client, lang, days) {
+    const { active, total } = scan(client, days);
+    const lines = active.slice(0, 25).map((s, i) =>
+        `\`${String(i + 1).padStart(2, ' ')}\` **${s.name.slice(0, 40)}** · ${T(lang, 'activeLine', { members: fmt(s.members, lang), quiet: s.quiet })}`);
+    if (active.length > 25) lines.push(`-# ${T(lang, 'more', { n: active.length - 25 })}`);
+    return v2.card(GREEN, [
+        { text: `-# ARCHON · ${T(lang, 'owner')}\n## ${em('ic_online', '🟢')} ${T(lang, 'activeTitle')}` },
+        { text: T(lang, 'activeSummary', { n: active.length, total: fmt(total, lang), days }) },
+        { rule: true },
+        { text: lines.join('\n') || T(lang, 'noActive') },
+        { row: new ActionRowBuilder().addComponents(btn(`ghost:list:${days}`, T(lang, 'showQuiet'), ButtonStyle.Secondary, emojiOf('ic_ghost', '👻'))) },
     ]);
 }
 
@@ -154,11 +173,13 @@ async function leave(client, id) {
     const g = client.guilds.cache.get(id);
     if (!g) return null;
     const name = g.name;
+    (client.ghostLeaving ||= new Set()).add(id);   // so the departure is recorded as "left", not "removed"
     try {
         await g.leave();
         console.log(`[GHOSTCLEAN] Left ${name} (${id})`);
         return { ok: true, name };
     } catch (e) {
+        client.ghostLeaving.delete(id);
         console.error(`[GHOSTCLEAN] Could not leave ${name} (${id}): ${e.message}`);
         return { ok: false, name };
     }
@@ -176,6 +197,7 @@ async function handleComponent(interaction, client) {
 
     if (action === 'list') return interaction.update(listCard(client, lang, days)).catch(() => {});
     if (action === 'pick') return interaction.update(oneCard(client, lang, days, interaction.values?.[0])).catch(() => {});
+    if (action === 'active') return interaction.update(activeCard(client, lang, days)).catch(() => {});
     if (action === 'all') return interaction.update(askAllCard(client, lang, days)).catch(() => {});
 
     if (action === 'go' || action === 'goall') {

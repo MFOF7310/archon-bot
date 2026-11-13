@@ -25,5 +25,11 @@
   "nowActive": "This server is active again, so ARCHON stayed.",
   "busy": "Already leaving servers, give it a moment.",
   "ownerOnly": "This command is only for the bot owner.",
-  "dmClosed": "I couldn't send you a DM. Open your DMs or use /ghostclean."
+  "dmClosed": "I couldn't send you a DM. Open your DMs or use /ghostclean.",
+  "showActive": "Active servers",
+  "showQuiet": "Quiet servers",
+  "activeTitle": "Active servers",
+  "activeSummary": "**{n}** of {total} servers used the bot in the last {days} days.",
+  "activeLine": "{members} members · last used {quiet} days ago",
+  "noActive": "No active server yet."
 }
