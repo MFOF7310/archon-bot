@@ -182,7 +182,7 @@ async function handleWelcome(member, client, db, opts = {}) {
     const _plain = new Set([member.guild.id, _ss.verify_unverified_role_id, _ss.verify_role_id, _ss.auto_role_id, _ss.member_role, _ss.memberRole].filter(Boolean).map(String));
     const _topRole = member.roles?.highest;
     const _badge = (_topRole && !_plain.has(String(_topRole.id))) ? ` · ${_topRole.name}` : '';
-    const _greet = `## ${t('welcome.card_heading', lang, { user: member.user })}${_badge ? `\n-# ${_badge.slice(3)}` : ''}`;
+    const _greet = `### ${t('welcome.card_heading', lang, { user: member.user })}${_badge ? `\n-# ${_badge.slice(3)}` : ''}`;
     const _memberLine = t('welcome.card_member_count', lang, { count: Style.ordinal(count, lang), guild: member.guild.name });
 
     // "Get started": the rules and the chat channel when the server has them, else the friendly intro line
@@ -191,8 +191,9 @@ async function handleWelcome(member, client, db, opts = {}) {
     const _steps = [];
     if (_rules) _steps.push(t('welcome.card_step_rules', lang, { channel: `<#${_rules}>` }));
     if (_exists(cfg.generalChannel)) _steps.push(t('welcome.card_step_general', lang, { channel: `<#${cfg.generalChannel}>` }));
-    const _start = _steps.length
-        ? `**${t('welcome.card_start_title', lang)}**\n${_steps.map((x, i) => `\`${i + 1}\` ${x}`).join('\n')}`
+    // compact: one step is a single line; two get a small title
+    const _start = _steps.length === 1 ? `→ ${_steps[0]}`
+        : _steps.length ? `-# ${t('welcome.card_start_title', lang)}\n${_steps.map((x, i) => `\`${i + 1}\` ${x}`).join('\n')}`
         : t('welcome.card_intro', lang);
     // A custom message replaces the default greeting (it used to be stacked on top of it, so members got two welcomes)
     let content = cfg.welcomeMessage
@@ -226,7 +227,10 @@ async function handleWelcome(member, client, db, opts = {}) {
         'ℹ️': em('ic_info', 'ℹ️')
     };
 
-    const buttonDefs = rawDefs.map((d) => ({ ...d, emoji: (d.emoji && EMOJI_MAP[d.emoji]) || d.emoji }));
+    const _inSteps = [_rules, _exists(cfg.generalChannel) ? cfg.generalChannel : null].filter(Boolean).map(String);
+    const buttonDefs = rawDefs
+        .filter((d) => !(d.style === 'Link' && _inSteps.some((id) => String(d.url || '').endsWith(`/${id}`))))   // already a link in the steps
+        .map((d) => ({ ...d, emoji: (d.emoji && EMOJI_MAP[d.emoji]) || d.emoji }));
     if (!buttonDefs.some((d) => d.customId === 'welcome_help')) {
         buttonDefs.push({ label: t('welcome.btn_help', lang), emoji: em('ic_info', 'ℹ️'), style: 'Secondary', customId: 'welcome_help' });
     }
@@ -282,9 +286,7 @@ async function handleWelcome(member, client, db, opts = {}) {
     } else {
         _container.addTextDisplayComponents(new TextDisplayBuilder().setContent(_head));
     }
-    if (_rest.length) _container
-        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(_rest.join('\n\n')));
+    if (_rest.length) _container.addTextDisplayComponents(new TextDisplayBuilder().setContent(_rest.join('\n\n')));
     _container
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${info.join(' · ')}`));
