@@ -1134,6 +1134,35 @@ client.getOrCreateUser = getOrCreateUser;
 client.initializeUser = initializeUser;
 client.db = db;
 try { require('./lib/prices').init(db); } catch (e) { console.error('[PRICES]', e.message); }
+// The main server's roles, channels and ticket settings used to live only in .env. Copied once into its own
+// settings (only where nothing is saved yet), so they can be changed from the dashboard and the .env lines removed.
+try {
+    const gid = process.env.GUILD_ID;
+    const done = db.prepare("SELECT value FROM bot_meta WHERE key = 'env_settings_moved'").get();
+    if (gid && !done) {
+        const MOVE = {
+            join_role_id: 'AUTO_ROLE_ID', investor_role: 'INVESTOR_ROLE_ID', quiz_master_role: 'QUIZ_MASTER_ROLE_ID',
+            duelist_role: 'DUELIST_ROLE_ID', gamer_role: 'GAMER_ROLE_ID', mute_role_id: 'MUTE_ROLE_ID',
+            daily_initiate_role: 'DAILY_INITIATE_ROLE_ID', daily_warrior_role: 'DAILY_WARRIOR_ROLE_ID',
+            daily_champion_role: 'DAILY_CHAMPION_ROLE_ID', daily_legend_role: 'DAILY_LEGEND_ROLE_ID',
+            shop_channel: 'SHOP_CHANNEL_ID', updates_channel: 'UPDATES_CHANNEL_ID',
+            ticket_category: 'TICKET_CATEGORY_ID', ticket_staff_role: 'TICKET_STAFF_ROLE_ID',
+            ticket_transcript_channel: 'TICKET_TRANSCRIPT_CHANNEL_ID', ticket_panel_channel: 'TICKET_PANEL_CHANNEL_ID',
+            ticket_log_channel: 'TICKET_LOG_CHANNEL_ID', ticket_auto_close_hours: 'TICKET_AUTO_CLOSE_HOURS',
+            ticket_limit_per_user: 'TICKET_LIMIT_PER_USER',
+        };
+        db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(gid);
+        const cols = new Set(db.prepare('PRAGMA table_info(server_settings)').all().map((c) => c.name));
+        let moved = 0;
+        for (const [col, key] of Object.entries(MOVE)) {
+            const v = String(process.env[key] || '').trim();
+            if (!v || !cols.has(col)) continue;
+            moved += db.prepare(`UPDATE server_settings SET ${col} = ? WHERE guild_id = ? AND (${col} IS NULL OR ${col} = '')`).run(v, gid).changes;
+        }
+        db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('env_settings_moved', ?)").run(String(Date.now()));
+        console.log(`[SETTINGS] Copied ${moved} main-server setting(s) from .env into the database: those .env lines can now be removed`);
+    }
+} catch (e) { console.error('[SETTINGS] env copy:', e.message); }
 
 // ================= PER-SERVER ECONOMY ISOLATION =================
 // All credit operations are strictly scoped to a guildId.

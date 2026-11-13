@@ -364,7 +364,7 @@ async function finishRun(s) {
 }
 
 async function grantQuizMaster(s) {
-  const roleId = s.client.getServerSettings?.(s.guildId)?.quizMasterRoleId || process.env.QUIZ_MASTER_ROLE_ID;
+  const roleId = s.client.getServerSettings?.(s.guildId)?.quizMasterRoleId || (s.guildId === process.env.GUILD_ID ? process.env.QUIZ_MASTER_ROLE_ID : null);
   if (!roleId || !s.ctx.guild) return;
   const member = await s.ctx.guild.members.fetch(s.userId).catch(() => null);
   const role = s.ctx.guild.roles.cache.get(roleId);

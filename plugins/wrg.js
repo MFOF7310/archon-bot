@@ -500,7 +500,7 @@ async function runGame(client, message, args, db, lang) {
             if (message.guild) {
                 try {
                     const settings = client.getServerSettings?.(message.guild.id);
-                    const roleId = settings?.duelistRoleId || process.env.DUELIST_ROLE_ID;
+                    const roleId = settings?.duelistRoleId || (message.guild.id === process.env.GUILD_ID ? process.env.DUELIST_ROLE_ID : null);
                     if (roleId) {
                         const member = await message.guild.members.fetch(m.author.id).catch(()=>null);
                         if (member) {

@@ -93,7 +93,7 @@ function place(client, db, uid, gid, amount, lang, settings, member) {
     db.prepare("INSERT INTO investments (id, user_id, guild_id, amount, invested_at, claimed, platform) VALUES (?, ?, ?, ?, ?, 0, 'discord')").run(`${uid}_${gid}_${Date.now()}`, uid, gid, amount, Date.now());
     // The investor role, when the server has one
     try {
-        const rid = settings?.investorRoleId || process.env.INVESTOR_ROLE_ID;
+        const rid = settings?.investorRoleId || (gid === process.env.GUILD_ID ? process.env.INVESTOR_ROLE_ID : null);
         const role = rid && member?.guild?.roles.cache.get(rid);
         if (role && !member.roles.cache.has(rid)) member.roles.add(role, 'Investment placed').catch(() => {});
     } catch {}

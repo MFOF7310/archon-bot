@@ -287,7 +287,7 @@ module.exports = {
             if (!message.guild) return;
             try {
                 const settings = client.getServerSettings ? client.getServerSettings(message.guild.id) : null;
-                const roleId = settings?.duelistRoleId || process.env.DUELIST_ROLE_ID;
+                const roleId = settings?.duelistRoleId || (message.guild.id === process.env.GUILD_ID ? process.env.DUELIST_ROLE_ID : null);
                 if (!roleId) return;
                 const member = await message.guild.members.fetch(winnerId).catch(() => null);
                 const role   = message.guild.roles.cache.get(roleId);
