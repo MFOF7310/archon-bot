@@ -1138,7 +1138,7 @@ try { require('./lib/prices').init(db); } catch (e) { console.error('[PRICES]', 
 // settings (only where nothing is saved yet), so they can be changed from the dashboard and the .env lines removed.
 try {
     const gid = process.env.GUILD_ID;
-    const done = db.prepare("SELECT value FROM bot_meta WHERE key = 'env_settings_moved'").get();
+    const done = db.prepare("SELECT value FROM bot_meta WHERE key = 'env_settings_moved_v2'").get();
     if (gid && !done) {
         const MOVE = {
             join_role_id: 'AUTO_ROLE_ID', investor_role: 'INVESTOR_ROLE_ID', quiz_master_role: 'QUIZ_MASTER_ROLE_ID',
@@ -1150,6 +1150,11 @@ try {
             ticket_transcript_channel: 'TICKET_TRANSCRIPT_CHANNEL_ID', ticket_panel_channel: 'TICKET_PANEL_CHANNEL_ID',
             ticket_log_channel: 'TICKET_LOG_CHANNEL_ID', ticket_auto_close_hours: 'TICKET_AUTO_CLOSE_HOURS',
             ticket_limit_per_user: 'TICKET_LIMIT_PER_USER',
+            // v2: the main server's channels
+            welcome_channel: 'WELCOME_CHANNEL_ID', goodbye_channel: 'GOODBYE_CHANNEL_ID', log_channel: 'LOG_CHANNEL_ID',
+            rules_channel: 'RULES_CHANNEL_ID', general_channel: 'GENERAL_CHANNEL_ID', daily_channel: 'DAILY_CHANNEL_ID',
+            market_channel: 'MARKET_CHANNEL_ID', mod_log_channel: 'MOD_LOG_CHANNEL_ID', gift_channel: 'GIFT_CHANNEL_ID',
+            levelup_channel: 'LEVEL_CHANNEL_ID',
         };
         db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(gid);
         const cols = new Set(db.prepare('PRAGMA table_info(server_settings)').all().map((c) => c.name));
@@ -1159,7 +1164,7 @@ try {
             if (!v || !cols.has(col)) continue;
             moved += db.prepare(`UPDATE server_settings SET ${col} = ? WHERE guild_id = ? AND (${col} IS NULL OR ${col} = '')`).run(v, gid).changes;
         }
-        db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('env_settings_moved', ?)").run(String(Date.now()));
+        db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('env_settings_moved_v2', ?)").run(String(Date.now()));
         console.log(`[SETTINGS] Copied ${moved} main-server setting(s) from .env into the database: those .env lines can now be removed`);
     }
 } catch (e) { console.error('[SETTINGS] env copy:', e.message); }
