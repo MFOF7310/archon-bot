@@ -35,7 +35,7 @@
   "expiredRejoin": "انتهت نافذتك — أعد الانضمام ونرسل لك رمزًا جديدًا فورًا.",
   "needManageGuild": "⛔ تحتاج إلى صلاحية إدارة الخادم.",
   "premiumTitle": "ميزة بريميوم",
-  "premiumDesc": "التحقق برمز الصورة ميزة **Premium** — بدون طرد خاطئ.\n\nبس **3.40$/شهريًا** واحمِ مجتمعك.",
+  "premiumDesc": "التحقق برمز الصورة ميزة **Premium** — بدون طرد خاطئ.\n\nبس **{priceUsd}/شهريًا** واحمِ مجتمعك.",
   "premiumHowTo": "{ic_key} كيفية التفعيل",
   "premiumHowToValue": "شغّل `/premium status` — تستغرق 30 ثانية.",
   "premiumLapsed": "التحقق هو ميزة **Premium** — انظر {premiumCmd}.",

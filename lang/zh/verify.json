@@ -35,7 +35,7 @@
   "expiredRejoin": "你的验证窗口已过期 — 重新加入服务器，我们会立刻发送新验证码。",
   "needManageGuild": "⛔ 你需要「管理服务器」权限。",
   "premiumTitle": "Premium 功能",
-  "premiumDesc": "图片验证码验证是 **Premium** 功能 — 零误踢，保障服务器安全。\n\n仅需 **$3.40/月** 即可解锁，保护你的社区。",
+  "premiumDesc": "图片验证码验证是 **Premium** 功能 — 零误踢，保障服务器安全。\n\n仅需 **{priceUsd}/月** 即可解锁，保护你的社区。",
   "premiumHowTo": "{ic_key} 如何激活",
   "premiumHowToValue": "运行 `/premium status` 即可升级 — 只需 30 秒。",
   "premiumLapsed": "验证功能是 **Premium** 专属功能 — 请查看 {premiumCmd}。",

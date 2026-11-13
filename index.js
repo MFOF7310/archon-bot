@@ -1127,6 +1127,7 @@ client.getUser = getUser;
 client.getOrCreateUser = getOrCreateUser;
 client.initializeUser = initializeUser;
 client.db = db;
+try { require('./lib/prices').init(db); } catch (e) { console.error('[PRICES]', e.message); }
 
 // ================= PER-SERVER ECONOMY ISOLATION =================
 // All credit operations are strictly scoped to a guildId.
@@ -4107,7 +4108,7 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
                         .setTitle('⭐ ARCHON Premium Activated!')
                         .setDescription(`Payment confirmed! Your server **${guild.name}** now has ARCHON Premium for ${yearly ? '1 year' : '30 days'}!`)
                         .addFields(
-                            { name: '💰 Amount', value: '$3.40', inline: true },
+                            { name: '💰 Amount', value: require('./lib/prices').usdText('en'), inline: true },
                             { name: '⏰ Valid until', value: `<t:${expiresAt}:D>`, inline: true }
                         )
                         .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱 • Thank you for supporting!' })
@@ -4309,7 +4310,10 @@ apiApp.post('/api/admin/premium/remove', requireAdmin, (req, res) => {
 });
 
 apiApp.get('/api/premium/info', (req, res) => {
+    const pr = require('./lib/prices').get();
     return res.json({
+        priceUsd: pr.usd,
+        priceXof: pr.xof,
         omNumber: process.env.ORANGE_MONEY_NUMBER || '',
         telegram: process.env.TELEGRAM_CONTACT || 'mfof7310',
         discord: 'cloudgaming223'
@@ -4581,6 +4585,17 @@ apiApp.get('/api/user/:userId', (req, res) => {
 });
 
 // ── ADMIN ENDPOINTS ──────────────────────────────────────────
+// Premium prices (owner dashboard). The card amount is charged by Dodo Payments: it must be changed there too.
+apiApp.post('/api/admin/prices', requireAdmin, (req, res) => {
+    try {
+        const p = require('./lib/prices').set({ usd: req.body?.usd, xof: req.body?.xof });
+        console.log(`[PRICES] now $${p.usd} by card, ${p.xof} FCFA local`);
+        res.json({ ok: true, ...p });
+    } catch (err) {
+        res.status(400).json({ ok: false, error: err.message });
+    }
+});
+
 // "Talk to a person" from the site's support chat: the conversation goes to the owner on Telegram and by Discord DM
 apiApp.post('/api/admin/support-handoff', requireAdmin, async (req, res) => {
     try {

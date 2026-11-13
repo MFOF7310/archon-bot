@@ -15,7 +15,7 @@
   "btnSubscribe": "S'abonner",
   "btnHaveCode": "🔑 J'ai un code",
   "featuresTitle": "✨ Fonctionnalités Premium",
-  "planIncludes": "Tout ce qu'inclut l'offre à 3,40 $/serveur :",
+  "planIncludes": "Tout ce qu'inclut l'offre à {priceUsd}/serveur :",
   "featuresFooter": "ARCHON CG-223 • {status}",
   "invalidCode": "❌ Code invalide ou déjà utilisé.",
   "activatedTitle": "⭐ Premium Activé !",

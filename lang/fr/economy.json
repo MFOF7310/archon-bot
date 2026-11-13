@@ -112,7 +112,7 @@
     "sub_grant": "👑 Accorder [propriétaire uniquement]",
     "sub_generate": "🔑 Générer un code [propriétaire]",
     "sub_list": "📋 Lister les codes actifs",
-    "btn_subscribe": "💳 S'abonner — 3,40 $/mois",
+    "btn_subscribe": "💳 S'abonner — {priceUsd}/mois",
     "btn_have_code": "🔑 J'ai un code",
     "opt_days": "Jours (0 = à vie)",
     "opt_guild_id": "ID du serveur",
@@ -122,7 +122,7 @@
     "activated_title": "⭐ Premium activé !",
     "activated_dm": "**{server}** a ARCHON Premium ! 🎊\n\nDurée : **{days}**\n\nTout est débloqué !",
     "duration_line": "Durée : **{days}**",
-    "plan_includes": "Tout ce qu'inclut l'offre à 3,40 $/serveur :",
+    "plan_includes": "Tout ce qu'inclut l'offre à {priceUsd}/serveur :",
     "codes_generated_title": "🔑 Codes Premium générés",
     "codes_list_title": "📋 Codes Premium actifs ({count})"
   },

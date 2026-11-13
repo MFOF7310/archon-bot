@@ -15,7 +15,7 @@
   "btnSubscribe": "Subscribe",
   "btnHaveCode": "🔑 I have a code",
   "featuresTitle": "✨ Premium Features",
-  "planIncludes": "Everything included in the $3.40/server plan:",
+  "planIncludes": "Everything included in the {priceUsd}/server plan:",
   "featuresFooter": "ARCHON CG-223 • {status}",
   "invalidCode": "❌ Invalid or already used code.",
   "activatedTitle": "⭐ Premium Activated!",

@@ -35,7 +35,7 @@
   "expiredRejoin": "Your window expired — rejoin and we'll send a fresh code right away.",
   "needManageGuild": "{warn} You need the Manage Server permission.",
   "premiumTitle": "Premium Feature",
-  "premiumDesc": "Image captcha verification is a **Premium** feature — zero false kicks.\n\nUnlock it for just **$3.40/month** and protect your community.",
+  "premiumDesc": "Image captcha verification is a **Premium** feature — zero false kicks.\n\nUnlock it for just **{priceUsd}/month** and protect your community.",
   "premiumHowTo": "{ic_key} How to activate",
   "premiumHowToValue": "Run `/premium status` to upgrade — takes 30 seconds.",
   "premiumLapsed": "Verification is a **Premium** feature — see {premiumCmd}.",

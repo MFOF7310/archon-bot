@@ -38,7 +38,7 @@ function buildPremiumCard(client, premium, days, lang, guildName) {
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('eagle', '🦅')} ${pt('title', lang)}\n${statusEmoji} **${statusText}**`));
     
     // Infos (Prix & Expiration)
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\n${em('ic_credit', '💎')} **${pt('price', lang)}:** $3.40/month ${em('dot_white', '·')} ${em('clock', '📅')} **${pt('expires', lang)}:** ${expiry}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\n${em('ic_credit', '💎')} **${pt('price', lang)}:** ${require('../lib/prices').usdText(lang)}/month ${em('dot_white', '·')} ${em('clock', '📅')} **${pt('expires', lang)}:** ${expiry}`));
     
     // Liste des features (avec l'émoji custom injecté)
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`\n### ${em('hubSparkle', '✨')} **${pt('includedFeatures', lang)}**\n${pt('featuresList', lang, { check: customCheck })}`));

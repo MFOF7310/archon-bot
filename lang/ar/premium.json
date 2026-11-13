@@ -15,7 +15,7 @@
   "btnSubscribe": "اشترك",
   "btnHaveCode": "🔑 عندي رمز",
   "featuresTitle": "✨ ميزات Premium",
-  "planIncludes": "كل ما تتضمنه خطة 3.40$ لكل سيرفر:",
+  "planIncludes": "كل ما تتضمنه خطة {priceUsd} لكل سيرفر:",
   "featuresFooter": "ARCHON CG-223 • {status}",
   "invalidCode": "❌ كود غير صالح أو مستخدم بالفعل.",
   "activatedTitle": "⭐ تم تفعيل Premium!",

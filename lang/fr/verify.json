@@ -35,7 +35,7 @@
   "expiredRejoin": "Ta fenêtre a expiré — rejoins et on t'envoie un nouveau code.",
   "needManageGuild": "⛔ Il te faut la permission Gérer le serveur.",
   "premiumTitle": "Fonctionnalité Premium",
-  "premiumDesc": "La vérification captcha est **Premium** — zéro fausse expulsion.\n\nSeulement **3,40 $/mois** pour protéger ta communauté.",
+  "premiumDesc": "La vérification captcha est **Premium** — zéro fausse expulsion.\n\nSeulement **{priceUsd}/mois** pour protéger ta communauté.",
   "premiumHowTo": "{ic_key} Comment activer",
   "premiumHowToValue": "Lance `/premium status` — 30 secondes chrono.",
   "premiumLapsed": "La vérification est une fonctionnalité **Premium** — consulte {premiumCmd}.",

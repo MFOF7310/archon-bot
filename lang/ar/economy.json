@@ -112,7 +112,7 @@
     "sub_grant": "👑 منح بريميوم [للمالك فقط]",
     "sub_generate": "🔑 إنشاء رمز [للمالك فقط]",
     "sub_list": "📋 سرد الرموز النشطة",
-    "btn_subscribe": "💳 اشترك — 3.40$/شهريًا",
+    "btn_subscribe": "💳 اشترك — {priceUsd}/شهريًا",
     "btn_have_code": "🔑 عندي رمز",
     "opt_days": "الأيام (0 = مدى الحياة)",
     "opt_guild_id": "معرف السيرفر",
@@ -122,7 +122,7 @@
     "activated_title": "⭐ تم التفعيل!",
     "activated_dm": "**{server}** صار عليه أركون بريميوم! 🎊\n\nالمدة: **{days}**\n\nكل الميزات مفتوحة!",
     "duration_line": "المدة: **{days}**",
-    "plan_includes": "كل اللي بخطة 3.40$ لكل سيرفر:",
+    "plan_includes": "كل اللي بخطة {priceUsd} لكل سيرفر:",
     "codes_generated_title": "🔑 تم إنشاء الرموز",
     "codes_list_title": "📋 الرموز النشطة ({count})"
   },

@@ -112,7 +112,7 @@
     "sub_grant": "👑 授予 Premium【仅限所有者】",
     "sub_generate": "🔑 生成兑换码【仅限所有者】",
     "sub_list": "📋 列出有效兑换码【仅限所有者】",
-    "btn_subscribe": "💳 订阅 — $3.40/月",
+    "btn_subscribe": "💳 订阅 — {priceUsd}/月",
     "btn_have_code": "🔑 我有兑换码",
     "opt_days": "天数（0 = 永久）",
     "opt_guild_id": "服务器 ID",
@@ -122,7 +122,7 @@
     "activated_title": "⭐ Premium 已激活！",
     "activated_dm": "**{server}** 现在有 ARCHON Premium 啦！🎊\n\n时长：**{days}**\n\n所有 Premium 功能已解锁！",
     "duration_line": "时长：**{days}**",
-    "plan_includes": "$3.40/服务器方案包含的所有内容：",
+    "plan_includes": "{priceUsd}/服务器方案包含的所有内容：",
     "codes_generated_title": "🔑 已生成 Premium 兑换码",
     "codes_list_title": "📋 有效 Premium 兑换码（{count}）"
   },

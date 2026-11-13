@@ -73,7 +73,7 @@
     "raid_join_normal": "Le rythme d'arrivée est revenu à la normale.",
     "raid_kicked_new": "⚠️ Expulsé — compte trop récent",
     "raid_removed_dm": "Tu as été retiré de **{server}** pendant une alerte sécurité.\n\n",
-    "raid_premium": "La détection de raid demande **ARCHON Premium** !\n\nSeulement **3,40 $/mois** — protège ton serveur.",
+    "raid_premium": "La détection de raid demande **ARCHON Premium** !\n\nSeulement **{priceUsd}/mois** — protège ton serveur.",
     "appeal_modal_title": "Appel AutoMod",
     "appeal_cooldown_title": "Appel en cooldown",
     "appeal_cooldown": "Tu as déjà fait appel pour **{server}** — 1 appel / 24h.\n\nRéessaie dans **{hours} h**.",

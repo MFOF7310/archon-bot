@@ -15,7 +15,7 @@
   "btnSubscribe": "订阅",
   "btnHaveCode": "🔑 我有兑换码",
   "featuresTitle": "✨ Premium 功能",
-  "planIncludes": "$3.40/服务器方案包含的所有内容：",
+  "planIncludes": "{priceUsd}/服务器方案包含的所有内容：",
   "featuresFooter": "ARCHON CG-223 • {status}",
   "invalidCode": "❌ 无效或已使用的代码。",
   "activatedTitle": "⭐ Premium 已激活！",
