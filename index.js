@@ -1987,6 +1987,8 @@ client.once(Events.ClientReady, async () => {
     } catch(e) {
         console.error('[EMOJIS] Dynamic resolve failed:', e.message, e.stack);
     }
+    // Which custom emojis ARCHON can really use: icons, buttons and menus fall back to plain emojis for the others
+    await require('./lib/emoji-check').load(client);
     const isPM2 = process.env.pm_id !== undefined || process.env.name === 'Architect-CG223';
     
     if (!isPM2) {
