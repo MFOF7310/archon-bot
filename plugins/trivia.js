@@ -24,6 +24,7 @@ const FR_ALIASES = ['quizz', 'culture'];
 const CATEGORIES = {
   general: { emoji: E.catGeneral || '🧠', plain: '🧠', color: 0x00f0ff },
   mali: { emoji: E.mali_flag || '<a:mali_flag:1568584917233696830>', plain: '🇲🇱', color: 0xf1c40f },
+  food: { emoji: E.catFood || '🍲', plain: '🍲', color: 0xd35400 },   // Malian cuisine (was /quiz-mali-food)
   science: { emoji: E.catScience || '🔬', plain: '🔬', color: 0x2ecc71 },
   history: { emoji: E.catHistory || '📜', plain: '📜', color: 0xe67e22 },
   gaming: { emoji: E.catGaming || '🎮', plain: '🎮', color: 0x9b59b6 },
@@ -378,7 +379,7 @@ async function grantQuizMaster(s) {
 // ───────────────────────────── command ─────────────────────────────
 module.exports = {
   name: 'trivia',
-  aliases: ['quiz', 'culture', 'questions', 'trivial', 'quizz'],
+  aliases: ['quiz', 'culture', 'questions', 'trivial', 'quizz', 'quiz-mali-food', 'mali-food', 'malifood', 'cuisinemali'],
   description: '🧠 Trivia: pick a category, answer fast, earn credits and XP.',
   category: 'GAMING',
   usage: '.trivia',

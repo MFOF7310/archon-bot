@@ -880,7 +880,7 @@ module.exports = {
     _configCard: (...a) => configCard(...a),
     name: 'leveling',
     category: 'SOCIAL',
-    aliases: [],
+    aliases: ['level', 'lvl', 'progress', 'rank', 'xp', 'rang', 'niveau'],   // the old /level and /rank commands
     description: '📈 Dynamic canvas leveling with per-server themes, rank cards, welcome banners, and milestone auto-roles.',
     usage: '.leveling [rank @user] | .leveling theme <color> | .leveling config',
     cooldown: 3000,

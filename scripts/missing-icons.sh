@@ -38,4 +38,5 @@ make ic_next arrow-right
 make ic_category category
 make ic_games device-gamepad-2
 make ic_toggle_off toggle-left "$RED"
+make catFood tools-kitchen-2
 echo "Done. Now run: pm2 restart Architect-CG223"

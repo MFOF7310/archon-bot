@@ -239,7 +239,8 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
 
     // ── Gaming data (null when the member never used /setgame: nothing made up) ──
     let gamingData = null;
-    try { const g = userData.gaming ? JSON.parse(userData.gaming) : null; if (g && g.game) gamingData = g; } catch(e) {}
+    // new members get {"game":"CODM","rank":"Unranked"} as a placeholder; only that exact placeholder counts as not set
+    try { const g = userData.gaming ? JSON.parse(userData.gaming) : null; const placeholder = g && g.game === 'CODM' && g.rank === 'Unranked' && !g.mode && !g.timestamp && !g.lastUpdated; if (g && g.game && !placeholder) gamingData = g; } catch(e) {}
 
     // ── Active badge ──
     const activeBadge = userData.active_badge || null;

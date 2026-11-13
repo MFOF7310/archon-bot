@@ -1,0 +1,222 @@
+[
+  {
+    "en": {
+      "q": "What is the main ingredient in Tô?",
+      "a": [
+        "Millet",
+        "Rice",
+        "Corn",
+        "Wheat"
+      ],
+      "fact": "Tô is a staple food made from millet or sorghum flour, served with sauce."
+    },
+    "fr": {
+      "q": "Quel est l'ingrédient principal du Tô ?",
+      "a": [
+        "Le mil",
+        "Le riz",
+        "Le maïs",
+        "Le blé"
+      ],
+      "fact": "Le Tô est un aliment de base fait de farine de mil ou de sorgho, servi avec une sauce."
+    }
+  },
+  {
+    "en": {
+      "q": "What is Jollof Rice called in Mali?",
+      "a": [
+        "Riz gras",
+        "Zamè",
+        "Fakoye",
+        "Tiguadege"
+      ],
+      "fact": "Riz gras is a flavorful one-pot rice dish popular across West Africa."
+    },
+    "fr": {
+      "q": "Comment appelle-t-on le riz Jollof au Mali ?",
+      "a": [
+        "Riz gras",
+        "Zamè",
+        "Fakoye",
+        "Tiguadege"
+      ],
+      "fact": "Le Riz gras est un plat de riz savoureux populaire en Afrique de l'Ouest."
+    }
+  },
+  {
+    "en": {
+      "q": "What meat is traditionally used in Fakoye?",
+      "a": [
+        "Lamb",
+        "Chicken",
+        "Beef",
+        "Goat"
+      ],
+      "fact": "Fakoye is a traditional Songhai dish made with lamb and a rich peanut sauce."
+    },
+    "fr": {
+      "q": "Quelle viande est traditionnellement utilisée dans le Fakoye ?",
+      "a": [
+        "L'agneau",
+        "Le poulet",
+        "Le bœuf",
+        "La chèvre"
+      ],
+      "fact": "Le Fakoye est un plat traditionnel Songhaï à base d'agneau et d'une riche sauce d'arachide."
+    }
+  },
+  {
+    "en": {
+      "q": "What is Dèguè made from?",
+      "a": [
+        "Millet couscous",
+        "Corn",
+        "Rice",
+        "Potatoes"
+      ],
+      "fact": "Dèguè is a sweet millet couscous dessert mixed with yogurt or milk."
+    },
+    "fr": {
+      "q": "De quoi est fait le Dèguè ?",
+      "a": [
+        "Du couscous de mil",
+        "Du maïs",
+        "Du riz",
+        "Des pommes de terre"
+      ],
+      "fact": "Le Dèguè est un dessert sucré de couscous de mil mélangé avec du yaourt ou du lait."
+    }
+  },
+  {
+    "en": {
+      "q": "What gives Tiguadege its distinctive color?",
+      "a": [
+        "Peanut butter",
+        "Tomatoes",
+        "Palm oil",
+        "Saffron"
+      ],
+      "fact": "Tiguadege is a rich peanut butter stew, a signature dish of Malian cuisine."
+    },
+    "fr": {
+      "q": "Qu'est-ce qui donne sa couleur distinctive au Tiguadege ?",
+      "a": [
+        "Le beurre de cacahuète",
+        "Les tomates",
+        "L'huile de palme",
+        "Le safran"
+      ],
+      "fact": "Le Tiguadege est un riche ragoût au beurre de cacahuète, un plat signature de la cuisine malienne."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the name of the Malian grilled meat skewers?",
+      "a": [
+        "Brochettes",
+        "Suya",
+        "Dibi",
+        "Chichinga"
+      ],
+      "fact": "Brochettes are popular street food in Mali, grilled over charcoal."
+    },
+    "fr": {
+      "q": "Quel est le nom des brochettes de viande grillée maliennes ?",
+      "a": [
+        "Brochettes",
+        "Suya",
+        "Dibi",
+        "Chichinga"
+      ],
+      "fact": "Les brochettes sont un plat de rue populaire au Mali, grillées au charbon de bois."
+    }
+  },
+  {
+    "en": {
+      "q": "What leaf is used to make Saga-Saga sauce?",
+      "a": [
+        "Cassava leaf",
+        "Spinach",
+        "Baobab leaf",
+        "Jute leaf"
+      ],
+      "fact": "Saga-Saga is a sauce made from cassava leaves, often served with rice."
+    },
+    "fr": {
+      "q": "Quelle feuille est utilisée pour faire la sauce Saga-Saga ?",
+      "a": [
+        "La feuille de manioc",
+        "L'épinard",
+        "La feuille de baobab",
+        "La feuille de jute"
+      ],
+      "fact": "Le Saga-Saga est une sauce à base de feuilles de manioc, souvent servie avec du riz."
+    }
+  },
+  {
+    "en": {
+      "q": "What is the traditional drink \"Bissap\" made from?",
+      "a": [
+        "Hibiscus flowers",
+        "Ginger",
+        "Mango",
+        "Tamarind"
+      ],
+      "fact": "Bissap is a refreshing drink made from dried hibiscus flowers, popular across Mali."
+    },
+    "fr": {
+      "q": "De quoi est faite la boisson traditionnelle \"Bissap\" ?",
+      "a": [
+        "Des fleurs d'hibiscus",
+        "Du gingembre",
+        "De la mangue",
+        "Du tamarin"
+      ],
+      "fact": "Le Bissap est une boisson rafraîchissante à base de fleurs d'hibiscus séchées, populaire au Mali."
+    }
+  },
+  {
+    "en": {
+      "q": "What is \"Poulet Yassa\" marinated with?",
+      "a": [
+        "Lemon and onions",
+        "Tomato sauce",
+        "Peanut sauce",
+        "Coconut milk"
+      ],
+      "fact": "Poulet Yassa is marinated chicken with lemon and onions, grilled to perfection."
+    },
+    "fr": {
+      "q": "Avec quoi marine-t-on le \"Poulet Yassa\" ?",
+      "a": [
+        "Citron et oignons",
+        "Sauce tomate",
+        "Sauce d'arachide",
+        "Lait de coco"
+      ],
+      "fact": "Le Poulet Yassa est du poulet mariné au citron et aux oignons, grillé à la perfection."
+    }
+  },
+  {
+    "en": {
+      "q": "What grain is \"Fonio\" similar to?",
+      "a": [
+        "Quinoa",
+        "Rice",
+        "Barley",
+        "Oats"
+      ],
+      "fact": "Fonio is an ancient West African grain, gluten-free and highly nutritious."
+    },
+    "fr": {
+      "q": "À quelle céréale le \"Fonio\" ressemble-t-il ?",
+      "a": [
+        "Le quinoa",
+        "Le riz",
+        "L'orge",
+        "L'avoine"
+      ],
+      "fact": "Le Fonio est une céréale ancienne d'Afrique de l'Ouest, sans gluten et très nutritive."
+    }
+  }
+]
