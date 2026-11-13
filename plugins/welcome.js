@@ -422,7 +422,7 @@ function panel(guild, client, lang, ownerId, notice) {
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(text));
         const buttons = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`wel:toggle:${kind}:${ownerId}`).setLabel(WL(on ? 'btn_on' : 'btn_off', lang)).setStyle(on ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(icon(on ? 'ok' : 'offline', guild)),
+            new ButtonBuilder().setCustomId(`wel:toggle:${kind}:${ownerId}`).setLabel(WL(on ? 'btn_on' : 'btn_off', lang)).setStyle(on ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(icon(on ? 'on' : 'off', guild)),
             new ButtonBuilder().setCustomId(`wel:msg:${kind}:${ownerId}`).setLabel(WL('btn_message', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('file', guild)),
             new ButtonBuilder().setCustomId(`wel:test:${kind}:${ownerId}`).setLabel(WL('btn_test', lang)).setStyle(ButtonStyle.Primary).setEmoji(icon('next', guild)));
         if (row[k.message]) buttons.addComponents(new ButtonBuilder().setCustomId(`wel:reset:${kind}:${ownerId}`).setLabel(WL('btn_reset', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('refresh', guild)));

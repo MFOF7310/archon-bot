@@ -2661,7 +2661,7 @@ async function sendBootDM() {
     if (!aiOk) problems.push('AI: OPENROUTER_API_KEY is missing from the .env.');
     if (failed.length) problems.push(`${failed.length} plugin${failed.length === 1 ? '' : 's'} did not load: ${failed.slice(0, 6).join(', ')}${failed.length > 6 ? '…' : ''}`);
     if (tg?.configured && !tgOn) problems.push('Telegram is set up but did not start.');
-    const dot = (ok) => ok ? em('ic_on', '🟢') : em('ic_off', '🔴');
+    const dot = (ok) => ok ? em('ic_on', '🟢') : em('ic_toggle_off', em('ic_off', '🔴'));   // green switch / red switch
 
     // Restarts close together share one message
     const lastAt = Number(meta('boot_dm_at')) || 0, lastId = meta('boot_dm_id');

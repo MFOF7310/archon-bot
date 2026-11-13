@@ -4,7 +4,7 @@
 #   sh scripts/missing-icons.sh
 cd "$(dirname "$0")/.." || exit 1
 M="python3 /root/icon-tmp/make_icon.py"
-AMBER="#F0B232"
+AMBER="#F0B232"; RED="#E74C3C"
 
 missing() { node -e "process.exit(require('./config/emojis')['$1'] ? 1 : 0)"; }
 make() { if missing "$1"; then $M "$@" || echo "   (skipped $1)"; sleep 1; else echo "·  $1 already there"; fi; }
@@ -37,4 +37,5 @@ make ic_updates speakerphone
 make ic_next arrow-right
 make ic_category category
 make ic_games device-gamepad-2
+make ic_toggle_off toggle-left "$RED"
 echo "Done. Now run: pm2 restart Architect-CG223"
