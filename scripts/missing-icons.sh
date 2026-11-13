@@ -24,4 +24,14 @@ make ic_folder folder
 make ic_palette palette
 make ic_dashboard layout-dashboard
 make ic_back arrow-left
+make ic_hash hash
+make ic_door_enter door-enter
+make ic_door_exit door-exit
+make ic_rules book
+make ic_gavel gavel
+make ic_log list-details
+make ic_ticket ticket
+make ic_daily calendar-event
+make ic_levelup trending-up
+make ic_updates speakerphone
 echo "Done. Now run: pm2 restart Architect-CG223"

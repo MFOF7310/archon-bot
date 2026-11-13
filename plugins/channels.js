@@ -1,270 +1,246 @@
-const { SlashCommandBuilder, EmbedBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-const EMOJIS = require('../config/emojis');
-const { resolveEmoji } = require('../lib/emoji-resolver');
+// /channels — the channels ARCHON posts in or points members to.
+// One interactive panel, like /roles: every channel with its real state (ARCHON can post, a permission is missing,
+// the channel was deleted, not set), a menu to pick one, Discord's own channel picker to change it, and the card redraws.
+// /channels set and /channels remove still work, and answer with the same panel.
+const {
+    SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags,
+    ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize,
+    ActionRowBuilder, StringSelectMenuBuilder, ChannelSelectMenuBuilder, ButtonBuilder, ButtonStyle,
+} = require('discord.js');
 const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
-const v2 = require('../lib/games/v2');
-const mention = require('../lib/mentions');
-const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags } = require('discord.js');
+const { icon } = require('../lib/ui/icons');
+const canPost = require('../lib/canPost');
 
-const getEmoji = (key, fallback) => resolveEmoji(key, null) || fallback;
+const ACCENT = 0x00B4D8;
+const V2 = MessageFlags.IsComponentsV2;
+const cut = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + '…' : String(s));
+const L = (k, lang, v) => t(`channels.${k}`, lang, v || {});
 
-const CHANNEL_DEFS = {
-    general:   { col: 'generalChannel',            dbcol: 'general_channel',            env: 'GENERAL_CHANNEL_ID',            emoji: 'partnericon', label: 'General Channel' },
-    welcome:   { col: 'welcomeChannel',            dbcol: 'welcome_channel',            env: 'WELCOME_CHANNEL_ID',            emoji: 'partnericon', label: 'Welcome Channel' },
-    goodbye:   { col: 'goodbyeChannel',            dbcol: 'goodbye_channel',            env: 'GOODBYE_CHANNEL_ID',            emoji: 'red_color', label: 'Goodbye Channel' },
-    log:       { col: 'logChannel',                dbcol: 'log_channel',                env: 'LOG_CHANNEL_ID',                emoji: 'bluetools', label: 'Log Channel' },
-    modlog:    { col: 'modLogChannel',             dbcol: 'mod_log_channel',            env: 'MOD_LOG_CHANNEL_ID',            emoji: 'developericon', label: 'Mod Log Channel' },
-    daily:     { col: 'dailyChannel',              dbcol: 'daily_channel',              env: 'DAILY_CHANNEL_ID',              emoji: 'yellowcrown', label: 'Daily Channel' },
-    shop:      { col: 'shopChannel',               dbcol: 'shop_channel',               env: 'SHOP_CHANNEL_ID',               emoji: 'boostericon', label: 'Shop Channel' },
-    rules:     { col: 'rulesChannel',              dbcol: 'rules_channel',              env: 'RULES_CHANNEL_ID',              emoji: 'rules_icon', label: 'Rules Channel' },
-    ticket:    { col: 'ticketTranscriptChannel',   dbcol: 'ticket_transcript_channel',  env: 'TICKET_TRANSCRIPT_CHANNEL_ID',  emoji: 'ticket', label: 'Ticket Logs Channel' },
-    levelup:   { col: 'levelupChannel',            dbcol: 'levelup_channel',            env: 'LEVELUP_CHANNEL_ID',            emoji: 'greencrown', label: 'Level-Up Channel' },
-    updates:   { col: 'updatesChannel',            dbcol: 'updates_channel',            env: 'UPDATES_CHANNEL_ID',            emoji: 'boostericon', label: 'Bot Updates Channel' },
-};
+// key, settings column, group, what ARCHON needs there (canPost feature; 'see' = members are only sent there)
+const SLOTS = [
+    { key: 'welcome', col: 'welcome_channel', group: 'core', need: 'welcome' },
+    { key: 'goodbye', col: 'goodbye_channel', group: 'core', need: 'goodbye' },
+    { key: 'rules', col: 'rules_channel', group: 'core', need: 'see' },
+    { key: 'general', col: 'general_channel', group: 'core', need: 'see' },
+    { key: 'modlog', col: 'mod_log_channel', group: 'moderation', need: 'modlog' },
+    { key: 'log', col: 'log_channel', group: 'moderation', need: null },
+    { key: 'ticket', col: 'ticket_transcript_channel', group: 'moderation', need: 'ticket-log' },
+    { key: 'daily', col: 'daily_channel', group: 'activity', need: null },
+    { key: 'levelup', col: 'levelup_channel', group: 'activity', need: 'levelup-milestone' },
+    { key: 'updates', col: 'updates_channel', group: 'activity', need: null },
+];
+const BY_KEY = Object.fromEntries(SLOTS.map((s) => [s.key, s]));
+const GROUPS = ['core', 'moderation', 'activity'];
+// older names people may type with .channels set / remove
+const ALIASES = { mod: 'modlog', 'mod-log': 'modlog', modlogs: 'modlog', logs: 'log', tickets: 'ticket', transcript: 'ticket', level: 'levelup', levels: 'levelup', chat: 'general', bye: 'goodbye', update: 'updates' };
+const slotOf = (type) => { const k = String(type || '').toLowerCase().trim(); return BY_KEY[k] ? k : ALIASES[k] || null; };
+
+const needed = (slot) => (slot.need === 'see' ? [canPost.PERMS.view] : canPost.neededFor(slot.need || 'default'));
+const canManage = (member) => !!member?.permissions?.has(PermissionFlagsBits.ManageGuild);
+
+function readAll(db, gid) {
+    try { return db.prepare(`SELECT ${SLOTS.map((s) => s.col).join(', ')} FROM server_settings WHERE guild_id = ?`).get(gid) || {}; }
+    catch { return {}; }
+}
+
+// { state: 'ok' | 'warn' | 'gone' | 'unset', id, text } for one slot
+function stateOf(guild, slot, saved, lang) {
+    let id = saved[slot.col] ? String(saved[slot.col]) : null;
+    let viaDiscord = false;
+    // the rules: Discord's own rules channel counts when none is set here (the welcome card uses it too)
+    if (!id && slot.key === 'rules' && guild.rulesChannelId) { id = guild.rulesChannelId; viaDiscord = true; }
+    if (!id) return { state: 'unset' };
+    const ch = guild.channels.cache.get(id);
+    if (!ch) return { state: 'gone', id };
+    const d = canPost.diagnose(guild, ch, guild.members.me, needed(slot));
+    const note = viaDiscord ? L('from_discord', lang) : null;
+    if (d.ok) return { state: 'ok', id, note };
+    const perms = canPost.localize(d.missing || [], lang).join(', ');
+    const why = d.reason === 'wrong_type' ? L('why_type', lang)
+        : d.reason === 'timeout' ? L('why_timeout', lang)
+        : d.reason === 'private' ? L('why_private', lang)
+        : d.reason === 'thread_locked' ? L('why_locked', lang)
+        : L('why_perms', lang, { perms });
+    return { state: 'warn', id, why, note };
+}
+
+const MARK = { ok: '✓', warn: '!', gone: '×', unset: '–' };
+function slotLine(guild, slot, saved, lang) {
+    const s = stateOf(guild, slot, saved, lang);
+    const name = `${icon(`ch_${slot.key}`, guild)} **${L(`label_${slot.key}`, lang)}**`;
+    if (s.state === 'unset') return `\`${MARK.unset}\` ${name} · ${L('not_set', lang)}`;
+    if (s.state === 'gone') return `\`${MARK.gone}\` ${name} · ${L('status_gone', lang)}`;
+    const extra = [s.note, s.why].filter(Boolean).map((x) => `\n-# ${x}`).join('');
+    return `\`${MARK[s.state]}\` ${name} · <#${s.id}>${extra}`;
+}
+
+function mainView(guild, db, lang, ownerId, notice) {
+    const saved = readAll(db, guild.id);
+    const states = SLOTS.map((s) => stateOf(guild, s, saved, lang).state);
+    const set = states.filter((x) => x !== 'unset').length;
+    const problems = states.filter((x) => x === 'warn' || x === 'gone').length;
+    const c = new ContainerBuilder().setAccentColor(problems ? 0xE67E22 : ACCENT);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
+        `-# ARCHON · ${L('title', lang)}\n## ${icon('ch_title', guild)} ${L('heading', lang, { guild: guild.name })}\n`
+        + `${L('summary', lang, { n: set, total: SLOTS.length })}${problems ? ` · ${L(problems === 1 ? 'problems_one' : 'problems', lang, { n: problems })}` : ''}`));
+    if (notice) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`> ${notice}`));
+    for (const g of GROUPS) {
+        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        const lines = SLOTS.filter((s) => s.group === g).map((s) => slotLine(guild, s, saved, lang));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${L(`group_${g}`, lang)}\n${lines.join('\n')}`));
+    }
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder()
+            .setCustomId(`chan:menu:${ownerId}`)
+            .setPlaceholder(cut(L('pick_placeholder', lang), 150))
+            .addOptions(SLOTS.map((s) => {
+                const st = stateOf(guild, s, saved, lang);
+                const where = st.id ? (guild.channels.cache.get(st.id)?.name ? `#${guild.channels.cache.get(st.id).name}` : L('status_gone', lang)) : L('not_set', lang);
+                return { label: cut(L(`label_${s.key}`, lang), 100), description: cut(`${MARK[st.state]} ${where}`, 100), value: s.key, emoji: icon(`ch_${s.key}`, guild) };
+            }))));
+    try {
+        const { dashboardUrl } = require('../lib/postProblems');
+        c.addActionRowComponents(new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(dashboardUrl(guild.id)).setLabel(L('btn_dashboard', lang)).setEmoji(icon('dashboard', guild))));
+    } catch { /* no dashboard link: the panel works without it */ }
+    return { components: [c] };
+}
+
+function editView(guild, db, lang, ownerId, key, problem) {
+    const slot = BY_KEY[key];
+    const saved = readAll(db, guild.id);
+    const st = stateOf(guild, slot, saved, lang);
+    const c = new ContainerBuilder().setAccentColor(problem || st.state === 'warn' || st.state === 'gone' ? 0xE67E22 : ACCENT);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
+        `## ${icon(`ch_${key}`, guild)} ${L(`label_${key}`, lang)}\n${L(`hint_${key}`, lang)}`));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    const current = st.state === 'unset' ? L('not_set', lang) : st.state === 'gone' ? L('status_gone', lang) : `<#${st.id}>`;
+    let body = L('current', lang, { channel: current });
+    if (st.note) body += `\n-# ${st.note}`;
+    if (st.state === 'ok') body += `\n${icon('ok', guild)} ${L('can_post_short', lang)}`;
+    if (st.state === 'warn') body += `\n${icon('warn', guild)} ${st.why}`;
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
+    if (problem) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`> ${problem}`));
+    const picker = new ChannelSelectMenuBuilder()
+        .setCustomId(`chan:pick:${key}:${ownerId}`)
+        .setPlaceholder(cut(L('channel_placeholder', lang), 150))
+        .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
+        .setMinValues(1).setMaxValues(1);
+    if (st.id && guild.channels.cache.has(st.id) && saved[slot.col]) picker.setDefaultChannels(st.id);
+    c.addActionRowComponents(new ActionRowBuilder().addComponents(picker));
+    c.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`chan:back:${ownerId}`).setLabel(L('btn_back', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('back', guild)),
+        new ButtonBuilder().setCustomId(`chan:clear:${key}:${ownerId}`).setLabel(L('btn_clear', lang)).setStyle(ButtonStyle.Danger).setDisabled(!saved[slot.col])));
+    return { components: [c] };
+}
+
+// Saves one channel (or clears it). Returns { notice } or { problem }.
+function applyOne(client, guild, key, channelId, lang, actorId) {
+    const slot = BY_KEY[key];
+    if (channelId) {
+        const ch = guild.channels.cache.get(channelId);
+        if (!ch || ![ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(ch.type)) return { problem: L('invalid_channel', lang) };
+    }
+    let ok = false;
+    try {
+        client.db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(guild.id);
+        client.db.prepare(`UPDATE server_settings SET ${slot.col} = ? WHERE guild_id = ?`).run(channelId || null, guild.id);
+        ok = String(client.db.prepare(`SELECT ${slot.col} AS v FROM server_settings WHERE guild_id = ?`).get(guild.id)?.v || '') === String(channelId || '');
+    } catch (e) { console.error('[CHANNELS] save:', e.message); }
+    try { client.settings?.delete?.(guild.id); } catch { /* the settings cache reloads on next read */ }
+    if (!ok) return { problem: L('save_failed', lang) };
+    console.log(`[CHANNELS] guild=${guild.id} by=${actorId} ${slot.col}=${channelId || 'none'}`);
+    return { notice: channelId ? L('saved', lang, { label: L(`label_${key}`, lang), channel: `<#${channelId}>` }) : L('cleared', lang, { label: L(`label_${key}`, lang) }) };
+}
+
+const typeChoices = (o) => o.setName('type').setDescription('Which channel').setRequired(true)
+    .addChoices(...SLOTS.map((s) => ({ name: t(`channels.label_${s.key}`, 'en'), value: s.key })));
 
 module.exports = {
     name: 'channels',
     aliases: ['channel', 'setchannel', 'salons'],
-    description: '📡 View and set server channel configuration',
+    description: 'View and change the channels ARCHON uses',
     category: 'ADMIN',
     cooldown: 3000,
 
     data: new SlashCommandBuilder()
         .setName('channels')
-        .setDescription('📡 View and configure server channels')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
-        .addSubcommand(s => s
-            .setName('view')
-            .setDescription('👁️ View all configured channels')
-        )
-        .addSubcommand(s => s
-            .setName('set')
-            .setDescription('⚙️ Set a channel')
-            .addStringOption(o => o
-                .setName('type')
-                .setDescription('Which channel to set')
-                .setRequired(true)
-                .addChoices(
-                    { name: '🏠 General', value: 'general' },
-                    { name: '👋 Welcome', value: 'welcome' },
-                    { name: '🚪 Goodbye', value: 'goodbye' },
-                    { name: '📋 Log', value: 'log' },
-                    { name: '🔨 Mod Log', value: 'modlog' },
-                    { name: '🎁 Daily', value: 'daily' },
-                    { name: '🛒 Shop', value: 'shop' },
-                    { name: '📈 Market', value: 'market' },
-                    { name: '📜 Rules', value: 'rules' },
-                    { name: '🎫 Ticket Logs', value: 'ticket' },
-                    { name: '📊 Level-Up', value: 'levelup' },
-                    { name: '🔔 Bot Updates', value: 'updates' },
-                )
-            )
-            .addChannelOption(o => o
-                .setName('channel')
-                .setDescription('The channel to set')
-                .setRequired(true)
-                .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-            )
-        )
-        .addSubcommand(s => s
-            .setName('remove')
-            .setDescription('🗑️ Remove a channel setting')
-            .addStringOption(o => o
-                .setName('type')
-                .setDescription('Which channel to remove')
-                .setRequired(true)
-                .addChoices(
-                    { name: '🏠 General', value: 'general' },
-                    { name: '👋 Welcome', value: 'welcome' },
-                    { name: '🚪 Goodbye', value: 'goodbye' },
-                    { name: '📋 Log', value: 'log' },
-                    { name: '🔨 Mod Log', value: 'modlog' },
-                    { name: '🎁 Daily', value: 'daily' },
-                    { name: '🛒 Shop', value: 'shop' },
-                    { name: '📈 Market', value: 'market' },
-                    { name: '📜 Rules', value: 'rules' },
-                    { name: '🎫 Ticket Logs', value: 'ticket' },
-                    { name: '📊 Level-Up', value: 'levelup' },
-                    { name: '🔔 Bot Updates', value: 'updates' },
-                )
-            )
-        ),
+        .setDescription('View and change the channels ARCHON uses')
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+        .addSubcommand((s) => s.setName('view').setDescription('Open the channel settings panel'))
+        .addSubcommand((s) => s.setName('set').setDescription('Set a channel')
+            .addStringOption(typeChoices)
+            .addChannelOption((o) => o.setName('channel').setDescription('The channel to use').setRequired(true)
+                .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)))
+        .addSubcommand((s) => s.setName('remove').setDescription('Clear a channel setting').addStringOption(typeChoices)),
 
     execute: async (interaction, client) => {
-        const sub = interaction.options.getSubcommand();
         const guild = interaction.guild;
-        const guildId = guild.id;
-        const lang = pickLang(client, guildId, interaction);
-        const isOwnerGuild = guildId === process.env.GUILD_ID;
-        const settings = client.getServerSettings?.(guildId) || {};
-
-        const chMention = (id, envKey) => {
-            if (id) return `<#${id}>`;
-            if (isOwnerGuild && envKey && process.env[envKey]) return `<#${process.env[envKey]}> 🔹 .env`;
-            return `\`${t('channels.not_set', lang)}\``;
-        };
-
-        if (sub === 'view') {
-            client.settings?.delete(guildId);
-            const fresh = client.getServerSettings?.(guildId) || {};
-            
-            const buildSection = (title, keys) => {
-                const lines = keys.map(k => {
-                    const def = CHANNEL_DEFS[k];
-                    return `${getEmoji(def.emoji, '📌')} **${def.label}** — ${chMention(fresh[def.col] || fresh[def.dbcol], def.env)}`;
-                });
-                return `**${title}**\n${lines.join('\n')}`;
-            };
-
-            const c = new ContainerBuilder().setAccentColor(0x00f0ff);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_satellite', '📡')} ${t('channels.title', lang)}\n${guild.name}`));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.core', lang), ['general', 'welcome', 'goodbye', 'rules'])));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.moderation', lang), ['log', 'modlog', 'ticket'])));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.economy', lang), ['daily', 'shop', 'levelup', 'updates'])));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${mention(client, 'channels', 'set')}`));
-
-            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
-        }
-
-        if (sub === 'set') {
-            const type = interaction.options.getString('type');
-            const channel = interaction.options.getChannel('channel');
-            const def = CHANNEL_DEFS[type];
-            if (!def) return interaction.reply({ content: t('channels.unknown_type', lang), flags: 64 });
-
-            client.updateServerSetting?.(guildId, def.dbcol, channel.id);
-            client.settings?.delete(guildId);
-
-            const _cp = require('../lib/canPost');
-            const _need = _cp.neededFor(type);
-            const _d = _cp.diagnose(guild, channel, guild.members.me, _need);
-            const _bot = guild.members.me.roles.botRole?.name || guild.members.me.displayName;
-
-            const c = new ContainerBuilder().setAccentColor(_d.ok ? 0x2ecc71 : 0xf1c40f);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('screaminggreen', interaction) || em('ic_ok', '✅')} ${t('channels.set_success', lang)}\n${getEmoji(def.emoji, '📌')} **${def.label}** → <#${channel.id}>`));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            
-            if (_d.ok) {
-                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${resolveEmoji('screaminggreen', interaction) || '🟢'} ${t('channels.can_post', lang)}`));
-            } else {
-                const reason = _d.reason === 'private' ? t('channels.private_warn', lang) : t('channels.role_block', lang, { role: _d.role || 'A role', missing: _d.missing.join(', ') });
-                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${em('ic_warn', '⚠️')} **${t('channels.set_warning', lang)}**\n${reason}\n\n-# ${t('channels.fix_warn', lang, { bot: _bot, missing: _d.missing.join(', ') })}`));
-            }
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${guild.name}`));
-            
-            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
-        }
-
-        if (sub === 'remove') {
-            const type = interaction.options.getString('type');
-            const def = CHANNEL_DEFS[type];
-            if (!def) return interaction.reply({ content: t('channels.unknown_type', lang), flags: 64 });
-
-            const currentId = settings[def.col] || settings[def.dbcol];
-            if (!currentId) return interaction.reply({ content: t('channels.already_removed', lang, { label: def.label }), flags: 64 });
-
-            client.updateServerSetting?.(guildId, def.dbcol, null);
-            client.settings?.delete(guildId);
-
-            const c = new ContainerBuilder().setAccentColor(0xe74c3c);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('red_color', interaction) || em('ic_ok', '✅')} ${t('channels.removed_title', lang)}\n${getEmoji(def.emoji, '📌')} ${t('channels.removed_desc', lang, { label: def.label })}`));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${t('channels.removed_footer', lang)}`));
-            return interaction.reply({ components: [c], flags: MessageFlags.IsComponentsV2 | 64 });
-        }
+        if (!guild) return;
+        const lang = pickLang(client, guild.id, interaction);
+        if (!canManage(interaction.member)) return interaction.reply({ content: L('admin_only', lang), flags: MessageFlags.Ephemeral });
+        const sub = interaction.options.getSubcommand();
+        const reply = (notice) => interaction.reply({ ...mainView(guild, client.db, lang, interaction.user.id, notice), flags: V2 | MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+        if (sub === 'view') return reply();
+        const key = slotOf(interaction.options.getString('type'));
+        if (!key) return interaction.reply({ content: L('unknown_type', lang), flags: MessageFlags.Ephemeral });
+        if (sub === 'remove' && !readAll(client.db, guild.id)[BY_KEY[key].col]) return interaction.reply({ content: L('already_removed', lang, { label: L(`label_${key}`, lang) }), flags: MessageFlags.Ephemeral });
+        const r = applyOne(client, guild, key, sub === 'set' ? interaction.options.getChannel('channel').id : null, lang, interaction.user.id);
+        return reply(r.notice || r.problem);
     },
 
-    run: async (client, message, args, db, ss) => {
-        const lang = pickLang(client, message.guild.id, message);
-        if (!message.member?.permissions.has(PermissionFlagsBits.Administrator)) {
-            return message.reply(t('channels.admin_only', lang)).catch(() => {});
-        }
-        const sub = args[0]?.toLowerCase();
-        const guildId = message.guild.id;
-        const isOwnerGuild = guildId === process.env.GUILD_ID;
-        const settings = client.getServerSettings?.(guildId) || {};
-
-        const chMention = (id, envKey) => {
-            if (id) return `<#${id}>`;
-            if (isOwnerGuild && envKey && process.env[envKey]) return `<#${process.env[envKey]}> 🔹 .env`;
-            return `\`${t('channels.not_set', lang)}\``;
-        };
-
-        if (sub === 'view' || !sub) {
-            client.settings?.delete(guildId);
-            const fresh = client.getServerSettings?.(guildId) || {};
-            
-            const buildSection = (title, keys) => {
-                const lines = keys.map(k => {
-                    const def = CHANNEL_DEFS[k];
-                    return `${getEmoji(def.emoji, '📌')} **${def.label}** — ${chMention(fresh[def.col] || fresh[def.dbcol], def.env)}`;
-                });
-                return `**${title}**\n${lines.join('\n')}`;
-            };
-
-            const c = new ContainerBuilder().setAccentColor(0x00f0ff);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_satellite', '📡')} ${t('channels.title', lang)}\n${message.guild.name}`));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.core', lang), ['general', 'welcome', 'goodbye', 'rules'])));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.moderation', lang), ['log', 'modlog', 'ticket'])));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(buildSection(t('channels.economy', lang), ['daily', 'shop', 'levelup', 'updates'])));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${mention(client, 'channels', 'set')}`));
-
-            return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
-        }
-
-        if (sub === 'set') {
-            const type = args[1]?.toLowerCase();
-            const channelId = args[2]?.replace(/[<#>]/g, '');
-            const def = CHANNEL_DEFS[type];
-            if (!def) return message.reply(t('channels.unknown_type', lang)).catch(() => {});
-            if (!channelId) return message.reply(t('channels.usage_set', lang)).catch(() => {});
-            const ch = message.guild.channels.cache.get(channelId);
-            if (!ch) return message.reply(t('channels.invalid_channel', lang)).catch(() => {});
-
-            client.updateServerSetting?.(guildId, def.dbcol, channelId);
-            client.settings?.delete(guildId);
-
-            const _cp = require('../lib/canPost');
-            const _d = _cp.diagnose(message.guild, ch, message.guild.members.me, _cp.neededFor(type));
-            const _bot = message.guild.members.me.roles.botRole?.name || message.guild.members.me.displayName;
-
-            const c = new ContainerBuilder().setAccentColor(_d.ok ? 0x2ecc71 : 0xf1c40f);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('screaminggreen', message) || em('ic_ok', '✅')} ${t('channels.set_success', lang)}\n${getEmoji(def.emoji, '📌')} **${def.label}** → <#${channelId}>`));
-            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            
-            if (_d.ok) {
-                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${resolveEmoji('screaminggreen', message) || '🟢'} ${t('channels.can_post', lang)}`));
-            } else {
-                const reason = _d.reason === 'private' ? t('channels.private_warn', lang) : t('channels.role_block', lang, { role: _d.role || 'A role', missing: _d.missing.join(', ') });
-                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${em('ic_warn', '⚠️')} **${t('channels.set_warning', lang)}**\n${reason}\n\n-# ${t('channels.fix_warn', lang, { bot: _bot, missing: _d.missing.join(', ') })}`));
-            }
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${message.guild.name}`));
-            
-            return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
-        }
-
+    run: async (client, message, args) => {
+        const guild = message.guild;
+        if (!guild) return;
+        const lang = pickLang(client, guild.id, message);
+        if (!canManage(message.member)) return message.reply(L('admin_only', lang)).catch(() => {});
+        const sub = (args[0] || 'view').toLowerCase();
+        const reply = (notice) => message.reply({ ...mainView(guild, client.db, lang, message.author.id, notice), flags: V2, allowedMentions: { parse: [] } }).catch(() => {});
+        if (sub === 'view') return reply();
+        if (sub !== 'set' && sub !== 'remove') return message.reply(L('usage_set', lang)).catch(() => {});
+        const key = slotOf(args[1]);
+        if (!key) return message.reply(L('unknown_type', lang)).catch(() => {});
         if (sub === 'remove') {
-            const type = args[1]?.toLowerCase();
-            const def = CHANNEL_DEFS[type];
-            if (!def) return message.reply(t('channels.unknown_type', lang)).catch(() => {});
-
-            const currentId = settings[def.col] || settings[def.dbcol];
-            if (!currentId) return message.reply(t('channels.already_removed', lang, { label: def.label })).catch(() => {});
-
-            client.updateServerSetting?.(guildId, def.dbcol, null);
-            client.settings?.delete(guildId);
-
-            const c = new ContainerBuilder().setAccentColor(0xe74c3c);
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('red_color', message) || em('ic_ok', '✅')} ${t('channels.removed_title', lang)}\n${getEmoji(def.emoji, '📌')} ${t('channels.removed_desc', lang, { label: def.label })}`));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • ${t('channels.removed_footer', lang)}`));
-            return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
+            if (!readAll(client.db, guild.id)[BY_KEY[key].col]) return message.reply(L('already_removed', lang, { label: L(`label_${key}`, lang) })).catch(() => {});
+            const r = applyOne(client, guild, key, null, lang, message.author.id);
+            return reply(r.notice || r.problem);
         }
-    }
+        const channelId = String(args[2] || '').replace(/[<#>]/g, '');
+        if (!channelId) return message.reply(L('usage_set', lang)).catch(() => {});
+        const r = applyOne(client, guild, key, channelId, lang, message.author.id);
+        return reply(r.notice || r.problem);
+    },
+
+    // The panel's menu, channel picker and buttons. The opener's id travels in every customId: nobody else can drive it.
+    handleComponent: async (interaction, client) => {
+        const guild = interaction.guild;
+        if (!guild) return;
+        const lang = pickLang(client, guild.id, interaction);
+        const parts = interaction.customId.split(':');
+        const action = parts[1];
+        const ownerId = parts[parts.length - 1];
+        const deny = (key) => interaction.reply({ content: L(key, lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+        if (!/^\d{17,20}$/.test(ownerId)) return deny('expired');
+        if (interaction.user.id !== ownerId) return deny('not_yours');
+        if (!canManage(interaction.member)) return deny('admin_only');   // checked again on every click
+        const update = (view) => interaction.update({ ...view, flags: V2, allowedMentions: { parse: [] } });
+
+        if (action === 'menu') {
+            const key = interaction.values?.[0];
+            return BY_KEY[key] ? update(editView(guild, client.db, lang, ownerId, key)) : deny('expired');
+        }
+        if (action === 'back') return update(mainView(guild, client.db, lang, ownerId));
+        const key = parts[2];
+        if (!BY_KEY[key]) return deny('expired');
+        if (action === 'pick' || action === 'clear') {
+            const id = action === 'pick' ? interaction.values?.[0] : null;
+            if (action === 'pick' && !id) return update(editView(guild, client.db, lang, ownerId, key));
+            const r = applyOne(client, guild, key, id, lang, interaction.user.id);
+            if (r.problem) return update(editView(guild, client.db, lang, ownerId, key, r.problem));
+            return update(mainView(guild, client.db, lang, ownerId, r.notice));
+        }
+        return deny('expired');
+    },
 };
