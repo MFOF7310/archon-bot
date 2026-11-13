@@ -203,7 +203,7 @@ function activityCard(client, lang, db, guild) {
 function aboutCard(client, lang, userId) {
     const _ = tr(lang);
     const items = [
-        { thumbnail: [`## ${em('ic_info', 'ℹ️')} ${_('about_title')}\n${_('about_desc')}`, client.user.displayAvatarURL({ size: 256 })] },
+        { thumbnail: [`## ${em('ic_bot', '🤖')} ${_('about_title')}\n${_('about_desc')}`, client.user.displayAvatarURL({ size: 256 })] },
         { rule: true },
         { text: `${_('about_features')}\n-# ${_('about_meta', { version: version(client), guilds: client.guilds.cache.size })}` },
     ];
@@ -211,7 +211,7 @@ function aboutCard(client, lang, userId) {
     items.push(
         { rule: true },
         { row: new ActionRowBuilder().addComponents(
-            linkBtn(_('btn_invite'), inviteUrl(client), 'ic_role', '🔗'),
+            linkBtn(_('btn_invite'), inviteUrl(client), 'ic_bot', '🤖'),
             linkBtn(_('btn_support'), SUPPORT_URL, 'ic_info', '🆘'),
             linkBtn(_('btn_vote'), voteUrl(client), 'yellowcrown', '⭐'),
         ) },
@@ -228,10 +228,10 @@ function aboutCard(client, lang, userId) {
 function inviteCard(client, lang) {
     const _ = tr(lang);
     return v2.card(0x1d9e75, [
-        { thumbnail: [`## ${em('ic_role', '🔗')} ${_('invite_title')}\n${_('invite_desc')}`, client.user.displayAvatarURL({ size: 128 })] },
+        { thumbnail: [`## ${em('ic_bot', '🤖')} ${_('invite_title')}\n${_('invite_desc')}`, client.user.displayAvatarURL({ size: 128 })] },
         { text: `-# ${_('invite_perms')}` },
         { row: new ActionRowBuilder().addComponents(
-            linkBtn(_('btn_add'), inviteUrl(client), 'ic_role', '➕'),
+            linkBtn(_('btn_add'), inviteUrl(client), 'ic_bot', '🤖'),
             linkBtn(_('btn_support'), SUPPORT_URL, 'ic_info', '🆘'),
         ) },
         { text: foot(client) },
