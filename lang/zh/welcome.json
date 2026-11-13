@@ -46,5 +46,9 @@
   "card_inviter_unknown": " · 邀请人未知",
   "card_intro": "欢迎加入大家庭——快来介绍你自己，逛逛各个频道吧！💜",
   "card_joined": "加入于 {date}",
-  "tip_label": "💡 **常用命令：**"
+  "tip_label": "💡 **常用命令：**",
+  "card_heading": "欢迎，{user}",
+  "card_start_title": "新手指南",
+  "card_step_rules": "在 {channel} 阅读规则",
+  "card_step_general": "在 {channel} 和大家打个招呼"
 }

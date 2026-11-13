@@ -46,5 +46,9 @@
   "card_inviter_unknown": " · Unknown inviter",
   "card_intro": "Welcome to the family — feel free to introduce yourself and explore the channels! 💜",
   "card_joined": "Joined {date}",
-  "tip_label": "💡 **Essential commands:**"
+  "tip_label": "💡 **Essential commands:**",
+  "card_heading": "Welcome, {user}",
+  "card_start_title": "Get started",
+  "card_step_rules": "Read the rules in {channel}",
+  "card_step_general": "Say hi to everyone in {channel}"
 }

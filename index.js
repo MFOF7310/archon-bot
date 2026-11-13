@@ -3874,6 +3874,19 @@ safeOn(Events.GuildMemberAdd, async (member) => {
     }
 });
 
+// A moderator verified someone by hand in Discord (gave the verified role or took the unverified one): the welcome
+// card that waited for their verification goes out now. afterVerify sends it once at most.
+safeOn(Events.GuildMemberUpdate, async (before, after) => {
+    if (!after?.guild || after.user?.bot || !before?.roles?.cache) return;
+    let s;
+    try { s = db.prepare('SELECT verify_role_id, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(after.guild.id); } catch { return; }
+    if (!s) return;
+    const gained = s.verify_role_id && !before.roles.cache.has(s.verify_role_id) && after.roles.cache.has(s.verify_role_id);
+    const freed = s.verify_unverified_role_id && before.roles.cache.has(s.verify_unverified_role_id) && !after.roles.cache.has(s.verify_unverified_role_id);
+    if (!gained && !freed) return;
+    try { await require('./plugins/welcome.js').afterVerify(after, client, db); } catch (e) { console.error('[WELCOME] after manual verify:', e.message); }
+});
+
 // ╔══════════════════════════════════════════════════════════════════════╗
 // ║  🦅 GUILD MEMBER REMOVE — ORCHESTRATED GOODBYE v6.0                ║
 // ║  Delegates to welcome.js plugin if loaded & configured.             ║

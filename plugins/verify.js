@@ -225,6 +225,21 @@ async function postVerifyPanel(client, db, guild, ch, lang) {
     return { uRole };
 }
 
+// True when a newcomer really goes through the gate here: verification on, Premium, and a usable role to give or take.
+// plugins/welcome.js holds the welcome card until verification passes on these servers.
+function gateActive(guild, db) {
+    try {
+        const s = db.prepare('SELECT verify_enabled, verify_role_id, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(guild.id);
+        if (!s?.verify_enabled) return false;
+        if (!require('./premium.js').isPremium(db, guild.id)) return false;
+        const roles = [s.verify_role_id, s.verify_unverified_role_id].map((id) => (id ? guild.roles.cache.get(id) : null)).filter(Boolean);
+        if (!roles.length) return false;
+        return !roles.some((r) => validateVerifyRole(guild, r, null));
+    } catch { return false; }
+}
+// the welcome card that waited for this member's verification
+const welcomeNow = (member, client, db) => { try { return require('./welcome.js').afterVerify(member, client, db).catch(() => {}); } catch { return null; } };
+
 // A moderator lets a member through by hand (dashboard). Same end state as passing the captcha.
 async function approveMember(client, db, guild, member, actorId) {
     const s = db.prepare('SELECT verify_role_id, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(guild.id) || {};
@@ -247,11 +262,13 @@ async function approveMember(client, db, guild, member, actorId) {
     const lang = pickLang(client, guild.id, null, member.id) || 'en';
     await logVerify(guild, db, 0x00cc44, vt(lang, 'logPassedPanel'), member.id, `manual · <@${actorId}>`, lang);
     try { await require('../lib/joinrole.js').applyJoinRole(member, db); } catch {}
+    welcomeNow(member, client, db);
     return { ok: true };
 }
 
 
 module.exports = {
+    gateActive,
     postVerifyPanel,
     approveMember,
     resumeKickTimers: async (client, db) => {
@@ -606,6 +623,7 @@ module.exports = {
                 if (vRole) await member.roles.add(vRole).catch(() => {});
                 await logVerify(guild, db, 0x00cc44, vt(lang, 'logPassedPanel'), uid, '', lang);
                 await require('../lib/joinrole.js').applyJoinRole(member, db);
+                welcomeNow(member, client, db);
                 return eph(vt(lang, 'verifiedPanel', { server: guild.name }));
             }
             const attempts = sess.attempts + 1;
@@ -680,6 +698,7 @@ module.exports = {
                 if (vRole) await member.roles.add(vRole).catch(() => {});
                 await logVerify(guild, db, 0x00cc44, vt(lang, 'logPassedDm'), member.id, '', lang);
                 require('../lib/joinrole.js').applyJoinRole(member, db);
+                welcomeNow(member, client, db);
                 forgetDeadline(db, gid, member.id);
                 const p = pending.get(`${member.id}:${gid}`);
                 if (p) { if(p.timer) clearTimeout(p.timer); p.collector?.stop('verified'); pending.delete(`${member.id}:${gid}`); }

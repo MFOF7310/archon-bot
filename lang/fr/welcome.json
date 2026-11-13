@@ -46,5 +46,9 @@
   "card_inviter_unknown": " · Inviteur inconnu",
   "card_intro": "Bienvenue dans la famille — n'hésite pas à te présenter et à explorer les salons ! 💜",
   "card_joined": "Rejoint {date}",
-  "tip_label": "💡 **Commandes essentielles :**"
+  "tip_label": "💡 **Commandes essentielles :**",
+  "card_heading": "Bienvenue, {user}",
+  "card_start_title": "Pour bien démarrer",
+  "card_step_rules": "Lis les règles dans {channel}",
+  "card_step_general": "Présente-toi dans {channel}"
 }

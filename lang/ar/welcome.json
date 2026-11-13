@@ -46,5 +46,9 @@
   "card_inviter_unknown": " · الداعي غير معروف",
   "card_intro": "أهلاً بك في العائلة — عرّفنا بنفسك وتجوّل في القنوات! 💜",
   "card_joined": "انضم في {date}",
-  "tip_label": "💡 **الأوامر الأساسية:**"
+  "tip_label": "💡 **الأوامر الأساسية:**",
+  "card_heading": "أهلاً بك، {user}",
+  "card_start_title": "لتبدأ بشكل جيد",
+  "card_step_rules": "اقرأ القواعد في {channel}",
+  "card_step_general": "عرّف بنفسك في {channel}"
 }

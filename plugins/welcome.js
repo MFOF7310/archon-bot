@@ -96,19 +96,65 @@ function savedAccent(db, gid) {
     catch { return null; }   // the table doesn't exist until leveling has run once
 }
 
+// ================= WELCOME AFTER VERIFICATION =================
+// With the verification gate on (Premium), a newcomer only sees the verification channel. A card sent when they
+// join would sit unseen in the welcome channel, with an "[Unverified]" badge, and accounts that never verify
+// (bots, raids) would get one too. So on gated servers the card waits: the inviter is noted at join time (it can't
+// be found later), and the card is sent the moment verification passes (plugins/verify.js calls afterVerify).
+const PENDING_DAYS = 14;
+function ensurePending(db) {
+    try { db.prepare('CREATE TABLE IF NOT EXISTS welcome_pending (guild_id TEXT NOT NULL, user_id TEXT NOT NULL, inviter TEXT, code TEXT, at INTEGER NOT NULL, PRIMARY KEY (guild_id, user_id))').run(); return true; }
+    catch (e) { console.error('[WELCOME] welcome_pending init failed:', e.message); return false; }
+}
+function gateActive(member, db) {
+    try { return require('./verify.js').gateActive(member.guild, db); } catch { return false; }
+}
+// takes the waiting row away (so a member can never get two cards) and returns it, or null
+function takePending(db, gid, uid) {
+    if (!ensurePending(db)) return null;
+    try {
+        const row = db.prepare('SELECT inviter, code, at FROM welcome_pending WHERE guild_id = ? AND user_id = ?').get(String(gid), String(uid));
+        if (!row) return null;
+        const gone = db.prepare('DELETE FROM welcome_pending WHERE guild_id = ? AND user_id = ?').run(String(gid), String(uid));
+        if (!gone.changes) return null;   // another verification path took it first
+        db.prepare('DELETE FROM welcome_pending WHERE at < ?').run(Date.now() - PENDING_DAYS * 86400000);
+        return row.at >= Date.now() - PENDING_DAYS * 86400000 ? row : null;
+    } catch (e) { console.error('[WELCOME] pending read:', e.message); return null; }
+}
+async function afterVerify(member, client, db) {
+    db = db || client?.db;
+    if (!member?.guild || !db) return;
+    const row = takePending(db, member.guild.id, member.id);
+    if (!row) return;   // welcomed at join (before this existed), or already welcomed
+    const inviter = row.inviter || row.code ? { inviter: row.inviter ? { username: row.inviter } : null, code: row.code } : null;
+    await handleWelcome(member, client, db, { verified: true, inviter }).catch((e) => console.error('[WELCOME] after verify:', e.message));
+}
+
 // ================= CORE SEND: WELCOME =================
 // ── THIS IS THE ONLY PLACE a welcome card is rendered and sent ──
 // index.js fallbackWelcome() is bypassed because client.welcome is set.
-async function handleWelcome(member, client, db) {
+async function handleWelcome(member, client, db, opts = {}) {
     ensureJoinTable(db);
     await backfillJoins(db, member.guild);
-    recordJoin(db, member.guild.id, member.id, member.joinedTimestamp || Date.now());
+    if (!opts.verified) recordJoin(db, member.guild.id, member.id, member.joinedTimestamp || Date.now());
     const ssRaw = client.getServerSettings?.(member.guild.id) || {};
     let cfg = Style.normalizeWelcomeConfig(ssRaw);
     cfg = applyOwnerEnvFallback(cfg, member.guild.id);
     cfg.welcomeAccent = savedAccent(db || client.db, member.guild.id) || cfg.welcomeAccent;
 
     if (!cfg.welcomeEnabled || !cfg.welcomeChannel) return;
+
+    // Gated server: note who invited them now (the invite counts move on), send the card when they pass verification
+    if (!opts.verified && !member.user?.bot && gateActive(member, db || client.db) && ensurePending(db || client.db)) {
+        let inv = null;
+        try { inv = await require('../lib/invite-tracker').detect(member.guild); } catch {}
+        const invName = inv?.inviter?.username || (inv?.inviter?.tag || '').split('#')[0] || null;
+        try {
+            (db || client.db).prepare('INSERT OR REPLACE INTO welcome_pending (guild_id, user_id, inviter, code, at) VALUES (?, ?, ?, ?, ?)')
+                .run(member.guild.id, member.id, invName, inv?.code || null, Date.now());
+            return;
+        } catch (e) { console.error('[WELCOME] pending save:', e.message); }   // couldn't hold it: welcome now, as before
+    }
 
     const ch = member.guild.channels.cache.get(cfg.welcomeChannel);
     if (!canSend('welcome', ch, _CARD_NEEDED, { guild: member.guild, channelId: cfg.welcomeChannel })) return;
@@ -131,15 +177,27 @@ async function handleWelcome(member, client, db) {
 
     // ── Compact content (Ephi style — 2 lignes) ──
     cfg.lang = lang;
+    // The badge shows a real role only: not @everyone, nor the roles ARCHON gives everyone (verification, member role)
+    const _ss = ssRaw || {};
+    const _plain = new Set([member.guild.id, _ss.verify_unverified_role_id, _ss.verify_role_id, _ss.auto_role_id, _ss.member_role, _ss.memberRole].filter(Boolean).map(String));
     const _topRole = member.roles?.highest;
-    const _badge = (_topRole && _topRole.id !== member.guild.id) ? ` [${_topRole.name}]` : '';
-    const _greet = t('welcome.card_greeting', lang, { user: member.user, badge: _badge, wave: em('wave', '👋') });
+    const _badge = (_topRole && !_plain.has(String(_topRole.id))) ? ` · ${_topRole.name}` : '';
+    const _greet = `## ${t('welcome.card_heading', lang, { user: member.user })}${_badge ? `\n-# ${_badge.slice(3)}` : ''}`;
     const _memberLine = t('welcome.card_member_count', lang, { count: Style.ordinal(count, lang), guild: member.guild.name });
-    const _intro = t('welcome.card_intro', lang);
+
+    // "Get started": the rules and the chat channel when the server has them, else the friendly intro line
+    const _exists = (id) => id && member.guild.channels.cache.has(String(id));
+    const _rules = _exists(cfg.rulesChannel) ? cfg.rulesChannel : _exists(member.guild.rulesChannelId) ? member.guild.rulesChannelId : null;
+    const _steps = [];
+    if (_rules) _steps.push(t('welcome.card_step_rules', lang, { channel: `<#${_rules}>` }));
+    if (_exists(cfg.generalChannel)) _steps.push(t('welcome.card_step_general', lang, { channel: `<#${cfg.generalChannel}>` }));
+    const _start = _steps.length
+        ? `**${t('welcome.card_start_title', lang)}**\n${_steps.map((x, i) => `\`${i + 1}\` ${x}`).join('\n')}`
+        : t('welcome.card_intro', lang);
     // A custom message replaces the default greeting (it used to be stacked on top of it, so members got two welcomes)
     let content = cfg.welcomeMessage
-        ? `${Style.formatTemplate(cfg.welcomeMessage, member, count)}\n${_memberLine}`
-        : `${_greet}\n${_memberLine}\n\n${_intro}`;
+        ? `${Style.formatTemplate(cfg.welcomeMessage, member, count)}\n${_memberLine}\n\n${_start}`
+        : `${_greet}\n${_memberLine}\n\n${_start}`;
 
     // Embed uses attachment:// reference — NOT a base64 data URL
     // Hybrid accent: top role if readable, else neon green
@@ -200,8 +258,8 @@ async function handleWelcome(member, client, db) {
     if (btnCount > 0) rows.push(currentRow);
 
     // ── Inviter detection (global cache) ──
-    let _inviter = null;
-    try { _inviter = await require('../lib/invite-tracker').detect(member.guild); } catch {}
+    let _inviter = opts.inviter || null;   // noted at join time when the card waited for verification
+    if (!opts.verified) try { _inviter = await require('../lib/invite-tracker').detect(member.guild); } catch {}
 
     // ── Info line: who invited them and how old the account is (Discord shows "2 years ago" in each reader's language) ──
     const esc = (x) => String(x || '').replace(/([*_`~|\\])/g, '\\$1');
@@ -224,7 +282,9 @@ async function handleWelcome(member, client, db) {
     } else {
         _container.addTextDisplayComponents(new TextDisplayBuilder().setContent(_head));
     }
-    if (_rest.length) _container.addTextDisplayComponents(new TextDisplayBuilder().setContent(_rest.join('\n\n')));
+    if (_rest.length) _container
+        .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(_rest.join('\n\n')));
     _container
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${info.join(' · ')}`));
@@ -243,6 +303,8 @@ async function handleWelcome(member, client, db) {
 // ================= CORE SEND: GOODBYE =================
 // ── ONLY place a goodbye card is rendered and sent ──
 async function handleGoodbye(member, client, db) {
+    // left before passing verification: nobody saw them arrive, so no goodbye card either
+    if (member?.guild && takePending(db || client.db, member.guild.id, member.id)) return;
     const ssRaw = client.getServerSettings?.(member.guild.id) || {};
     let cfg = Style.normalizeWelcomeConfig(ssRaw);
     cfg = applyOwnerEnvFallback(cfg, member.guild.id);
@@ -291,6 +353,7 @@ async function handleGoodbye(member, client, db) {
 
 // ================= MODULE =================
 module.exports = {
+    afterVerify,
     name: 'welcome',
     category: 'SYSTEM',
     aliases: ['goodbye', 'leave', 'join', 'welcomecard'],
