@@ -49,7 +49,12 @@
     "dailyinitiate": "Série de 3 jours",
     "dailywarrior": "Série de 7 jours",
     "dailychampion": "Série de 30 jours",
-    "dailylegend": "Série de 100 jours"
+    "dailylegend": "Série de 100 jours",
+    "level5": "Niveau 5",
+    "level10": "Niveau 10",
+    "level15": "Niveau 15",
+    "level20": "Niveau 20",
+    "level25": "Niveau 25"
   },
   "hints": {
     "member": "Gardé pour référence. Aucune fonction d'ARCHON ne le donne encore.",
@@ -63,7 +68,12 @@
     "dailyinitiate": "Donné après 3 jours de récompense quotidienne d'affilée.",
     "dailywarrior": "Donné après 7 jours d'affilée.",
     "dailychampion": "Donné après 30 jours d'affilée.",
-    "dailylegend": "Donné après 100 jours d'affilée."
+    "dailylegend": "Donné après 100 jours d'affilée.",
+    "level5": "Donné quand un membre atteint le niveau 5.",
+    "level10": "Donné au niveau 10.",
+    "level15": "Donné au niveau 15.",
+    "level20": "Donné au niveau 20.",
+    "level25": "Donné au niveau 25."
   },
   "set_success": "Rôle configuré.",
   "remove_success": "Réglage du rôle retiré.",
@@ -73,5 +83,6 @@
   "usage_set": "Utilisation : `.roles set <type> @role`",
   "usage_remove": "Utilisation : `.roles remove <type>`",
   "admin_only": "Il te faut les permissions Gérer le serveur et Gérer les rôles pour modifier les rôles.",
-  "status_unsafe_line": "Inutilisable : {reason}"
+  "status_unsafe_line": "Inutilisable : {reason}",
+  "levels": "Récompenses de niveau"
 }

@@ -11,5 +11,20 @@
   "invalid_role": "找不到身份组。",
   "usage_set": "用法：`.roles set <类型> @身份组`",
   "usage_remove": "用法：`.roles remove <类型>`",
-  "admin_only": "需要管理员权限。"
+  "admin_only": "需要管理员权限。",
+  "levels": "等级奖励",
+  "labels": {
+    "level5": "5 级",
+    "level10": "10 级",
+    "level15": "15 级",
+    "level20": "20 级",
+    "level25": "25 级"
+  },
+  "hints": {
+    "level5": "成员达到 5 级时获得。",
+    "level10": "10 级时获得。",
+    "level15": "15 级时获得。",
+    "level20": "20 级时获得。",
+    "level25": "25 级时获得。"
+  }
 }

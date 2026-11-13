@@ -15,11 +15,24 @@ const V2 = MessageFlags.IsComponentsV2;
 const cut = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + '…' : String(s));
 const label = (key, lang) => t(`roles.labels.${key}`, lang);
 
+// ARCHON's icons for each setting and group (a plain emoji when the custom one is missing or unusable)
+const ICON = {
+    autorole: ['member', '👤'], staff: ['ticket', '🎫'], investor: ['invest', '📈'], quizmaster: ['quizmaster', '🧠'], duelist: ['duelist', '⚔️'],
+    dailyinitiate: ['streak', '🔥'], dailywarrior: ['streak', '🔥'], dailychampion: ['streak', '🔥'], dailylegend: ['streak', '🔥'],
+    level5: ['xp', '✨'], level10: ['xp', '✨'], level15: ['xp', '✨'], level20: ['xp', '✨'], level25: ['xp', '✨'],
+    core: ['ic_admin', '⚙️'], economy: ['invest', '💰'], daily: ['streak', '🔥'], levels: ['trophy', '🏆'],
+};
+function iconFor(key) {
+    const [k, plain] = ICON[key] || [null, '•'];
+    let E = {}; try { E = require('../config/emojis'); } catch { E = {}; }
+    return require('../lib/emoji-check').pick(k && E[k], plain);
+}
+
 // How a slot reads in the overview: the role, or "Not set", plus a short warning when the saved role can't be used
 function slotLine(guild, slot, saved, lang) {
     let value = saved[slot.key];
     let fromEnv = false;
-    if (!value && guild.id === process.env.GUILD_ID && process.env[slot.env]) { value = process.env[slot.env]; fromEnv = true; }
+    if (!value && slot.env && guild.id === process.env.GUILD_ID && process.env[slot.env]) { value = process.env[slot.env]; fromEnv = true; }
     if (!value) return `**${label(slot.key, lang)}** · ${t('roles.not_set', lang)}`;
     const role = guild.roles.cache.get(value);
     if (!role) return `**${label(slot.key, lang)}** · \`${t('roles.status_missing', lang)}\``;
@@ -37,7 +50,7 @@ function mainView(guild, db, lang, ownerId, notice) {
     for (const g of R.GROUPS) {
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
         const lines = R.SLOTS.filter(s => s.group === g).map(s => slotLine(guild, s, saved, lang));
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${t(`roles.${g}`, lang)}\n${lines.join('\n')}`));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${iconFor(g)} ${t(`roles.${g}`, lang)}\n${lines.join('\n')}`));
     }
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
@@ -48,6 +61,7 @@ function mainView(guild, db, lang, ownerId, notice) {
                 label: cut(label(s.key, lang), 100),
                 description: cut(t(`roles.hints.${s.key}`, lang), 100),
                 value: s.key,
+                emoji: iconFor(s.key),
             })))
     ));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('roles.footer', lang)}`));
@@ -60,7 +74,7 @@ function editView(guild, db, lang, ownerId, key, problem) {
     const role = current ? guild.roles.cache.get(current) : null;
     const c = new ContainerBuilder().setAccentColor(problem ? 0xc0392b : ACCENT);
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
-        `## ${label(key, lang)}\n${t(`roles.hints.${key}`, lang)}\n-# ${t(`roles.rules_${slot.profile}`, lang)}`));
+        `## ${iconFor(key)} ${label(key, lang)}\n${t(`roles.hints.${key}`, lang)}\n-# ${t(`roles.rules_${slot.profile}`, lang)}`));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
         t('roles.current', lang, { role: role ? `<@&${role.id}>` : (current ? `\`${t('roles.status_missing', lang)}\`` : t('roles.not_set', lang)) })));
     if (problem) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`> ${problem}`));

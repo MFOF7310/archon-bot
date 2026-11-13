@@ -49,7 +49,12 @@
     "dailyinitiate": "3-day streak",
     "dailywarrior": "7-day streak",
     "dailychampion": "30-day streak",
-    "dailylegend": "100-day streak"
+    "dailylegend": "100-day streak",
+    "level5": "Level 5",
+    "level10": "Level 10",
+    "level15": "Level 15",
+    "level20": "Level 20",
+    "level25": "Level 25"
   },
   "hints": {
     "member": "Saved for reference. No ARCHON feature gives it yet.",
@@ -63,7 +68,12 @@
     "dailyinitiate": "Given after 3 days of daily rewards in a row.",
     "dailywarrior": "Given after 7 days in a row.",
     "dailychampion": "Given after 30 days in a row.",
-    "dailylegend": "Given after 100 days in a row."
+    "dailylegend": "Given after 100 days in a row.",
+    "level5": "Given when a member reaches level 5.",
+    "level10": "Given at level 10.",
+    "level15": "Given at level 15.",
+    "level20": "Given at level 20.",
+    "level25": "Given at level 25."
   },
   "set_success": "Role configured.",
   "remove_success": "Role setting removed.",
@@ -73,5 +83,6 @@
   "usage_set": "Usage: `.roles set <type> @role`",
   "usage_remove": "Usage: `.roles remove <type>`",
   "admin_only": "You need the Manage Server and Manage Roles permissions to change role settings.",
-  "status_unsafe_line": "Not usable: {reason}"
+  "status_unsafe_line": "Not usable: {reason}",
+  "levels": "Level rewards"
 }
