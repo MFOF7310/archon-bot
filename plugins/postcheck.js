@@ -113,7 +113,7 @@ function allChannels(guild, db, lang, hint, where) {
     const section = (title, lines) => (lines.length ? [{ rule: true }, { text: `${T(title, lang)}\n${lines.join('\n')}` }] : []);
 
     const { dashboardUrl } = require('../lib/postProblems');
-    const link = new ActionRowBuilder().addComponents(new ButtonBuilder().setURL(dashboardUrl(guild.id)).setLabel(T('alertBtnDashboard', lang)).setEmoji(icon('globe')).setStyle(ButtonStyle.Link));
+    const link = new ActionRowBuilder().addComponents(new ButtonBuilder().setURL(dashboardUrl(guild.id)).setLabel(T('alertBtnDashboard', lang)).setEmoji(icon('dashboard')).setStyle(ButtonStyle.Link));
     return card(color, [
         { text: `### ${T('allTitle', lang, { guild: guild.name })}\n-# ${sub}` },
         ...(chLines.length ? section('secChannels', chLines) : [{ rule: true }, { text: T('noChannels', lang) }]),

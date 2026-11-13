@@ -591,7 +591,7 @@ async function configCard(client, guild, db, lang, isAdmin) {
         { text: `-# ${L('bannersHint', lang)}` },
     ];
     const buttons = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(dashboardUrl(guild.id)).setLabel(L('btnDashboard', lang)).setEmoji(icon('globe', guild)));
+        new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(dashboardUrl(guild.id)).setLabel(L('btnDashboard', lang)).setEmoji(icon('dashboard', guild)));
     // one tap creates the missing level roles (cosmetic only), when ARCHON may manage roles here
     const missingRoles = MILESTONES.some((m) => !row[`level_${m}_role`]);
     if (isAdmin && missingRoles && guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:create').setStyle(ButtonStyle.Success).setLabel(L('btnCreate', lang)).setEmoji(icon('ok', guild)));
