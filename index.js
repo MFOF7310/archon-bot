@@ -715,6 +715,12 @@ try {
         { name: 'welcome_enabled', type: 'INTEGER DEFAULT 1' },
         { name: 'goodbye_enabled', type: 'INTEGER DEFAULT 1' },
         { name: 'levelup_channel', type: 'TEXT' },
+        // roles given at levels 5 to 25 (/leveling setrole): these columns were missing, so level rewards never worked
+        { name: 'level_5_role', type: 'TEXT' },
+        { name: 'level_10_role', type: 'TEXT' },
+        { name: 'level_15_role', type: 'TEXT' },
+        { name: 'level_20_role', type: 'TEXT' },
+        { name: 'level_25_role', type: 'TEXT' },
         { name: 'xp_cooldown', type: 'INTEGER DEFAULT 60' },
         { name: 'xp_min_gain', type: 'INTEGER DEFAULT 15' },
         { name: 'xp_max_gain', type: 'INTEGER DEFAULT 35' },
@@ -3375,6 +3381,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     // /meta card: class filter, weapon picker, random pick, back to the list (and the old cards' "reroll" button)
     if ((interaction.isButton() || interaction.isUserSelectMenu() || interaction.isModalSubmit()) && interaction.customId.startsWith('credit:')) {
         return require('./plugins/credit.js').handleComponent(interaction, client).catch(e => console.error('[CREDIT] component:', e.message));
+    }
+    if (interaction.isButton() && interaction.customId === 'lvl:reset') {
+        return require('./plugins/leveling.js').handleComponent(interaction, client).catch(e => console.error('[LEVELING] button:', e.message));
     }
     if (interaction.isButton() && interaction.customId.startsWith('joined:')) {
         return require('./lib/guild-welcome').handleComponent(interaction, client).catch(e => console.error('[WELCOME] component:', e.message));
