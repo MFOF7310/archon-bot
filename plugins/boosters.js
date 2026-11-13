@@ -4,6 +4,7 @@ const { EmbedBuilder } = require('discord.js');
 const i18n = require('../lib/i18n');
 const I18N_KEYS = ["title","boostCount","boostLevel","boosters","noBoosters","since","footer"];
 // Clés dans lang/<locale>/boosters.json ; '' retombe sur EN dans t().
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 function loadT(lang) {
     const o = {};
     for (const k of I18N_KEYS) o[k] = i18n.t(`boosters.${k}`, lang);
@@ -54,7 +55,7 @@ module.exports = {
                 `\`\`\``
             )
             .addFields({
-                name: t.boosters,
+                name: `${em('ic_rocket', '🚀')} ${t.boosters.replace(/^\p{Extended_Pictographic}\uFE0F?\s*/u, '')}`,
                 value: boostersList || t.noBoosters,
                 inline: false
             })

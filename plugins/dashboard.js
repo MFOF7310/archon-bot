@@ -12,6 +12,7 @@ const { pickLang } = require('../lib/pick-lang');
 
 const GOLD = 0xfcd116;
 const T = (lang, key, vars) => i18n.t('dashboard.' + key, lang, vars);
+const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const safeName = (s) => String(s || '').replace(/[*_~`|>\\]/g, '').slice(0, 80);
 
 // The website address: DASHBOARD_URL in .env if set, otherwise the current domain. A move to another domain is one line.
@@ -32,7 +33,7 @@ function card(lang, guild, n) {
     const fmt = (v) => Number(v).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US');
     const lines = [T(lang, 'intro'), ''];
     lines.push(n.active === null ? T(lang, 'membersOnly', { members: fmt(guild.memberCount ?? 0) }) : T(lang, 'members', { members: fmt(guild.memberCount ?? 0), active: fmt(n.active) }));
-    lines.push((guild.premiumTier || 0) === 0 && !guild.premiumSubscriptionCount ? T(lang, 'boostNone') : T(lang, 'boost', { tier: guild.premiumTier || 0, boosts: guild.premiumSubscriptionCount || 0 }));
+    lines.push(((guild.premiumTier || 0) === 0 && !guild.premiumSubscriptionCount ? T(lang, 'boostNone') : T(lang, 'boost', { tier: guild.premiumTier || 0, boosts: guild.premiumSubscriptionCount || 0 })).replace('🚀', em('ic_rocket', '🚀')));
     if (n.xp !== null) lines.push(T(lang, 'xp', { xp: fmt(n.xp), avg: Number(n.avg || 0).toFixed(1) }));
     if (n.xp !== null && n.top !== undefined) lines.push(n.top ? T(lang, 'top', { name: safeName(n.top.username), level: n.top.level }) : T(lang, 'topNone'));
     lines.push('', T(lang, 'hint'));
