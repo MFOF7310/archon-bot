@@ -309,3 +309,6 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('inventory.newBalanceLabel', lang)} : ${newCredits.toLocaleString()} ${em('ic_credit', '🪙')} · ${guildName}`));
     return message.reply({ components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
 }
+
+// the inventory card for other plugins (the Inventory button of /profile)
+module.exports.view = inventoryView;

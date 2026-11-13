@@ -39,26 +39,29 @@ const W = 900, H = 500;
 const AVATAR_SIZE = 130;
 const AVATAR_X = 40, AVATAR_Y = 40;
 
-const AGENT_RANKS = [
-    { minLevel: 1,  maxLevel: 5,        title: { fr: "RECRUE",    en: "RECRUIT"    }, color: "#2ecc71", emoji: "🌱" },
-    { minLevel: 6,  maxLevel: 15,       title: { fr: "AGENT DE TERRAIN",  en: "FIELD AGENT"       }, color: "#3498db", emoji: "🔹" },
-    { minLevel: 16, maxLevel: 30,       title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST"  }, color: "#9b59b6", emoji: "💠" },
-    { minLevel: 31, maxLevel: 50,       title: { fr: "COMMANDANT BKO",    en: "BKO COMMANDER"     }, color: "#e67e22", emoji: "⚜️" },
-    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME",en: "SYSTEM ARCHITECT"  }, color: "#e74c3c", emoji: "👑" },
-];
+// Ranks: the same tiers and names as the games (lib/games/progress.js, gameui.json → ranks.*)
+const progress = require('../lib/games/progress');
 const WEALTH_TIERS = [
-    { minCredits: 0,      title: { fr: "SANS LE SOU",       en: "BROKE"            }, emoji: "💀" },
-    { minCredits: 100,    title: { fr: "PETIT PORTEFEUILLE", en: "SMALL WALLET"     }, emoji: "🪙" },
-    { minCredits: 1000,   title: { fr: "COLLECTIONNEUR",     en: "COLLECTOR"        }, emoji: "💰" },
-    { minCredits: 5000,   title: { fr: "INVESTISSEUR",       en: "INVESTOR"         }, emoji: "📈" },
-    { minCredits: 15000,  title: { fr: "BARON",              en: "BARON"            }, emoji: "🏦" },
-    { minCredits: 50000,  title: { fr: "MAGNAT",             en: "MAGNATE"          }, emoji: "👑" },
-    { minCredits: 100000, title: { fr: "LÉGENDE FINANCIÈRE", en: "FINANCIAL LEGEND" }, emoji: "🏆" },
+    { minCredits: 0, key: 'broke' }, { minCredits: 100, key: 'small' }, { minCredits: 1000, key: 'collector' },
+    { minCredits: 5000, key: 'investor' }, { minCredits: 15000, key: 'baron' }, { minCredits: 50000, key: 'magnate' },
+    { minCredits: 100000, key: 'legend' },
 ];
-
-function calculateLevel(xp) { return Math.floor(0.1 * Math.sqrt(xp || 0)) + 1; }
-function getAgentRank(level) { return AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1]; }
-function getWealthTier(credits) { return [...WEALTH_TIERS].reverse().find(t => (credits || 0) >= t.minCredits) || WEALTH_TIERS[0]; }
+const { t } = require('../lib/i18n');
+const P = (k, lang, v) => t(`profile.${k}`, lang, v || {});
+// DejaVu first, then system fonts for Chinese and Arabic names and labels
+const FONT = (weight, size, family) => `${weight ? weight + ' ' : ''}${size}px ${family}, "Noto Sans CJK SC", "Noto Sans Arabic", "DejaVu Sans", sans-serif`;
+// canvas text can't draw colour emojis: they are taken out of names and roles
+const noEmoji = (str) => String(str || '').replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '').replace(/\s{2,}/g, ' ').trim();
+const fit = (ctx, str, max) => { let x = String(str); while (x.length > 1 && ctx.measureText(x).width > max) x = x.slice(0, -2) + '…'; return x; };
+function calculateLevel(xp) { return progress.levelFromXp(xp); }
+function getAgentRank(level) { const r = progress.rankForLevel(level); return { key: r.key, color: '#' + r.color.toString(16).padStart(6, '0') }; }
+function getWealthTier(credits) { return [...WEALTH_TIERS].reverse().find(w => (credits || 0) >= w.minCredits) || WEALTH_TIERS[0]; }
+function duration(days, lang) {
+    if (days < 1) return P('dToday', lang);
+    if (days < 31) return P('dDays', lang, { n: days });
+    if (days < 365) return P('dMonths', lang, { n: Math.floor(days / 30) });
+    return P('dYears', lang, { n: Math.floor(days / 365) });
+}
 function hexToRgba(hex, alpha = 1) {
     const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
     return `rgba(${r},${g},${b},${alpha})`;
@@ -156,13 +159,13 @@ function drawStatBox(ctx, x, y, w, h, label, value, accentColor) {
     ctx.fill();
 
     // Label
-    ctx.font = '11px DejaVuMono';
+    ctx.font = FONT('', 11, 'DejaVuMono');
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
     ctx.textAlign = 'center';
-    ctx.fillText(label.toUpperCase(), x + w/2, y + 18);
+    ctx.fillText(fit(ctx, label.toUpperCase(), w - 8), x + w/2, y + 18);
 
     // Value
-    ctx.font = 'bold 15px DejaVuBold';
+    ctx.font = FONT('bold', 15, 'DejaVuBold');
     ctx.fillStyle = '#ffffff';
     ctx.fillText(value, x + w/2, y + 38);
     ctx.textAlign = 'left';
@@ -225,29 +228,29 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     }
 
     // ── Member info ──
-    let highestRole = 'Member', memberDays = 0;
+    let highestRole = P('member', lang), memberDays = 0;
     try {
-        const member = guild?.members.cache.get(target.id);
+        const member = guild?.members.cache.get(target.id) || await guild?.members.fetch(target.id).catch(() => null);
         if (member) {
-            highestRole = member.roles.highest.name !== '@everyone' ? member.roles.highest.name : 'Member';
+            if (member.roles.highest && member.roles.highest.id !== guild.id) highestRole = noEmoji(member.roles.highest.name) || highestRole;
             memberDays = Math.floor((Date.now() - (member.joinedAt?.getTime() || Date.now())) / 86400000);
         }
     } catch(e) {}
 
-    // ── Gaming data ──
-    let gamingData = { game: 'CODM', rank: 'Unranked', mode: 'Standard' };
-    try { if (userData.gaming) gamingData = JSON.parse(userData.gaming); } catch(e) {}
+    // ── Gaming data (null when the member never used /setgame: nothing made up) ──
+    let gamingData = null;
+    try { const g = userData.gaming ? JSON.parse(userData.gaming) : null; if (g && g.game) gamingData = g; } catch(e) {}
 
     // ── Active badge ──
     const activeBadge = userData.active_badge || null;
-    let badgeName = 'None equipped';
+    let badgeName = P('noEmblem', lang);
     if (activeBadge) {
         const item = shopItems?.find(i => i.id === activeBadge);
-        badgeName = item ? (item.en?.name || item.name || activeBadge) : activeBadge;
+        badgeName = noEmoji(item ? (item[lang]?.name || item.en?.name || item.name || activeBadge) : activeBadge);
     }
 
     const rankColor = agentRank.color;
-    const rankTitle = agentRank.title[lang] || agentRank.title.en;
+    const rankTitle = t(`gameui.ranks.${agentRank.key}`, lang).toLocaleUpperCase(lang);
 
     // ══════════════════════════════════════════════════════
     // CANVAS
@@ -261,8 +264,10 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     let bgPath = null;
     // Check user custom bg (per-server isolation)
     const userBgPath = path.join(BG_DIR, 'users', guildId, `${target.id}.jpg`);
-    if (userData.profile_bg && fs.existsSync(userData.profile_bg)) {
-        bgPath = userData.profile_bg;
+    let customBg = null;
+    try { customBg = db?.prepare('SELECT profile_bg FROM users WHERE id = ? AND guild_id = ?').get(target.id, guildId)?.profile_bg || null; } catch (e) { /* no profile_bg column yet */ }
+    if (customBg && fs.existsSync(customBg)) {
+        bgPath = customBg;
     } else if (fs.existsSync(userBgPath)) {
         bgPath = userBgPath;
     } else {
@@ -365,13 +370,13 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
 
     // ── Username ──
     const nameX = 240, nameY = 65;
-    ctx.font = 'bold 28px DejaVuBold';
+    ctx.font = FONT('bold', 28, 'DejaVuBold');
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(target.username.substring(0, 18), nameX, nameY);
+    ctx.fillText(fit(ctx, noEmoji(target.globalName || target.username) || target.username, W - 270), nameX, nameY);
 
     // ── Rank title pill ──
     const rankText = rankTitle;
-    ctx.font = '12px DejaVuMonoBold';
+    ctx.font = FONT('', 12, 'DejaVuMonoBold');
     const rankW = ctx.measureText(rankText).width + 20;
     roundRect(ctx, nameX, nameY + 8, rankW, 22, 11);
     ctx.fillStyle = hexToRgba(rankColor, 0.2);
@@ -384,7 +389,7 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     ctx.fillText(rankText, nameX + 10, nameY + 23);
 
     // ── Wealth tier pill ──
-    const wealthText = `${wealthTier.title[lang] || wealthTier.title.en}`;
+    const wealthText = P(`wealth_${wealthTier.key}`, lang).toLocaleUpperCase(lang);
     const wealthW = ctx.measureText(wealthText).width + 20;
     roundRect(ctx, nameX + rankW + 10, nameY + 8, wealthW, 22, 11);
     ctx.fillStyle = 'rgba(255,255,255,0.05)';
@@ -397,19 +402,19 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     ctx.fillText(wealthText, nameX + rankW + 20, nameY + 23);
 
     // ── XP Bar ──
+    const nf = (n) => Number(n || 0).toLocaleString(lang === 'zh' ? 'zh-CN' : lang === 'ar' ? 'ar' : lang === 'fr' ? 'fr-FR' : 'en-US');
     const barX = nameX, barY = nameY + 42;
     const barW = 420, barH = 14;
-    ctx.font = '11px DejaVuMono';
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.fillText(`XP  ${xp.toLocaleString()}  •  ${xpRemain.toLocaleString()} to Lv.${level+1}`, barX, barY - 2);
+    ctx.font = FONT('', 11, 'DejaVuMono');
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText(P('xpLine', lang, { xp: nf(xp), left: nf(xpRemain), next: level + 1 }), barX, barY - 2);
     drawBar(ctx, barX, barY + 4, barW, barH, xpPct, rankColor);
 
     // ── Credits Bar ──
     const cBarY = barY + 36;
-    ctx.font = '11px DejaVuMono';
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    const nextWealthLabel = nextWealth ? `→ ${nextWealth.title[lang] || nextWealth.title.en}` : '✦ MAX TIER';
-    ctx.fillText(`CREDITS  ${credits.toLocaleString()} 🪙  ${nextWealthLabel}`, barX, cBarY - 2);
+    ctx.font = FONT('', 11, 'DejaVuMono');
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fillText(nextWealth ? P('creditsLine', lang, { credits: nf(credits), tier: P(`wealth_${nextWealth.key}`, lang) }) : P('creditsMax', lang, { credits: nf(credits) }), barX, cBarY - 2);
     drawBar(ctx, barX, cBarY + 4, barW, barH, creditsPct, '#f1c40f');
 
     // ── Divider ──
@@ -424,22 +429,21 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     const statsY = nameY + 110;
     const boxW = 92, boxH = 62, boxGap = 8;
     const statsStartX = nameX;
-
+    const short = (n) => n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n);
     const stats = [
-        { label: lang === 'fr' ? 'Parties' : 'Games',    value: gamesPlayed.toLocaleString() },
-        { label: lang === 'fr' ? 'Victoires' : 'Wins',   value: gamesWon.toLocaleString() },
-        { label: lang === 'fr' ? 'Taux' : 'Win Rate',    value: `${winRate}%` },
-        { label: lang === 'fr' ? 'Série' : 'Streak',     value: `${streakDays}d` },
-        { label: lang === 'fr' ? 'Messages' : 'Messages',value: totalMessages >= 1000 ? `${(totalMessages/1000).toFixed(1)}k` : totalMessages.toString() },
-        { label: lang === 'fr' ? 'Gains' : 'Winnings',   value: totalWinnings >= 1000 ? `${(totalWinnings/1000).toFixed(1)}k` : totalWinnings.toString() },
+        { label: P('games', lang), value: nf(gamesPlayed) },
+        { label: P('wins', lang), value: nf(gamesWon) },
+        { label: P('winRate', lang), value: `${winRate}%` },
+        { label: P('streak', lang), value: P('dDays', lang, { n: streakDays }) },
+        { label: P('messages', lang), value: short(totalMessages) },
+        { label: P('winnings', lang), value: short(totalWinnings) },
     ];
-
-    stats.forEach((s, i) => {
-        drawStatBox(ctx, statsStartX + i * (boxW + boxGap), statsY, boxW, boxH, s.label, s.value, rankColor);
+    stats.forEach((st, i) => {
+        drawStatBox(ctx, statsStartX + i * (boxW + boxGap), statsY, boxW, boxH, st.label, st.value, rankColor);
     });
 
     // ── Left panel dark backing ──
-    roundRect(ctx, 18, 200, 205, 290, 10);
+    roundRect(ctx, 18, 200, 195, 280, 10);
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
     ctx.fill();
     roundRect(ctx, 18, 200, 195, 280, 10);
@@ -447,86 +451,135 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // ── Left panel: Identity + Gaming ──
-    const leftX = 30, leftY = 210;
+    // ── Left panel: label on the left, value on the right, each cut to fit ──
+    const leftX = 30, leftY = 222, rightX = 200;
+    const heading = (txt, y) => { ctx.font = FONT('bold', 13, 'DejaVuMonoBold'); ctx.fillStyle = hexToRgba(rankColor, 0.9); ctx.textAlign = 'left'; ctx.fillText(txt, leftX, y); };
+    const row = (label, value, y, dim) => {
+        ctx.font = FONT('', 12, 'DejaVuMono');
+        ctx.textAlign = 'left'; ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        const l = fit(ctx, label, 95); ctx.fillText(l, leftX, y);
+        ctx.textAlign = 'right'; ctx.fillStyle = dim ? 'rgba(255,255,255,0.4)' : 'rgba(255,255,255,0.95)';
+        ctx.fillText(fit(ctx, value, rightX - leftX - ctx.measureText(l).width - 10), rightX, y);
+        ctx.textAlign = 'left';
+    };
+    const divider = (y) => { ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.beginPath(); ctx.moveTo(leftX, y); ctx.lineTo(rightX, y); ctx.stroke(); };
 
-    ctx.font = 'bold 13px DejaVuMonoBold';
-    ctx.fillStyle = hexToRgba(rankColor, 0.9);
-    ctx.fillText('IDENTITY', leftX, leftY);
+    heading(P('identity', lang), leftY);
+    row(P('role', lang), highestRole, leftY + 22);
+    row(P('since', lang), duration(memberDays, lang), leftY + 44);
+    divider(leftY + 62);
 
-    const idLines = [
-        { label: 'ROLE', value: highestRole.substring(0, 12) },
-        { label: 'MEMBER', value: `${memberDays}d` },
-        { label: 'ID', value: `${target.id.slice(0,8)}...` },
-    ];
-    idLines.forEach((l, i) => {
-        const ly = leftY + 20 + i * 22;
-        ctx.font = '12px DejaVuMono';
-        ctx.fillStyle = 'rgba(255,255,255,0.45)';
-        ctx.fillText(l.label, leftX, ly);
-        ctx.fillStyle = 'rgba(255,255,255,0.95)';
-        ctx.fillText(l.value, leftX + 65, ly);
-    });
+    heading(P('gaming', lang), leftY + 84);
+    if (gamingData) {
+        row(P('game', lang), noEmoji(gamingData.game), leftY + 106);
+        row(P('mode', lang), noEmoji(gamingData.mode) || '—', leftY + 128);
+        row(P('rank', lang), noEmoji(gamingData.rank) || '—', leftY + 150);
+    } else {
+        row(P('game', lang), P('gameNotSet', lang), leftY + 106, true);
+        ctx.font = FONT('', 11, 'DejaVuMono'); ctx.fillStyle = 'rgba(255,255,255,0.35)';
+        ctx.fillText(P('gameHint', lang), leftX, leftY + 128);
+    }
+    divider(leftY + 168);
 
-    // Divider
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.beginPath(); ctx.moveTo(leftX, leftY + 80); ctx.lineTo(200, leftY + 80); ctx.stroke();
-
-    // Gaming
-    ctx.font = 'bold 13px DejaVuMonoBold';
-    ctx.fillStyle = hexToRgba(rankColor, 0.9);
-    ctx.fillText('GAMING', leftX, leftY + 100);
-
-    const gameLines = [
-        { label: 'GAME',  value: (gamingData.game || 'CODM').substring(0,10) },
-        { label: 'MODE',  value: (gamingData.mode || 'Standard').substring(0,10) },
-        { label: 'RANK',  value: (gamingData.rank || 'Unranked').substring(0,10) },
-    ];
-    gameLines.forEach((l, i) => {
-        const ly = leftY + 120 + i * 22;
-        ctx.font = '12px DejaVuMono';
-        ctx.fillStyle = 'rgba(255,255,255,0.45)';
-        ctx.fillText(l.label, leftX, ly);
-        ctx.fillStyle = 'rgba(255,255,255,0.95)';
-        ctx.fillText(l.value, leftX + 65, ly);
-    });
-
-    // Divider
-    ctx.beginPath(); ctx.moveTo(leftX, leftY + 178); ctx.lineTo(200, leftY + 178); ctx.stroke();
-
-    // Badge
-    ctx.font = 'bold 13px DejaVuMonoBold';
-    ctx.fillStyle = hexToRgba(rankColor, 0.9);
-    ctx.fillText('EMBLEM', leftX, leftY + 200);
-    ctx.font = '12px DejaVuMono';
+    heading(P('emblem', lang), leftY + 190);
+    ctx.font = FONT('', 12, 'DejaVuMono');
     ctx.fillStyle = activeBadge ? '#f1c40f' : 'rgba(255,255,255,0.35)';
-    ctx.fillText(badgeName.substring(0, 16), leftX, leftY + 220);
+    ctx.fillText(fit(ctx, badgeName, rightX - leftX), leftX, leftY + 212);
 
     // ── Architect badge ──
     if (target.id === process.env.OWNER_ID) {
-        roundRect(ctx, nameX, statsY + boxH + 14, 200, 28, 6);
+        ctx.font = FONT('bold', 12, 'DejaVuBold');
+        const aw = ctx.measureText(P('architect', lang)).width + 30;
+        roundRect(ctx, nameX, statsY + boxH + 14, aw, 28, 6);
         ctx.fillStyle = 'rgba(241,196,15,0.1)';
         ctx.fill();
-        roundRect(ctx, nameX, statsY + boxH + 14, 200, 28, 6);
+        roundRect(ctx, nameX, statsY + boxH + 14, aw, 28, 6);
         ctx.strokeStyle = 'rgba(241,196,15,0.5)';
         ctx.lineWidth = 1;
         ctx.stroke();
-        ctx.font = 'bold 12px DejaVuBold';
         ctx.fillStyle = '#f1c40f';
         ctx.textAlign = 'center';
-        ctx.fillText('🏛️ ARCHITECT // SYSTEM CREATOR', nameX + 100, statsY + boxH + 32);
+        ctx.fillText(P('architect', lang), nameX + aw / 2, statsY + boxH + 32);
         ctx.textAlign = 'left';
     }
 
     // ── Footer ──
-    ctx.font = '10px DejaVuMono';
+    ctx.font = FONT('', 10, 'DejaVuMono');
     ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.fillText(`ARCHON CG-223  //  BAMAKO_223 🇲🇱`, 30, H - 14);
+    ctx.fillText('ARCHON CG-223  ·  BAMAKO_223', 30, H - 14);
     ctx.textAlign = 'right';
     ctx.fillText(`${new Date().toISOString().slice(0,10)}`, W - 30, H - 14);
     ctx.textAlign = 'left';
 
     return canvas.toBuffer('image/png');
+}
+
+// ══════════════════════════════════════════════════════════════
+// CARD: the picture in a Components V2 card, with buttons
+// ══════════════════════════════════════════════════════════════
+const LANGS = ['en', 'fr', 'zh', 'ar'];
+const langFor = (client, guildId, where, userId) => {
+    const l = require('../lib/pick-lang').pickLang(client, guildId, where, userId);
+    return LANGS.includes(l) ? l : 'en';
+};
+
+// The message for one member's profile. own: the viewer is that member (Inventory and My game buttons).
+// Returns null when the member has no data on this server.
+async function profileMessage(client, guild, target, lang, own) {
+    const { ContainerBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, TextDisplayBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+    const { icon } = require('../lib/ui/icons');
+    const guildId = guild?.id || 'DM';
+    const buffer = await buildProfileCard(target, client, client.db, guildId, guild, lang);
+    if (!buffer) return null;
+    let accent = 0x3498db;
+    try {
+        const d = client.db?.prepare('SELECT xp, level FROM users WHERE id = ? AND guild_id = ?').get(target.id, guildId) || {};
+        accent = progress.rankForLevel(d.level || progress.levelFromXp(d.xp)).color;
+    } catch (e) { /* default colour */ }
+    const c = new ContainerBuilder().setAccentColor(accent)
+        .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL('attachment://profile.png')))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${P('cardLine', lang, { user: `<@${target.id}>`, guild: guild?.name || 'ARCHON' })}`));
+    const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('prof:lb').setLabel(P('btnBoard', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('trophy', guild)));
+    if (own) row.addComponents(
+        new ButtonBuilder().setCustomId(`prof:inv:${target.id}`).setLabel(P('btnInventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('inventory', guild)),
+        new ButtonBuilder().setCustomId(`prof:game:${target.id}`).setLabel(P('btnGame', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('games', guild)));
+    if (guild) c.addActionRowComponents(row);
+    return { components: [c], files: [new AttachmentBuilder(buffer, { name: 'profile.png' })], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };
+}
+
+// prof:lb (anyone: the XP leaderboard, just for them) · prof:inv:<id> and prof:game:<id> (only that member)
+async function handleComponent(ix, client) {
+    const { MessageFlags } = require('discord.js');
+    const lang = langFor(client, ix.guildId, ix, ix.user.id);
+    const [, action, ownerId] = ix.customId.split(':');
+    const say = (content) => ix.reply({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => {});
+    if (!ix.guild) return;
+    if (action === 'lb') {
+        const card = await require('./leaderboard').cardFor(client, ix.guild, ix.user.id, 'xp', lang, ix).catch(() => null);
+        if (!card) return say(P('noBoard', lang));
+        return ix.reply({ ...card, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => {});
+    }
+    if (ownerId && ix.user.id !== ownerId) return say(P('notYours', lang, { user: `<@${ownerId}>` }));
+    if (action === 'inv') {
+        const view = require('./inventory').view(client, client.db, ix.user.id, lang, ix.guildId, ix.guild.name);
+        return ix.reply({ ...view, flags: view.flags | MessageFlags.Ephemeral }).catch(() => {});
+    }
+    if (action === 'game') return require('./setgame').execute(ix, client);
+}
+
+// The welcome card's "My profile" button: the clicker's own profile, only for them
+async function showOwn(ix, client) {
+    const { MessageFlags } = require('discord.js');
+    const lang = langFor(client, ix.guildId, ix, ix.user.id);
+    await ix.deferReply({ flags: MessageFlags.Ephemeral }).catch(() => {});
+    try {
+        const msg = await profileMessage(client, ix.guild, ix.user, lang, true);
+        return ix.editReply(msg || { content: P('noData', lang, { user: ix.user.username }) });
+    } catch (e) {
+        console.error('[PROFILE] own:', e.message);
+        return ix.editReply({ content: P('failed', lang) }).catch(() => {});
+    }
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -546,45 +599,38 @@ module.exports = {
         .setDescription('📋 Show a member profile with level, credits and stats')
         .addUserOption(o => o.setName('agent').setDescription('Agent to inspect').setRequired(false)),
 
-    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
+    handleComponent,
+    showOwn,
+    profileMessage,
+
+    run: async (client, message, args) => {
+        const guild = message.guild;
+        const lang = langFor(client, guild?.id, message, message.author.id);
         try {
-            const guildId = message.guild?.id || 'DM';
-            const guild   = message.guild;
-            const language = client.detectLanguage ? client.detectLanguage(usedCommand || 'profile', guildId) : (lang || 'en');
             let target = message.author;
-            if (args[0] && message.mentions?.users?.size > 0) target = message.mentions.users.first();
-            else if (args[0] && guild) target = guild.members.cache.get(args[0])?.user || message.author;
-
-            const typing = await message.channel.sendTyping().catch(() => {});
-            const buffer = await buildProfileCard(target, client, db, guildId, guild, language);
-            if (!buffer) return message.reply(`${em('ic_off', '❌')} No data found for **${target.username}**.`).catch(() => {});
-
-            const attachment = new AttachmentBuilder(buffer, { name: `profile-${target.username}.png` });
-            await message.reply({ files: [attachment] }).catch(() => {});
-        } catch(err) {
+            if (message.mentions?.users?.size > 0) target = message.mentions.users.first();
+            else if (args[0] && guild) target = (await guild.members.fetch(String(args[0]).replace(/\D/g, '')).catch(() => null))?.user || message.author;
+            await message.channel.sendTyping().catch(() => {});
+            const msg = await profileMessage(client, guild, target, lang, target.id === message.author.id);
+            if (!msg) return message.reply({ content: P('noData', lang, { user: target.username }), allowedMentions: { parse: [] } }).catch(() => {});
+            await message.reply(msg).catch((e) => console.error('[PROFILE] send:', e.message));
+        } catch (err) {
             console.error('[PROFILE]', err);
-            message.reply(em('ic_warn', '⚠️') + " Couldn't load the profile. Please try again in a moment.").catch(() => {});
+            message.reply(P('failed', lang)).catch(() => {});
         }
     },
 
     execute: async (interaction, client) => {
+        const lang = langFor(client, interaction.guildId, interaction, interaction.user.id);
         try {
-            const guildId = interaction.guild?.id || 'DM';
-            const guild   = interaction.guild;
-            const serverLang = client.getServerSettings?.(guildId)?.language;
-            const lang = serverLang === 'fr' ? 'fr' : (require('../lib/i18n').slashLang(interaction, ['en', 'fr']));
-            const db     = client.db;
             const target = interaction.options.getUser('agent') || interaction.user;
-
             await interaction.deferReply();
-            const buffer = await buildProfileCard(target, client, db, guildId, guild, lang);
-            if (!buffer) return interaction.editReply(`${em('ic_off', '❌')} No data found for **${target.username}**.`);
-
-            const attachment = new AttachmentBuilder(buffer, { name: `profile-${target.username}.png` });
-            await interaction.editReply({ files: [attachment] });
-        } catch(err) {
+            const msg = await profileMessage(client, interaction.guild, target, lang, target.id === interaction.user.id);
+            if (!msg) return interaction.editReply({ content: P('noData', lang, { user: target.username }), allowedMentions: { parse: [] } });
+            await interaction.editReply(msg);
+        } catch (err) {
             console.error('[PROFILE SLASH]', err);
-            interaction.editReply(em('ic_warn', '⚠️') + " Couldn't load the profile. Please try again in a moment.").catch(() => {});
+            interaction.editReply({ content: P('failed', lang) }).catch(() => {});
         }
     }
 };

@@ -3400,6 +3400,12 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
         });
     }
+    if (interaction.isButton() && interaction.customId.startsWith('prof:')) {
+        return require('./plugins/profile').handleComponent(interaction, client).catch(e => {
+            console.error(`[PROFILE] button guild=${interaction.guildId}:`, e.stack || e.message);
+            if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
+        });
+    }
     if ((interaction.isButton() || interaction.isAnySelectMenu()) && interaction.customId.startsWith('chan:')) {
         return require('./plugins/channels').handleComponent(interaction, client).catch(e => {
             console.error(`[CHANNELS] component guild=${interaction.guildId}:`, e.stack || e.message);
