@@ -3634,7 +3634,7 @@ safeOn(Events.GuildCreate, async (guild) => {
     try {
         try { ensureDepartures(); db.prepare('DELETE FROM guild_departures WHERE guild_id = ?').run(guild.id); } catch (_) {}
         try { ensureGuildHistory(); db.prepare('DELETE FROM guild_history WHERE guild_id = ?').run(guild.id); } catch (_) {}
-        try { recordArrival(guild); } catch (_) {}
+        try { recordArrival(guild); } catch (e) { console.error('[ARRIVAL]', e.message); }
         // ── Sync global_server_stats ──
         try {
             db.prepare(`
