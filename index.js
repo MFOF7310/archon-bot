@@ -4581,6 +4581,30 @@ apiApp.get('/api/user/:userId', (req, res) => {
 });
 
 // ── ADMIN ENDPOINTS ──────────────────────────────────────────
+// "Talk to a person" from the site's support chat: the conversation goes to the owner on Telegram and by Discord DM
+apiApp.post('/api/admin/support-handoff', requireAdmin, async (req, res) => {
+    try {
+        const clip = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
+        const contact = clip(req.body?.contact, 60);
+        if (contact.length < 2) return res.status(400).json({ ok: false });
+        const lang = req.body?.lang === 'fr' ? 'FR' : 'EN';
+        const msgs = (Array.isArray(req.body?.messages) ? req.body.messages : []).slice(-10)
+            .map((m) => `${m?.role === 'user' ? '👤' : '🤖'} ${clip(m?.content, 400)}`);
+        const text = [`🆘 Support request (${lang})`, `Contact: ${contact}`, req.body?.note ? `Note: ${clip(req.body.note, 500)}` : null, '', ...msgs].filter((x) => x !== null).join('\n');
+        let sent = 0;
+        try { const r = await client.telegramBridge?.send?.(text.slice(0, 3900), { force: true }); if (r?.success !== false) sent++; } catch (_) {}
+        try {
+            const owner = await client.users.fetch(process.env.OWNER_ID).catch(() => null);
+            if (owner && await owner.send({ content: text.slice(0, 1990), allowedMentions: { parse: [] } }).then(() => true).catch(() => false)) sent++;
+        } catch (_) {}
+        console.log(`[SUPPORT] Handoff from ${contact}: delivered ${sent}/2`);
+        res.json({ ok: sent > 0 });
+    } catch (err) {
+        console.error('[API /api/admin/support-handoff]', err.message);
+        res.status(500).json({ ok: false });
+    }
+});
+
 // Tracked invite links: the dashboard logs a click here, then sends the visitor to Discord
 apiApp.post('/api/admin/invite-click', requireAdmin, (req, res) => {
     try {
