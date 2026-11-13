@@ -58,5 +58,6 @@
   "roleName10": "Niv. 10 · Agent de terrain",
   "roleName15": "Niv. 15 · Cyber-spécialiste",
   "roleName20": "Niv. 20 · Commandant BKO",
-  "roleName25": "Niv. 25 · Architecte"
+  "roleName25": "Niv. 25 · Architecte",
+  "createReused": "{n} rôle(s) que tu avais déjà, avec le même nom, ont été réutilisé(s)."
 }

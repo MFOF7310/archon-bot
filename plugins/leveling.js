@@ -624,7 +624,7 @@ async function createLevelRoles(guild, db, lang) {
         db.prepare(`UPDATE server_settings SET level_${lvl}_role = ? WHERE guild_id = ?`).run(role.id, guild.id);
         linked++;
     }
-    return { made: linked };   // roles set as rewards (new ones, or existing ones with the same name)
+    return { made, reused: linked - made };   // new roles, and existing ones with the same name that were reused
 }
 
 // The config card's buttons: lvl:reset (colours) and lvl:create (level roles)
@@ -635,7 +635,7 @@ async function handleComponent(ix, client) {
         await ix.deferUpdate().catch(() => {});
         const r = await createLevelRoles(ix.guild, client.db, lang);
         await ix.editReply(await configCard(client, ix.guild, client.db, lang, true)).catch(() => {});
-        return ix.followUp({ content: r.error ? L(r.error, lang) : r.made ? L('createDone', lang, { n: r.made }) : L('createNothing', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+        return ix.followUp({ content: r.error ? L(r.error, lang) : (r.made || r.reused) ? [r.made ? L('createDone', lang, { n: r.made }) : null, r.reused ? L('createReused', lang, { n: r.reused }) : null].filter(Boolean).join('\n') : L('createNothing', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
     }
     if (client.db) client.db.prepare('DELETE FROM leveling_themes WHERE guild_id = ?').run(ix.guildId);
     await ix.update(await configCard(client, ix.guild, client.db, lang, true)).catch(() => {});

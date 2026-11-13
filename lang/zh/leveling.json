@@ -58,5 +58,6 @@
   "roleName10": "10 级 · 外勤特工",
   "roleName15": "15 级 · 网络专家",
   "roleName20": "20 级 · BKO 指挥官",
-  "roleName25": "25 级 · 架构师"
+  "roleName25": "25 级 · 架构师",
+  "createReused": "已复用 {n} 个同名的现有身份组。"
 }

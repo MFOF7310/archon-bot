@@ -58,5 +58,6 @@
   "roleName10": "Lv. 10 · Field Agent",
   "roleName15": "Lv. 15 · Cyber Specialist",
   "roleName20": "Lv. 20 · BKO Commander",
-  "roleName25": "Lv. 25 · Architect"
+  "roleName25": "Lv. 25 · Architect",
+  "createReused": "Reused {n} role(s) you already had with the same name."
 }
