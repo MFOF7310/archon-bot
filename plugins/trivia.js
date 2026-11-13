@@ -77,6 +77,8 @@ const streakMult = (streak) => Math.min(1.5, 1 + 0.1 * (streak - 1));
 
 // ───────────────────────────── screens (Components V2) ─────────────────────────────
 const em = (key) => E[key] || '';
+const { icon } = require('../lib/ui/icons');
+const unemoji = (str) => String(str).replace(/^\s*\p{Extended_Pictographic}[\uFE0F\u200D\p{Extended_Pictographic}]*\s*/u, '');   // "✅ Correct!" → "Correct!"
 const join = (...parts) => parts.filter(Boolean).join(' ');
 
 function names(s) {
@@ -161,16 +163,17 @@ function questionScreen(s) {
 function answerScreen(s, outcome, paid) {
   const Q = ui.t(s.lang, GAME);
   const q = s.questions[s.index];
-  const look = { correct: [ui.COLORS.success, Q('correctTitle')], wrong: [ui.COLORS.danger, Q('wrongTitle')], timeout: [ui.COLORS.neutral, Q('timeoutTitle')] }[outcome];
+  // the texts' own emoji is swapped for ARCHON's icons (a plain emoji only when the icon can't be used)
+  const look = { correct: [ui.COLORS.success, Q('correctTitle'), 'ok'], wrong: [ui.COLORS.danger, Q('wrongTitle'), 'no'], timeout: [ui.COLORS.neutral, Q('timeoutTitle'), 'clock'] }[outcome];
   const last = s.index + 1 >= s.questions.length;
-  const lines = [`## ${look[1]}`, Q('answerWas', { answer: q.a[q.correct] }), '', `${join(em('hubInfo'), `**${Q('didYouKnow')}**`)} ${q.fact}`];
+  const lines = [`## ${icon(look[2])} ${unemoji(look[1])}`, Q('answerWas', { answer: q.a[q.correct] }), '', `${icon('info')} **${Q('didYouKnow')}** ${q.fact}`];
   if (paid) lines.push('', ui.rewardText(s.lang, paid));
   return v2.card(look[0], [
     { text: lines.join('\n') },
     { rule: true },
     { text: statsLine(s, s.index + 1) },
     { rule: true },
-    { row: ui.row(ui.button('trivia_next', last ? Q('btnResults') : Q('btnNext'), last ? em('triviaResults') : em('triviaNext'), ui.ButtonStyle.Success)) },
+    { row: ui.row(ui.button('trivia_next', last ? Q('btnResults') : Q('btnNext'), last ? icon('trophy') : icon('next'), ui.ButtonStyle.Success)) },
   ]);
 }
 
@@ -179,7 +182,8 @@ function resultsScreen(s, hasGames, o = {}) {
   const T = ui.t(s.lang); const Q = ui.t(s.lang, GAME);
   const total = s.questions.length;
   const accuracy = Math.round((s.correct / total) * 100);
-  const headline = accuracy === 100 ? Q('perfect') : accuracy >= 80 ? Q('great') : accuracy >= 60 ? Q('good') : Q('keepGoing');
+  const [hKey, hIcon] = accuracy === 100 ? ['perfect', 'trophy'] : accuracy >= 80 ? ['great', 'star'] : accuracy >= 60 ? ['good', 'ok'] : ['keepGoing', 'streak'];
+  const headline = `${icon(hIcon)} ${unemoji(Q(hKey))}`;
   const n = names(s);
   const lines = [
     `## ${headline}`,

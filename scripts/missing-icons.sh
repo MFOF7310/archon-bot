@@ -34,4 +34,5 @@ make ic_ticket ticket
 make ic_daily calendar-event
 make ic_levelup trending-up
 make ic_updates speakerphone
+make ic_next arrow-right
 echo "Done. Now run: pm2 restart Architect-CG223"
