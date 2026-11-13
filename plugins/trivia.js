@@ -23,7 +23,7 @@ const FR_ALIASES = ['quizz', 'culture'];
 
 const CATEGORIES = {
   general: { emoji: E.catGeneral || '🧠', plain: '🧠', color: 0x00f0ff },
-  mali: { emoji: E.catMali || '🇲🇱', plain: '🇲🇱', color: 0xf1c40f },
+  mali: { emoji: E.mali_flag || '<a:mali_flag:1568584917233696830>', plain: '🇲🇱', color: 0xf1c40f },
   science: { emoji: E.catScience || '🔬', plain: '🔬', color: 0x2ecc71 },
   history: { emoji: E.catHistory || '📜', plain: '📜', color: 0xe67e22 },
   gaming: { emoji: E.catGaming || '🎮', plain: '🎮', color: 0x9b59b6 },
