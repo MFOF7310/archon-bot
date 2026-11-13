@@ -7,6 +7,17 @@ const {
 } = require('discord.js');
 const { icon, iconObj } = require('../lib/ui/icons');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
+// shown in /music play when nothing is typed yet, so the list is never empty
+const STARTERS = [
+    ['🇲🇱 Mali legends · Salif Keita, Toumani Diabaté', 'Salif Keita'],
+    ['🌍 Afrobeats hits', 'afrobeats hits 2026'],
+    ['🌴 Afro-trap and coupé-décalé', 'afro trap hits'],
+    ['🇫🇷 French rap hits', 'rap français hits'],
+    ['🎤 Hip-hop hits', 'hip hop hits'],
+    ['🌙 Arabic hits', 'arabic hits'],
+    ['🀄 C-pop hits', 'c-pop hits'],
+    ['⚡ EDM classics', 'edm classics'],
+];
 const { toV2, fit } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const EMOJIS = require('../config/emojis');
 const { t } = require('../lib/i18n');
@@ -314,7 +325,7 @@ function buildQueueEmbed(q, client) {
     return new EmbedBuilder()
         .setColor(ARCHON.purple)
         .setAuthor({ name: `${em('music', '🎵')} ARCHON Music`, iconURL: client.user.displayAvatarURL() })
-        .setTitle(t('music.queue_title', lang))
+        .setTitle(`${icon('mc_queue', null)} ${String(t('music.queue_title', lang)).replace(/^📋\s*/, '')}`)
         .addFields(
             { name: t('music.np_label', lang), value: `\`\`\`ansi\n\u001b[1;32m▸ ${q.currentTrack?.title?.substring(0,50) || 'Nothing'}\u001b[0m\n\`\`\``, inline: false },
             { name: t('music.up_next', lang, { n: q.tracks.length }), value: `\`\`\`ansi\n${list}\n\`\`\``, inline: false }
@@ -493,7 +504,7 @@ function buildQueueCard(q, lang) {
     const next = q.tracks.slice(0, 10).map((tr, n) => `\`${String(n + 1).padStart(2, ' ')}\` ${clean(tr.title).substring(0, 60)}${tr.duration ? ` · ${formatTime(tr.duration)}` : ''}`);
     const more = q.tracks.length > 10 ? `\n-# ${tx('music.queue_more', lang, { n: q.tracks.length - 10 })}` : '';
     const c = new ContainerBuilder().setAccentColor(0x5865F2)
-        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${tx('music.queue_title', lang)}`))
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${icon('mc_queue', q.textChannel || null)} ${String(tx('music.queue_title', lang)).replace(/^📋\s*/, '')}`))
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${tx('music.now_playing', lang)}**\n${now ? clean(now.title).substring(0, 80) : '—'}`))
         .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${tx('music.up_next', lang, { n: q.tracks.length })}**\n${next.join('\n') || tx('music.queue_empty', lang)}${more}`))
@@ -1523,7 +1534,13 @@ module.exports = {
             const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄', FrenchRap: '🇫🇷', AfroTrap: '🌴', Arabic: '🌙' };
 
             if (focused.length === 0) {
-                // ══ DEFAULT POPOUT — folders first, then recent history ══
+                // ══ DEFAULT POPOUT — folders first, then this server's most played, then genre starters ══
+                // (data/music-library.json is optional: without it the list was empty and Discord kept loading)
+                try {
+                    const top = client.db?.prepare('SELECT title, query FROM music_history WHERE guild_id = ? ORDER BY play_count DESC, played_at DESC LIMIT 10').all(interaction.guild?.id) || [];
+                    for (const r of top) push(`🕐 ${r.title}`, r.query);
+                } catch (e) { /* no history table yet */ }
+                for (const [label, q] of STARTERS) push(label, q);
                 try {
                     const lib = require('../data/music-library.json');
                     // All unique folders
@@ -1561,11 +1578,12 @@ module.exports = {
                 // 3. LIVE SPOTIFY SEARCH — FlaviBot-style 🎵 tracks / 🎤 artists / 📁 playlists
                 if (focused.length >= 2) {
                     try {
-                        const token = await getSpotifyToken();
+                        // Discord gives autocomplete 3 seconds: the token gets 0.8 s, the search 1.5 s, else we answer without them
+                        const token = await Promise.race([getSpotifyToken(), new Promise((r) => setTimeout(() => r(null), 800))]);
                         if (token) {
                             const res = await fetch(
                                 `https://api.spotify.com/v1/search?q=${encodeURIComponent(focused)}&type=track,artist,playlist&limit=10`,
-                                { headers: { Authorization: `Bearer ${token}` } }
+                                { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(1500) }
                             );
                             const data = await res.json();
                             for (const t of data.tracks?.items?.slice(0, 10) || []) {
