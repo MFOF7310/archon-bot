@@ -49,5 +49,14 @@
   "setroleAbove": "Je ne peux pas donner {role} : il est au-dessus de mon rôle. Fais glisser ARCHON au-dessus dans Paramètres du serveur → Rôles, puis réessaie.",
   "setroleManaged": "Je ne peux pas donner {role} : il est géré par une intégration, ou c'est @everyone.",
   "setrolePowerful": "{role} a des permissions d'admin, donc je ne le donnerai pas automatiquement. Choisis un rôle simple.",
-  "setroleFailed": "Je n'ai pas pu enregistrer ce rôle de niveau. Réessaie dans un instant ; si ça continue, préviens le propriétaire du bot."
+  "setroleFailed": "Je n'ai pas pu enregistrer ce rôle de niveau. Réessaie dans un instant ; si ça continue, préviens le propriétaire du bot.",
+  "btnCreate": "Créer les rôles de niveau",
+  "createDone": "{n} rôle(s) de niveau créé(s) et réglé(s) comme récompenses. Ils n'ont aucune permission : c'est juste un badge.",
+  "createNothing": "Chaque niveau a déjà un rôle.",
+  "createNoPerm": "J'ai besoin de la permission Gérer les rôles pour créer des rôles.",
+  "roleName5": "Niv. 5 · Recrue",
+  "roleName10": "Niv. 10 · Agent de terrain",
+  "roleName15": "Niv. 15 · Cyber-spécialiste",
+  "roleName20": "Niv. 20 · Commandant BKO",
+  "roleName25": "Niv. 25 · Architecte"
 }

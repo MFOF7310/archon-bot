@@ -49,5 +49,14 @@
   "setroleAbove": "I can't give {role}: it's above my role. Drag ARCHON above it in Server Settings → Roles, then try again.",
   "setroleManaged": "I can't give {role}: it's managed by an integration, or it's @everyone.",
   "setrolePowerful": "{role} has admin-level permissions, so I won't hand it out automatically. Pick a plain role.",
-  "setroleFailed": "I couldn't save that level role. Try again in a moment; if it keeps failing, tell the bot owner."
+  "setroleFailed": "I couldn't save that level role. Try again in a moment; if it keeps failing, tell the bot owner.",
+  "btnCreate": "Create level roles",
+  "createDone": "Created {n} level role(s) and set them as rewards. They have no permissions: they're only a badge.",
+  "createNothing": "Every level already has a role.",
+  "createNoPerm": "I need the Manage Roles permission to create roles.",
+  "roleName5": "Lv. 5 · Recruit",
+  "roleName10": "Lv. 10 · Field Agent",
+  "roleName15": "Lv. 15 · Cyber Specialist",
+  "roleName20": "Lv. 20 · BKO Commander",
+  "roleName25": "Lv. 25 · Architect"
 }

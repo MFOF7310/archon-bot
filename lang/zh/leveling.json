@@ -49,5 +49,14 @@
   "setroleAbove": "我无法分配 {role}：它高于我的身份组。请在 服务器设置 → 身份组 中把 ARCHON 拖到它上面，然后重试。",
   "setroleManaged": "我无法分配 {role}：它由集成管理，或是 @everyone。",
   "setrolePowerful": "{role} 拥有管理员级权限，我不会自动分配它。请选择普通身份组。",
-  "setroleFailed": "无法保存该等级身份组。请稍后重试；如果仍然失败，请告知机器人所有者。"
+  "setroleFailed": "无法保存该等级身份组。请稍后重试；如果仍然失败，请告知机器人所有者。",
+  "btnCreate": "创建等级身份组",
+  "createDone": "已创建 {n} 个等级身份组并设为奖励。它们没有任何权限，只是徽章。",
+  "createNothing": "每个等级都已有身份组。",
+  "createNoPerm": "我需要“管理身份组”权限才能创建身份组。",
+  "roleName5": "5 级 · 新兵",
+  "roleName10": "10 级 · 外勤特工",
+  "roleName15": "15 级 · 网络专家",
+  "roleName20": "20 级 · BKO 指挥官",
+  "roleName25": "25 级 · 架构师"
 }

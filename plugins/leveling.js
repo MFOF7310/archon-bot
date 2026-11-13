@@ -576,15 +576,67 @@ async function configCard(client, guild, db, lang, isAdmin) {
     ];
     const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(dashboardUrl(guild.id)).setLabel(L('btnDashboard', lang)).setEmoji(icon('globe', guild)));
+    // one tap creates the missing level roles (cosmetic only), when ARCHON may manage roles here
+    const missingRoles = MILESTONES.some((m) => !row[`level_${m}_role`]);
+    if (isAdmin && missingRoles && guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:create').setStyle(ButtonStyle.Success).setLabel(L('btnCreate', lang)).setEmoji(icon('ok', guild)));
     if (isAdmin && theme) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:reset').setStyle(ButtonStyle.Secondary).setLabel(L('btnReset', lang)).setEmoji(icon('refresh', guild)));
     items.push({ row: buttons });
     return { ...card(0xE6A817, items), files: [new AttachmentBuilder(await bannerPreview(theme, lang), { name: 'lvl-theme.png' })] };
 }
 
 // The "Reset colours" button on the config card
+// The level roles ARCHON can create: emoji, colour, and the app emoji used as the role icon on boosted servers
+const LEVEL_ROLES = [
+    [5, '🌱', 0x2ECC71, 'ic_lvl5'], [10, '🔹', 0x3498DB, 'ic_lvl10'], [15, '💠', 0x9B59B6, 'ic_lvl15'],
+    [20, '⚜️', 0xE67E22, 'ic_lvl20'], [25, '👑', 0xE6A817, 'ic_lvl25'],
+];
+
+// Creates the missing level roles: no permissions at all (cosmetic), not mentionable, just under ARCHON's role.
+// Servers with role icons (boost level 2) get ARCHON's gold icon next to the name; the others get the emoji in the name.
+async function createLevelRoles(guild, db, lang) {
+    const me = guild.members.me;
+    if (!me?.permissions?.has(PermissionFlagsBits.ManageRoles)) return { error: 'createNoPerm' };
+    let row = {};
+    try { row = db.prepare(`SELECT ${MILESTONES.map((m) => `level_${m}_role`).join(', ')} FROM server_settings WHERE guild_id = ?`).get(guild.id) || {}; } catch { row = {}; }
+    const icons = guild.features?.includes?.('ROLE_ICONS');
+    let E = {}; try { E = require('../config/emojis'); } catch { E = {}; }
+    let made = 0, linked = 0;
+    db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(guild.id);
+    // highest level first: each new role lands at the bottom, so level 25 ends up on top of level 5
+    for (const [lvl, emoji, color, iconKey] of [...LEVEL_ROLES].reverse()) {
+        if (row[`level_${lvl}_role`] && guild.roles.cache.has(String(row[`level_${lvl}_role`]))) continue;
+        const base = L(`roleName${lvl}`, lang);
+        const name = icons ? base : `${emoji} ${base}`;
+        let role = guild.roles.cache.find((r) => r.name === name || r.name === base || r.name === `${emoji} ${base}`);
+        if (!role) {
+            const m = /^<a?:\w+:(\d+)>$/.exec(String(E[iconKey] || ''));
+            const opts = { name, color, permissions: [], hoist: false, mentionable: false, reason: 'ARCHON level rewards' };
+            if (icons) { if (m) opts.icon = `https://cdn.discordapp.com/emojis/${m[1]}.png`; else opts.unicodeEmoji = emoji; }
+            role = await guild.roles.create(opts).catch(async (e) => {
+                // an icon Discord refuses must not stop the role itself
+                if (opts.icon || opts.unicodeEmoji) { delete opts.icon; delete opts.unicodeEmoji; return guild.roles.create(opts).catch(() => null); }
+                console.error('[LEVELING] create role:', e.message); return null;
+            });
+            if (!role) continue;
+            made++;
+        }
+        if (roleProblem(guild, role) && roleProblem(guild, role) !== 'gone') continue;   // an existing role ARCHON can't give is left alone
+        db.prepare(`UPDATE server_settings SET level_${lvl}_role = ? WHERE guild_id = ?`).run(role.id, guild.id);
+        linked++;
+    }
+    return { made: linked };   // roles set as rewards (new ones, or existing ones with the same name)
+}
+
+// The config card's buttons: lvl:reset (colours) and lvl:create (level roles)
 async function handleComponent(ix, client) {
     const lang = require('../lib/pick-lang').pickLang(client, ix.guildId, ix, ix.user.id);
     if (!ix.member?.permissions?.has(PermissionFlagsBits.Administrator)) return ix.reply({ content: L('admin_only', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+    if (ix.customId === 'lvl:create') {
+        await ix.deferUpdate().catch(() => {});
+        const r = await createLevelRoles(ix.guild, client.db, lang);
+        await ix.editReply(await configCard(client, ix.guild, client.db, lang, true)).catch(() => {});
+        return ix.followUp({ content: r.error ? L(r.error, lang) : r.made ? L('createDone', lang, { n: r.made }) : L('createNothing', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+    }
     if (client.db) client.db.prepare('DELETE FROM leveling_themes WHERE guild_id = ?').run(ix.guildId);
     await ix.update(await configCard(client, ix.guild, client.db, lang, true)).catch(() => {});
     return ix.followUp({ content: L('resetDone', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
