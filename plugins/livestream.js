@@ -45,6 +45,25 @@ const offlineCounters = new Map();
 const liveVideoIds = new Map(); // channel ID -> video ID of the stream last seen live
 const REQUIRED_OFFLINE_CHECKS = 2;
 
+// Videos already seen for a channel, kept in the database so a restart doesn't forget them.
+// Before, only last_video_id was stored. The newest video can differ between YouTube's feed and yt-dlp
+// (yt-dlp skips Shorts and past lives), and the live id was only in memory, so after a restart an old video
+// looked "new" and was posted again.
+const SEEN_MAX = 30;
+const MAX_VIDEO_AGE_MS = 48 * 3600 * 1000;
+function seenOf(row) {
+    try { const a = JSON.parse(row.seen_videos || '[]'); return Array.isArray(a) ? a : []; } catch { return []; }
+}
+function markSeen(db, chId, ids) {
+    const rows = db.prepare('SELECT guild_id, seen_videos FROM youtube_notifications WHERE youtube_channel_id = ?').all(chId);
+    for (const r of rows) {
+        const list = seenOf(r).filter(x => !ids.includes(x));
+        list.push(...ids.filter(Boolean));
+        db.prepare('UPDATE youtube_notifications SET seen_videos = ? WHERE guild_id = ? AND youtube_channel_id = ?')
+            .run(JSON.stringify(list.slice(-SEEN_MAX)), r.guild_id, chId);
+    }
+}
+
 function initDatabase(db) {
     if (!db) return;
     db.exec(`
@@ -65,6 +84,7 @@ function initDatabase(db) {
     try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN youtube_handle TEXT DEFAULT NULL`); } catch {}
     try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN notify_live INTEGER DEFAULT 1`); } catch {}
     try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN notify_uploads INTEGER DEFAULT 1`); } catch {}
+    try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN seen_videos TEXT DEFAULT '[]'`); } catch {}
     try { db.exec(`CREATE INDEX IF NOT EXISTS idx_youtube_guild ON youtube_notifications(guild_id)`); } catch {}
     try { db.exec(`ALTER TABLE tiktok_notifications ADD COLUMN priority INTEGER DEFAULT 0`); } catch {}
 }
@@ -374,7 +394,7 @@ async function runCycle(client, db, priorityOnly) {
             const live = await fetchLiveStatus(chId, handle);
             if (live.isLive) {
                 offlineCounters.delete(chId);
-                if (live.videoId) liveVideoIds.set(chId, live.videoId);
+                if (live.videoId) { liveVideoIds.set(chId, live.videoId); markSeen(db, chId, [live.videoId]); }
                 for (const t of tracks) {
                     if (t.is_live !== 1 && t.notify_live === 0) { db.prepare('UPDATE youtube_notifications SET is_live = 1 WHERE guild_id = ? AND youtube_channel_id = ?').run(t.guild_id, chId); continue; }
                     if (t.is_live !== 1 && canNotifyLive(t.guild_id, chId)) {
@@ -395,12 +415,20 @@ async function runCycle(client, db, priorityOnly) {
             if (!priorityOnly) {
                 const up = await fetchLatestUpload(chId);
                 if (up) {
+                    const fresh = db.prepare('SELECT guild_id, seen_videos FROM youtube_notifications WHERE youtube_channel_id = ?').all(chId);
+                    const seenBy = new Map(fresh.map(r => [r.guild_id, seenOf(r)]));
+                    const age = up.published ? Date.now() - Date.parse(up.published) : 0;
+                    const tooOld = Number.isFinite(age) && age > MAX_VIDEO_AGE_MS;
                     for (const t of tracks) {
-                        if (t.last_video_id && t.last_video_id !== up.id && t.notify_uploads !== 0 && up.id !== liveVideoIds.get(chId)) {
+                        const seen = seenBy.get(t.guild_id) || [];
+                        if (t.last_video_id && seen.length && t.last_video_id !== up.id && !seen.includes(up.id) && !tooOld
+                            && t.notify_uploads !== 0 && up.id !== liveVideoIds.get(chId)) {
                             const sent = await sendNotification(client, db, t.guild_id, chId, handle, up, 'video'); console.log(`[YOUTUBE] new video ${up.id} on ${handle || chId} -> ${t.guild_id}: ${sent.ok ? 'sent' : 'failed (' + sent.reason + ')'}`);
                         }
                         db.prepare('UPDATE youtube_notifications SET last_video_id = ? WHERE guild_id = ? AND youtube_channel_id = ?').run(up.id, t.guild_id, chId);
                     }
+                    // first run with the new list: remember what's there now without posting anything
+                    markSeen(db, chId, [...new Set([up.id, ...tracks.map(t => t.last_video_id)].filter(Boolean))]);
                 }
             }
 
