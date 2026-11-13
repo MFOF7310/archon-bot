@@ -48,5 +48,7 @@
     "easy": "Easy",
     "medium": "Medium",
     "hard": "Hard"
-  }
+  },
+  "menuNext": "{xp} XP to level {next}",
+  "menuReward": "Up to **+{credits} credits** and **+{xp} XP**"
 }

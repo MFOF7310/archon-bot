@@ -48,5 +48,7 @@
     "easy": "简单",
     "medium": "中等",
     "hard": "困难"
-  }
+  },
+  "menuNext": "距离 {next} 级还差 {xp} XP",
+  "menuReward": "最多可得 **+{credits} 积分** 和 **+{xp} XP**"
 }

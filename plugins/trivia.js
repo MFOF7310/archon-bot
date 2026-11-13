@@ -94,20 +94,43 @@ function statsLine(s, played) {
 const plainScreen = (message) => v2.card(ui.COLORS.neutral, [{ text: message }]);
 
 // o.note: a line under the menu (for example "no questions yet"). o.closed: show it without buttons.
+// The most a run can pay at this difficulty: every answer right (streak bonus included) plus the perfect-run bonus
+function maxReward(diff) {
+  let credits = 0;
+  for (let k = 1; k <= diff.questions; k++) credits += Math.floor(diff.credits * streakMult(k));
+  return { credits: credits + diff.credits * 2, xp: diff.xp * diff.questions + diff.xp * 2 };
+}
+
+// The menu: who's playing and how far to the next level, the choice on one line, what it can pay, then the pickers
 function menuScreen(s, o = {}) {
   const T = ui.t(s.lang); const Q = ui.t(s.lang, GAME);
   const d = s.client.getUserData?.(s.userId, s.guildId) || {};
-  const level = d.level || progress.levelFromXp(d.xp);
+  const xp = Math.max(0, d.xp || 0);
+  const level = progress.levelFromXp(xp);
   const rank = progress.rankForLevel(level);
-  const n = names(s); const diff = DIFFICULTIES[s.diff];
-  const choice = [`## ${n.cat} · ${n.diff}`, Q('difficultyInfo', { questions: diff.questions, seconds: diff.seconds }), '', Q('menuHow')];
-  if (o.note) choice.push('', o.note);
-  if (o.closed) choice.push('', Q('expired'));
-  const items = [
-    { text: `## ${Q('title')}\n${Q('menuPlayer', { name: ui.clean(s.username), rank: `${rank.emoji} ${T(`ranks.${rank.key}`)}`, level })}` },
-    { rule: true },
-    { text: choice.join('\n') },
+  const from = (10 * (level - 1)) ** 2, to = (10 * level) ** 2;   // same curve as leveling: xp for level L = (10·(L-1))²
+  const diff = DIFFICULTIES[s.diff];
+  const cat = CATEGORIES[s.cat];
+  const reward = maxReward(diff);
+  const num = (n) => Number(n).toLocaleString(s.lang === 'fr' ? 'fr-FR' : 'en-US');
+  const title = String(Q('title')).replace(/^\S+\s+/, '');   // the title's own emoji is replaced by ARCHON's icon
+  const lines = [
+    `-# ARCHON · ${title}`,
+    `## ${ok(E.catGeneral, '🧠')} ${title}`,
+    Q('menuPlayer', { name: ui.clean(s.username), rank: `${rank.emoji} ${T(`ranks.${rank.key}`)}`, level }),
+    ui.progressBar(xp - from, to - from, 12),
+    `-# ${Q('menuNext', { xp: num(Math.max(0, to - xp)), next: level + 1 })}`,
   ];
+  const pick = [
+    `${ok(cat.emoji, cat.plain)} **${Q(`categories.${s.cat}`)}**   ·   ${ok(diff.emoji, diff.plain)} **${Q(`difficulties.${s.diff}`)}**`,
+    `-# ${Q('difficultyInfo', { questions: diff.questions, seconds: diff.seconds })}`,
+    '',
+    `${ok(E.coins, '🪙')} ${Q('menuReward', { credits: num(reward.credits), xp: num(reward.xp) })}`,
+    `-# ${Q('menuHow')}`,
+  ];
+  if (o.note) pick.push('', o.note);
+  if (o.closed) pick.push('', Q('expired'));
+  const items = [{ text: lines.join('\n') }, { rule: true }, { text: pick.join('\n') }];
   if (!o.closed) {
     const catMenu = new StringSelectMenuBuilder().setCustomId('trivia_cat').setPlaceholder(Q('pickCategory')).addOptions(
       Object.entries(CATEGORIES).map(([key, c]) => ({ label: Q(`categories.${key}`).slice(0, 100), value: key, emoji: ok(c.emoji, c.plain), default: key === s.cat })));
@@ -118,7 +141,8 @@ function menuScreen(s, o = {}) {
     items.push({ rule: true }, { row: ui.row(catMenu) }, { row: ui.row(diffMenu) },
       { row: ui.row(ui.button('trivia_start', Q('btnStart'), em('triviaStart'), ui.ButtonStyle.Success), ui.button('trivia_cancel', Q('btnCancel'), em('triviaCancel'))) });
   }
-  return v2.card(CATEGORIES[s.cat].color, items);
+  // the card's edge follows the difficulty: green, gold, red
+  return v2.card(diff.color, items);
 }
 
 // Each answer is its own row: the text on the left, its letter button on the right.
@@ -377,5 +401,5 @@ module.exports = {
     }
   },
 
-  _internals: { CATEGORIES, DIFFICULTIES, pickQuestions, streakMult, bank },
+  _internals: { CATEGORIES, DIFFICULTIES, pickQuestions, streakMult, bank, menuScreen, maxReward },
 };

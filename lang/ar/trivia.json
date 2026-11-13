@@ -48,5 +48,7 @@
     "easy": "سهل",
     "medium": "متوسط",
     "hard": "صعب"
-  }
+  },
+  "menuNext": "{xp} XP حتى المستوى {next}",
+  "menuReward": "حتى **+{credits} رصيد** و **+{xp} XP**"
 }
