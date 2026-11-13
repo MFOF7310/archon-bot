@@ -95,7 +95,7 @@ function questionScreen(lang, guild, idx, notice, suggestion = suggestFor(guild,
     const buttons = new ActionRowBuilder();
     if (suggestion) buttons.addComponents(new ButtonBuilder().setCustomId(`setup_use:${suggestion.id}`).setLabel(T(lang, 'useSuggestion', { name: suggestion.label }).slice(0, 80)).setStyle(ButtonStyle.Success));
     buttons.addComponents(
-        new ButtonBuilder().setCustomId('setup_skip').setLabel(T(lang, 'skip')).setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('setup_skip').setLabel(T(lang, 'skip')).setStyle(ButtonStyle.Secondary).setEmoji(icon('skip', guild)),
         new ButtonBuilder().setCustomId('setup_cancel').setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary));
     return toV2({ embeds: [embed], components: [new ActionRowBuilder().addComponents(picker), buttons] });
 }
@@ -103,7 +103,7 @@ function questionScreen(lang, guild, idx, notice, suggestion = suggestFor(guild,
 function summaryScreen(lang, guild, state, warnings, prefix) {
     const lines = STEPS.map((s) => {
         const label = T(lang, `line.${s.key}`);
-        return state[s.key] ? `${icon('ok', guild)} ${label}: ${s.kind === 'role' ? `<@&${state[s.key]}>` : `<#${state[s.key]}>`}` : `⏭️ ${label}: ${T(lang, 'skipped')}`;
+        return state[s.key] ? `${icon('ok', guild)} ${label}: ${s.kind === 'role' ? `<@&${state[s.key]}>` : `<#${state[s.key]}>`}` : `${icon('skip', guild)} ${label}: ${T(lang, 'skipped')}`;
     });
     let text = `${T(lang, 'doneText')}\n\n${lines.join('\n')}`;
     if (warnings.length) text += `\n\n**${icon('warn', guild)} ${T(lang, 'attention')}**\n${warnings.join('\n\n')}`;
