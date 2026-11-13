@@ -1,6 +1,6 @@
 {
   "name": "archon-bot",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "description": "One bot for your whole Discord server: tickets, AI chat, welcome cards, verification, economy and CODM tools. Built in Bamako, Mali.",
   "main": "index.js",
   "scripts": {

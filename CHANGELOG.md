@@ -4,6 +4,25 @@ What changed in ARCHON CG-223, in plain language. These are the same notes `/cha
 (in English, French, Chinese and Arabic). This file is generated from `config/changelog.json`: edit that file,
 then run `node scripts/changelog-md.js`.
 
+## 3.3.0 · 2026-11-13
+
+_Sending credits is now one tap away_
+
+**New**
+- /credit has a Send button: pick a member, type the amount, done. /transfer and .pay ask you to confirm first.
+- Daily bonus reminders: tap Remind me tomorrow on /claim and you get one DM when it's ready.
+- AutoMod appeals work from the button on the warning, in your language.
+
+**Improved**
+- New look for /claim, /credit, giveaways and appeals: one clear card, ARCHON gold.
+- Your balance shows your place on the server and your last transfers, in the server's own currency.
+- The daily bonus uses the amount set in the dashboard. AutoMod is gentler: 5 messages in 5 seconds before it steps in.
+
+**Fixed**
+- Credits earned just before a payment or a purchase are no longer lost.
+- Nobody can win the same giveaway twice, and an empty giveaway gives the credits back.
+- One spam burst gives one AutoMod strike instead of one per message.
+
 ## 3.2.0 · 2026-11-11
 
 **New**

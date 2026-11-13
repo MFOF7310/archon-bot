@@ -2,42 +2,207 @@
   "_note": "Release notes shown by /changelog, posted in each server's updates channel, and read by Lydia and the updater. Newest first. Plain language, for members: no commit jargon, no security details. Each line: en, fr, zh, ar (bm falls back to en). Bump version.txt to the same version.",
   "releases": [
     {
+      "version": "3.3.0",
+      "date": "2026-11-13",
+      "headline": {
+        "en": "Sending credits is now one tap away",
+        "fr": "Envoyer des crédits devient simple",
+        "zh": "转账积分，一键完成",
+        "ar": "إرسال الرصيد أصبح أسهل"
+      },
+      "new": [
+        {
+          "en": "/credit has a Send button: pick a member, type the amount, done. /transfer and .pay ask you to confirm first.",
+          "fr": "/credit a un bouton Envoyer : choisis un membre, tape le montant, c'est fait. /transfer et .pay demandent d'abord une confirmation.",
+          "zh": "/credit 新增转账按钮：选择成员、输入数量即可。/transfer 和 .pay 会先请你确认。",
+          "ar": "أصبح في ‎/credit زر إرسال: اختر عضوًا واكتب المبلغ وانتهى. ‎/transfer و‎.pay يطلبان التأكيد أولًا."
+        },
+        {
+          "en": "Daily bonus reminders: tap Remind me tomorrow on /claim and you get one DM when it's ready.",
+          "fr": "Rappels du bonus du jour : touche Me rappeler demain sur /claim et tu reçois un DM quand il est prêt.",
+          "zh": "每日奖励提醒：在 /claim 上点击“明天提醒我”，奖励就绪时会私信你。",
+          "ar": "تذكير المكافأة اليومية: اضغط ذكّرني غدًا في ‎/claim وستصلك رسالة خاصة عندما تجهز."
+        },
+        {
+          "en": "AutoMod appeals work from the button on the warning, in your language.",
+          "fr": "Les contestations AutoMod se font depuis le bouton de l'avertissement, dans ta langue.",
+          "zh": "现在可以直接通过警告上的按钮提出 AutoMod 申诉，并使用你的语言。",
+          "ar": "يمكن الاستئناف على AutoMod من الزر الموجود في الإنذار، بلغتك."
+        }
+      ],
+      "improved": [
+        {
+          "en": "New look for /claim, /credit, giveaways and appeals: one clear card, ARCHON gold.",
+          "fr": "Nouveau look pour /claim, /credit, les giveaways et les contestations : une carte claire, dorée ARCHON.",
+          "zh": "/claim、/credit、抽奖和申诉换上新外观：清晰的金色卡片。",
+          "ar": "مظهر جديد لـ ‎/claim و‎/credit والسحوبات والاستئنافات: بطاقة واضحة بلون ARCHON الذهبي."
+        },
+        {
+          "en": "Your balance shows your place on the server and your last transfers, in the server's own currency.",
+          "fr": "Ton solde affiche ta place sur le serveur, tes derniers virements et la monnaie du serveur.",
+          "zh": "余额显示你在服务器中的排名、最近转账，并使用服务器自己的货币。",
+          "ar": "يعرض رصيدك ترتيبك في الخادم وآخر تحويلاتك بعملة الخادم."
+        },
+        {
+          "en": "The daily bonus uses the amount set in the dashboard. AutoMod is gentler: 5 messages in 5 seconds before it steps in.",
+          "fr": "Le bonus du jour utilise le montant réglé dans le dashboard. AutoMod est plus tolérant : 5 messages en 5 secondes avant d'intervenir.",
+          "zh": "每日奖励采用控制面板中设置的数额。AutoMod 更宽松：5 秒内 5 条消息才会介入。",
+          "ar": "المكافأة اليومية تستخدم المبلغ المحدد في لوحة التحكم. وAutoMod أكثر تسامحًا: 5 رسائل في 5 ثوانٍ قبل أن يتدخل."
+        }
+      ],
+      "fixed": [
+        {
+          "en": "Credits earned just before a payment or a purchase are no longer lost.",
+          "fr": "Les crédits gagnés juste avant un paiement ou un achat ne sont plus perdus.",
+          "zh": "在付款或购买前刚获得的积分不会再丢失。",
+          "ar": "لم يعد الرصيد المكتسب قبل الدفع أو الشراء مباشرة يضيع."
+        },
+        {
+          "en": "Nobody can win the same giveaway twice, and an empty giveaway gives the credits back.",
+          "fr": "Personne ne peut gagner deux fois le même giveaway, et un giveaway sans participant rend les crédits.",
+          "zh": "同一抽奖不能中奖两次，无人参与的抽奖会退还积分。",
+          "ar": "لا يمكن الفوز بالسحب نفسه مرتين، والسحب بلا مشاركين يعيد الرصيد."
+        },
+        {
+          "en": "One spam burst gives one AutoMod strike instead of one per message.",
+          "fr": "Une rafale de spam donne un seul avertissement AutoMod, au lieu d'un par message.",
+          "zh": "一次刷屏只计一次 AutoMod 警告，而不是每条消息一次。",
+          "ar": "دفعة سبام واحدة تعطي إنذار AutoMod واحدًا بدل إنذار لكل رسالة."
+        }
+      ]
+    },
+    {
       "version": "3.2.0",
       "date": "2026-11-11",
       "new": [
-        { "en": "/invest is now a card with Claim, Invest and Refresh buttons. Each stake grows up to +10 %.", "fr": "/invest devient une carte avec les boutons Retirer, Placer et Actualiser. Chaque placement monte jusqu'à +10 %.", "zh": "/invest 改为卡片，带有领取、投资和刷新按钮。每笔投资最高增长 10%。", "ar": "أصبح ‎/invest بطاقة بأزرار السحب والاستثمار والتحديث. يصل نمو كل استثمار إلى ‎+10%." },
-        { "en": "/mylang lets you pick your language in one tap, separately for each server and for DMs.", "fr": "/mylang te permet de choisir ta langue en un clic, séparément pour chaque serveur et pour les DM.", "zh": "/mylang 一键选择你的语言，每个服务器和私信可分别设置。", "ar": "يتيح لك ‎/mylang اختيار لغتك بنقرة واحدة، لكل خادم وللرسائل الخاصة على حدة." },
-        { "en": "Dashboard: a new Overview with a to-do list and your key numbers, plus ticket response times.", "fr": "Dashboard : nouvelle vue d'ensemble avec une liste de choses à faire et tes chiffres clés, plus les temps de réponse des tickets.", "zh": "控制面板：新的概览页，包含待办事项和关键数据，以及工单响应时间。", "ar": "لوحة التحكم: نظرة عامة جديدة مع قائمة مهام وأرقامك الأساسية، وأوقات الرد على التذاكر." },
-        { "en": "Update announcements: pick an updates channel and new versions are posted there automatically.", "fr": "Annonces de mises à jour : choisis un salon des mises à jour et chaque nouvelle version y est publiée automatiquement.", "zh": "更新公告：选择一个更新频道，新版本会自动发布到那里。", "ar": "إعلانات التحديث: اختر قناة للتحديثات وستُنشر فيها كل نسخة جديدة تلقائيًا." }
+        {
+          "en": "/invest is now a card with Claim, Invest and Refresh buttons. Each stake grows up to +10 %.",
+          "fr": "/invest devient une carte avec les boutons Retirer, Placer et Actualiser. Chaque placement monte jusqu'à +10 %.",
+          "zh": "/invest 改为卡片，带有领取、投资和刷新按钮。每笔投资最高增长 10%。",
+          "ar": "أصبح ‎/invest بطاقة بأزرار السحب والاستثمار والتحديث. يصل نمو كل استثمار إلى ‎+10%."
+        },
+        {
+          "en": "/mylang lets you pick your language in one tap, separately for each server and for DMs.",
+          "fr": "/mylang te permet de choisir ta langue en un clic, séparément pour chaque serveur et pour les DM.",
+          "zh": "/mylang 一键选择你的语言，每个服务器和私信可分别设置。",
+          "ar": "يتيح لك ‎/mylang اختيار لغتك بنقرة واحدة، لكل خادم وللرسائل الخاصة على حدة."
+        },
+        {
+          "en": "Dashboard: a new Overview with a to-do list and your key numbers, plus ticket response times.",
+          "fr": "Dashboard : nouvelle vue d'ensemble avec une liste de choses à faire et tes chiffres clés, plus les temps de réponse des tickets.",
+          "zh": "控制面板：新的概览页，包含待办事项和关键数据，以及工单响应时间。",
+          "ar": "لوحة التحكم: نظرة عامة جديدة مع قائمة مهام وأرقامك الأساسية، وأوقات الرد على التذاكر."
+        },
+        {
+          "en": "Update announcements: pick an updates channel and new versions are posted there automatically.",
+          "fr": "Annonces de mises à jour : choisis un salon des mises à jour et chaque nouvelle version y est publiée automatiquement.",
+          "zh": "更新公告：选择一个更新频道，新版本会自动发布到那里。",
+          "ar": "إعلانات التحديث: اختر قناة للتحديثات وستُنشر فيها كل نسخة جديدة تلقائيًا."
+        }
       ],
       "improved": [
-        { "en": "/bot activity shows the last 7 days with the trend and the top commands.", "fr": "/bot activity affiche les 7 derniers jours avec la tendance et les commandes les plus utilisées.", "zh": "/bot activity 显示最近 7 天的趋势和最常用的命令。", "ar": "يعرض ‎/bot activity آخر 7 أيام مع الاتجاه وأكثر الأوامر استخدامًا." },
-        { "en": "The AutoMod daily summary arrives at 21:00 in your server's own time zone.", "fr": "Le résumé AutoMod du jour arrive à 21 h dans le fuseau horaire de ton serveur.", "zh": "AutoMod 每日摘要在你服务器所在时区的 21:00 发送。", "ar": "يصل ملخص AutoMod اليومي في الساعة 21:00 بتوقيت خادمك." },
-        { "en": "Tickets keep their number after a restart, and categories accept custom emojis.", "fr": "Les tickets gardent leur numéro après un redémarrage, et les catégories acceptent les emojis personnalisés.", "zh": "工单在重启后保留编号，分类支持自定义表情。", "ar": "تحتفظ التذاكر برقمها بعد إعادة التشغيل، وتقبل الفئات الرموز التعبيرية المخصصة." },
-        { "en": "/setloadout accepts every CODM weapon, with suggestions as you type.", "fr": "/setloadout accepte toutes les armes de CODM, avec des suggestions pendant la saisie.", "zh": "/setloadout 支持所有 CODM 武器，输入时会给出建议。", "ar": "يقبل ‎/setloadout كل أسلحة CODM، مع اقتراحات أثناء الكتابة." },
-        { "en": "Telegram: downloads, games, economy and group moderation were redesigned.", "fr": "Telegram : téléchargements, jeux, économie et modération de groupe repensés.", "zh": "Telegram：下载、游戏、经济和群组管理全面重新设计。", "ar": "تيليغرام: أُعيد تصميم التنزيلات والألعاب والاقتصاد وإدارة المجموعات." }
+        {
+          "en": "/bot activity shows the last 7 days with the trend and the top commands.",
+          "fr": "/bot activity affiche les 7 derniers jours avec la tendance et les commandes les plus utilisées.",
+          "zh": "/bot activity 显示最近 7 天的趋势和最常用的命令。",
+          "ar": "يعرض ‎/bot activity آخر 7 أيام مع الاتجاه وأكثر الأوامر استخدامًا."
+        },
+        {
+          "en": "The AutoMod daily summary arrives at 21:00 in your server's own time zone.",
+          "fr": "Le résumé AutoMod du jour arrive à 21 h dans le fuseau horaire de ton serveur.",
+          "zh": "AutoMod 每日摘要在你服务器所在时区的 21:00 发送。",
+          "ar": "يصل ملخص AutoMod اليومي في الساعة 21:00 بتوقيت خادمك."
+        },
+        {
+          "en": "Tickets keep their number after a restart, and categories accept custom emojis.",
+          "fr": "Les tickets gardent leur numéro après un redémarrage, et les catégories acceptent les emojis personnalisés.",
+          "zh": "工单在重启后保留编号，分类支持自定义表情。",
+          "ar": "تحتفظ التذاكر برقمها بعد إعادة التشغيل، وتقبل الفئات الرموز التعبيرية المخصصة."
+        },
+        {
+          "en": "/setloadout accepts every CODM weapon, with suggestions as you type.",
+          "fr": "/setloadout accepte toutes les armes de CODM, avec des suggestions pendant la saisie.",
+          "zh": "/setloadout 支持所有 CODM 武器，输入时会给出建议。",
+          "ar": "يقبل ‎/setloadout كل أسلحة CODM، مع اقتراحات أثناء الكتابة."
+        },
+        {
+          "en": "Telegram: downloads, games, economy and group moderation were redesigned.",
+          "fr": "Telegram : téléchargements, jeux, économie et modération de groupe repensés.",
+          "zh": "Telegram：下载、游戏、经济和群组管理全面重新设计。",
+          "ar": "تيليغرام: أُعيد تصميم التنزيلات والألعاب والاقتصاد وإدارة المجموعات."
+        }
       ],
       "fixed": [
-        { "en": "Verification by DM answers again.", "fr": "La vérification par DM répond de nouveau.", "zh": "私信验证恢复正常。", "ar": "عاد التحقق عبر الرسائل الخاصة إلى العمل." },
-        { "en": "One level-up announcement instead of two, and turning leveling off really stops XP.", "fr": "Une seule annonce de niveau au lieu de deux, et désactiver les niveaux arrête vraiment l'XP.", "zh": "升级公告只发一次，关闭等级系统后不再获得经验。", "ar": "إعلان ترقية واحد بدل اثنين، وإيقاف المستويات يوقف نقاط الخبرة فعلًا." },
-        { "en": "Lydia switches to another model when one is busy on free servers.", "fr": "Lydia passe à un autre modèle quand l'un est occupé sur les serveurs gratuits.", "zh": "在免费服务器上，当某个模型繁忙时 Lydia 会切换到其他模型。", "ar": "تنتقل Lydia إلى نموذج آخر عندما يكون أحدها مشغولًا في الخوادم المجانية." },
-        { "en": "The bot's audit log and activity counts are accurate again.", "fr": "Le journal d'audit et les compteurs d'activité du bot sont de nouveau exacts.", "zh": "机器人的审计日志和活动统计恢复准确。", "ar": "عاد سجل التدقيق وعدادات نشاط البوت دقيقة." }
+        {
+          "en": "Verification by DM answers again.",
+          "fr": "La vérification par DM répond de nouveau.",
+          "zh": "私信验证恢复正常。",
+          "ar": "عاد التحقق عبر الرسائل الخاصة إلى العمل."
+        },
+        {
+          "en": "One level-up announcement instead of two, and turning leveling off really stops XP.",
+          "fr": "Une seule annonce de niveau au lieu de deux, et désactiver les niveaux arrête vraiment l'XP.",
+          "zh": "升级公告只发一次，关闭等级系统后不再获得经验。",
+          "ar": "إعلان ترقية واحد بدل اثنين، وإيقاف المستويات يوقف نقاط الخبرة فعلًا."
+        },
+        {
+          "en": "Lydia switches to another model when one is busy on free servers.",
+          "fr": "Lydia passe à un autre modèle quand l'un est occupé sur les serveurs gratuits.",
+          "zh": "在免费服务器上，当某个模型繁忙时 Lydia 会切换到其他模型。",
+          "ar": "تنتقل Lydia إلى نموذج آخر عندما يكون أحدها مشغولًا في الخوادم المجانية."
+        },
+        {
+          "en": "The bot's audit log and activity counts are accurate again.",
+          "fr": "Le journal d'audit et les compteurs d'activité du bot sont de nouveau exacts.",
+          "zh": "机器人的审计日志和活动统计恢复准确。",
+          "ar": "عاد سجل التدقيق وعدادات نشاط البوت دقيقة."
+        }
       ]
     },
     {
       "version": "3.1.2",
       "date": "2026-10-10",
       "new": [
-        { "en": "A redesigned welcome card with character art and a clickable /help link.", "fr": "Nouvelle carte de bienvenue avec illustrations et un lien /help cliquable.", "zh": "全新的欢迎卡片，配有角色插画和可点击的 /help 链接。", "ar": "بطاقة ترحيب جديدة برسوم شخصيات ورابط ‎/help قابل للنقر." },
-        { "en": "Owners choose the channels where Lydia answers, right from the dashboard.", "fr": "Les propriétaires choisissent les salons où Lydia répond, directement depuis le dashboard.", "zh": "服务器所有者可在控制面板中选择 Lydia 回复的频道。", "ar": "يختار المالكون القنوات التي ترد فيها Lydia مباشرة من لوحة التحكم." }
+        {
+          "en": "A redesigned welcome card with character art and a clickable /help link.",
+          "fr": "Nouvelle carte de bienvenue avec illustrations et un lien /help cliquable.",
+          "zh": "全新的欢迎卡片，配有角色插画和可点击的 /help 链接。",
+          "ar": "بطاقة ترحيب جديدة برسوم شخصيات ورابط ‎/help قابل للنقر."
+        },
+        {
+          "en": "Owners choose the channels where Lydia answers, right from the dashboard.",
+          "fr": "Les propriétaires choisissent les salons où Lydia répond, directement depuis le dashboard.",
+          "zh": "服务器所有者可在控制面板中选择 Lydia 回复的频道。",
+          "ar": "يختار المالكون القنوات التي ترد فيها Lydia مباشرة من لوحة التحكم."
+        }
       ],
       "improved": [
-        { "en": "The invite link asks only for the permissions ARCHON really uses.", "fr": "Le lien d'invitation ne demande que les permissions dont ARCHON a vraiment besoin.", "zh": "邀请链接只请求 ARCHON 实际需要的权限。", "ar": "رابط الدعوة يطلب فقط الصلاحيات التي يستخدمها ARCHON فعلًا." },
-        { "en": "Removing ARCHON keeps your settings for 7 days, so inviting it back keeps your setup.", "fr": "Retirer ARCHON garde tes réglages pendant 7 jours : en le réinvitant, tu retrouves ta configuration.", "zh": "移除 ARCHON 后设置会保留 7 天，重新邀请即可恢复。", "ar": "عند إزالة ARCHON تُحفظ إعداداتك 7 أيام، فتعود كما هي عند إعادة دعوته." }
+        {
+          "en": "The invite link asks only for the permissions ARCHON really uses.",
+          "fr": "Le lien d'invitation ne demande que les permissions dont ARCHON a vraiment besoin.",
+          "zh": "邀请链接只请求 ARCHON 实际需要的权限。",
+          "ar": "رابط الدعوة يطلب فقط الصلاحيات التي يستخدمها ARCHON فعلًا."
+        },
+        {
+          "en": "Removing ARCHON keeps your settings for 7 days, so inviting it back keeps your setup.",
+          "fr": "Retirer ARCHON garde tes réglages pendant 7 jours : en le réinvitant, tu retrouves ta configuration.",
+          "zh": "移除 ARCHON 后设置会保留 7 天，重新邀请即可恢复。",
+          "ar": "عند إزالة ARCHON تُحفظ إعداداتك 7 أيام، فتعود كما هي عند إعادة دعوته."
+        }
       ],
       "fixed": [
-        { "en": "Premium status is shown correctly when it has lapsed.", "fr": "Le statut Premium s'affiche correctement quand il a expiré.", "zh": "高级版过期后状态显示正确。", "ar": "تظهر حالة Premium بشكل صحيح عند انتهائها." },
-        { "en": "Missing Arabic, Bambara and Chinese translations were added.", "fr": "Des traductions manquantes en arabe, bambara et chinois ont été ajoutées.", "zh": "补充了缺失的阿拉伯语、班巴拉语和中文翻译。", "ar": "أُضيفت ترجمات ناقصة بالعربية والبامبارا والصينية." }
+        {
+          "en": "Premium status is shown correctly when it has lapsed.",
+          "fr": "Le statut Premium s'affiche correctement quand il a expiré.",
+          "zh": "高级版过期后状态显示正确。",
+          "ar": "تظهر حالة Premium بشكل صحيح عند انتهائها."
+        },
+        {
+          "en": "Missing Arabic, Bambara and Chinese translations were added.",
+          "fr": "Des traductions manquantes en arabe, bambara et chinois ont été ajoutées.",
+          "zh": "补充了缺失的阿拉伯语、班巴拉语和中文翻译。",
+          "ar": "أُضيفت ترجمات ناقصة بالعربية والبامبارا والصينية."
+        }
       ]
     }
   ]

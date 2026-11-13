@@ -18,6 +18,7 @@ const out = [
 ];
 for (const r of releases) {
     out.push(`## ${r.version} · ${r.date}`, '');
+    if (r.headline?.en) out.push(`_${r.headline.en}_`, '');
     for (const [key, title] of SECTIONS) {
         if (!r[key]?.length) continue;
         out.push(`**${title}**`);

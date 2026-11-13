@@ -6,8 +6,8 @@ Only the current release line gets security fixes. The live bot always runs the 
 
 | Version | Supported |
 |---|---|
-| 3.2.x | Yes |
-| 3.1.x and older | No, update to the latest `main` |
+| 3.3.x | Yes |
+| 3.2.x and older | No, update to the latest `main` |
 
 ## Reporting a problem
 
