@@ -549,7 +549,7 @@ async function configCard(client, guild, db, lang, isAdmin) {
     const { card } = require('../lib/games/v2');
     const { dashboardUrl } = require('../lib/postProblems');
     let row = {}, stats = {};
-    try { row = db?.prepare(`SELECT levelup_channel, ${MILESTONES.map((m) => `level_${m}_role`).join(', ')} FROM server_settings WHERE guild_id = ?`).get(guild.id) || {}; } catch { row = {}; }
+    try { row = db?.prepare(`SELECT levelup_channel, ${MILESTONES.map((m) => `level_${m}_role`).join(', ')}, ${STREAK_ROLES.map((x) => x[1]).join(', ')} FROM server_settings WHERE guild_id = ?`).get(guild.id) || {}; } catch { row = {}; }
     try { stats = db?.prepare('SELECT COUNT(*) AS n, MAX(level) AS top FROM users WHERE guild_id = ? AND xp > 0').get(guild.id) || {}; } catch { stats = {}; }
     const theme = db ? getThemeDB(db, guild.id) : null;
 
@@ -563,12 +563,24 @@ async function configCard(client, guild, db, lang, isAdmin) {
         return `${tag} ${icon('warn', guild)} <@&${id}>\n-# ${L(problem === 'above' ? 'roleAbove' : 'roleManaged', lang)}`;
     });
 
+    const streaks = STREAK_ROLES.map(([days, col]) => {
+        const tag = `\`${L('streakTag', lang, { days })}\``;
+        const id = row[col];
+        if (!id) return `${tag} · ${L('notSet', lang)}`;
+        const problem = roleProblem(guild, guild.roles.cache.get(String(id)));
+        if (!problem) return `${tag} ${icon('ok', guild)} <@&${id}>`;
+        if (problem === 'gone') return `${tag} ${icon('no', guild)} ${L('roleGone', lang)}`;
+        return `${tag} ${icon('warn', guild)} <@&${id}>\n-# ${L(problem === 'above' ? 'roleAbove' : 'roleManaged', lang)}`;
+    });
+
     const items = [
         { text: `-# ARCHON · ${L('title', lang)}\n## ${icon('stats', guild)} ${L('heading', lang, { guild: guild.name })}\n${stats.n ? L('summary', lang, { n: stats.n, top: stats.top || 1 }) : L('summaryNone', lang)}` },
         { rule: true },
         { text: `**${L('channelLabel', lang)}**\n${row.levelup_channel ? `<#${row.levelup_channel}>` : L('channelHere', lang)}` },
         { rule: true },
         { text: `**${L('rewardsLabel', lang)}**\n${rewards.join('\n')}\n-# ${L('rewardsHint', lang)}` },
+        { rule: true },
+        { text: `**${L('streakLabel', lang)}**\n${streaks.join('\n')}\n-# ${L('streakHint', lang)}` },
         { rule: true },
         { text: `**${L('bannersLabel', lang)}**` },
         { media: ['attachment://lvl-theme.png', L('bannersLabel', lang)] },
@@ -579,6 +591,8 @@ async function configCard(client, guild, db, lang, isAdmin) {
     // one tap creates the missing level roles (cosmetic only), when ARCHON may manage roles here
     const missingRoles = MILESTONES.some((m) => !row[`level_${m}_role`]);
     if (isAdmin && missingRoles && guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:create').setStyle(ButtonStyle.Success).setLabel(L('btnCreate', lang)).setEmoji(icon('ok', guild)));
+    const missingStreak = STREAK_ROLES.some(([, col]) => !row[col]);
+    if (isAdmin && missingStreak && guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:streak').setStyle(ButtonStyle.Success).setLabel(L('btnCreateStreak', lang)).setEmoji(icon('streak', guild)));
     if (isAdmin && theme) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:reset').setStyle(ButtonStyle.Secondary).setLabel(L('btnReset', lang)).setEmoji(icon('refresh', guild)));
     items.push({ row: buttons });
     return { ...card(0xE6A817, items), files: [new AttachmentBuilder(await bannerPreview(theme, lang), { name: 'lvl-theme.png' })] };
@@ -586,6 +600,11 @@ async function configCard(client, guild, db, lang, isAdmin) {
 
 // The "Reset colours" button on the config card
 // The level roles ARCHON can create: emoji, colour, and the app emoji used as the role icon on boosted servers
+// The daily-streak roles (/claim): days in a row, settings column, emoji, colour
+const STREAK_ROLES = [
+    [3, 'daily_initiate_role', '🔥', 0xE67E22], [7, 'daily_warrior_role', '⚡', 0xF1C40F],
+    [30, 'daily_champion_role', '🏅', 0x1ABC9C], [100, 'daily_legend_role', '💎', 0x8E44AD],
+];
 const LEVEL_ROLES = [
     [5, '🌱', 0x2ECC71, 'ic_lvl5'], [10, '🔹', 0x3498DB, 'ic_lvl10'], [15, '💠', 0x9B59B6, 'ic_lvl15'],
     [20, '⚜️', 0xE67E22, 'ic_lvl20'], [25, '👑', 0xE6A817, 'ic_lvl25'],
@@ -593,24 +612,27 @@ const LEVEL_ROLES = [
 
 // Creates the missing level roles: no permissions at all (cosmetic), not mentionable, just under ARCHON's role.
 // Servers with role icons (boost level 2) get ARCHON's gold icon next to the name; the others get the emoji in the name.
-async function createLevelRoles(guild, db, lang) {
+// sets: 'level' (levels 5 to 25) or 'streak' (3 to 100 days in a row)
+async function createRoles(guild, db, lang, set = 'level') {
     const me = guild.members.me;
     if (!me?.permissions?.has(PermissionFlagsBits.ManageRoles)) return { error: 'createNoPerm' };
+    const list = set === 'streak'
+        ? STREAK_ROLES.map(([days, col, emoji, color]) => ({ col, emoji, color, base: L('streakName', lang, { days }), iconKey: null }))
+        : LEVEL_ROLES.map(([lvl, emoji, color, iconKey]) => ({ col: `level_${lvl}_role`, emoji, color, base: L(`roleName${lvl}`, lang), iconKey }));
     let row = {};
-    try { row = db.prepare(`SELECT ${MILESTONES.map((m) => `level_${m}_role`).join(', ')} FROM server_settings WHERE guild_id = ?`).get(guild.id) || {}; } catch { row = {}; }
+    try { row = db.prepare(`SELECT ${list.map((x) => x.col).join(', ')} FROM server_settings WHERE guild_id = ?`).get(guild.id) || {}; } catch { row = {}; }
     const icons = guild.features?.includes?.('ROLE_ICONS');
     let E = {}; try { E = require('../config/emojis'); } catch { E = {}; }
     let made = 0, linked = 0;
     db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(guild.id);
-    // highest level first: each new role lands at the bottom, so level 25 ends up on top of level 5
-    for (const [lvl, emoji, color, iconKey] of [...LEVEL_ROLES].reverse()) {
-        if (row[`level_${lvl}_role`] && guild.roles.cache.has(String(row[`level_${lvl}_role`]))) continue;
-        const base = L(`roleName${lvl}`, lang);
+    // highest tier first: each new role lands at the bottom, so the top tier ends up above the first one
+    for (const { col, emoji, color, base, iconKey } of [...list].reverse()) {
+        if (row[col] && guild.roles.cache.has(String(row[col]))) continue;
         const name = icons ? base : `${emoji} ${base}`;
         let role = guild.roles.cache.find((r) => r.name === name || r.name === base || r.name === `${emoji} ${base}`);
         if (!role) {
-            const m = /^<a?:\w+:(\d+)>$/.exec(String(E[iconKey] || ''));
-            const opts = { name, color, permissions: [], hoist: false, mentionable: false, reason: 'ARCHON level rewards' };
+            const m = /^<a?:\w+:(\d+)>$/.exec(String((iconKey && E[iconKey]) || ''));
+            const opts = { name, color, permissions: [], hoist: false, mentionable: false, reason: set === 'streak' ? 'ARCHON daily streak rewards' : 'ARCHON level rewards' };
             if (icons) { if (m) opts.icon = `https://cdn.discordapp.com/emojis/${m[1]}.png`; else opts.unicodeEmoji = emoji; }
             role = await guild.roles.create(opts).catch(async (e) => {
                 // an icon Discord refuses must not stop the role itself
@@ -621,7 +643,7 @@ async function createLevelRoles(guild, db, lang) {
             made++;
         }
         if (roleProblem(guild, role) && roleProblem(guild, role) !== 'gone') continue;   // an existing role ARCHON can't give is left alone
-        db.prepare(`UPDATE server_settings SET level_${lvl}_role = ? WHERE guild_id = ?`).run(role.id, guild.id);
+        db.prepare(`UPDATE server_settings SET ${col} = ? WHERE guild_id = ?`).run(role.id, guild.id);
         linked++;
     }
     return { made, reused: linked - made };   // new roles, and existing ones with the same name that were reused
@@ -631,9 +653,10 @@ async function createLevelRoles(guild, db, lang) {
 async function handleComponent(ix, client) {
     const lang = require('../lib/pick-lang').pickLang(client, ix.guildId, ix, ix.user.id);
     if (!ix.member?.permissions?.has(PermissionFlagsBits.Administrator)) return ix.reply({ content: L('admin_only', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
-    if (ix.customId === 'lvl:create') {
+    if (ix.customId === 'lvl:create' || ix.customId === 'lvl:streak') {
         await ix.deferUpdate().catch(() => {});
-        const r = await createLevelRoles(ix.guild, client.db, lang);
+        const r = await createRoles(ix.guild, client.db, lang, ix.customId === 'lvl:streak' ? 'streak' : 'level');
+        try { client.settings?.delete?.(ix.guildId); } catch { /* the settings cache reloads the new roles */ }
         await ix.editReply(await configCard(client, ix.guild, client.db, lang, true)).catch(() => {});
         return ix.followUp({ content: r.error ? L(r.error, lang) : (r.made || r.reused) ? [r.made ? L('createDone', lang, { n: r.made }) : null, r.reused ? L('createReused', lang, { n: r.reused }) : null].filter(Boolean).join('\n') : L('createNothing', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
     }

@@ -59,5 +59,10 @@
   "roleName15": "Lv. 15 · Cyber Specialist",
   "roleName20": "Lv. 20 · BKO Commander",
   "roleName25": "Lv. 25 · Architect",
-  "createReused": "Reused {n} role(s) you already had with the same name."
+  "createReused": "Reused {n} role(s) you already had with the same name.",
+  "streakLabel": "Daily streak rewards",
+  "streakTag": "{days} days",
+  "streakHint": "Earned with /claim on consecutive days. Change them in the dashboard (Economy).",
+  "btnCreateStreak": "Create streak roles",
+  "streakName": "{days}-day streak"
 }

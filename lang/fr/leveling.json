@@ -59,5 +59,10 @@
   "roleName15": "Niv. 15 · Cyber-spécialiste",
   "roleName20": "Niv. 20 · Commandant BKO",
   "roleName25": "Niv. 25 · Architecte",
-  "createReused": "{n} rôle(s) que tu avais déjà, avec le même nom, ont été réutilisé(s)."
+  "createReused": "{n} rôle(s) que tu avais déjà, avec le même nom, ont été réutilisé(s).",
+  "streakLabel": "Récompenses de série quotidienne",
+  "streakTag": "{days} jours",
+  "streakHint": "Gagnées avec /claim plusieurs jours d'affilée. Modifiables dans le dashboard (Économie).",
+  "btnCreateStreak": "Créer les rôles de série",
+  "streakName": "Série de {days} jours"
 }

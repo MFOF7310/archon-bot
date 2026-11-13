@@ -59,5 +59,10 @@
   "roleName15": "15 级 · 网络专家",
   "roleName20": "20 级 · BKO 指挥官",
   "roleName25": "25 级 · 架构师",
-  "createReused": "已复用 {n} 个同名的现有身份组。"
+  "createReused": "已复用 {n} 个同名的现有身份组。",
+  "streakLabel": "连续签到奖励",
+  "streakTag": "{days} 天",
+  "streakHint": "连续多天使用 /claim 获得。可在控制面板（经济）中修改。",
+  "btnCreateStreak": "创建连签身份组",
+  "streakName": "连签 {days} 天"
 }
