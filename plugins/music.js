@@ -1534,13 +1534,8 @@ module.exports = {
             const genreEmoji = { Afrobeat: '🌍', Mali: '🇲🇱', HipHop: '🎤', EDM: '⚡', Chinese: '🀄', FrenchRap: '🇫🇷', AfroTrap: '🌴', Arabic: '🌙' };
 
             if (focused.length === 0) {
-                // ══ DEFAULT POPOUT — folders first, then this server's most played, then genre starters ══
-                // (data/music-library.json is optional: without it the list was empty and Discord kept loading)
-                try {
-                    const top = client.db?.prepare('SELECT title, query FROM music_history WHERE guild_id = ? ORDER BY play_count DESC, played_at DESC LIMIT 10').all(interaction.guild?.id) || [];
-                    for (const r of top) push(`🕐 ${r.title}`, r.query);
-                } catch (e) { /* no history table yet */ }
-                for (const [label, q] of STARTERS) push(label, q);
+                // ══ DEFAULT POPOUT — the library's folders, then this server's most played, then genre starters to fill ══
+                // (data/music-library.json is optional: without it the list used to be empty and Discord kept loading)
                 try {
                     const lib = require('../data/music-library.json');
                     // All unique folders
@@ -1549,14 +1544,12 @@ module.exports = {
                         const count = lib.filter(t => t.folder === folder).length;
                         push(`📂 ${folder} (${count} tracks)`, `__folder__${folder}`);
                     }
-                    // Fill remaining slots with top songs
-                    const remaining = 25 - results.length;
-                    if (remaining > 0) {
-                        for (const t of lib.slice(0, remaining)) {
-                            push(`🎵 ${t.title.replace(/^🎵\s*/, '')}`, t.query);
-                        }
-                    }
                 } catch(e) {}
+                try {
+                    const top = client.db?.prepare('SELECT title, query FROM music_history WHERE guild_id = ? ORDER BY play_count DESC, played_at DESC LIMIT 5').all(interaction.guild?.id) || [];
+                    for (const r of top) push(`🕐 ${r.title}`, r.query);
+                } catch (e) { /* no history table yet */ }
+                for (const [label, q] of STARTERS) push(label, q);
             } else {
                 // 1. Guild history (personalized)
                 const history = client.db?.prepare(
