@@ -3071,6 +3071,8 @@ const touchedGuilds = new Map();
 safeOn(Events.InteractionCreate, async (interaction) => {
     // Buttons and menus count for /bot activity (the counter existed but nothing fed it, so it always showed 0)
     if (interaction.guild && (interaction.isButton?.() || interaction.isStringSelectMenu?.())) { try { client.botStats?.onButtonClicked?.(db, interaction.guild.id); } catch (e) {} }
+    // Remember each person's Discord language (used by the welcome card, which has no interaction to read it from)
+    try { require('./lib/guild-welcome').rememberLocale(client, interaction); } catch (_) {}
     // Slash commands and buttons count as activity for /ghostclean too (before, only prefix commands did, so slash-only servers looked dead). At most one write per server every 10 minutes.
     if (interaction.guildId) {
         const last = touchedGuilds.get(interaction.guildId) || 0;
@@ -3372,6 +3374,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if ((interaction.isButton() || interaction.isUserSelectMenu() || interaction.isModalSubmit()) && interaction.customId.startsWith('credit:')) {
         return require('./plugins/credit.js').handleComponent(interaction, client).catch(e => console.error('[CREDIT] component:', e.message));
     }
+    if (interaction.isButton() && interaction.customId.startsWith('joined:')) {
+        return require('./lib/guild-welcome').handleComponent(interaction, client).catch(e => console.error('[WELCOME] component:', e.message));
+    }
     if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith('ghost:')) {
         return require('./plugins/ghostclean.js').handleComponent(interaction, client).catch(e => console.error('[GHOSTCLEAN] component:', e.message));
     }
@@ -3632,6 +3637,9 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
 // ╚══════════════════════════════════════════════════════════════════════╝
 safeOn(Events.GuildCreate, async (guild) => {
     try {
+        // Back within the 7 days its data is kept? Then the welcome says "nothing to redo" instead of the setup steps
+        let cameBack = false;
+        try { ensureDepartures(); cameBack = !!db.prepare('SELECT 1 FROM guild_departures WHERE guild_id = ?').get(guild.id); } catch (_) {}
         try { ensureDepartures(); db.prepare('DELETE FROM guild_departures WHERE guild_id = ?').run(guild.id); } catch (_) {}
         try { ensureGuildHistory(); db.prepare('DELETE FROM guild_history WHERE guild_id = ?').run(guild.id); } catch (_) {}
         try { recordArrival(guild); } catch (e) { console.error('[ARRIVAL]', e.message); }
@@ -3651,7 +3659,7 @@ safeOn(Events.GuildCreate, async (guild) => {
         if (guild.id === process.env.GUILD_ID) return;
 
         // The welcome card: to whoever added ARCHON, else the owner, else in the server (lib/guild-welcome)
-        const via = await require('./lib/guild-welcome').sendWelcome(client, guild);
+        const via = await require('./lib/guild-welcome').sendWelcome(client, guild, { back: cameBack });
         console.log(`[GUILD CREATE] Welcome ${via ? 'sent via ' + via : 'NOT delivered'} (${guild.name})`);
 
     } catch (e) {
@@ -3711,7 +3719,15 @@ function recordDeparture(guild) {
 }
 safeOn(Events.GuildDelete, async (guild) => {
     // available === false means a Discord outage, not a departure
-    if (guild.available !== false) recordDeparture(guild);
+    if (guild.available !== false) {
+        const byOwner = !!client.ghostLeaving?.has(guild.id);   // read before recordDeparture clears it
+        recordDeparture(guild);
+        // tell whoever added ARCHON, with the date its settings are deleted and a way back
+        if (guild.id !== process.env.GUILD_ID && !byOwner) {
+            require('./lib/guild-welcome').sendRemoved(client, guild)
+                .then((via) => console.log(`[GUILD DELETE] Removal notice ${via ? 'sent via ' + via : 'not delivered'} (${guild.name})`)).catch(() => {});
+        }
+    }
     try {
         ensureDepartures();
         db.prepare('INSERT OR REPLACE INTO guild_departures (guild_id, left_at) VALUES (?, ?)').run(guild.id, Date.now());
