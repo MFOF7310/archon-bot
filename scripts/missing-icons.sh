@@ -21,7 +21,7 @@ make ic_bell bell
 make ic_bell_off bell-off
 make ic_folder folder
 
-echo "Done. Now run: pm2 restart Architect-CG223"
 make ic_palette palette
 make ic_dashboard layout-dashboard
 make ic_back arrow-left
+echo "Done. Now run: pm2 restart Architect-CG223"
