@@ -2056,7 +2056,6 @@ buildAliasLanguageMap();
         const HeapGuardian = require('./plugins/heap-guardian.js');
         client.heapGuardian = new HeapGuardian(client);
         client.heapGuardian.start();
-        console.log(`${green}[HEAP]${reset} Guardian active | WARN:300MB SNAP:500MB CRIT:700MB`);
     } catch (err) {
         console.log(`${yellow}[HEAP]${reset} Not loaded: ${err.message}`);
     }
@@ -2552,8 +2551,7 @@ setInterval(async () => {
     try {
         const ytModule = require('./plugins/livestream.js');
         if (ytModule.startPolling) {
-            ytModule.startPolling(client, db);
-            console.log(`${green}[YOUTUBE]${reset} Polling engine active · priority 2min · normal 5min`);
+            ytModule.startPolling(client, db);   // it logs its own "Polling engine active" line
         }
     } catch (err) {
         console.error(`${red}[YOUTUBE]${reset} Engine failed to start: ${err.message}`);
@@ -2599,7 +2597,8 @@ async function sendBootDM() {
     try {
         head = execSync('git rev-parse HEAD', { cwd: __dirname }).toString().trim();
         const last = meta('boot_dm_commit');
-        if (last && last !== head) {
+        // only a real commit hash ever reaches the shell (the value comes from the database)
+        if (last && last !== head && /^[0-9a-f]{7,40}$/.test(String(last))) {
             execSync(`git cat-file -e ${last}^{commit}`, { cwd: __dirname, stdio: 'ignore' });
             changes = execSync(`git log --no-merges --format=%s ${last}..HEAD`, { cwd: __dirname }).toString().trim().split('\n').filter(Boolean);
         }
@@ -6061,8 +6060,7 @@ if (process.send) {
     console.log(`\x1b[32m[PM2]\x1b[0m Ready signal sent to PM2`);
 }
 
-// ================= INSTANT PM2 SPLASH =================
-displayPM2Banner(0);
+// (the "Online" banner is printed once the bot is really connected, in ClientReady)
 
 // ================= LOGIN =================
 if (!process.env.DISCORD_TOKEN) {
@@ -6145,7 +6143,7 @@ if (process.env.KEEPALIVE_URL) {
 
 // ================= LANCEMENT DU SERVEUR API =================
 apiApp.listen(5000, '127.0.0.1', () => {
-    console.log('\x1b[32m[API]\x1b[0m Bridge active on port 5000 (0.0.0.0)');
+    console.log('\x1b[32m[API]\x1b[0m Bridge active on port 5000 (127.0.0.1, this server only)');
 });
 
 // ================= BOT PROFILE & STATUS =================
