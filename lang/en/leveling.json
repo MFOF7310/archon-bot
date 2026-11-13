@@ -48,5 +48,6 @@
   "themeUsage": "Usage: `.leveling theme <level|welcome> [#bg1] [#bg2] [#accent]`",
   "setroleAbove": "I can't give {role}: it's above my role. Drag ARCHON above it in Server Settings → Roles, then try again.",
   "setroleManaged": "I can't give {role}: it's managed by an integration, or it's @everyone.",
-  "setrolePowerful": "{role} has admin-level permissions, so I won't hand it out automatically. Pick a plain role."
+  "setrolePowerful": "{role} has admin-level permissions, so I won't hand it out automatically. Pick a plain role.",
+  "setroleFailed": "I couldn't save that level role. Try again in a moment; if it keeps failing, tell the bot owner."
 }

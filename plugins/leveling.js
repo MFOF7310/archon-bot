@@ -714,10 +714,14 @@ module.exports = {
                 const problem = roleProblem(ix.guild, ix.guild.roles.cache.get(role.id) || role);
                 if (problem && problem !== 'gone') return ix.reply({ content: L(problem === 'above' ? 'setroleAbove' : problem === 'powerful' ? 'setrolePowerful' : 'setroleManaged', lang, { role: `<@&${role.id}>` }), flags: 1 << 6, allowedMentions: { parse: [] } });
             }
-            if (db) {
+            // saved, then read back: if it didn't stick, say so instead of a success message
+            let saved = false;
+            try {
                 db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(ix.guild.id);
                 db.prepare(`UPDATE server_settings SET ${col} = ? WHERE guild_id = ?`).run(role?.id || null, ix.guild.id);
-            }
+                saved = (db.prepare(`SELECT ${col} AS v FROM server_settings WHERE guild_id = ?`).get(ix.guild.id)?.v || null) === (role?.id || null);
+            } catch (e) { console.error('[LEVELING] setrole:', e.message); }
+            if (!saved) return ix.reply({ content: L('setroleFailed', lang), flags: 1 << 6 });
             if (role) {
                 return ix.reply({ content: t('leveling.role_set', lang, { level, role }), flags: 1 << 6 });
             } else {

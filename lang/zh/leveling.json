@@ -48,5 +48,6 @@
   "themeUsage": "用法：`.leveling theme <level|welcome> [#bg1] [#bg2] [#accent]`",
   "setroleAbove": "我无法分配 {role}：它高于我的身份组。请在 服务器设置 → 身份组 中把 ARCHON 拖到它上面，然后重试。",
   "setroleManaged": "我无法分配 {role}：它由集成管理，或是 @everyone。",
-  "setrolePowerful": "{role} 拥有管理员级权限，我不会自动分配它。请选择普通身份组。"
+  "setrolePowerful": "{role} 拥有管理员级权限，我不会自动分配它。请选择普通身份组。",
+  "setroleFailed": "无法保存该等级身份组。请稍后重试；如果仍然失败，请告知机器人所有者。"
 }
