@@ -584,6 +584,8 @@ module.exports = {
                     youtube_handle = excluded.youtube_handle,
                     last_video_id = COALESCE(youtube_notifications.last_video_id, excluded.last_video_id),
                     priority = excluded.priority`).run(guildId, channelId, handle, channel.id, up?.id || null, live.isLive ? 1 : 0, priority ? 1 : 0);
+            // a new channel starts with its latest video already "seen", so the next new video is announced
+            if (up?.id) try { markSeen(db, channelId, [up.id]); } catch (_) {}
 
             const _L3 = livLang(client, guildId, message);
             const _row = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
@@ -681,6 +683,8 @@ module.exports = {
                     youtube_handle = excluded.youtube_handle,
                     last_video_id = COALESCE(youtube_notifications.last_video_id, excluded.last_video_id),
                     priority = excluded.priority`).run(guildId, channelId, handle, target.id, up?.id || null, live.isLive ? 1 : 0, priority ? 1 : 0);
+            // a new channel starts with its latest video already "seen", so the next new video is announced
+            if (up?.id) try { markSeen(db, channelId, [up.id]); } catch (_) {}
             const liveOpt = interaction.options.getBoolean('live');
             const upOpt = interaction.options.getBoolean('uploads');
             if (liveOpt !== null) db.prepare('UPDATE youtube_notifications SET notify_live = ? WHERE guild_id = ? AND youtube_channel_id = ?').run(liveOpt ? 1 : 0, guildId, channelId);
