@@ -3067,9 +3067,18 @@ if (cooldownCheck.blocked) {
 });
 
 // ================= INTERACTION HANDLER =================
+const touchedGuilds = new Map();
 safeOn(Events.InteractionCreate, async (interaction) => {
     // Buttons and menus count for /bot activity (the counter existed but nothing fed it, so it always showed 0)
     if (interaction.guild && (interaction.isButton?.() || interaction.isStringSelectMenu?.())) { try { client.botStats?.onButtonClicked?.(db, interaction.guild.id); } catch (e) {} }
+    // Slash commands and buttons count as activity for /ghostclean too (before, only prefix commands did, so slash-only servers looked dead). At most one write per server every 10 minutes.
+    if (interaction.guildId) {
+        const last = touchedGuilds.get(interaction.guildId) || 0;
+        if (Date.now() - last > 600000) {
+            touchedGuilds.set(interaction.guildId, Date.now());
+            try { db.prepare("UPDATE global_server_stats SET last_active = strftime('%s','now') WHERE guild_id = ?").run(interaction.guildId); } catch (_) {}
+        }
+    }
     // ── VERIFY PANEL (buttons + modal) — must run before other routers ──
     if ((interaction.isButton?.() || interaction.isModalSubmit?.()) && interaction.customId?.startsWith('vpanel:')) {
         try {
@@ -3362,6 +3371,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     // /meta card: class filter, weapon picker, random pick, back to the list (and the old cards' "reroll" button)
     if ((interaction.isButton() || interaction.isUserSelectMenu() || interaction.isModalSubmit()) && interaction.customId.startsWith('credit:')) {
         return require('./plugins/credit.js').handleComponent(interaction, client).catch(e => console.error('[CREDIT] component:', e.message));
+    }
+    if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith('ghost:')) {
+        return require('./plugins/ghostclean.js').handleComponent(interaction, client).catch(e => console.error('[GHOSTCLEAN] component:', e.message));
     }
     if (interaction.isButton() && interaction.customId.startsWith('claim:')) {
         return require('./plugins/claim.js').handleComponent(interaction, client).catch(e => console.error('[CLAIM] button:', e.message));

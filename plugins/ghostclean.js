@@ -1,221 +1,240 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+// ═══════════════════════════════════════════════════════
+// ARCHON CG-223 — /ghostclean (owner only)
+// Finds servers where nobody has used the bot for a while, and lets the owner leave them.
+//   - candidates come from the servers the bot is really in (not old database rows)
+//   - "quiet since" = last command, button, member join/leave, or the day the bot joined, whichever is latest
+//   - the home server (GUILD_ID) and any id in GHOST_KEEP (comma list in .env) are never touched
+//   - leaving always asks first, and checks again at click time that the server is still quiet
+//   - prefix .ghostclean sends the card to the owner's DMs, so other servers' names stay private
+// Buttons and menus use the "ghost:" prefix and are routed from index.js.
+// ═══════════════════════════════════════════════════════
+const {
+    SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, MessageFlags,
+} = require('discord.js');
+const v2 = require('../lib/games/v2');
+const i18n = require('../lib/i18n');
+const { pickLang } = require('../lib/pick-lang');
+
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-const EMOJIS = require('../config/emojis');
+const T = (lang, key, vars) => i18n.t('ghostclean.' + key, lang, vars);
 
-const GHOST_DAYS = 50;
-const WHITELIST = [process.env.GUILD_ID];
+const DEFAULT_DAYS = 50;
+const SHOWN = 15;            // servers listed on the card
+const PICK = 25;             // servers in the menu (Discord limit)
+const ORANGE = 0xE67E22, GREEN = 0x2ECC71, RED = 0xE74C3C, GREY = 0x95A5A6;
 
-function getGhostCandidates(db) {
-    const now = Math.floor(Date.now() / 1000);
-    const threshold = GHOST_DAYS * 86400;
-    return db.prepare(`
-        SELECT guild_id, guild_name, total_members,
-               CAST((? - last_active) / 86400 AS INTEGER) as days_inactive
-        FROM global_server_stats
-        WHERE (? - last_active) >= ? AND guild_id != 'DM'
-        ORDER BY days_inactive DESC
-    `).all(now, now, threshold).filter(r => !WHITELIST.includes(r.guild_id));
+const isOwner = (id) => id === process.env.OWNER_ID;
+const langOf = (i, client) => pickLang(client, i.guildId, i, i.user.id);
+const fmt = (n, lang) => Number(n || 0).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US');
+const clampDays = (d) => Math.min(365, Math.max(7, parseInt(d, 10) || DEFAULT_DAYS));
+
+function keepList() {
+    return new Set([process.env.GUILD_ID, ...String(process.env.GHOST_KEEP || '').split(',')].map(s => String(s || '').trim()).filter(Boolean));
 }
 
-async function handleGhostClean(client, reply, args, db, isOwner) {
-    const subcommand = args[0]?.toLowerCase() || 'list';
-
-    if (!isOwner) {
-        return reply({
-            embeds: [new EmbedBuilder()
-                .setColor('#f1c40f')
-                .setTitle(`${em('ic_warn', em('ic_warn', '⚠️'))} Access Restricted`)
-                .setDescription(
-                    `Hey! ${EMOJIS.wave}\n\n` +
-                    `This command is reserved for the **System Architect** only.\n` +
-                    `Need server help? Reach out to a moderator instead.\n\n` +
-                    `🦅 *ARCHON CG-223*`
-                )],
-            flags: 64
-        });
-    }
-
-    const candidates = getGhostCandidates(db);
-
-    // ── LIST ──
-    if (subcommand === 'list') {
-        if (candidates.length === 0) {
-            return reply({
-                embeds: [new EmbedBuilder()
-                    .setColor('#2ecc71')
-                    .setTitle(`${EMOJIS.online} Ghost Scan Clear`)
-                    .setDescription(`No ghost servers found. All nodes active above ${GHOST_DAYS}-day threshold.`)],
-                flags: 64
-            });
+// Every server the bot is in, with how long it has been quiet
+function scan(client, days) {
+    const keep = keepList();
+    const now = Date.now() / 1000;
+    const seen = new Map();
+    try {
+        for (const r of client.db.prepare("SELECT guild_id, last_active FROM global_server_stats WHERE guild_id != 'DM'").all()) {
+            seen.set(r.guild_id, Number(r.last_active) || 0);
         }
-
-        const fields = candidates.map((r, i) => {
-            const inCache = client.guilds.cache.has(r.guild_id);
-            const dot = inCache ? EMOJIS.online : EMOJIS.offline;
-            return {
-                name: `${i + 1}. ${dot} ${r.guild_name}`,
-                value: `\`\`${r.guild_id}\`\` • ${r.total_members} members • ${r.days_inactive}d inactive`,
-                inline: false
-            };
-        });
-
-        return reply({
-            embeds: [new EmbedBuilder()
-                .setColor('#e67e22')
-                .setTitle(`${em('ic_warn', em('ic_warn', '⚠️'))} Ghost Servers — ${candidates.length} candidates`)
-                .addFields(fields)
-                .setFooter({ text: `Threshold: ${GHOST_DAYS}+ days • /ghostclean leave <id> | /ghostclean leaveall` })],
-            flags: 64
-        });
+    } catch (_) {}
+    const all = [];
+    for (const [, g] of client.guilds.cache) {
+        if (keep.has(g.id)) continue;
+        const joined = Math.floor((g.joinedTimestamp || 0) / 1000);
+        const last = Math.max(seen.get(g.id) || 0, joined);
+        all.push({ id: g.id, name: g.name, members: g.memberCount || 0, quiet: Math.floor((now - last) / 86400) });
     }
+    const ghosts = all.filter(s => s.quiet >= days).sort((a, b) => b.quiet - a.quiet || a.members - b.members);
+    return { ghosts, total: client.guilds.cache.size };
+}
 
-    // ── SERVERS (name + ID only) ──
-    if (subcommand === 'servers') {
-        if (candidates.length === 0) {
-            return reply({ content: `🟢 No ghost servers found.`, flags: 64 });
-        }
-        const fields = candidates.map((r, i) => ({
-            name: `${i + 1}. ${r.guild_name}`,
-            value: `\`${r.guild_id}\``,
-            inline: true
-        }));
-        return reply({
-            embeds: [new EmbedBuilder()
-                .setColor('#3498db')
-                .setTitle(`${EMOJIS.eagle} Ghost Server IDs`)
-                .addFields(fields)
-                .setFooter({ text: 'Tap an ID to copy • Use /ghostclean leave <id> to remove' })],
-            flags: 64
-        });
+const btn = (id, label, style, emoji) => {
+    const b = new ButtonBuilder().setCustomId(id).setLabel(label).setStyle(style);
+    if (emoji) b.setEmoji(emoji);
+    return b;
+};
+const emojiOf = (k, fb) => {
+    const v = em(k, fb);
+    const m = /^<a?:(\w+):(\d+)>$/.exec(v);
+    return m ? { id: m[2], name: m[1] } : fb;
+};
+
+// ── Main card: the list ──
+function listCard(client, lang, days) {
+    const { ghosts, total } = scan(client, days);
+    const head = `-# ARCHON · ${T(lang, 'owner')}\n## ${em('ic_ghost', '👻')} ${T(lang, 'title')}`;
+    if (!ghosts.length) {
+        return v2.card(GREEN, [
+            { text: head },
+            { text: `${em('ic_ok', '✅')} ${T(lang, 'clear', { days, total: fmt(total, lang) })}` },
+            { row: new ActionRowBuilder().addComponents(btn(`ghost:list:${days}`, T(lang, 'refresh'), ButtonStyle.Secondary, emojiOf('ic_refresh', '🔄'))) },
+        ]);
     }
+    const lines = ghosts.slice(0, SHOWN).map((s, i) =>
+        `\`${String(i + 1).padStart(2, ' ')}\` **${s.name.slice(0, 40)}** · ${T(lang, 'line', { members: fmt(s.members, lang), quiet: s.quiet })}`);
+    if (ghosts.length > SHOWN) lines.push(`-# ${T(lang, 'more', { n: ghosts.length - SHOWN })}`);
+    const members = ghosts.reduce((a, s) => a + s.members, 0);
 
-    // ── LEAVE <guild_id> ──
-    if (subcommand === 'leave') {
-        const targetId = args[1];
-        if (!targetId) return reply({ content: em('ic_off', em('ic_off', '❌')) + ' Provide a guild ID.', flags: 64 });
-        if (WHITELIST.includes(targetId)) return reply({ content: em('ic_off', em('ic_off', '❌')) + ' That guild is whitelisted.', flags: 64 });
-        const guild = client.guilds.cache.get(targetId);
-        if (!guild) return reply({ content: `${em('ic_warn', '⚠️')} Guild \`${targetId}\` not in cache.`, flags: 64 });
-        const name = guild.name;
-        await guild.leave();
-        console.log(`[GHOSTCLEAN] Left: ${name} (${targetId})`);
-        return reply({
-            embeds: [new EmbedBuilder()
-                .setColor('#e74c3c')
-                .setTitle(`${EMOJIS.offline} Left Ghost Server`)
-                .setDescription(`Successfully left **${name}** (\`${targetId}\`)`)
-                .setTimestamp()],
-            flags: 64
-        });
+    const menu = new StringSelectMenuBuilder()
+        .setCustomId(`ghost:pick:${days}`)
+        .setPlaceholder(T(lang, 'pick'))
+        .addOptions(ghosts.slice(0, PICK).map(s => ({
+            label: s.name.slice(0, 100),
+            description: T(lang, 'line', { members: fmt(s.members, lang), quiet: s.quiet }).slice(0, 100),
+            value: s.id,
+        })));
+
+    return v2.card(ORANGE, [
+        { text: head },
+        { text: T(lang, 'summary', { n: ghosts.length, total: fmt(total, lang), days, members: fmt(members, lang) }) },
+        { rule: true },
+        { text: lines.join('\n') },
+        { rule: true },
+        { row: new ActionRowBuilder().addComponents(menu) },
+        { row: new ActionRowBuilder().addComponents(
+            btn(`ghost:all:${days}`, T(lang, 'leaveAll', { n: ghosts.length }), ButtonStyle.Danger),
+            btn(`ghost:list:${days}`, T(lang, 'refresh'), ButtonStyle.Secondary, emojiOf('ic_refresh', '🔄')),
+        ) },
+        { text: `-# ${T(lang, 'note')}` },
+    ]);
+}
+
+// ── One server, before leaving ──
+function oneCard(client, lang, days, id) {
+    const s = scan(client, 0).ghosts.find(x => x.id === id);
+    if (!s) return listCard(client, lang, days);
+    const g = client.guilds.cache.get(id);
+    const owner = g?.ownerId ? `<@${g.ownerId}>` : '—';
+    return v2.card(RED, [
+        { text: `-# ARCHON · ${T(lang, 'title')}\n## ${s.name.slice(0, 80)}` },
+        { text: [
+            `${em('ic_member', '👥')} ${T(lang, 'members', { n: fmt(s.members, lang) })}`,
+            `${em('ic_clock', '🕒')} ${T(lang, 'quietFor', { n: s.quiet })}`,
+            `${em('ic_crown', '👑')} ${T(lang, 'serverOwner')} ${owner}`,
+            `-# ID \`${s.id}\``,
+        ].join('\n') },
+        { rule: true },
+        { text: T(lang, 'askOne') },
+        { row: new ActionRowBuilder().addComponents(
+            btn(`ghost:go:${days}:${id}`, T(lang, 'yesLeave'), ButtonStyle.Danger),
+            btn(`ghost:list:${days}`, T(lang, 'back'), ButtonStyle.Secondary),
+        ) },
+    ]);
+}
+
+// ── Leave everything quiet, after a confirm ──
+function askAllCard(client, lang, days) {
+    const { ghosts } = scan(client, days);
+    if (!ghosts.length) return listCard(client, lang, days);
+    const members = ghosts.reduce((a, s) => a + s.members, 0);
+    return v2.card(RED, [
+        { text: `-# ARCHON · ${T(lang, 'title')}\n## ${em('ic_warn', '⚠️')} ${T(lang, 'sureAll', { n: ghosts.length })}` },
+        { text: T(lang, 'sureAllBody', { n: ghosts.length, days, members: fmt(members, lang) }) },
+        { row: new ActionRowBuilder().addComponents(
+            btn(`ghost:goall:${days}`, T(lang, 'yesAll', { n: ghosts.length }), ButtonStyle.Danger),
+            btn(`ghost:list:${days}`, T(lang, 'cancel'), ButtonStyle.Secondary),
+        ) },
+    ]);
+}
+
+function doneCard(lang, days, left, failed) {
+    const items = [{ text: `-# ARCHON · ${T(lang, 'title')}\n## ${em('ic_ok', '✅')} ${T(lang, 'done', { n: left.length })}` }];
+    if (left.length) items.push({ text: left.slice(0, 20).map(n => `• ${n}`).join('\n') + (left.length > 20 ? `\n-# ${T(lang, 'more', { n: left.length - 20 })}` : '') });
+    if (failed.length) items.push({ text: `${em('ic_warn', '⚠️')} ${T(lang, 'failed', { n: failed.length })}\n` + failed.slice(0, 10).map(n => `• ${n}`).join('\n') });
+    items.push({ row: new ActionRowBuilder().addComponents(btn(`ghost:list:${days}`, T(lang, 'backList'), ButtonStyle.Secondary)) });
+    return v2.card(failed.length ? ORANGE : GREEN, items);
+}
+
+async function leave(client, id) {
+    const g = client.guilds.cache.get(id);
+    if (!g) return null;
+    const name = g.name;
+    try {
+        await g.leave();
+        console.log(`[GHOSTCLEAN] Left ${name} (${id})`);
+        return { ok: true, name };
+    } catch (e) {
+        console.error(`[GHOSTCLEAN] Could not leave ${name} (${id}): ${e.message}`);
+        return { ok: false, name };
     }
+}
 
-    // ── LEAVEALL ──
-    if (subcommand === 'leaveall') {
-        const inCache = candidates.filter(r => client.guilds.cache.has(r.guild_id));
-        if (inCache.length === 0) return reply({ content: em('ic_warn', em('ic_warn', '⚠️')) + ' No ghost candidates in cache.', flags: 64 });
+// ── Buttons and menu ──
+const busy = new Set();
+async function handleComponent(interaction, client) {
+    const lang = langOf(interaction, client);
+    if (!isOwner(interaction.user.id)) {
+        return interaction.reply({ content: T(lang, 'ownerOnly'), flags: MessageFlags.Ephemeral }).catch(() => {});
+    }
+    const [, action, d, id] = interaction.customId.split(':');
+    const days = clampDays(d);
 
-        if (args[1] !== 'confirm') {
-            const preview = inCache.map(r => `${em('ic_warn', '⚠️')} **${r.guild_name}** — ${r.days_inactive}d`).join('\n');
-            return reply({
-                embeds: [new EmbedBuilder()
-                    .setColor('#e74c3c')
-                .setTitle(`${em('ic_warn', em('ic_warn', '⚠️'))} Confirm Mass Leave`)
-                    .setDescription(`About to leave **${inCache.length}** servers:\n\n${preview}\n\n**Add \`confirm\` to proceed.**`)],
-                flags: 64
-            });
-        }
+    if (action === 'list') return interaction.update(listCard(client, lang, days)).catch(() => {});
+    if (action === 'pick') return interaction.update(oneCard(client, lang, days, interaction.values?.[0])).catch(() => {});
+    if (action === 'all') return interaction.update(askAllCard(client, lang, days)).catch(() => {});
 
-        let left = 0, failed = 0;
-        const results = [];
-        for (const row of inCache) {
-            const guild = client.guilds.cache.get(row.guild_id);
-            if (!guild) { failed++; continue; }
-            try {
-                await guild.leave();
-                left++;
-                results.push(`🟢 Left **${row.guild_name}**`);
-                console.log(`[GHOSTCLEAN] Left: ${row.guild_name} (${row.guild_id})`);
-            } catch (e) {
-                failed++;
-                results.push(`${em('ic_off', '❌')} Failed: **${row.guild_name}**`);
+    if (action === 'go' || action === 'goall') {
+        if (busy.has('run')) return interaction.reply({ content: T(lang, 'busy'), flags: MessageFlags.Ephemeral }).catch(() => {});
+        busy.add('run');
+        try {
+            await interaction.deferUpdate().catch(() => {});
+            // check again now: the server may have become active since the card was shown
+            const quiet = new Set(scan(client, days).ghosts.map(s => s.id));
+            const ids = action === 'go' ? [id].filter(x => quiet.has(x)) : [...quiet];
+            const left = [], failed = [];
+            for (const gid of ids) {
+                const r = await leave(client, gid);
+                if (r?.ok) left.push(r.name); else if (r) failed.push(r.name);
             }
+            if (action === 'go' && !ids.length) {
+                return interaction.editReply(v2.card(GREY, [
+                    { text: `${em('ic_ok', '✅')} ${T(lang, 'nowActive')}` },
+                    { row: new ActionRowBuilder().addComponents(btn(`ghost:list:${days}`, T(lang, 'backList'), ButtonStyle.Secondary)) },
+                ])).catch(() => {});
+            }
+            return interaction.editReply(doneCard(lang, days, left, failed)).catch(() => {});
+        } finally {
+            busy.delete('run');
         }
-
-        return reply({
-            embeds: [new EmbedBuilder()
-                .setColor('#2ecc71')
-                .setTitle(`${EMOJIS.eagle} Ghost Clean Complete`)
-                .setDescription(results.join('\n'))
-                .addFields({ name: 'Summary', value: `${em('ic_ok', '✅')} Left: ${left} • ❌ Failed: ${failed}` })
-                .setTimestamp()],
-            flags: 64
-        });
     }
-
-    return reply({ content: '❓ Usage: `list | servers | leave <id> | leaveall [confirm]`', flags: 64 });
 }
 
 module.exports = {
     name: 'ghostclean',
     aliases: ['ghostservers', 'cleanghosts'],
-    description: '👻 Ghost server management (owner only).',
+    description: '👻 Find quiet servers and leave them (owner only).',
     category: 'OWNER',
-    usage: '.ghostclean [list | servers | leave <guild_id> | leaveall]',
-    cooldown: 5000,
+    usage: '.ghostclean [days]',
+    cooldown: 3000,
+    handleComponent,
 
     data: new SlashCommandBuilder()
         .setName('ghostclean')
-        .setDescription('👻 Ghost server management (owner only)')
-        .addStringOption(opt =>
-            opt.setName('action')
-                .setDescription('Action')
-                .setRequired(false)
-                .addChoices(
-                    { name: 'List ghost servers', value: 'list' },
-                    { name: 'Show IDs only', value: 'servers' },
-                    { name: 'Leave one server', value: 'leave' },
-                    { name: 'Leave all ghosts', value: 'leaveall' }
-                ))
-        .addStringOption(opt =>
-            opt.setName('guild_id')
-                .setDescription('Guild ID to leave')
-                .setAutocomplete(true)
-                .setRequired(false))
-        .addStringOption(opt =>
-            opt.setName('confirm')
-                .setDescription('Type confirm for leaveall')
-                .setRequired(false)),
+        .setDescription('👻 Find quiet servers and leave them (owner only)')
+        .addIntegerOption(o => o.setName('days')
+            .setDescription(`Quiet for at least this many days (default ${DEFAULT_DAYS})`)
+            .setMinValue(7).setMaxValue(365).setRequired(false)),
 
-    async autocomplete(interaction, client) {
-        const focusedValue = interaction.options.getFocused();
-        const db = client.db;
-        const candidates = getGhostCandidates(db);
-        const filtered = candidates
-            .filter(r =>
-                r.guild_name.toLowerCase().includes(focusedValue.toLowerCase()) ||
-                r.guild_id.includes(focusedValue)
-            )
-            .slice(0, 25);
-        await interaction.respond(
-            filtered.map(r => ({
-                name: `${r.guild_name} (${r.days_inactive}d inactive)`,
-                value: r.guild_id
-            }))
-        );
-    },
-
-    run: async (client, message, args, db) => {
-        const isOwner = message.author.id === process.env.OWNER_ID;
-        await handleGhostClean(client, o => message.reply(o).catch(() => {}), args, db, isOwner);
+    run: async (client, message, args) => {
+        if (!isOwner(message.author.id)) return;
+        const lang = pickLang(client, message.guild?.id, null, message.author.id);
+        const card = listCard(client, lang, clampDays(args[0]));
+        // sent in DMs: other servers' names are not shown in a public channel
+        const sent = await message.author.send(card).catch(() => null);
+        if (sent) message.react('📬').catch(() => {});
+        else message.reply({ content: T(lang, 'dmClosed') }).catch(() => {});
     },
 
     execute: async (interaction, client) => {
-        await interaction.deferReply({ flags: 64 });
-        const isOwner = interaction.user.id === process.env.OWNER_ID;
-        const action = interaction.options.getString('action') || 'list';
-        const guildId = interaction.options.getString('guild_id') || '';
-        const confirm = interaction.options.getString('confirm') || '';
-        const args = [action, guildId || confirm].filter(Boolean);
-        await handleGhostClean(client, o => interaction.editReply(o).catch(() => {}), args, client.db, isOwner);
-    }
+        const lang = langOf(interaction, client);
+        if (!isOwner(interaction.user.id)) {
+            return interaction.reply({ content: T(lang, 'ownerOnly'), flags: MessageFlags.Ephemeral }).catch(() => {});
+        }
+        await interaction.reply({ ...listCard(client, lang, clampDays(interaction.options.getInteger('days'))), flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral }).catch(() => {});
+    },
 };
