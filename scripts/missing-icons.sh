@@ -35,4 +35,6 @@ make ic_daily calendar-event
 make ic_levelup trending-up
 make ic_updates speakerphone
 make ic_next arrow-right
+make ic_category category
+make ic_games device-gamepad-2
 echo "Done. Now run: pm2 restart Architect-CG223"

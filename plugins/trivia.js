@@ -199,9 +199,9 @@ function resultsScreen(s, hasGames, o = {}) {
   const items = [{ text: lines.join('\n') }];
   if (!o.closed) {
     items.push({ rule: true }, { row: ui.row(
-      ui.button('trivia_again', Q('btnAgain'), em('triviaAgain'), ui.ButtonStyle.Success),
-      ui.button('trivia_menu', Q('btnMenu'), em('triviaMenu'), ui.ButtonStyle.Primary),
-      hasGames ? ui.button('trivia_games', Q('btnGames'), em('triviaGames')) : null,
+      ui.button('trivia_again', Q('btnAgain'), icon('refresh'), ui.ButtonStyle.Success),
+      ui.button('trivia_menu', Q('btnMenu'), icon('category'), ui.ButtonStyle.Primary),
+      hasGames ? ui.button('trivia_games', Q('btnGames'), icon('games')) : null,
     ) });
   }
   return v2.card(accuracy === 100 ? ui.COLORS.gold : CATEGORIES[s.cat].color, items);
