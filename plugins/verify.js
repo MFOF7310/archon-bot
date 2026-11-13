@@ -417,7 +417,7 @@ module.exports = {
 
             const cmdId = interaction.commandId;
             const desc = [
-                `### ${enabled ? `${EMOJIS.online} ${vt(lang, 'gateActive')}` : paused ? `${EMOJIS.offline} ${vt(lang, 'gatePaused')}` : `${EMOJIS.offline} ${vt(lang, 'gateInactive')}`}`,
+                `### ${enabled ? `${em('ic_on', '🟢')} ${vt(lang, 'gateActive')}` : paused ? `${em('ic_toggle_off', em('ic_off', '🔴'))} ${vt(lang, 'gatePaused')}` : `${em('ic_toggle_off', em('ic_off', '🔴'))} ${vt(lang, 'gateInactive')}`}`,
                 `> ${enabled ? vt(lang, 'gateActiveDesc') : paused ? vt(lang, 'gatePausedDesc') : vt(lang, 'gateInactiveDesc')}`,
                 ``, `### ${em('ic_config', '⚙️')} ${vt(lang, 'configuration')}`,
                 `**${vt(lang, 'verifiedRoleLabel')}** — ${verifiedRole}`,

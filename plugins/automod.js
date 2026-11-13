@@ -317,7 +317,7 @@ function raidCard(db, gid, t) {
         ? t('raid_minAgeOn', { age: t(Number(s.raid_min_age_days) === 1 ? 'daysOne' : 'daysMany', { n: s.raid_min_age_days }) })
         : t('raid_minAgeOff');
     return v2card(on ? C.GREEN : C.GREY, [
-        { text: `## ${EMOJIS.ic_role || '🛡️'} ${t('raid_title')}\n${on ? (EMOJIS.ic_on || '🟢') : (EMOJIS.ic_off || '⚪')} ${t(on ? 'raid_isOn' : 'raid_isOff')}` },
+        { text: `## ${EMOJIS.ic_role || '🛡️'} ${t('raid_title')}\n${on ? (EMOJIS.ic_on || '🟢') : (EMOJIS.ic_toggle_off || EMOJIS.ic_off || '🔴')} ${t(on ? 'raid_isOn' : 'raid_isOff')}` },
         { rule: true },
         { text: `${t('raid_trigger', { n: s.raid_threshold || 5, s: s.raid_window || 30 })}\n${age}` },
     ]);

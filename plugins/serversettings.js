@@ -268,7 +268,7 @@ async execute(interaction, client) {
         const em = (k, fb) => EMOJIS[k] || fb;
         const chM = (id, env) => id ? `<#${id}>` : (isArchitectServer && process.env[env] ? `<#${process.env[env]}> ${em('dot_blue', '🔹')} .env` : `\`${tr('not_set')}\``);
         const roleM = (id, env) => id ? `<@&${id}>` : (isArchitectServer && process.env[env] ? `<@&${process.env[env]}> ${em('dot_blue', '🔹')} .env` : `\`${tr('not_set')}\``);
-        const bS = (val) => val ? `${em('ic_on', '🟢')} ${tr('enabled')}` : `${em('ic_off', '🔴')} ${tr('disabled')}`;
+        const bS = (val) => val ? `${em('ic_on', '🟢')} ${tr('enabled')}` : `${em('ic_toggle_off', em('ic_off', '🔴'))} ${tr('disabled')}`;   // green / red switch
 
 
         // Définition de toutes les sections avec leur statut "isSet"
@@ -554,9 +554,9 @@ async execute(interaction, client) {
             const displayValue = processedValue === null 
                 ? (lang === 'fr' ? '📋 Défaut Système' : '📋 System Default')
                 : (processedValue === '1' && def.type === 'bool') 
-                    ? (lang === 'fr' ? `${EMOJIS.screaminggreen || em('ic_ok', '✅')} Activé` : `${EMOJIS.screaminggreen || em('ic_ok', '✅')} Enabled`)
+                    ? (lang === 'fr' ? `${em('ic_on', '🟢')} Activé` : `${em('ic_on', '🟢')} Enabled`)
                     : (processedValue === '0' && def.type === 'bool')
-                        ? (lang === 'fr' ? `${EMOJIS.red_color || em('ic_off', '❌')} Désactivé` : `${EMOJIS.red_color || em('ic_off', '❌')} Disabled`)
+                        ? (lang === 'fr' ? `${em('ic_toggle_off', em('ic_off', '🔴'))} Désactivé` : `${em('ic_toggle_off', em('ic_off', '🔴'))} Disabled`)
                         : processedValue;
 
             return {
