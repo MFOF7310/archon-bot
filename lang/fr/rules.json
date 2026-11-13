@@ -13,7 +13,7 @@
   "needManageGuild": "⛔ Faut la perm' Gérer le serveur pour ça.",
   "rulesTooLong": "📚 Règles longues — je répartis sur plusieurs messages.",
   "setColorSuccess": "🎨 Couleur définie : {color} !",
-  "invalidColor": "🎨 Couleur invalide — essaie un hex genre #ff0000.",
+  "invalidColor": "🎨 Couleur inconnue. Tape un nom comme `rouge` ou `bleu royal`, ou un code comme #ff0000.",
   "setTitleSuccess": "✨ Titre défini : \"{title}\" !",
   "welcomeOn": "👋 Message de bienvenue activé — le crew va être accueilli comme il faut.",
   "welcomeOff": "🔇 Message de bienvenue désactivé.",

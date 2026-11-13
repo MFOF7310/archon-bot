@@ -193,7 +193,7 @@ module.exports = {
         .addSubcommand(s => s.setName('channel').setDescription('Set the rules channel (admin)')
             .addChannelOption(o => o.setName('channel').setDescription('Rules channel').setRequired(true)))
         .addSubcommand(s => s.setName('setcolor').setDescription('Set embed accent color (admin)')
-            .addStringOption(o => o.setName('color').setDescription('Hex color, e.g. #ff0000').setRequired(true)))
+            .addStringOption(o => o.setName('color').setDescription('A colour name or #hex').setRequired(true).setAutocomplete(true)))
         .addSubcommand(s => s.setName('settitle').setDescription('Set embed title (admin)')
             .addStringOption(o => o.setName('title').setDescription('Custom title').setRequired(true)))
         .addSubcommand(s => s.setName('welcome').setDescription('Toggle welcome line (admin)')
@@ -203,6 +203,12 @@ module.exports = {
         .addSubcommand(s => s.setName('accepted').setDescription('List members who accepted (admin)'))
         .addSubcommand(s => s.setName('resetchannel').setDescription('Clear the rules channel (admin)')),
 
+    // colour names in the member's language, or the hex they typed (lib/colors)
+    autocomplete: async (interaction, client) => {
+        const lang = require('../lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user.id);
+        const q = (() => { try { return interaction.options.getFocused(); } catch { return ''; } })();
+        return interaction.respond(require('../lib/colors').suggest(q, ['en', 'fr', 'zh', 'ar'].includes(lang) ? lang : 'en')).catch(() => {});
+    },
     execute: async (interaction, client) => {
         const db = client.db;
         const gid = interaction.guild.id;
@@ -253,9 +259,8 @@ module.exports = {
         }
 
         if (sub === 'setcolor') {
-            let hex = interaction.options.getString('color', true).trim();
-            if (!/^#?[0-9a-fA-F]{6}$/.test(hex)) return interaction.reply({ content: L('invalidColor'), flags: 64 });
-            if (!hex.startsWith('#')) hex = '#' + hex;
+            const hex = require('../lib/colors').resolve(interaction.options.getString('color', true));   // a name in en/fr/zh/ar, or a hex
+            if (!hex) return interaction.reply({ content: L('invalidColor'), flags: 64 });
             saveStyle(db, gid, { color: hex });
             return interaction.reply({ content: L('setColorSuccess', { color: hex }), flags: 64 });
         }

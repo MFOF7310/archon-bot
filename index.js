@@ -3416,7 +3416,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if ((interaction.isButton() || interaction.isUserSelectMenu() || interaction.isModalSubmit()) && interaction.customId.startsWith('credit:')) {
         return require('./plugins/credit.js').handleComponent(interaction, client).catch(e => console.error('[CREDIT] component:', e.message));
     }
-    if (interaction.isButton() && (interaction.customId === 'lvl:reset' || interaction.customId === 'lvl:create' || interaction.customId === 'lvl:streak')) {
+    if ((interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) && interaction.customId.startsWith('lvl:')) {
         return require('./plugins/leveling.js').handleComponent(interaction, client).catch(e => console.error('[LEVELING] button:', e.message));
     }
     if (interaction.isButton() && interaction.customId.startsWith('joined:')) {

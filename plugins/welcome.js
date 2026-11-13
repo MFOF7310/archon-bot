@@ -90,6 +90,12 @@ function createMemberProxy(member) {
     return member;
 }
 
+// The accent picked in /leveling config > Banner colours (leveling_themes.welcome_accent), or null
+function savedAccent(db, gid) {
+    try { const h = db?.prepare('SELECT welcome_accent FROM leveling_themes WHERE guild_id = ?').get(gid)?.welcome_accent; return /^#[0-9a-f]{6}$/i.test(String(h || '')) ? h : null; }
+    catch { return null; }   // the table doesn't exist until leveling has run once
+}
+
 // ================= CORE SEND: WELCOME =================
 // ── THIS IS THE ONLY PLACE a welcome card is rendered and sent ──
 // index.js fallbackWelcome() is bypassed because client.welcome is set.
@@ -100,6 +106,7 @@ async function handleWelcome(member, client, db) {
     const ssRaw = client.getServerSettings?.(member.guild.id) || {};
     let cfg = Style.normalizeWelcomeConfig(ssRaw);
     cfg = applyOwnerEnvFallback(cfg, member.guild.id);
+    cfg.welcomeAccent = savedAccent(db || client.db, member.guild.id) || cfg.welcomeAccent;
 
     if (!cfg.welcomeEnabled || !cfg.welcomeChannel) return;
 
@@ -309,6 +316,7 @@ module.exports = {
         const prefix = serverSettings?.prefix || '.';
         let cfg = Style.normalizeWelcomeConfig(serverSettings);
         cfg = applyOwnerEnvFallback(cfg, message.guild.id);
+        cfg.welcomeAccent = savedAccent(db || client.db, message.guild.id) || cfg.welcomeAccent;
 
         if (sub === 'test') {
             if (!message.member.permissions.has(PermissionFlagsBits.Administrator))
@@ -401,6 +409,7 @@ module.exports = {
         const db   = client.db;
         let cfg = Style.normalizeWelcomeConfig(client.getServerSettings?.(ix.guild.id) || {});
         cfg = applyOwnerEnvFallback(cfg, ix.guild.id);
+        cfg.welcomeAccent = savedAccent(db, ix.guild.id) || cfg.welcomeAccent;
         const _ssW = client.getServerSettings?.(ix.guild?.id) || {};
         const lang = _ssW.language && _ssW.language !== 'auto' ? _ssW.language : (ix.locale?.startsWith('fr') ? 'fr' : 'en');
 

@@ -2,8 +2,8 @@ const { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } = require('disc
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
 const T = {
-    en: { title: '🎨 Custom Role Shop', balanceCheck: '💰 You need **{cost}** credits. Your balance: **{balance}**', purchased: '🎉 Role created and assigned!', removed: em('ic_off', em('ic_off', '❌')) + ' Role removed.', exists: em('ic_off', em('ic_off', '❌')) + ' You already have a custom role.', notFound: em('ic_off', em('ic_off', '❌')) + ' Role not found.', invalidColor: em('ic_off', em('ic_off', '❌')) + ' Invalid color. Use hex: `#FF5733`', noPermission: em('ic_off', em('ic_off', '❌')) + ' Bot needs Manage Roles permission.', footer: 'Custom Role Shop • v{version}', availableColors: '🎨 Available Colors', presetColors: { red: '#FF0000', blue: '#0000FF', green: '#00FF00', purple: '#9B59B6', gold: '#FFD700', pink: '#FF69B4', cyan: '#00FFFF', orange: '#FFA500' }, cost: 5000 },
-    fr: { title: '🎨 Boutique de Rôles Personnalisés', balanceCheck: '💰 Vous avez besoin de **{cost}** crédits. Votre solde : **{balance}**', purchased: '🎉 Rôle créé et attribué !', removed: em('ic_off', em('ic_off', '❌')) + ' Rôle supprimé.', exists: em('ic_off', em('ic_off', '❌')) + ' Vous avez déjà un rôle personnalisé.', notFound: em('ic_off', em('ic_off', '❌')) + ' Rôle introuvable.', invalidColor: em('ic_off', em('ic_off', '❌')) + ' Couleur invalide. Utilisez un hex : `#FF5733`', noPermission: em('ic_off', em('ic_off', '❌')) + ' Le bot a besoin de la permission Gérer les Rôles.', footer: 'Boutique de Rôles • v{version}', availableColors: '🎨 Couleurs Disponibles', presetColors: { red: '#FF0000', blue: '#0000FF', green: '#00FF00', purple: '#9B59B6', gold: '#FFD700', pink: '#FF69B4', cyan: '#00FFFF', orange: '#FFA500' }, cost: 5000 }
+    en: { title: '🎨 Custom Role Shop', balanceCheck: '💰 You need **{cost}** credits. Your balance: **{balance}**', purchased: '🎉 Role created and assigned!', removed: em('ic_off', em('ic_off', '❌')) + ' Role removed.', exists: em('ic_off', em('ic_off', '❌')) + ' You already have a custom role.', notFound: em('ic_off', em('ic_off', '❌')) + ' Role not found.', invalidColor: em('ic_off', em('ic_off', '❌')) + ' Unknown colour. Type a name like `gold` or `royal blue`, or a hex like `#FF5733`.', noPermission: em('ic_off', em('ic_off', '❌')) + ' Bot needs Manage Roles permission.', footer: 'Custom Role Shop • v{version}', availableColors: '🎨 Available Colors', presetColors: { red: '#FF0000', blue: '#0000FF', green: '#00FF00', purple: '#9B59B6', gold: '#FFD700', pink: '#FF69B4', cyan: '#00FFFF', orange: '#FFA500' }, cost: 5000 },
+    fr: { title: '🎨 Boutique de Rôles Personnalisés', balanceCheck: '💰 Vous avez besoin de **{cost}** crédits. Votre solde : **{balance}**', purchased: '🎉 Rôle créé et attribué !', removed: em('ic_off', em('ic_off', '❌')) + ' Rôle supprimé.', exists: em('ic_off', em('ic_off', '❌')) + ' Vous avez déjà un rôle personnalisé.', notFound: em('ic_off', em('ic_off', '❌')) + ' Rôle introuvable.', invalidColor: em('ic_off', em('ic_off', '❌')) + ' Couleur inconnue. Tape un nom comme `or` ou `bleu royal`, ou un code comme `#FF5733`.', noPermission: em('ic_off', em('ic_off', '❌')) + ' Le bot a besoin de la permission Gérer les Rôles.', footer: 'Boutique de Rôles • v{version}', availableColors: '🎨 Couleurs Disponibles', presetColors: { red: '#FF0000', blue: '#0000FF', green: '#00FF00', purple: '#9B59B6', gold: '#FFD700', pink: '#FF69B4', cyan: '#00FFFF', orange: '#FFA500' }, cost: 5000 }
 };
 
 // Takes the price through the bot's safe path. false when the member can't pay.
@@ -20,7 +20,7 @@ module.exports = {
     name: 'customrole', aliases: ['colorrole', 'myrole', 'buyrole'],
     description: '🎨 Buy a custom color role with credits — express yourself!',
     category: 'ECONOMY', cooldown: 10000, usage: '.customrole <color> <name>', examples: ['.customrole #FF5733 MyRole', '.customrole red VIP', '/customrole color:#3498db name:Elite'],
-    data: new SlashCommandBuilder().setName('customrole').setDescription('🎨 Buy a custom color role').addStringOption(o => o.setName('color').setDescription('Color hex or name (red, blue, green...)').setRequired(true)).addStringOption(o => o.setName('name').setDescription('Role name').setRequired(true)),
+    data: new SlashCommandBuilder().setName('customrole').setDescription('🎨 Buy a custom color role').addStringOption(o => o.setName('color').setDescription('A colour name (red, gold, royal blue...) or #hex').setRequired(true).setAutocomplete(true)).addStringOption(o => o.setName('name').setDescription('Role name').setRequired(true)),
     run: async (client, message, args, db, ss, used, lang) => {
         // The language was used here without being defined, so this command always failed ("lang is not defined")
         if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
@@ -51,8 +51,7 @@ module.exports = {
 
         // Parse color
         let colorInput = args[0];
-        const preset = t.presetColors[colorInput.toLowerCase()];
-        if (preset) colorInput = preset;
+        colorInput = t.presetColors[String(colorInput || '').toLowerCase()] || require('../lib/colors').resolve(colorInput) || '';   // names in en/fr/zh/ar, or a hex
         if (!colorInput.match(/^#[0-9A-Fa-f]{6}$/)) return message.reply(t.invalidColor).catch(() => {});
 
         const roleName = 'CR: ' + args.slice(1).join(' ').substring(0, 30);
@@ -69,6 +68,12 @@ module.exports = {
             ).setFooter({ text: t.footer.replace('{version}', client.version || '2.0') }).setTimestamp();
             message.reply({ embeds: [embed] }).catch(() => {});
         } catch (e) { giveBack(client, db, user.id, guildId, t.cost); message.reply(t.noPermission).catch(() => {}); }
+    },
+    // colour names in the member's language, or the hex they typed (lib/colors)
+    autocomplete: async (interaction, client) => {
+        const lang = require('../lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user.id);
+        const q = (() => { try { return interaction.options.getFocused(); } catch { return ''; } })();
+        return interaction.respond(require('../lib/colors').suggest(q, ['en', 'fr', 'zh', 'ar'].includes(lang) ? lang : 'en')).catch(() => {});
     },
     execute: async (interaction, client) => {
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
@@ -87,8 +92,7 @@ module.exports = {
         if (balance < t.cost) return interaction.editReply(t.balanceCheck.replace('{cost}', t.cost.toLocaleString()).replace('{balance}', balance.toLocaleString()));
 
         let colorInput = colorInputRaw;
-        const preset = t.presetColors[colorInput.toLowerCase()];
-        if (preset) colorInput = preset;
+        colorInput = t.presetColors[String(colorInput || '').toLowerCase()] || require('../lib/colors').resolve(colorInput) || '';   // names in en/fr/zh/ar, or a hex
         if (!colorInput.match(/^#[0-9A-Fa-f]{6}$/)) return interaction.editReply(t.invalidColor);
 
         const roleName = 'CR: ' + roleNameInput.substring(0, 30);

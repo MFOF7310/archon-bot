@@ -10,7 +10,7 @@ module.exports = {
     name: 'qr', aliases: ['qrcode', 'barcode', 'scan'],
     description: '📱 Generate QR codes from any text or URL instantly.',
     category: 'UTILITY', cooldown: 3000, usage: '.qr <text>', examples: ['.qr https://discord.com', '.qr Hello World!', '/qr text:Hello'],
-    data: new SlashCommandBuilder().setName('qr').setDescription('📱 Generate a QR code').addStringOption(o => o.setName('text').setDescription('Text or URL to encode').setRequired(true)).addStringOption(o => o.setName('color').setDescription('QR color (hex, default: black)').setRequired(false)).addIntegerOption(o => o.setName('size').setDescription('Size in pixels (100-1000, default: 500)').setRequired(false)),
+    data: new SlashCommandBuilder().setName('qr').setDescription('📱 Generate a QR code').addStringOption(o => o.setName('text').setDescription('Text or URL to encode').setRequired(true)).addStringOption(o => o.setName('color').setDescription('QR colour: a name or #hex (default: black)').setRequired(false).setAutocomplete(true)).addIntegerOption(o => o.setName('size').setDescription('Size in pixels (100-1000, default: 500)').setRequired(false)),
     run: async (client, message, args, db, ss, used, lang) => {
         // The language was used here without being defined, so this command always failed ("lang is not defined")
         if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
@@ -26,11 +26,17 @@ module.exports = {
             loadingMsg?.edit({ content: null, embeds: [embed] }).catch(() => {});
         } catch (e) { loadingMsg?.edit(em('ic_off', em('ic_off', '❌')) + ' Failed to generate QR code.').catch(() => {}); }
     },
+    // colour names in the member's language, or the hex they typed (lib/colors)
+    autocomplete: async (interaction, client) => {
+        const lang = require('../lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user.id);
+        const q = (() => { try { return interaction.options.getFocused(); } catch { return ''; } })();
+        return interaction.respond(require('../lib/colors').suggest(q, ['en', 'fr', 'zh', 'ar'].includes(lang) ? lang : 'en')).catch(() => {});
+    },
     execute: async (interaction) => {
         const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
         const t = T[lang] || T.en;
         const text = interaction.options.getString('text');
-        const color = (interaction.options.getString('color') || '000000').replace('#', '');
+        const color = (require('../lib/colors').resolve(interaction.options.getString('color')) || '#000000').replace('#', '');
         const size = Math.min(1000, Math.max(100, interaction.options.getInteger('size') || 500));
         await interaction.deferReply();
         try {

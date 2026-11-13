@@ -13,7 +13,7 @@
   "needManageGuild": "⛔ You need Manage Server for that one, chief.",
   "rulesTooLong": "📚 Long rules — splitting across messages.",
   "setColorSuccess": "🎨 Accent color set: {color}!",
-  "invalidColor": "🎨 Invalid color — try hex like #ff0000.",
+  "invalidColor": "🎨 Unknown colour. Type a name like `red` or `royal blue`, or a hex like #ff0000.",
   "setTitleSuccess": "✨ Title set: \"{title}\"!",
   "welcomeOn": "👋 Welcome message on — the crew's gonna feel at home.",
   "welcomeOff": "🔇 Welcome message off.",

@@ -478,7 +478,7 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db, 
     const added = await assignRoles(member, newLevel, db);
     const _milestoneNeeds = require('../lib/canPost').neededFor('levelup-milestone');
     if (!canSend('levelup-milestone', ch, _milestoneNeeds, { guild: member.guild, channelId: ch.id, quiet: !chId })) return;
-    const customTheme = db ? getThemeDB(db, member.guild.id) : null;
+    const customTheme = db ? levelTheme(getThemeDB(db, member.guild.id)) : null;   // the saved columns as { bg1, bg2, accent }
     const png = await renderLevelBanner(member.user, newLevel, xpCurrent, xpNeeded, customTheme);
     const theme = getTheme(newLevel, customTheme);
     const embed = new EmbedBuilder().setColor(parseInt(theme.bg1.replace('#', ''), 16)).setImage('attachment://levelup.png');
@@ -505,7 +505,7 @@ async function handleRank(message, args, client, db, lang = 'en') {
     if (!row) return message.reply(t('leveling.no_xp', lang)).catch(() => { });
     const rankRow = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM users WHERE guild_id = ? AND xp > ?`)?.get(message.guild.id, row.xp);
     const rank = rankRow?.rank || '?';
-    const customTheme = getThemeDB(db, message.guild.id);
+    const customTheme = levelTheme(getThemeDB(db, message.guild.id));
     const png = await renderRankCard(target, rank, row.level, row.xp, customTheme);
     const embed = new EmbedBuilder().setColor(0x5865f2).setImage('attachment://rank.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
     await message.reply(toV2({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'rank.png' })] })).catch(() => { });
@@ -539,8 +539,12 @@ async function bannerPreview(theme, lang) {
         c.beginPath(); if (c.roundRect) c.roundRect(0, y, W, 88, 16); else c.rect(0, y, W, 88); c.fill();
         c.fillStyle = 'rgba(255,255,255,0.95)'; c.font = '600 26px sans-serif'; c.fillText(label, 24, y + 54);
     };
-    strip(0, hex(theme?.level_bg1, '#5865f2'), hex(theme?.level_bg2, '#2d3a8c'), L('cardLevel', lang));
-    strip(108, hex(theme?.welcome_bg1, '#5865f2'), hex(theme?.welcome_bg2, '#2d3a8c'), L('cardWelcome', lang));
+    // the colours members really see: the level banner's background, and the welcome card's dark background with its accent
+    const lv = shownLevel(theme || {});
+    strip(0, lv.bg1, lv.bg2, L('cardLevel', lang));
+    const wa = hex(theme?.welcome_accent, '#2ecc71');
+    strip(108, '#0a1f0a', '#0a1f0a', L('cardWelcome', lang));
+    c.fillStyle = wa; c.fillRect(0, 108, 10, 88); c.fillRect(W - 120, 108 + 40, 96, 8);
     return cv.encode('png');
 }
 
@@ -593,7 +597,7 @@ async function configCard(client, guild, db, lang, isAdmin) {
     if (isAdmin && missingRoles && guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:create').setStyle(ButtonStyle.Success).setLabel(L('btnCreate', lang)).setEmoji(icon('ok', guild)));
     const missingStreak = STREAK_ROLES.some(([, col]) => !row[col]);
     if (isAdmin && missingStreak && guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:streak').setStyle(ButtonStyle.Success).setLabel(L('btnCreateStreak', lang)).setEmoji(icon('streak', guild)));
-    if (isAdmin && theme) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:reset').setStyle(ButtonStyle.Secondary).setLabel(L('btnReset', lang)).setEmoji(icon('refresh', guild)));
+    if (isAdmin) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:theme').setStyle(ButtonStyle.Primary).setLabel(L('btnTheme', lang)).setEmoji(icon('palette', guild)));
     items.push({ row: buttons });
     return { ...card(0xE6A817, items), files: [new AttachmentBuilder(await bannerPreview(theme, lang), { name: 'lvl-theme.png' })] };
 }
@@ -649,10 +653,215 @@ async function createRoles(guild, db, lang, set = 'level') {
     return { made, reused: linked - made };   // new roles, and existing ones with the same name that were reused
 }
 
-// The config card's buttons: lvl:reset (colours) and lvl:create (level roles)
+// ================= BANNER THEME CARD =================
+// Opened from /leveling config. Two pages: the level-up banner (with /leveling rank cards) and the welcome card's accent.
+// Every pick is saved at once and the card redraws itself with a real preview, so nobody needs to know hex codes.
+const Colors = require('../lib/colors');
+const THEME_PRESETS = [   // [key, background start, background end, accent]
+    ['night', '#191970', '#4169E1', '#FFD700'], ['sunset', '#800000', '#FF8C00', '#FFF8DC'],
+    ['mali', '#14B53A', '#1E5631', '#FCD116'], ['ocean', '#003B46', '#008080', '#40E0D0'],
+    ['royal', '#4B0082', '#9B59B6', '#FFD700'], ['forest', '#1E5631', '#6B8E23', '#FFF8DC'],
+    ['neon', '#111111', '#36393F', '#39FF14'], ['rose', '#5B0E2D', '#EB459E', '#FFC0CB'],
+    ['dark', '#2C2C2A', '#36393F', '#ED4245'],
+];
+const BG_KEYS = ['black', 'charcoal', 'graphite', 'slate', 'midnight', 'navy', 'royal', 'blurple', 'blue', 'petrol', 'teal', 'forest', 'mali_green', 'olive', 'maroon', 'wine', 'crimson', 'mali_red', 'chocolate', 'coffee', 'plum', 'indigo', 'purple', 'magenta'];
+const ACCENT_KEYS = ['white', 'cream', 'silver', 'gold', 'amber', 'yellow', 'mali_yellow', 'lemon', 'orange', 'coral', 'salmon', 'red', 'pink', 'rose', 'neon_pink', 'lavender', 'violet', 'sky', 'cyan', 'turquoise', 'mint', 'green', 'neon_green', 'lime'];
+const WELCOME_BG = '#0A1F0A';   // the welcome card's own dark background (plugins/welcome-style.js)
+const hexOf = (key) => Colors.PALETTE.find((p) => p[0] === key)?.[1];
+const SLOT_COL = { bg1: 'level_bg1', bg2: 'level_bg2', accent: 'level_accent', waccent: 'welcome_accent' };
+const SLOT_KEY = { bg1: 'levelBg1', bg2: 'levelBg2', accent: 'levelAccent', waccent: 'welcomeAccent' };
+
+// the saved row as the colours the renderers read ({ bg1, bg2, accent }); empty when nothing is saved
+function levelTheme(row) {
+    const out = {};
+    for (const [k, col] of [['bg1', 'level_bg1'], ['bg2', 'level_bg2'], ['accent', 'level_accent']]) { const h = Colors.normHex(row?.[col]); if (h) out[k] = h; }
+    return out;
+}
+// what a level-12 member really sees (the server's colours over the default tier colours)
+const shownLevel = (row) => getTheme(12, levelTheme(row));
+
+// true when the accent is hard to read on the background (contrast under 3:1)
+function lowContrast(mode, row) {
+    if (mode === 'welcome') { const a = Colors.normHex(row?.welcome_accent); return a ? Colors.contrast(a, WELCOME_BG) < 3 : false; }
+    if (!Object.keys(levelTheme(row)).length) return false;   // ARCHON's own tier colours are left alone
+    const t = shownLevel(row);
+    const bg = Colors.mix(Colors.mix(t.bg1, t.bg2, 0.5), '#000000', 0.22);   // the banner darkens its background by 22 %
+    return Colors.contrast(t.accent, bg) < 3;
+}
+
+function colourSelect(id, keys, current, lang, extra = []) {
+    const { StringSelectMenuBuilder } = require('discord.js');
+    const cur = Colors.normHex(current);
+    const opts = [...extra];
+    for (const k of keys) {
+        if (opts.length >= 24) break;
+        const h = hexOf(k);
+        opts.push({ label: Colors.nameOf(h, lang), value: h, emoji: Colors.dot(h), description: h, default: !!cur && h === cur });
+    }
+    opts.push({ label: L('themeOther', lang), value: 'other', emoji: '✏️', description: L('themeOtherHint', lang) });
+    return new StringSelectMenuBuilder().setCustomId(id).addOptions(opts)
+        .setPlaceholder((cur ? `${L(`themeSlot_${id.split(':').pop()}`, lang)} · ${Colors.nameOf(cur, lang)} ${cur}` : `${L(`themeSlot_${id.split(':').pop()}`, lang)} · ${L(id.endsWith('waccent') ? 'themeDefaultWelcome' : 'themeDefault', lang)}`).slice(0, 150));
+}
+
+async function themePreview(ix, mode, row) {
+    try {
+        if (mode === 'welcome') {
+            const Style = require('./welcome-style');
+            const cfg = { ...Style.normalizeWelcomeConfig({}), welcomeAccent: Colors.normHex(row?.welcome_accent) || null, lang: 'en' };
+            return await Style.renderWelcomeCard(ix.member, ix.guild.memberCount || 1, cfg);
+        }
+        return await renderLevelBanner(ix.user, 12, 640, 1000, levelTheme(row));
+    } catch (e) {
+        console.error('[LEVELING] theme preview:', e.message);
+        return bannerPreview(row, require('../lib/pick-lang').pickLang(ix.client, ix.guildId, ix, ix.user.id));
+    }
+}
+
+async function themeCard(ix, mode, lang) {
+    const { icon } = require('../lib/ui/icons');
+    const { card } = require('../lib/games/v2');
+    const db = ix.client.db;
+    const row = (db && getThemeDB(db, ix.guildId)) || {};
+    const hasIcon = !!ix.guild.iconURL?.();
+    const line = (slot, hex, fallback) => `${Colors.dot(hex || fallback)} ${L(`themeSlot_${slot}`, lang)} · ${hex ? `**${Colors.nameOf(hex, lang)}** \`${hex}\`` : L(slot === 'waccent' ? 'themeDefaultWelcome' : 'themeDefault', lang)}`;
+    const items = [
+        { text: `-# ARCHON · ${L('title', lang)}\n## ${icon('palette', ix.guild)} ${L(mode === 'welcome' ? 'themeTitleWelcome' : 'themeTitleLevel', lang)}\n${L('themeIntro', lang)}` },
+        { media: ['attachment://theme-preview.png', L(mode === 'welcome' ? 'cardWelcome' : 'cardLevel', lang)] },
+    ];
+    const rows = [];
+    const server = hasIcon ? [{ label: L('themeServer', lang), value: 'server', emoji: '🖼️', description: L('themeServerHint', lang) }] : [];
+    if (mode === 'welcome') {
+        const a = Colors.normHex(row.welcome_accent);
+        items.push({ text: `${line('waccent', a, '#2ECC71')}\n-# ${L('themeWelcomeNote', lang)}` });
+        rows.push(new ActionRowBuilder().addComponents(colourSelect('lvl:tc:waccent', ACCENT_KEYS, a, lang, server)));
+    } else {
+        const t = levelTheme(row), shown = shownLevel(row);
+        items.push({ text: [line('bg1', t.bg1, shown.bg1), line('bg2', t.bg2, shown.bg2), line('accent', t.accent, shown.accent)].join('\n') + `\n-# ${L('themeLevelNote', lang)}` });
+        const { StringSelectMenuBuilder } = require('discord.js');
+        const presets = [...server, ...THEME_PRESETS.map(([k, a, , c]) => ({ label: L(`preset_${k}`, lang), value: k, emoji: Colors.dot(a), description: `${Colors.nameOf(a, lang)} · ${Colors.nameOf(c, lang)}`.slice(0, 100) }))];
+        rows.push(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('lvl:tp').setPlaceholder(L('themePresetPick', lang)).addOptions(presets)));
+        rows.push(new ActionRowBuilder().addComponents(colourSelect('lvl:tc:bg1', BG_KEYS, t.bg1, lang)));
+        rows.push(new ActionRowBuilder().addComponents(colourSelect('lvl:tc:bg2', BG_KEYS, t.bg2, lang)));
+        rows.push(new ActionRowBuilder().addComponents(colourSelect('lvl:tc:accent', ACCENT_KEYS, t.accent, lang)));
+    }
+    const low = lowContrast(mode, row);
+    if (low) items.push({ text: `${icon('warn', ix.guild)} ${L('themeLowContrast', lang)}` });
+    items.push({ rule: true });
+    for (const r of rows) items.push({ row: r });
+    const btns = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`lvl:tm:${mode === 'welcome' ? 'level' : 'welcome'}`).setStyle(ButtonStyle.Secondary).setLabel(L(mode === 'welcome' ? 'themeToLevel' : 'themeToWelcome', lang)).setEmoji(icon('palette', ix.guild)));
+    if (low) btns.addComponents(new ButtonBuilder().setCustomId(`lvl:tfix:${mode}`).setStyle(ButtonStyle.Success).setLabel(L('themeFix', lang)).setEmoji(icon('ok', ix.guild)));
+    btns.addComponents(
+        new ButtonBuilder().setCustomId(`lvl:treset:${mode}`).setStyle(ButtonStyle.Secondary).setLabel(L('btnReset', lang)).setEmoji(icon('refresh', ix.guild)),
+        new ButtonBuilder().setCustomId('lvl:tback').setStyle(ButtonStyle.Secondary).setLabel(L('themeBack', lang)).setEmoji(icon('back', ix.guild)));
+    items.push({ row: btns });
+    const png = await themePreview(ix, mode, row);
+    return { ...card(0x9B59B6, items), files: [new AttachmentBuilder(png, { name: 'theme-preview.png' })], attachments: [] };
+}
+
+function saveColours(db, gid, data) {
+    saveThemeDB(db, gid, data);
+}
+function clearColours(db, gid, cols) {
+    try { db.prepare(`UPDATE leveling_themes SET ${cols.map((c) => `${c} = NULL`).join(', ')} WHERE guild_id = ?`).run(gid); } catch (e) { console.log('[LVL] clearTheme:', e.message); }
+}
+
+// lvl:t… components: lvl:theme (open), lvl:tm:<mode> (switch page), lvl:tp (ready theme), lvl:tc:<slot> (one colour),
+// lvl:tmodal:<slot> (a typed colour), lvl:tfix:<mode> (readable accent), lvl:treset:<mode>, lvl:tback (config card)
+async function handleTheme(ix, client, lang) {
+    const db = client.db;
+    setupDB(db);
+    const id = ix.customId;
+    const modeOf = (slot) => (slot === 'waccent' ? 'welcome' : 'level');
+    const redraw = async (mode) => {
+        const payload = await themeCard(ix, mode, lang);
+        if (ix.deferred || ix.replied) return ix.editReply(payload).catch((e) => console.error('[LEVELING] theme edit:', e.message));
+        return ix.update(payload).catch((e) => console.error('[LEVELING] theme update:', e.message));
+    };
+
+    if (id === 'lvl:theme' || id.startsWith('lvl:tm:')) { await ix.deferUpdate().catch(() => {}); return redraw(id === 'lvl:theme' ? 'level' : id.split(':')[2]); }
+    if (id === 'lvl:tback') { await ix.deferUpdate().catch(() => {}); return ix.editReply({ ...(await configCard(client, ix.guild, db, lang, true)), attachments: [] }).catch(() => {}); }
+
+    // a colour typed by hand (name or hex)
+    if (id.startsWith('lvl:tmodal:')) {
+        const slot = id.split(':')[2];
+        const hex = Colors.resolve(ix.fields.getTextInputValue('colour'));
+        if (!hex || !SLOT_KEY[slot]) return ix.reply({ content: L('themeBadColour', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+        saveColours(db, ix.guildId, { [SLOT_KEY[slot]]: hex });
+        if (ix.isFromMessage?.()) { await ix.deferUpdate().catch(() => {}); return redraw(modeOf(slot)); }
+        return ix.reply({ content: L('themeSaved', lang, { colour: `${Colors.nameOf(hex, lang)} ${hex}` }), flags: MessageFlags.Ephemeral }).catch(() => {});
+    }
+
+    if (id.startsWith('lvl:tc:')) {
+        const slot = id.split(':')[2];
+        const v = ix.values?.[0];
+        if (v === 'other') {
+            const { ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+            const modal = new ModalBuilder().setCustomId(`lvl:tmodal:${slot}`).setTitle(L('themeOtherTitle', lang).slice(0, 45)).addComponents(
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('colour').setLabel(L(`themeSlot_${slot}`, lang).slice(0, 45)).setStyle(TextInputStyle.Short).setMinLength(3).setMaxLength(30).setPlaceholder(L('themeOtherPlaceholder', lang).slice(0, 100)).setRequired(true)));
+            return ix.showModal(modal).catch((e) => console.error('[LEVELING] theme modal:', e.message));
+        }
+        await ix.deferUpdate().catch(() => {});
+        if (v === 'server') {
+            const cols = await Colors.fromImage(ix.guild.iconURL({ extension: 'png', size: 128 }));
+            const th = Colors.themeFrom(cols);
+            if (!th) return ix.followUp({ content: L('themeNoIcon', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+            saveColours(db, ix.guildId, { welcomeAccent: Colors.bestAccent(WELCOME_BG, cols) });
+            return redraw('welcome');
+        }
+        const hex = Colors.normHex(v);
+        if (hex && SLOT_KEY[slot]) saveColours(db, ix.guildId, { [SLOT_KEY[slot]]: hex });
+        return redraw(modeOf(slot));
+    }
+
+    if (id === 'lvl:tp') {
+        await ix.deferUpdate().catch(() => {});
+        const v = ix.values?.[0];
+        let th = null;
+        if (v === 'server') {
+            th = Colors.themeFrom(await Colors.fromImage(ix.guild.iconURL({ extension: 'png', size: 128 })));
+            if (!th) return ix.followUp({ content: L('themeNoIcon', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+        } else {
+            const p = THEME_PRESETS.find((x) => x[0] === v);
+            if (p) th = { bg1: p[1], bg2: p[2], accent: p[3] };
+        }
+        if (th) saveColours(db, ix.guildId, { levelBg1: th.bg1, levelBg2: th.bg2, levelAccent: th.accent });
+        return redraw('level');
+    }
+
+    if (id.startsWith('lvl:tfix:')) {
+        await ix.deferUpdate().catch(() => {});
+        const mode = id.split(':')[2];
+        const row = getThemeDB(db, ix.guildId) || {};
+        if (mode === 'welcome') saveColours(db, ix.guildId, { welcomeAccent: Colors.bestAccent(WELCOME_BG, [row.welcome_accent].filter(Boolean)) });
+        else {
+            const t = shownLevel(row);
+            saveColours(db, ix.guildId, { levelAccent: Colors.bestAccent(Colors.mix(Colors.mix(t.bg1, t.bg2, 0.5), '#000000', 0.22), [t.accent]) });
+        }
+        return redraw(mode);
+    }
+
+    if (id.startsWith('lvl:treset:')) {
+        await ix.deferUpdate().catch(() => {});
+        const mode = id.split(':')[2];
+        clearColours(db, ix.guildId, mode === 'welcome' ? ['welcome_accent'] : ['level_bg1', 'level_bg2', 'level_accent']);
+        await redraw(mode);
+        return ix.followUp({ content: L('resetDone', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+    }
+}
+
+// Autocomplete for /leveling theme: colour names in the member's language, or the hex they typed
+async function autocomplete(ix, client) {
+    const lang = require('../lib/pick-lang').pickLang(client, ix.guildId, ix, ix.user.id);
+    const q = (() => { try { return ix.options.getFocused(); } catch { return ''; } })();
+    return ix.respond(Colors.suggest(q, ['en', 'fr', 'zh', 'ar'].includes(lang) ? lang : 'en')).catch(() => {});
+}
+
+// The config card's buttons: lvl:reset (colours) and lvl:create (level roles), and the theme card (lvl:t…)
 async function handleComponent(ix, client) {
     const lang = require('../lib/pick-lang').pickLang(client, ix.guildId, ix, ix.user.id);
     if (!ix.member?.permissions?.has(PermissionFlagsBits.Administrator)) return ix.reply({ content: L('admin_only', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+    if (ix.customId === 'lvl:theme' || ix.customId.startsWith('lvl:t')) return handleTheme(ix, client, lang);
     if (ix.customId === 'lvl:create' || ix.customId === 'lvl:streak') {
         await ix.deferUpdate().catch(() => {});
         const r = await createRoles(ix.guild, client.db, lang, ix.customId === 'lvl:streak' ? 'streak' : 'level');
@@ -667,6 +876,7 @@ async function handleComponent(ix, client) {
 
 module.exports = {
     handleComponent,
+    autocomplete,
     _configCard: (...a) => configCard(...a),
     name: 'leveling',
     category: 'SOCIAL',
@@ -687,8 +897,8 @@ module.exports = {
             .addRoleOption(o => o.setName('role').setDescription('Role to assign (leave empty to clear)').setRequired(false))).
 
         addSubcommandGroup(sg => sg.setName('theme').setDescription('Customize banner theme').
-            addSubcommand(s => s.setName('level').setDescription('Level banner colors').addStringOption(o => o.setName('bg1').setDescription('Background start color (#hex)').setRequired(false)).addStringOption(o => o.setName('bg2').setDescription('Background end color (#hex)').setRequired(false)).addStringOption(o => o.setName('accent').setDescription('Accent color (#hex)').setRequired(false))).
-            addSubcommand(s => s.setName('welcome').setDescription('Welcome banner colors').addStringOption(o => o.setName('bg1').setDescription('Background start color (#hex)').setRequired(false)).addStringOption(o => o.setName('bg2').setDescription('Background end color (#hex)').setRequired(false)).addStringOption(o => o.setName('accent').setDescription('Accent color (#hex)').setRequired(false))).
+            addSubcommand(s => s.setName('level').setDescription('Level banner colors').addStringOption(o => o.setName('bg1').setDescription('Background start: a colour name or #hex').setRequired(false).setAutocomplete(true)).addStringOption(o => o.setName('bg2').setDescription('Background end: a colour name or #hex').setRequired(false).setAutocomplete(true)).addStringOption(o => o.setName('accent').setDescription('Accent: a colour name or #hex').setRequired(false).setAutocomplete(true))).
+            addSubcommand(s => s.setName('welcome').setDescription('Welcome card accent colour').addStringOption(o => o.setName('accent').setDescription('Accent: a colour name or #hex').setRequired(true).setAutocomplete(true))).
             addSubcommand(s => s.setName('reset').setDescription('Reset to default theme'))),
 
     // ================= PREFIX =================
@@ -706,23 +916,15 @@ module.exports = {
             const type = args[1]?.toLowerCase();
             if (type === 'reset') { if (db) db.prepare(`DELETE FROM leveling_themes WHERE guild_id = ?`).run(message.guild.id); return message.reply(t('leveling.theme_reset', lang)).catch(() => { }); }
             if (!type || !['level', 'welcome'].includes(type)) return message.reply(L('themeUsage', lang)).catch(() => { });
-            const hexRegex = /^#?[0-9A-Fa-f]{6}$/;
-            const bg1 = args[2], bg2 = args[3], accent = args[4];
-            if (bg1 && !hexRegex.test(bg1)) return message.reply(t('leveling.invalid_hex', lang)).catch(() => { });
-            const data = {};
-            if (type === 'level') { if (bg1) data.levelBg1 = bg1.startsWith('#') ? bg1 : '#' + bg1; if (bg2) data.levelBg2 = bg2.startsWith('#') ? bg2 : '#' + bg2; if (accent) data.levelAccent = accent.startsWith('#') ? accent : '#' + accent; }
-            else { if (bg1) data.welcomeBg1 = bg1.startsWith('#') ? bg1 : '#' + bg1; if (bg2) data.welcomeBg2 = bg2.startsWith('#') ? bg2 : '#' + bg2; if (accent) data.welcomeAccent = accent.startsWith('#') ? accent : '#' + accent; }
+            // colour names work too (one word each: "gold", "or", "#FFD700"); the welcome card takes one colour, its accent
+            const given = args.slice(2, type === 'level' ? 5 : 3);
+            const hexes = given.map((x) => Colors.resolve(x));
+            if (!given.length || hexes.some((h) => !h)) return message.reply(L('themeBadColour', lang)).catch(() => { });
+            const data = type === 'level'
+                ? Object.fromEntries([['levelBg1', hexes[0]], ['levelBg2', hexes[1]], ['levelAccent', hexes[2]]].filter(([, h]) => h))
+                : { welcomeAccent: hexes[0] };
             if (db) saveThemeDB(db, message.guild.id, data);
-            // Preview
-            const testCanvas = createCanvas(200, 80);
-            const tCtx = testCanvas.getContext('2d');
-            const g = tCtx.createLinearGradient(0, 0, 200, 80);
-            g.addColorStop(0, data.levelBg1 || data.welcomeBg1 || '#5865f2');
-            g.addColorStop(1, data.levelBg2 || data.welcomeBg2 || '#2d3a8c');
-            tCtx.fillStyle = g; tCtx.fillRect(0, 0, 200, 80);
-            const preview = await testCanvas.encode('png');
-            const embed = new EmbedBuilder().setColor(parseInt((data.levelAccent || data.welcomeAccent || '#8b9aff').replace('#', ''), 16)).setDescription(t('leveling.theme_updated', lang, { type })).setImage('attachment://preview.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
-            return message.reply(toV2({ embeds: [embed], files: [new AttachmentBuilder(preview, { name: 'preview.png' })] })).catch(() => { });
+            return message.reply(t('leveling.theme_updated', lang, { type })).catch(() => { });
         }
         return handleRank(message, args, client, db, lang);
     },
@@ -742,7 +944,7 @@ module.exports = {
             if (!row) return ix.editReply({ content: t('leveling.no_xp', lang) }).catch(() => { });
             const rankRow = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM users WHERE guild_id = ? AND xp > ?`)?.get(ix.guild.id, row.xp);
             const rank = rankRow?.rank || '?';
-            const customTheme = db ? getThemeDB(db, ix.guild.id) : null;
+            const customTheme = db ? levelTheme(getThemeDB(db, ix.guild.id)) : null;
             const png = await renderRankCard(target, rank, row.level, row.xp, customTheme);
             const embed = new EmbedBuilder().setColor(0x5865f2).setImage('attachment://rank.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
             return ix.editReply(toV2({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'rank.png' })] })).catch(() => { });
@@ -763,20 +965,25 @@ module.exports = {
                 return ix.reply({ content: t('leveling.theme_reset', lang), flags: 1 << 6 });
             }
 
-            const bg1 = ix.options.getString('bg1');
-            const bg2 = ix.options.getString('bg2');
-            const accent = ix.options.getString('accent');
-            const type = sc; // 'level' or 'welcome'
-            const hexRe = /^#?[0-9A-Fa-f]{6}$/;
-
+            // a colour name in any language or a hex; the welcome card only has an accent (its background stays dark)
             const data = {};
-            const clean = h => h.startsWith('#') ? h : '#' + h;
-            if (type === 'level') { if (bg1) { if (!hexRe.test(bg1)) return ix.reply({ content: L('invalid_hex', lang), flags: 1 << 6 }); data.levelBg1 = clean(bg1); } if (bg2) { if (!hexRe.test(bg2)) return ix.reply({ content: L('invalid_hex', lang), flags: 1 << 6 }); data.levelBg2 = clean(bg2); } if (accent) { if (!hexRe.test(accent)) return ix.reply({ content: L('invalid_hex', lang), flags: 1 << 6 }); data.levelAccent = clean(accent); } }
-            else { if (bg1) { if (!hexRe.test(bg1)) return ix.reply({ content: L('invalid_hex', lang), flags: 1 << 6 }); data.welcomeBg1 = clean(bg1); } if (bg2) { if (!hexRe.test(bg2)) return ix.reply({ content: L('invalid_hex', lang), flags: 1 << 6 }); data.welcomeBg2 = clean(bg2); } if (accent) { if (!hexRe.test(accent)) return ix.reply({ content: L('invalid_hex', lang), flags: 1 << 6 }); data.welcomeAccent = clean(accent); } }
-
+            const pick = (opt, key) => {
+                const raw = ix.options.getString(opt, false);
+                if (!raw) return true;
+                const h = Colors.resolve(raw);
+                if (!h) return false;
+                data[key] = h; return true;
+            };
+            const ok = sc === 'level'
+                ? pick('bg1', 'levelBg1') && pick('bg2', 'levelBg2') && pick('accent', 'levelAccent')
+                : pick('accent', 'welcomeAccent');
+            if (!ok) return ix.reply({ content: L('themeBadColour', lang), flags: 1 << 6 });
             if (!Object.keys(data).length) return ix.reply({ content: L('themeNeedColor', lang), flags: 1 << 6 });
+            setupDB(db);
             if (db) saveThemeDB(db, ix.guild.id, data);
-            await ix.reply({ content: t('leveling.theme_updated', lang, { type }), flags: 1 << 6 });
+            // answer with the theme card itself: the new colours on a real preview, ready for more changes
+            await ix.deferReply({ flags: MessageFlags.Ephemeral });
+            return ix.editReply(await themeCard(ix, sc === 'level' ? 'level' : 'welcome', lang)).catch((e) => console.error('[LEVELING] theme reply:', e.message));
         }
 
         if (sc === 'setrole') {

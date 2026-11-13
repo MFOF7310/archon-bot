@@ -13,7 +13,7 @@
   "needManageGuild": "⛔ 这个操作需要「管理服务器」权限。",
   "rulesTooLong": "📚 规则太长——我分几条消息发。",
   "setColorSuccess": "🎨 颜色已设置：{color}！",
-  "invalidColor": "🎨 颜色无效——试试十六进制，例如 #ff0000。",
+  "invalidColor": "🎨 无法识别这个颜色。请输入名称，例如 `红色` 或 `宝蓝色`，或十六进制代码，例如 #ff0000。",
   "setTitleSuccess": "✨ 标题已设置：\"{title}\"！",
   "welcomeOn": "👋 欢迎语已开启——兄弟们到家有感觉了。",
   "welcomeOff": "🔇 欢迎语已关闭。",
