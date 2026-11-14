@@ -86,17 +86,11 @@ function initDatabase(db) {
 }
 
 // ================= OWNER SECURITY CHECK =================
+// Alerts are a server setting: Manage Server (lib/access), not full Administrator
 function isGuildOwner(message) {
-    return message.author.id === message.guild.ownerId ||
-        message.member?.permissions.has('Administrator');
+    return require('../lib/access').can(message.member, 'alerts').ok;
 }
 
-function buildOwnerErrorEmbed(client, guild, lang = 'en') {
-    const c = new ContainerBuilder().setAccentColor(0xe74c3c);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## 🛡️ ${t('tiktok.owner_only_title', lang)}`));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('tiktok.owner_only_desc', lang)));
-    return c;
-}
 
 // ═══════════════════════════════════════════════════════════════════
 //  TIKTOK FETCHING ENGINE — LAYERED FALLBACK STRATEGY
@@ -692,7 +686,7 @@ module.exports = {
     examples: ['.tiktok set charlidamelio #social-media', '.tiktok set charlidamelio #social-media --force', '.tiktok remove charlidamelio', '.tiktok list', '.tiktok check cloudgaming223', '.tiktok test cloudgaming223'],
 
     data: new SlashCommandBuilder().setName('tiktok').setDescription('📱 Manage TikTok notifications')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .addSubcommand(sub => sub.setName('set').setDescription('Add/update TikTok tracking')
             .addStringOption(o => o.setName('username').setDescription('TikTok username (without @)').setRequired(true))
             .addChannelOption(o => o.setName('channel').setDescription('Channel for notifications').setRequired(true).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
@@ -770,7 +764,7 @@ module.exports = {
      // ─── TEST NOTIFICATION (owner only) ───
 if (action === 'test' || action === 'simulate') {
     if (!isGuildOwner(message)) {
-        return message.reply(toV2({ embeds: [buildOwnerErrorEmbed(client, message.guild, lang)] }));
+        return message.reply({ content: require('../lib/access').deny(message.member, 'alerts', lang), allowedMentions: { parse: [] } });
     }
     const username = args[1]?.replace(/^@/, '').trim();
     if (!username) return message.reply(t('tiktok.test_usage', lang));
@@ -811,7 +805,7 @@ if (action === 'test' || action === 'simulate') {
 
         // ─── OWNER GUARD ───
         if (!isGuildOwner(message)) {
-            return message.reply(toV2({ embeds: [buildOwnerErrorEmbed(client, message.guild, lang)] }));
+            return message.reply({ content: require('../lib/access').deny(message.member, 'alerts', lang), allowedMentions: { parse: [] } });
         }
 
         // ─── SET ───
@@ -939,14 +933,14 @@ if (action === 'test' || action === 'simulate') {
         const db = client.db;
 
         initDatabase(db);
-        const isOwner = interaction.user.id === interaction.guild.ownerId || interaction.member?.permissions.has('Administrator');
+        const isOwner = require('../lib/access').can(interaction.member, 'alerts').ok;
 
         if (subcommand === 'list') {
             const tracks = db.prepare('SELECT * FROM tiktok_notifications WHERE guild_id = ?').all(guildId);
             return interaction.reply({ components: [buildListEmbed(tracks, interaction.guild, client, lang)], flags: MessageFlags.IsComponentsV2 });
         }
 
-        if (!isOwner) return interaction.reply(toV2({ embeds: [buildOwnerErrorEmbed(client, interaction.guild, lang)], flags: 1 << 6 }));
+        if (!isOwner) return interaction.reply({ content: require('../lib/access').deny(interaction.member, 'alerts', lang), flags: 1 << 6, allowedMentions: { parse: [] } });
 
         if (subcommand === 'check') {
             const username = interaction.options.getString('username').replace(/^@/, '').trim();

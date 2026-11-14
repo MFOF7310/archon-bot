@@ -1,0 +1,5 @@
+{
+  "need_one": "🔒 You need the {perms} permission to do this.",
+  "need_many": "🔒 You need the {perms} permissions to do this.",
+  "hint": "The server owner or an admin can give it to one of your roles in Server Settings → Roles."
+}

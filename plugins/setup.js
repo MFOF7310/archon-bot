@@ -174,7 +174,7 @@ function roleProblem(lang, guild, role) {
     if (role.id === guild.id || role.managed) return T(lang, 'roleManaged');
     const me = guild.members?.me;
     if (me && role.position >= (me.roles?.highest?.position ?? 0)) return T(lang, 'roleAbove', { role: safeName(role.name) });
-    const names = role.permissions?.has(PermissionFlagsBits.Administrator) ? ['Administrator'] : POWERFUL.filter(([, bit]) => role.permissions?.has(bit)).map(([n]) => n);
+    const names = role.permissions?.has(PermissionFlagsBits.Administrator) /* access-ok: a role, not a person */ ? ['Administrator'] : POWERFUL.filter(([, bit]) => role.permissions?.has(bit)).map(([n]) => n);
     if (names.length) return T(lang, 'roleDangerous', { role: safeName(role.name), perms: canPost.localize(names, lang).join(', ') });
     return null;
 }
@@ -196,20 +196,20 @@ module.exports = {
     aliases: ['wizard', 'config', 'configure', 'serversettings', 'ss', 'serverconfig', 'guildsettings', 'gs', 'settings'],   // the old /serversettings names open this checklist
     description: '🧙‍♂️ Interactive setup wizard for new servers',
     usage: '.setup',
-    permissions: ['Administrator'],
+    permissions: ['ManageGuild', 'ManageRoles'],
 
     data: new SlashCommandBuilder()
         .setName('setup')
         .setDescription('🧙‍♂️ Launch the interactive server setup wizard')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild | PermissionFlagsBits.ManageRoles)
         .setDescriptionLocalizations({ fr: '🧙‍♂️ Lancer l\'assistant de configuration interactif' }),
 
     // ── slash command ──
     async execute(interaction, client) {
         const lang = pickLang(client, interaction.guild?.id, interaction);
         if (!interaction.guild) return interaction.reply({ content: T(lang, 'guildOnly'), flags: 1 << 6 }).catch(() => {});
-        const isAdmin = interaction.user.id === interaction.guild.ownerId || interaction.member?.permissions?.has('Administrator');
-        if (!isAdmin) return interaction.reply({ content: T(lang, 'needAdmin'), flags: 1 << 6 }).catch(() => {});
+        // the wizard picks channels and the member role: Manage Server + Manage Roles (lib/access), like /roles
+        { const _no = require('../lib/access').deny(interaction.member, 'roles', lang); if (_no) return interaction.reply({ content: _no, flags: 1 << 6, allowedMentions: { parse: [] } }).catch(() => {}); }
         await module.exports.startWizard(interaction, client, lang, true);
     },
 
@@ -217,8 +217,7 @@ module.exports = {
     async run(client, message, args, db, serverSettings) {
         const lang = pickLang(client, message.guild?.id, null);
         if (!message.guild) return message.reply(T(lang, 'guildOnly')).catch(() => {});
-        const isAdmin = message.author.id === message.guild.ownerId || message.member?.permissions?.has('Administrator');
-        if (!isAdmin) return message.reply(T(lang, 'needAdmin')).catch(() => {});
+        { const _no = require('../lib/access').deny(message.member, 'roles', lang); if (_no) return message.reply({ content: _no, allowedMentions: { parse: [] } }).catch(() => {}); }
         await module.exports.startWizard(message, client, lang, false);
     },
 
@@ -259,6 +258,11 @@ module.exports = {
                 if (i.customId === 'setup_start' && idx === -1) return advance(i);
                 if (i.customId === 'setup_export') {
                     return i.reply({ content: T(lang, 'check.export_done'), files: [exportFile(client, guild)], flags: 1 << 6 }).catch((e) => console.error('[SETUP] export:', e.message));
+                }
+                // erasing everything at once is the one step that needs Administrator (or the owner)
+                if ((i.customId === 'setup_reset' || i.customId === 'setup_reset_ok')) {
+                    const _no = require('../lib/access').deny(i.member, 'reset', lang);
+                    if (_no) return i.reply({ content: _no, flags: 1 << 6, allowedMentions: { parse: [] } }).catch(() => {});
                 }
                 if (i.customId === 'setup_reset' && idx === -1) return i.update(resetScreen(lang, guild)).catch(() => {});
                 if (i.customId === 'setup_reset_no' && idx === -1) return i.update(welcomeScreen(lang, guild, client, userId)).catch(() => {});

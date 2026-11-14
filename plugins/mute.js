@@ -12,7 +12,7 @@ async function doMute(client, guild, actor, member, ms, reason, lang, ctx) {
     if (!ms || ms < MIN || ms > MAX) return { error: M.T('mute_bad_duration', lang) };
     const code = M.checkTarget(guild, actor, member.id, member, 'mute');
     if (code) return { error: M.targetText(code, lang, guild, member, 'mute', ctx) };
-    if (member.permissions?.has(PermissionFlagsBits.Administrator)) return { error: M.T('mute_admin', lang) };
+    if (member.permissions?.has(PermissionFlagsBits.Administrator)) return { error: M.T('mute_admin', lang) };   // access-ok: the target
     const until = member.communicationDisabledUntilTimestamp;
     if (until && until > Date.now()) return { error: M.T('already_muted', lang, { until: `<t:${Math.floor(until / 1000)}:f>` }) };
 

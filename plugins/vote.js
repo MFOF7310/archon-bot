@@ -416,7 +416,7 @@ module.exports = {
         const sub = args[0]?.toLowerCase();
         const uid = message.author.id;
         const gid = message.guild.id;
-        const isAdmin = message.member.permissions.has(PermissionFlagsBits.Administrator);
+        const isAdmin = require('../lib/access').can(message.member, 'settings').ok;   // vote status is a server setting view: Manage Server
         const who = whoOf(message.author, message.member);
 
         // ---- CLAIM (delegated to engine) ----
@@ -530,9 +530,7 @@ module.exports = {
 
         // ---- STATUS (admin) ----
         if (sub === 'status') {
-            if (!interaction.member.permissions?.has(PermissionFlagsBits.Administrator)) {
-                return interaction.reply({ content: `${icon('no', interaction)} ${t.adminOnly}`, flags: MessageFlags.Ephemeral });
-            }
+            { const _no = require('../lib/access').deny(interaction.member, 'settings', lang); if (_no) return interaction.reply({ content: _no, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }); }
             return interaction.reply(eph(statusCard(lang, interaction)));
         }
 

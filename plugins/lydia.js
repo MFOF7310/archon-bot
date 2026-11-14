@@ -1262,11 +1262,8 @@ async function runLydiaCommand(client, message, args, database, serverSettings, 
   const sub = args[0]?.toLowerCase() || 'status';
   if (sub === 'memory') return await handleMemorySubcommand(message, database, false, client);
   if (sub === 'forget') return await forgetMemories(message, database, client);
-  if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-    return message.reply({
-      embeds: [new EmbedBuilder().setColor('#ff4757').setDescription(t('lydia.admin_only', lang))]
-    }).catch(() => {});
-  }
+  // switching Lydia on or off is a server setting: Manage Server (lib/access)
+  { const _no = require('../lib/access').deny(message.member, 'settings', lang); if (_no) return message.reply({ content: _no, allowedMentions: { parse: [] } }).catch(() => {}); }
 
 
   if (!['on', 'off', 'status'].includes(sub)) return;
@@ -1292,12 +1289,7 @@ async function executeSlashCommand(interaction, client) {
     if (!client.db) return interaction.reply({ content: t('lydia.db_offline', lang), flags: 64 });
     return _sub === 'memory' ? handleMemorySubcommand(interaction, client.db, true, client) : forgetMemories(interaction, client.db, client);
   }
-  if (!interaction.member.permissions?.has(PermissionsBitField.Flags.Administrator)) {
-    return interaction.reply({
-      embeds: [new EmbedBuilder().setColor('#ff4757').setDescription(t('lydia.admin_only_slash', lang))],
-      flags: 64
-    });
-  }
+  { const _no = require('../lib/access').deny(interaction.member, 'settings', lang); if (_no) return interaction.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
 
   const sub = interaction.options.getSubcommand();
 

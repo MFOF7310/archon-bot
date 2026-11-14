@@ -106,7 +106,7 @@ const CATS = [
 ];
 
 const getCats = (s) => s?.ticketCategoriesConfig?.length ? s.ticketCategoriesConfig : CATS;
-const isStaff = (m, s) => m && (m.permissions?.has(PermissionFlagsBits.Administrator) || m.permissions?.has(PermissionFlagsBits.ManageMessages) || (s?.ticketStaffRole && m.roles?.cache?.has(s.ticketStaffRole)));
+const isStaff = (m, s) => m && (m.guild?.ownerId === m.id || m.permissions?.has(PermissionFlagsBits.ManageMessages) || (s?.ticketStaffRole && m.roles?.cache?.has(s.ticketStaffRole)));
 const countUserTix = (gid, uid) => { let c=0; for(const[,t]of active)if(t.guildId===gid&&t.creatorId===uid)c++; return c; };
 
 function resetACTimerAt(cid, client, s, remainingMs) { return resetACTimer(cid, client, s, remainingMs); }
@@ -230,7 +230,7 @@ async function createCh(g, uid, uname, cat, s, client) {
     const tcid=s?.ticketCategory;
     const ow=[{id:g.id,deny:[PermissionFlagsBits.ViewChannel]},{id:client.user.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ManageChannels,PermissionFlagsBits.EmbedLinks,PermissionFlagsBits.AttachFiles,PermissionFlagsBits.ManageMessages,PermissionFlagsBits.ReadMessageHistory]},{id:uid,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.EmbedLinks,PermissionFlagsBits.AttachFiles,PermissionFlagsBits.ReadMessageHistory]}];
     if(s?.ticketStaffRole){const r=g.roles.cache.get(s.ticketStaffRole);if(r)ow.push({id:r.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ManageMessages,PermissionFlagsBits.EmbedLinks,PermissionFlagsBits.AttachFiles,PermissionFlagsBits.ReadMessageHistory]});}
-    const ar=g.roles.cache.find(r=>r.permissions?.has(PermissionFlagsBits.Administrator));if(ar&&!ow.some(o=>o.id===ar.id))ow.push({id:ar.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ManageMessages]});
+    const ar=g.roles.cache.find(r=>r.permissions?.has(PermissionFlagsBits.Administrator)); /* access-ok: a role's overwrite */if(ar&&!ow.some(o=>o.id===ar.id))ow.push({id:ar.id,allow:[PermissionFlagsBits.ViewChannel,PermissionFlagsBits.SendMessages,PermissionFlagsBits.ManageMessages]});
     const opts={name,type:ChannelType.GuildText,permissionOverwrites:ow,topic:`#${n} | ${String(cd.emoji||'').replace(/<a?:\w+:\d+>/g,'').trim()} ${cd.label}`.replace(/\|\s+/, '| ')}; // a channel topic can't show custom emojis
     if(tcid&&g.channels.cache.get(tcid))opts.parent=tcid;
     return g.channels.create(opts);
@@ -360,7 +360,7 @@ function cfgCard(s, g, c, lang='en') {
 // One card, a menu per setting: picking a value saves it and redraws the card. Only Manage Server can change it.
 const AC_STEPS = [0, 12, 24, 48, 72, 168];
 const LIM_STEPS = [1, 2, 3, 5, 10];
-const canConfigure = (m) => !!(m?.permissions?.has(PermissionFlagsBits.ManageGuild) || m?.permissions?.has(PermissionFlagsBits.Administrator));
+const canConfigure = (m) => require('../lib/access').can(m, 'settings').ok;   // Manage Server
 const DASHBOARD = 'https://bamako-steel-dev.xyz';
 
 function liveConfig(client, g, lang = 'en') {
@@ -775,7 +775,7 @@ module.exports = {
                 if (creator) {
                     const member = await ix.guild.members.fetch(creator.id).catch(() => null);
                     const isOwner = ix.guild.ownerId === creator.id;
-                    const isStaff = member && (member.permissions.has('ManageChannels') || member.permissions.has('Administrator'));
+                    const isStaff = member && (member.guild?.ownerId === member.id || member.permissions.has('ManageChannels'));   // has() already counts Administrator
                     
                     if (!isStaff || isOwner) {
                     const _v2 = require('../lib/games/v2');

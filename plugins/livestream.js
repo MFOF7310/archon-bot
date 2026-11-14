@@ -89,8 +89,9 @@ function initDatabase(db) {
     try { db.exec(`ALTER TABLE tiktok_notifications ADD COLUMN priority INTEGER DEFAULT 0`); } catch {}
 }
 
+// Alerts are a server setting: Manage Server (lib/access), not full Administrator
 function isGuildOwner(message) {
-    return message.author.id === message.guild.ownerId || message.member?.permissions.has('Administrator');
+    return require('../lib/access').can(message.member, 'alerts').ok;
 }
 
 // ─── Resolve handle → channel ID ───
@@ -496,8 +497,7 @@ function buildSetCard(row, client, lang = 'en') {
 async function handleToggle(interaction, client) {
     const db = client.db;
     const lang = livLang(client, interaction.guildId, interaction);
-    const isAdmin = interaction.user.id === interaction.guild?.ownerId || interaction.member?.permissions?.has('Administrator');
-    if (!isAdmin) return interaction.reply({ content: t('livestream.toggle_admin_only', lang), flags: 64 });
+    { const _no = require('../lib/access').deny(interaction.member, 'alerts', lang); if (_no) return interaction.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
 
     const [, kind, channelId, view] = interaction.customId.split(':');
     const col = kind === 'live' ? 'notify_live' : 'notify_uploads';
@@ -523,7 +523,7 @@ module.exports = {
     examples: ['.livestream set @MrBeast #social', '.livestream set @MrBeast #social --priority', '.livestream remove @MrBeast', '.livestream list'],
 
     data: new SlashCommandBuilder().setName('livestream').setDescription('📺 Manage YouTube Live notifications')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
         .addSubcommand(s => s.setName('set').setDescription('Track a YouTube channel')
             .addStringOption(o => o.setName('channel').setDescription('Handle (@name) or UC... channel ID').setRequired(true))
             .addChannelOption(o => o.setName('target').setDescription('Where to post alerts').setRequired(true).addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement))
@@ -549,7 +549,7 @@ module.exports = {
             return message.reply({ components: [buildListEmbed(rows, message.guild, client, livLang(client, guildId, message))], flags: MessageFlags.IsComponentsV2 });
         }
 
-        if (!isGuildOwner(message)) return message.reply(t('livestream.owner_only', livLang(client, guildId, message)));
+        if (!isGuildOwner(message)) return message.reply({ content: require('../lib/access').deny(message.member, 'alerts', livLang(client, guildId, message)), allowedMentions: { parse: [] } });
 
         if (action === 'set') {
             const input = String(args[1] || '').trim();
@@ -660,8 +660,7 @@ module.exports = {
             const rows = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ?').all(guildId);
             return interaction.reply({ components: [buildListEmbed(rows, interaction.guild, client, lang)], flags: MessageFlags.IsComponentsV2 });
         }
-        const isOwner = interaction.user.id === interaction.guild.ownerId || interaction.member?.permissions.has('Administrator');
-        if (!isOwner) return interaction.reply({ content: t('livestream.owner_only', lang), flags: 64 });
+        { const _no = require('../lib/access').deny(interaction.member, 'alerts', lang); if (_no) return interaction.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
 
         if (sub === 'set') {
             await interaction.deferReply({ flags: 64 });

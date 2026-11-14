@@ -1,0 +1,5 @@
+{
+  "need_one": "🔒 Il te faut la permission {perms} pour faire ça.",
+  "need_many": "🔒 Il te faut les permissions {perms} pour faire ça.",
+  "hint": "Le propriétaire ou un admin peut l'ajouter à l'un de tes rôles dans Paramètres du serveur → Rôles."
+}

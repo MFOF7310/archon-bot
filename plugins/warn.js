@@ -30,7 +30,7 @@ async function autoAction(client, guild, member, count, lang, ctx) {
     const reason = M.auditReason(`${count} warnings`, me.user);
     try {
         if (action === 'mute') {
-            if (!member.moderatable || member.permissions?.has(PermissionFlagsBits.Administrator)) throw Object.assign(new Error('not moderatable'), { why: 'role' });
+            if (!member.moderatable || member.permissions?.has(PermissionFlagsBits.Administrator)) throw Object.assign(new Error('not moderatable'), { why: 'role' });   // access-ok: the target
             await member.timeout(60 * 60 * 1000, reason);
         } else if (action === 'kick') {
             if (!member.kickable) throw Object.assign(new Error('not kickable'), { why: 'role' });

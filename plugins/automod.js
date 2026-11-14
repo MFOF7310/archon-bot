@@ -235,9 +235,9 @@ const ICON = 'https://cdn.discordapp.com/embed/avatars/0.png';
 function fmtDur(ms) { return ms >= 86400000 ? `${Math.round(ms/86400000)} day${Math.round(ms/86400000)>1?'s':''}` : `${Math.round(ms/3600000)} hour${Math.round(ms/3600000)>1?'s':''}`; }
 function strikeBar(wc) { const f = Math.min(wc, 4), e = 4 - f; return `${'●'.repeat(f)}${'○'.repeat(e)}`; }
 
-function isElevated(member) {
+function isElevated(member) {   // about the person AutoMod looks at, not who runs a command (access-ok)
     if (!member) return false;
-    return member.permissions.has(PermissionsBitField.Flags.Administrator) ||
+    return member.permissions.has(PermissionsBitField.Flags.Administrator) || // access-ok: the target
            member.permissions.has(PermissionsBitField.Flags.ManageMessages) ||
            member.permissions.has(PermissionsBitField.Flags.ModerateMembers) ||
            member.permissions.has(PermissionsBitField.Flags.ManageGuild);
@@ -1502,9 +1502,7 @@ function buildRaidCard(client, guild, db) {
 }
 
 async function handleAdminButton(interaction, client) {
-    if (!interaction.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return interaction.reply({ content: '🔒 **Admin only.** You do not have permission to use these buttons.', flags: 64 });
-    }
+    { const _no = require('../lib/access').deny(interaction.member, 'automod', require('../lib/botPerms').langOf(interaction)); if (_no) return interaction.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
     const id = interaction.customId;
     const { ModalBuilder, TextInputBuilder, TextInputStyle, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, ChannelSelectMenuBuilder, ChannelType } = require('discord.js');
     const _T = (k, v) => _adminT(client, interaction.guild, k, v);
@@ -1575,9 +1573,7 @@ async function handleAdminButton(interaction, client) {
 }
 
 async function handleAdminModal(interaction, client) {
-    if (!interaction.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return interaction.reply({ content: '🔒 **Admin only.** You do not have permission to submit this modal.', flags: 64 });
-    }
+    { const _no = require('../lib/access').deny(interaction.member, 'automod', require('../lib/botPerms').langOf(interaction)); if (_no) return interaction.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
     const id = interaction.customId;
     const _T = (k, v) => _adminT(client, interaction.guild, k, v);
     const raw = (k) => String(interaction.fields.getTextInputValue(k) || '').trim();
@@ -1618,9 +1614,7 @@ async function handleAdminModal(interaction, client) {
 }
 
 async function handleAdminSelect(interaction, client) {
-    if (!interaction.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return interaction.reply({ content: '🔒 **Admin only.** You do not have permission to use this menu.', flags: 64 });
-    }
+    { const _no = require('../lib/access').deny(interaction.member, 'automod', require('../lib/botPerms').langOf(interaction)); if (_no) return interaction.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
     const id = interaction.customId;
     const _T = (k, v) => _adminT(client, interaction.guild, k, v);
     const picked = interaction.values?.[0];
@@ -1661,9 +1655,7 @@ async function handleAdminSelect(interaction, client) {
 //  STATUS BUTTONS — Manage domains / View appeals
 // ═══════════════════════════════════════════════════════
 async function handleStatusButton(interaction, client) {
-    if (!interaction.member?.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return interaction.reply({ content: '🔒 **Admin only.** You do not have permission to use this menu.', flags: 64 });
-    }
+    { const _no = require('../lib/access').deny(interaction.member, 'automod', require('../lib/botPerms').langOf(interaction)); if (_no) return interaction.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
     const id = interaction.customId;
     const STATUS_IDS = ['automod_status_domains', 'automod_status_channels', 'automod_status_log', 'automod_status_raid', 'automod_status_appeals', 'automod_status_back'];
     if (!STATUS_IDS.includes(id)) return false;
@@ -1728,7 +1720,7 @@ module.exports = {
 
     // ── FIX 4: Added 'appeals' subcommand to slash builder ──
     data: new SlashCommandBuilder().setName('automod').setDescription('🛡️ Configure AutoMod').
-        setDefaultMemberPermissions(Number(PermissionsBitField.Flags.Administrator)).
+        setDefaultMemberPermissions(Number(PermissionsBitField.Flags.ManageGuild)).
         addSubcommand(s => s.setName('status').setDescription('View AutoMod status')).
         addSubcommand(s => s.setName('enable').setDescription('Enable AutoMod')).
         addSubcommand(s => s.setName('disable').setDescription('Disable AutoMod')).
@@ -1749,8 +1741,7 @@ module.exports = {
             addIntegerOption(o => o.setName('value').setDescription('Value for threshold or min age').setRequired(false))),
 
     execute: async (ix, client) => {
-        const adm = ix.member.permissions.has(PermissionsBitField.Flags.Administrator);
-        if (!adm) return ix.editReply({ content: require('../lib/i18n').t('automod.admin_only', require('../lib/botPerms').langOf({ guild: ix.guild, client })), flags: 1 << 6 });
+        { const _no = require('../lib/access').deny(ix.member, 'automod', require('../lib/botPerms').langOf(ix)); if (_no) return ix.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
         
         // On achète 15 minutes de temps à Discord pour éviter le timeout (10062)
         await ix.deferReply({ flags: 1 << 6 });
@@ -1871,8 +1862,7 @@ module.exports = {
     },
 
     run: async (client, msg, args, db, ss) => {
-        const adm = msg.member.permissions.has(PermissionsBitField.Flags.Administrator);
-        if (!adm) return msg.reply(require('../lib/i18n').t('automod.admin_only', require('../lib/botPerms').langOf({ guild: msg.guild, client })));
+        { const _no = require('../lib/access').deny(msg.member, 'automod', require('../lib/botPerms').langOf({ guild: msg.guild, client })); if (_no) return msg.reply({ content: _no, allowedMentions: { parse: [] } }); }
         const action = args[0]?.toLowerCase() || 'status';
         const settings = client.getServerSettings(msg.guild.id);
         const _LP = require('../lib/botPerms').langOf({ guild: msg.guild, client });

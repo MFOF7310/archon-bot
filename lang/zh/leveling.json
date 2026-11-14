@@ -100,6 +100,5 @@
   "preset_neon": "霓虹",
   "preset_rose": "玫瑰",
   "preset_dark": "暗色",
-  "themeDefaultWelcome": "默认（成员身份组的颜色，否则为绿色）",
-  "theme_only": "🔒 你需要「管理服务器」权限才能更改横幅颜色。"
+  "themeDefaultWelcome": "默认（成员身份组的颜色，否则为绿色）"
 }

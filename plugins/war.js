@@ -7,8 +7,7 @@ const mention = require('../lib/mentions');
 const RESULT_ICON  = { win: '🟢', loss: '🔴', draw: '🟡' };
 const RESULT_LABEL = { win: 'Win', loss: 'Loss', draw: 'Draw' };
 function isAdmin(member) {
-    return member.permissions.has(PermissionFlagsBits.Administrator)
-        || member.permissions.has(PermissionFlagsBits.ManageGuild);
+    return require('../lib/access').can(member, 'settings').ok;   // Manage Server (lib/access)
 }
 
 function record(db, gid) {

@@ -252,7 +252,7 @@ module.exports = {
         const gid = interaction.guild.id;
         const sub = interaction.options.getSubcommand();
         const lang = pickLang(client, gid, interaction.user.id);
-        const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator) || interaction.member.permissions.has(PermissionFlagsBits.ManageGuild);
+        const isAdmin = require('../lib/access').can(interaction.member, 'settings').ok;   // Manage Server
 
         // CREATE
         if (sub === 'create') {

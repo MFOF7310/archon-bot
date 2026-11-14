@@ -553,10 +553,8 @@ async function bannerPreview(theme, lang) {
 function rights(who) {
     if (who === true) return { theme: true, roles: true };
     if (!who) return { theme: false, roles: false };
-    const owner = who.guild?.ownerId === who.id;
-    let roles = false;
-    try { roles = require('../lib/role-rules').canManage(who); } catch { roles = owner || !!who.permissions?.has(PermissionFlagsBits.Administrator); }
-    return { theme: owner || !!who.permissions?.has(PermissionFlagsBits.ManageGuild), roles };
+    const A = require('../lib/access');
+    return { theme: A.can(who, 'settings').ok, roles: A.can(who, 'roles').ok };
 }
 
 async function configCard(client, guild, db, lang, who) {
@@ -874,10 +872,10 @@ async function handleComponent(ix, client) {
     const lang = require('../lib/pick-lang').pickLang(client, ix.guildId, ix, ix.user.id);
     // banner colours are cosmetic: Manage Server is enough (like /welcome, which opens them); creating roles follows /roles
     if (ix.customId === 'lvl:theme' || ix.customId.startsWith('lvl:t')) {
-        if (!rights(ix.member).theme) return ix.reply({ content: L('theme_only', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+        if (!rights(ix.member).theme) return ix.reply({ content: require('../lib/access').deny(ix.member, 'settings', lang), flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => {});
         return handleTheme(ix, client, lang);
     }
-    if (!rights(ix.member).roles) return ix.reply({ content: t('roles.need_perms', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+    if (!rights(ix.member).roles) return ix.reply({ content: require('../lib/access').deny(ix.member, 'roles', lang), flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => {});
     if (ix.customId === 'lvl:create' || ix.customId === 'lvl:streak') {
         await ix.deferUpdate().catch(() => {});
         const r = await createRoles(ix.guild, client.db, lang, ix.customId === 'lvl:streak' ? 'streak' : 'level');
@@ -928,7 +926,7 @@ module.exports = {
             return message.reply({ ...(await configCard(client, message.guild, db, lang, message.member)), allowedMentions: { parse: [] } }).catch(() => { });
         }
         if (sub === 'theme') {
-            if (!rights(message.member).theme) return message.reply(L('theme_only', lang)).catch(() => { });
+            if (!rights(message.member).theme) return message.reply({ content: require('../lib/access').deny(message.member, 'settings', lang), allowedMentions: { parse: [] } }).catch(() => { });
             const type = args[1]?.toLowerCase();
             if (type === 'reset') { if (db) db.prepare(`DELETE FROM leveling_themes WHERE guild_id = ?`).run(message.guild.id); return message.reply(t('leveling.theme_reset', lang)).catch(() => { }); }
             if (!type || !['level', 'welcome'].includes(type)) return message.reply(L('themeUsage', lang)).catch(() => { });
@@ -972,7 +970,7 @@ module.exports = {
         }
 
         if (group === 'theme') {
-            if (!rights(ix.member).theme) return ix.reply({ content: L('theme_only', lang), flags: 1 << 6 });
+            if (!rights(ix.member).theme) return ix.reply({ content: require('../lib/access').deny(ix.member, 'settings', lang), flags: 1 << 6, allowedMentions: { parse: [] } });
 
             if (sc === 'reset') {
                 if (db) db.prepare(`DELETE FROM leveling_themes WHERE guild_id = ?`).run(ix.guild.id);

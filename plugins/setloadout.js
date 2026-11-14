@@ -121,8 +121,7 @@ module.exports = {
             if (!guildId) return message.reply(tr('server_only')).catch(() => {});
             tr = translator(prefixLang(client, guildId));
 
-            const isAdmin = message.member?.permissions?.has(PermissionFlagsBits.ManageGuild)
-                || message.member?.permissions?.has(PermissionFlagsBits.Administrator);
+            const isAdmin = require('../lib/access').can(message.member, 'settings').ok;   // Manage Server
             if (!isAdmin) return message.reply(tr('no_permission')).catch(() => {});
 
             // The weapon name can have spaces ("DL Q33"); "remove" is the last word
