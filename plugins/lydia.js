@@ -817,19 +817,6 @@ async function handleLydiaMessage(message, client, database) {
     let fullSystem = memories.length > 0
       ? `${systemPrompt}\n\n[Your memories about this user]:\n${memories.map(m => `\u2022 ${m.memory_key}: ${m.memory_value}`).join('\n')}`
       : systemPrompt;
-    // Setup questions ("what's left to set up?"): server managers get this server's checklist (lib/setup-checklist.js,
-    // the same list /setup shows), read only and without channel or role names. Other members get no configuration.
-    if (SETUP_QUESTION.test(message.content || '')) {
-      if (message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild)) {
-        try {
-          const list = require('../lib/setup-checklist');
-          fullSystem += `\n\n[This server's setup, checked by ARCHON just now. Read only: you cannot change any setting and must never say you did. The person asking manages this server. Tell them what is done and what is left, most important first, and for each missing item name the place after the arrow where they fix it. /setup shows the same list with buttons.]\n${list.summaryText(list.compute(client, message.guild), lang)}`;
-        } catch (e) { console.error('[LYDIA] setup checklist:', e.message); }
-      } else {
-        fullSystem += `\n\n[The person asking does not manage this server. Do not describe how the server is configured (channels, roles, verification, logs); suggest they ask a server admin, who can see everything with /setup.]`;
-      }
-    }
-
     let history = [];
     try {
       const rawHistory = database.prepare(`
@@ -880,6 +867,22 @@ async function handleLydiaMessage(message, client, database) {
     const finalPrompt = searchResults
       ? `[Web search results \u2014 cite sources using [1], [2], etc. when referencing]:\n${searchResults}\n\n[User question]: ${userPrompt}`
       : userPrompt;
+
+    // Setup questions ("what's left to set up?"): server managers get this server's checklist (lib/setup-checklist.js,
+    // the same list /setup shows), read only and without channel or role names. Other members get no configuration.
+    // It stays for the follow-up messages too (the last turns were about setup), so Lydia never answers a follow-up
+    // without the data and then takes back an answer that was right.
+    const setupTalk = SETUP_QUESTION.test(message.content || '') || history.slice(-4).some((h) => SETUP_QUESTION.test(String(h.content || '')));
+    if (setupTalk) {
+      if (message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild)) {
+        try {
+          const list = require('../lib/setup-checklist');
+          fullSystem += `\n\n[SERVER SETUP — live data, checked by ARCHON for this very message. It is real and current: rely on it, and never say you can't see the server's setup. Read only: you cannot change any setting and must never say you did. The person asking manages this server. Tell them what is done and what is left, most important first, and for each missing item name the place after the arrow where they fix it. /setup shows the same list with buttons.]\n${list.summaryText(list.compute(client, message.guild), lang)}`;
+        } catch (e) { console.error('[LYDIA] setup checklist:', e.message); }
+      } else {
+        fullSystem += `\n\n[The person asking does not manage this server. Do not describe how the server is configured (channels, roles, verification, logs); suggest they ask a server admin, who can see everything with /setup.]`;
+      }
+    }
 
     const aiResult = await generateAIResponse(fullSystem, finalPrompt, history, imageUrl, theme, message.guild?.id ?? null);
 

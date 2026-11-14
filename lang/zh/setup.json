@@ -85,6 +85,8 @@
     "panel_welcome": "欢迎",
     "panel_language": "/setlang",
     "panel_verify": "/verify",
-    "panel_discord": "服务器设置 → 身份组：把 ARCHON 的身份组拖到更高位置"
+    "panel_discord": "服务器设置 → 身份组：把 ARCHON 的身份组拖到更高位置",
+    "problem_verifyRoles": "已开启，但它的身份组缺失或无法安全发放",
+    "problem_verifyPanel": "它的面板频道已被删除"
   }
 }

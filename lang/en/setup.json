@@ -85,6 +85,8 @@
     "panel_welcome": "Welcome",
     "panel_language": "/setlang",
     "panel_verify": "/verify",
-    "panel_discord": "Server Settings → Roles: drag ARCHON's role higher"
+    "panel_discord": "Server Settings → Roles: drag ARCHON's role higher",
+    "problem_verifyRoles": "it's on, but its roles are missing or can't be given safely",
+    "problem_verifyPanel": "its panel channel was deleted"
   }
 }

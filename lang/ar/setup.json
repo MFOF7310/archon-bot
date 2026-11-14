@@ -85,6 +85,8 @@
     "panel_welcome": "الترحيب",
     "panel_language": "/setlang",
     "panel_verify": "/verify",
-    "panel_discord": "إعدادات الخادم ← الرتب: اسحب رتبة ARCHON إلى الأعلى"
+    "panel_discord": "إعدادات الخادم ← الرتب: اسحب رتبة ARCHON إلى الأعلى",
+    "problem_verifyRoles": "مفعّل، لكن رتبه مفقودة أو لا يمكن منحها بأمان",
+    "problem_verifyPanel": "تم حذف قناة لوحته"
   }
 }
