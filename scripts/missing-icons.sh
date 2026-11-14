@@ -42,4 +42,5 @@ make catFood tools-kitchen-2
 make ic_language language "$AMBER"
 make ic_world world
 make ic_user user
+make ic_clear eraser
 echo "Done. Now run: pm2 restart Architect-CG223"
