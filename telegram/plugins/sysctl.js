@@ -4,6 +4,8 @@
 //   /file <path>                 sends a file from the server (read-only; secrets are refused)
 //   /grep <text> [where]         searches the code or the logs of any app in PM2's list (rg, or grep when rg is missing)
 //   /sed <file> <from>,<to>      shows those lines of a file, numbered (read-only: the bot reads the file itself)
+//   /ls [-l] [-a] [path]         lists a folder (-l: rights, size, date; -a: hidden files), secrets never shown
+//   /wc <file|folder>            lines, words and size of a file; for a folder, its longest text files
 //   /sysctl restart|stop|start <app>, /sysctl errors, /sysctl flush
 // Files, logs and code are only sent in a private chat with the owner, never in a group.
 // Everything runs through execFile with fixed arguments: nothing the owner types reaches a shell.
@@ -381,6 +383,76 @@ async function onButton(ctx, data, msgId) {
     }
 }
 
+// ─── /ls and /wc: read by the bot itself (fs), so nothing runs. Secrets are never listed or counted. ───
+const size = (b) => b < 1024 ? `${b}` : b < 1048576 ? `${(b / 1024).toFixed(1)}K` : b < 1073741824 ? `${(b / 1048576).toFixed(1)}M` : `${(b / 1073741824).toFixed(1)}G`;
+const modeText = (st) => (st.isDirectory() ? 'd' : st.isSymbolicLink() ? 'l' : '-') + [6, 3, 0].map((sh) => {
+    const m = (st.mode >> sh) & 7; return (m & 4 ? 'r' : '-') + (m & 2 ? 'w' : '-') + (m & 1 ? 'x' : '-');
+}).join('');
+const when = (ms) => { const d = new Date(ms); const p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+const shownPath = (real) => (path.relative(BOT_DIR, real).startsWith('..') ? real : (path.relative(BOT_DIR, real) || '.'));
+
+async function listDir(ctx, args) {
+    const flags = args.filter((a) => /^-[la]+$/.test(a)).join('');
+    const long = flags.includes('l'), all = flags.includes('a');
+    const r = resolveFile(args.filter((a) => !/^-[la]+$/.test(a)).join(' ') || '.', await apps());
+    if (r.error) return ctx.replyHTML(`${r.error}\n\nExamples: <code>/ls plugins</code> · <code>/ls -la</code> · <code>/ls -l dash:src</code>`);
+    let st = fs.lstatSync(r.real);
+    const one = !st.isDirectory();
+    let items = one ? [{ name: path.basename(r.real), full: r.real }] : fs.readdirSync(r.real).map((name) => ({ name, full: path.join(r.real, name) }));
+    items = items.filter((x) => (all || one || !x.name.startsWith('.')) && !isSecret(x.full) && !isSecret(x.full + '/'));
+    const rows = items.map((x) => { try { return { ...x, st: fs.lstatSync(x.full) }; } catch { return null; } }).filter(Boolean)
+        .sort((a, b) => (b.st.isDirectory() - a.st.isDirectory()) || a.name.localeCompare(b.name));
+    const MAX = 80;
+    const total = rows.reduce((n, x) => n + (x.st.isDirectory() ? 0 : x.st.size), 0);
+    const lines = rows.slice(0, MAX).map((x) => {
+        const name = x.name + (x.st.isDirectory() ? '/' : '');
+        return long ? `${modeText(x.st)} ${size(x.st.size).padStart(6)} ${when(x.st.mtimeMs)} ${name}` : name;
+    });
+    const head = `📁 <b>${esc(shownPath(r.real))}</b> · ${rows.length} item(s)${long ? ` · ${size(total)} in files` : ''}`;
+    const hidden = all ? '' : '\n<i>Hidden files: /ls -a</i>';
+    return ctx.replyHTML(`${head}\n<pre>${esc(lines.join('\n') || '(empty)')}</pre>${rows.length > MAX ? `\n<i>…and ${rows.length - MAX} more</i>` : ''}${hidden}`);
+}
+
+const SKIP_COUNT = new Set(['node_modules', '.git', 'dist', 'build', '.next', 'coverage', 'session', 'sessions', '.ssh']);
+function countFile(full) {
+    const st = fs.statSync(full);
+    if (st.size > 8 * 1024 * 1024) return null;
+    const buf = fs.readFileSync(full);
+    if (buf.subarray(0, 4096).includes(0)) return null;   // not text
+    const text = buf.toString('utf8');
+    const lines = text ? text.split('\n').length - (text.endsWith('\n') ? 1 : 0) : 0;
+    return { lines, words: (text.match(/\S+/g) || []).length, bytes: st.size };
+}
+
+async function wordCount(ctx, args) {
+    const r = resolveFile(args.filter((a) => !/^-[lwc]+$/.test(a)).join(' '), await apps());
+    if (r.error) return ctx.replyHTML(`${r.error}\n\nExamples: <code>/wc plugins/setup.js</code> · <code>/wc plugins</code> (a whole folder)`);
+    if (!fs.statSync(r.real).isDirectory()) {
+        const c = countFile(r.real);
+        if (!c) return ctx.replyHTML('That file isn\'t text, or is over 8 MB.');
+        return ctx.replyHTML(`📄 <b>${esc(shownPath(r.real))}</b>\n<pre>${c.lines} lines · ${c.words} words · ${size(c.bytes)}</pre>`);
+    }
+    // a folder: every text file under it, biggest first
+    const files = []; let seen = 0;
+    const walk = (dir) => {
+        for (const d of fs.readdirSync(dir, { withFileTypes: true })) {
+            if (seen > 5000) return;
+            const full = path.join(dir, d.name);
+            if (isSecret(full) || isSecret(full + '/')) continue;
+            if (d.isDirectory()) { if (!SKIP_COUNT.has(d.name)) walk(full); continue; }
+            if (!d.isFile()) continue;
+            seen++;
+            try { const c = countFile(full); if (c) files.push({ rel: path.relative(r.real, full), ...c }); } catch { /* unreadable: skipped */ }
+        }
+    };
+    walk(r.real);
+    files.sort((a, b) => b.lines - a.lines);
+    const sum = files.reduce((n, f) => n + f.lines, 0);
+    const width = String(files[0]?.lines || 0).length;
+    const top = files.slice(0, 25).map((f) => `${String(f.lines).padStart(width)}  ${f.rel}`).join('\n');
+    return ctx.replyHTML(`📁 <b>${esc(shownPath(r.real))}</b> · ${files.length} text file(s) · <b>${sum.toLocaleString('en-US')}</b> lines\n<pre>${esc(top || '(no text files)')}</pre>${files.length > 25 ? `\n<i>The 25 longest of ${files.length}.</i>` : ''}${seen > 5000 ? '\n<i>Stopped after 5000 files.</i>' : ''}`);
+}
+
 // ─── typed commands ───
 async function handler(ctx) {
     if (!ctx.isOwner()) return ctx.replyHTML('⛔ Owner only.');
@@ -389,7 +461,9 @@ async function handler(ctx) {
     await ctx.action('typing');
 
     // Files, logs and code leave the server only towards the owner's private chat
-    if (['file', 'tail', 'logs', 'grep', 'rg', 'sed'].includes(called) && !ctx.isPrivate) return ctx.replyHTML(PRIVATE_ONLY);
+    if (['file', 'tail', 'logs', 'grep', 'rg', 'sed', 'ls', 'wc'].includes(called) && !ctx.isPrivate) return ctx.replyHTML(PRIVATE_ONLY);
+    if (called === 'ls') return listDir(ctx, args);
+    if (called === 'wc') return wordCount(ctx, args);
     if (called === 'file') return sendFile(ctx, args.join(' '));
     if (called === 'grep' || called === 'rg') return search(ctx);
     if (called === 'sed') return showLines(ctx, args);
@@ -425,6 +499,8 @@ async function handler(ctx) {
             '<code>/file ~/deploy-backups</code> lists a folder',
             '<code>/grep addCredits plugins</code> searches code or logs',
             '<code>/sed plugins/credit.js 120,160</code> shows those lines',
+            '<code>/ls -la plugins</code> lists a folder (<code>-l</code> details, <code>-a</code> hidden files)',
+            '<code>/wc plugins/setup.js</code> counts lines; a folder gives its longest files',
             '<code>/sysctl restart dash</code> · <code>stop</code> · <code>start</code>',
             '<code>/sysctl flush</code> empties the PM2 logs', '',
             '<i>Apps: bot, dash, hook, or any PM2 name.</i>',
@@ -436,10 +512,10 @@ async function handler(ctx) {
 
 module.exports = {
     name: 'sysctl',
-    aliases: ['check', 'tail', 'file', 'server', 'grep', 'rg', 'sed'],
+    aliases: ['check', 'tail', 'file', 'server', 'grep', 'rg', 'sed', 'ls', 'wc'],
     description: 'Server card, logs, files and restarts (owner only)',
     category: 'System',
-    usage: '/sysctl · /tail <app> [lines] · /file <path> · /grep <text> [where] · /sed <file> <from>,<to>',
+    usage: '/sysctl · /tail <app> [lines] · /file <path> · /grep <text> [where] · /sed <file> <from>,<to> · /ls [-la] [path] · /wc <path>',
     ownerOnly: true,
     handler,
     onButton,
