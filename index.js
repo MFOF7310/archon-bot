@@ -5909,6 +5909,8 @@ apiApp.post('/api/update-config', requireAdmin, (req, res) => {
         }
         client.settings.delete(guildId);
         client.invalidateGuildCache(guildId);
+        // the /welcome panel says who changed a message, and open panels redraw themselves
+        try { require('./plugins/welcome.js').dashboardSaved(client, String(guildId), Object.keys(settings)); } catch (e) { console.error('[WELCOME] dashboard hook:', e.message); }
         // Discord's own invite rule follows the invite filter set from the dashboard
         if (Object.keys(settings).some(k => /^invite_?filter/i.test(k))) {
             const g = client.guilds.cache.get(String(guildId));

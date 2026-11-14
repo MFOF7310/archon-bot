@@ -89,5 +89,11 @@
   "panel_not_yours": "Only the person who opened this panel can use it.",
   "ai_title": "AI assistant",
   "ai_active": "I can help! Lydia answers in:\n\n{channels}\n\nGo there and mention me with your message, like {bot} hello.",
-  "ai_none": "I can help, but Lydia isn't turned on in any channel yet.\n\nAsk a moderator to turn her on."
+  "ai_none": "I can help, but Lydia isn't turned on in any channel yet.\n\nAsk a moderator to turn her on.",
+  "panel_custom": "Custom message",
+  "panel_custom_dashboard": "Custom message · changed on the dashboard{when}",
+  "panel_custom_discord": "Custom message · changed by {user}{when}",
+  "panel_live_dashboard": "Updated from the dashboard.",
+  "btn_edit": "Edit",
+  "btn_customize": "Customize"
 }

@@ -89,5 +89,11 @@
   "panel_not_yours": "Seule la personne qui a ouvert ce panneau peut l'utiliser.",
   "ai_title": "Assistant IA",
   "ai_active": "Je peux t'aider ! Lydia répond dans :\n\n{channels}\n\nVas-y et mentionne-moi avec ton message, par exemple {bot} salut.",
-  "ai_none": "Je peux t'aider, mais Lydia n'est encore activée dans aucun salon.\n\nDemande à un modérateur de l'activer."
+  "ai_none": "Je peux t'aider, mais Lydia n'est encore activée dans aucun salon.\n\nDemande à un modérateur de l'activer.",
+  "panel_custom": "Message personnalisé",
+  "panel_custom_dashboard": "Message personnalisé · modifié sur le dashboard{when}",
+  "panel_custom_discord": "Message personnalisé · modifié par {user}{when}",
+  "panel_live_dashboard": "Mis à jour depuis le dashboard.",
+  "btn_edit": "Modifier",
+  "btn_customize": "Personnaliser"
 }

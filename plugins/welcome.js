@@ -395,6 +395,55 @@ function blocker(guild, row, kind, lang) {
     return d.reason === 'private' ? WL('why_private', lang) : WL('why_perms', lang, { perms: canPost.localize(d.missing || [], lang).join(', ') });
 }
 
+// Who changed a message last, and from where (the panel or the dashboard), so the panel can say it.
+function editsTable(db) {
+    try { db.prepare('CREATE TABLE IF NOT EXISTS welcome_edits (guild_id TEXT, kind TEXT, source TEXT, user_id TEXT, at INTEGER, PRIMARY KEY (guild_id, kind))').run(); return true; }
+    catch { return false; }
+}
+function noteEdit(db, gid, kind, source, userId) {
+    if (!KIND[kind] || !editsTable(db)) return;
+    try { db.prepare('INSERT OR REPLACE INTO welcome_edits (guild_id, kind, source, user_id, at) VALUES (?, ?, ?, ?, ?)').run(String(gid), kind, source, userId ? String(userId) : null, Date.now()); }
+    catch (e) { console.error('[WELCOME] edit log:', e.message); }
+}
+function lastEdit(db, gid, kind) {
+    if (!editsTable(db)) return null;
+    try { return db.prepare('SELECT source, user_id, at FROM welcome_edits WHERE guild_id = ? AND kind = ?').get(String(gid), kind) || null; }
+    catch { return null; }
+}
+
+// Panels still open, so a change made on the dashboard shows up in them by itself.
+// A prefix panel is a normal message (edited for 30 min); a slash or /setup panel is edited through its
+// interaction, which Discord allows for 15 min.
+const LIVE = new Map();   // guildId -> [{ msg?, ix?, ownerId, lang, until }]
+function track(gid, handle) {
+    const now = Date.now();
+    const id = (h) => h.msg?.id || h.ix?.message?.id || h.ix?.id;
+    const list = (LIVE.get(gid) || []).filter((h) => h.until > now && id(h) !== id(handle));
+    list.push(handle);
+    LIVE.set(gid, list.slice(-5));
+}
+async function refreshPanels(client, gid, notice) {
+    const list = (LIVE.get(String(gid)) || []).filter((h) => h.until > Date.now());
+    LIVE.set(String(gid), list);
+    const guild = client.guilds.cache.get(String(gid));
+    if (!guild || !list.length) return;
+    for (const h of list) {
+        const view = panel(guild, client, h.lang, h.ownerId, notice ? `> ${WL(notice, h.lang)}` : null);
+        try {
+            if (h.msg) await h.msg.edit({ components: view.components, allowedMentions: view.allowedMentions });
+            else await h.ix.editReply({ components: view.components, allowedMentions: view.allowedMentions });
+        } catch { h.until = 0; }   // deleted or too old: stop trying
+    }
+}
+// Called by the dashboard API after it saved settings: note who changed a message and redraw open panels.
+function dashboardSaved(client, gid, keys) {
+    const touched = (re) => keys.some((k) => re.test(String(k).toLowerCase().replace(/_/g, '')));
+    let any = false;
+    if (touched(/^welcomemessage$|^message$/)) { noteEdit(client.db, gid, 'welcome', 'dashboard'); any = true; }
+    if (touched(/^goodbyemessage$|^goodbyemsg$/)) { noteEdit(client.db, gid, 'goodbye', 'dashboard'); any = true; }
+    if (any || touched(/^(welcome|goodbye)(enabled|channel)$/)) refreshPanels(client, gid, 'panel_live_dashboard').catch(() => {});
+}
+
 function panel(guild, client, lang, ownerId, notice) {
     const { icon } = require('../lib/ui/icons');
     const row = readCfg(client.db, guild.id);
@@ -412,7 +461,18 @@ function panel(guild, client, lang, ownerId, notice) {
         const why = blocker(guild, row, kind, lang);
         const chText = row[k.channel] ? (guild.channels.cache.has(String(row[k.channel])) ? `<#${row[k.channel]}>` : WL('why_gone', lang)) : WL('panel_nochannel', lang);
         const mark = !on ? '–' : why ? '!' : '✓';
-        const msg = row[k.message] ? quote(row[k.message]) : `-# ${WL(kind === 'welcome' ? 'panel_default_welcome' : 'panel_default_goodbye', lang)}`;
+        let msg = `-# ${WL(kind === 'welcome' ? 'panel_default_welcome' : 'panel_default_goodbye', lang)}`;
+        if (row[k.message]) {
+            // shown the way members will see it, with the person who opened the panel as the sample member
+            let shown = row[k.message];
+            try { shown = Style.formatTemplate(shown, guild.members.cache.get(String(ownerId)) || guild.members.me, guild.memberCount); } catch { /* raw text */ }
+            const ed = lastEdit(client.db, guild.id, kind);
+            const when = ed?.at ? ` <t:${Math.floor(ed.at / 1000)}:R>` : '';
+            const who = !ed ? WL('panel_custom', lang)
+                : ed.source === 'dashboard' ? WL('panel_custom_dashboard', lang, { when })
+                : WL('panel_custom_discord', lang, { user: ed.user_id ? `<@${ed.user_id}>` : '?', when });
+            msg = `-# ${icon('file', guild)} ${who}\n${quote(shown)}`;
+        }
         let text = `\`${mark}\` **${WL(kind === 'welcome' ? 'panel_welcome' : 'panel_goodbye', lang)}** · ${chText}\n${msg}`;
         if (on && why) text += `\n-# ${icon('warn', guild)} ${why}`;
         if (kind === 'welcome') {
@@ -423,7 +483,7 @@ function panel(guild, client, lang, ownerId, notice) {
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(text));
         const buttons = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(`wel:toggle:${kind}:${ownerId}`).setLabel(WL(on ? 'btn_on' : 'btn_off', lang)).setStyle(on ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(icon(on ? 'on' : 'off', guild)),
-            new ButtonBuilder().setCustomId(`wel:msg:${kind}:${ownerId}`).setLabel(WL('btn_message', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('file', guild)),
+            new ButtonBuilder().setCustomId(`wel:msg:${kind}:${ownerId}`).setLabel(WL(row[k.message] ? 'btn_edit' : 'btn_customize', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('file', guild)),
             new ButtonBuilder().setCustomId(`wel:test:${kind}:${ownerId}`).setLabel(WL('btn_test', lang)).setStyle(ButtonStyle.Primary).setEmoji(icon('next', guild)));
         if (row[k.message]) buttons.addComponents(new ButtonBuilder().setCustomId(`wel:reset:${kind}:${ownerId}`).setLabel(WL('btn_reset', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('refresh', guild)));
         c.addActionRowComponents(buttons);
@@ -448,6 +508,7 @@ async function handleComponent(ix, client) {
     if (!canManage(ix.member)) return say(WL('admin_only', lang));
     const k = KIND[kind];
     if (!k) return say(WL('panel_expired', lang));
+    track(guild.id, { ix, ownerId, lang, until: Date.now() + 14 * 60000 });   // this interaction can edit the panel for 15 min
     const redraw = (notice) => (ix.isModalSubmit?.() && !ix.isFromMessage?.() ? say(notice) : ix.update(panel(guild, client, lang, ownerId, notice)).catch((e) => console.error('[WELCOME] panel:', e.message)));
 
     if (action === 'open') return ix.update(panel(guild, client, lang, ownerId)).catch((e) => console.error('[WELCOME] panel:', e.message));   // from /setup
@@ -458,6 +519,7 @@ async function handleComponent(ix, client) {
     }
     if (action === 'reset') {
         writeCol(client, guild.id, k.message, null);
+        noteEdit(client.db, guild.id, kind, 'discord', ix.user.id);
         return redraw(`> ${WL('panel_reset_done', lang)}`);
     }
     if (action === 'msg') {
@@ -473,6 +535,7 @@ async function handleComponent(ix, client) {
         const text = String(ix.fields.getTextInputValue('text') || '').trim().slice(0, MAX_MSG);
         if (!text) return say(WL('panel_empty', lang));
         writeCol(client, guild.id, k.message, text);
+        noteEdit(client.db, guild.id, kind, 'discord', ix.user.id);
         const member = await guild.members.fetch(ix.user.id).catch(() => ix.member);
         let preview = text;
         try { preview = Style.formatTemplate(text, member, guild.memberCount); } catch { /* the raw text is preview enough */ }
@@ -520,13 +583,16 @@ module.exports = {
 
     handleComponent,
     panel,
+    dashboardSaved,
 
     // ================= PREFIX COMMAND: .welcome opens the panel =================
     run: async (client, message) => {
         if (!message.guild) return;
         const lang = langOf(client, message.guild.id, message, message.author.id);
         if (!canManage(message.member)) return message.reply(WL('admin_only', lang)).catch(() => {});
-        return message.reply(panel(message.guild, client, lang, message.author.id)).catch((e) => console.error('[WELCOME] panel:', e.message));
+        const sent = await message.reply(panel(message.guild, client, lang, message.author.id)).catch((e) => { console.error('[WELCOME] panel:', e.message); return null; });
+        if (sent) track(message.guild.id, { msg: sent, ownerId: message.author.id, lang, until: Date.now() + 30 * 60000 });
+        return sent;
     },
 
     // ================= SLASH COMMAND: /welcome opens the panel =================
@@ -540,6 +606,7 @@ module.exports = {
         const lang = langOf(client, ix.guild.id, ix, ix.user.id);
         if (!canManage(ix.member)) return ix.reply({ content: WL('admin_only', lang), flags: MessageFlags.Ephemeral });
         const view = panel(ix.guild, client, lang, ix.user.id);
-        return ix.reply({ ...view, flags: view.flags | MessageFlags.Ephemeral });
+        await ix.reply({ ...view, flags: view.flags | MessageFlags.Ephemeral });
+        track(ix.guild.id, { ix, ownerId: ix.user.id, lang, until: Date.now() + 14 * 60000 });
     }
 };

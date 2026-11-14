@@ -89,5 +89,11 @@
   "panel_not_yours": "只有打开此面板的人才能使用它。",
   "ai_title": "AI 助手",
   "ai_active": "我可以帮你！Lydia 在这些频道回复：\n\n{channels}\n\n去那里提及我并附上你的消息，例如 {bot} 你好。",
-  "ai_none": "我可以帮你，但 Lydia 还没有在任何频道开启。\n\n请让管理员开启她。"
+  "ai_none": "我可以帮你，但 Lydia 还没有在任何频道开启。\n\n请让管理员开启她。",
+  "panel_custom": "自定义消息",
+  "panel_custom_dashboard": "自定义消息 · 在控制面板中修改{when}",
+  "panel_custom_discord": "自定义消息 · 由 {user} 修改{when}",
+  "panel_live_dashboard": "已从控制面板更新。",
+  "btn_edit": "编辑",
+  "btn_customize": "自定义"
 }
