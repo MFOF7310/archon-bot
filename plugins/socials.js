@@ -76,7 +76,7 @@ module.exports = {
             { rule: true },
             { text: `**${em('location', '📍')} NODE STATUS**\n` +
                     `**BAMAKO, MALI 🇲🇱**\n` +
-                    `${em('ping_ok', '🟢')} Online · ${em('ic_satellite', '📡')} ${ping}ms\n` +
+                    `${em('ic_status_ok', '🟢')} Online · ${em('ic_satellite', '📡')} ${ping}ms\n` +
                     `${em('charts', '📊')} ${totalMembers.toLocaleString()} ${t.members} · ${totalGuilds} ${t.servers} · ${totalCommands} ${t.commands} · ${em('clock', '⏱️')} ${uptimeStr}` },
             { row: row1 },
             { row: row2 },
@@ -165,7 +165,7 @@ module.exports = {
             { rule: true },
             { text: `**${em('location', '📍')} NODE STATUS**\n` +
                     `**BAMAKO, MALI 🇲🇱**\n` +
-                    `${em('ping_ok', '🟢')} Online · ${em('ic_satellite', '📡')} ${ping}ms\n` +
+                    `${em('ic_status_ok', '🟢')} Online · ${em('ic_satellite', '📡')} ${ping}ms\n` +
                     `${em('charts', '📊')} ${totalMembers.toLocaleString()} ${t.members} · ${totalGuilds} ${t.servers} · ${totalCommands} ${t.commands} · ${em('clock', '⏱️')} ${uptimeStr}` },
             { row: row1 },
             { row: row2 },

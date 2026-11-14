@@ -453,8 +453,8 @@ function toggleButton(kind, row, lang, view = '') {
 
 function statusText(row, client, lang) {
     return row.is_live === 1
-        ? `${em('ping_ok', '🟢')} ${t('livestream.status_live', lang)}`
-        : `${em('ping_bad', '🔴')} ${t('livestream.status_offline', lang)}`;
+        ? `${em('ic_status_ok', '🟢')} ${t('livestream.status_live', lang)}`
+        : `${em('ic_status_bad', '🔴')} ${t('livestream.status_offline', lang)}`;
 }
 
 function buildListEmbed(tracks, guild, client, lang = 'en') {

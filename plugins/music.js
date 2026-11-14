@@ -283,7 +283,7 @@ function buildNowPlayingEmbed(q, client) {
                 ? 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Spotify_logo_without_text.svg/168px-Spotify_logo_without_text.svg.png'
                 : client.user.displayAvatarURL()
         })
-        .setTitle(`${t.spotifyUrl ? em('ping_ok', '🟢') : em('music', '🎵')} NOW PLAYING`)
+        .setTitle(`${t.spotifyUrl ? em('ic_status_ok', '🟢') : em('music', '🎵')} NOW PLAYING`)
         .setDescription(
             `\`\`\`ansi\n` +
             `\u001b[1;36m▸ TRACK    \u001b[0m ${t.title.substring(0,50)}\n` +

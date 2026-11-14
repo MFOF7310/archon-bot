@@ -69,7 +69,7 @@ async function measure(client, db) {
 }
 
 const tierOf = (ms, good, ok) => (ms == null || !(ms >= 0)) ? 'wait' : ms < good ? 'ok' : ms < ok ? 'warn' : 'bad';
-const DOT = { ok: () => em('ping_ok', '🟢'), warn: () => em('ping_warn', '🟡'), bad: () => em('ping_bad', '🔴'), wait: () => em('ping_wait', '⏳') };
+const DOT = { ok: () => em('ic_status_ok', '🟢'), warn: () => em('ic_status_warn', '🟡'), bad: () => em('ic_status_bad', '🔴'), wait: () => em('ic_status_wait', '⏳') };
 
 async function pingCard(client, lang, db) {
     const _ = tr(lang);
@@ -251,10 +251,10 @@ function aliveCard(client, lang, db, guildName) {
     const sysFree = Math.round(os.freemem() / 1024 / 1024);
     const cpus = os.cpus();
     const wsPing = Math.round(client.ws?.ping ?? 0);
-    const wsDot = wsPing < 150 ? em('ping_ok', '🟢') : wsPing < 300 ? em('ping_warn', '🟡') : em('ping_bad', '🔴');
+    const wsDot = wsPing < 150 ? em('ic_status_ok', '🟢') : wsPing < 300 ? em('ic_status_warn', '🟡') : em('ic_status_bad', '🔴');
     
-    const statusEmojis = { online: em('ping_ok', '🟢'), idle: em('ping_warn', '🟡'), dnd: em('ping_bad', '🔴'), offline: '⚫' };
-    const botStatus = statusEmojis[client.presence?.status] || em('ping_ok', '🟢');
+    const statusEmojis = { online: em('ic_status_ok', '🟢'), idle: em('ic_status_warn', '🟡'), dnd: em('ic_status_bad', '🔴'), offline: '⚫' };
+    const botStatus = statusEmojis[client.presence?.status] || em('ic_status_ok', '🟢');
 
     let servers = client.guilds.cache.size;
     try { servers = db.prepare("SELECT COUNT(DISTINCT guild_id) AS c FROM users WHERE guild_id NOT IN ('DM','telegram')").get().c || servers; } catch {}

@@ -26,7 +26,7 @@ function daysLeft(db, guildId) {
 }
 
 function buildPremiumCard(client, premium, days, lang, guildName) {
-    const statusEmoji = premium ? em('ping_ok', '🟢') : em('ping_bad', '🔴');
+    const statusEmoji = premium ? em('ic_status_ok', '🟢') : em('ic_status_bad', '🔴');
     const statusText = premium ? pt('statusActive', lang) : pt('statusInactive', lang);
     const statusValue = premium ? pt('statusActiveValue', lang) : pt('statusInactiveValue', lang);
     const expiry = days === null ? (premium ? pt('lifetime', lang) : '—') : `${days} ${pt('daysLabel', lang)}`;

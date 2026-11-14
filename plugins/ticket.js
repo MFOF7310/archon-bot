@@ -452,7 +452,7 @@ function statsCard(db, gid, lang) {
     return v2card(0x00f0ff, [
         { text: `## ${em('charts', '📊')} ${t('ticket.stats_title', lang) || 'Ticket Analytics'}` },
         { rule: true },
-        { text: `**${em('ticket', '🎫')} ${t('ticket.stats_total', lang) || 'Total'}** · \`${total}\`\n**${em('ping_ok', '🟢')} ${t('ticket.stats_open', lang) || 'Open'}** · \`${open}\`\n**${em('star', '⭐')} ${t('ticket.stats_avg', lang) || 'Average rating'}** · \`${(rated.a || 0).toFixed(1)}\` (${rated.c || 0})` },
+        { text: `**${em('ticket', '🎫')} ${t('ticket.stats_total', lang) || 'Total'}** · \`${total}\`\n**${em('ic_status_ok', '🟢')} ${t('ticket.stats_open', lang) || 'Open'}** · \`${open}\`\n**${em('star', '⭐')} ${t('ticket.stats_avg', lang) || 'Average rating'}** · \`${(rated.a || 0).toFixed(1)}\` (${rated.c || 0})` },
     ]);
 }
 
@@ -630,7 +630,7 @@ module.exports = {
                     { text: `**${em('ticket', '🎫')} Total Tickets** · \`${total}\`
 **${em('charts', '📊')} Rated** · \`${rated}\`
 **${em('star', '⭐')} Avg Rating** · \`${avg.toFixed(1)}\`
-**${em('ping_ok', '🟢')} Open** · \`${open}\`` },
+**${em('ic_status_ok', '🟢')} Open** · \`${open}\`` },
                     { rule: true },
                     { text: '-# ' + (t('ticket.stats_footer', lang) || 'Ticket System Analytics') }
                 ]);

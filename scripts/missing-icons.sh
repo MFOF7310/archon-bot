@@ -43,4 +43,8 @@ make ic_language language "$AMBER"
 make ic_world world
 make ic_user user
 make ic_clear eraser
+make ic_status_ok circle-check "#23A55A"
+make ic_status_warn alert-circle "$AMBER"
+make ic_status_bad circle-x "$RED"
+make ic_status_wait hourglass
 echo "Done. Now run: pm2 restart Architect-CG223"
