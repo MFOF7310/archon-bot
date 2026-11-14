@@ -1,188 +1,45 @@
-const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
+// /birthday — members save their birthday once; ARCHON celebrates them at 8:00 their time on every server they share.
+//   /birthday set     day, month, optional year, time zone (autocomplete)
+//   /birthday view    your own (private, with buttons: show or hide your age, remove) or another member's (no age unless shown)
+//   /birthday list    the next 90 days, members of this server only
+// The announcement card counts wishes (one per member, no extra messages) and lets members give a few credits.
+// Birthdays are per person (one row per user); wishes and gifts are per server and per year.
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const { icon } = require('../lib/ui/icons');
-const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
+const { card } = require('../lib/games/v2');
+const { t } = require('../lib/i18n');
 
-// ================= BIRTHDAY INTELLIGENCE DIVISION =================
-const birthdays = new Map();
+const birthdays = new Map();   // userId → { day, month, year, timezone, showAge }
+const LANGS = ['en', 'fr', 'zh', 'ar'];
+const LOCALE = { en: 'en-US', fr: 'fr-FR', zh: 'zh-CN', ar: 'ar' };
+const B = (k, lang, v) => t(`birthday.${k}`, lang, v || {});
+const PINK = 0xFF69B4, PURPLE = 0x9B59B6, GREY = 0x95A5A6;
+const GIFTS = [25, 50, 100];
+const MAX_YEAR = () => new Date().getUTCFullYear() - 13;   // Discord's minimum age
+const langOf = (client, gid, where, uid) => { const l = require('../lib/pick-lang').pickLang(client, gid, where, uid); return LANGS.includes(l) ? l : 'en'; };
 
-// ================= MULTILINGUAL BRIEFING =================
-const t = {
-    en: {
-        setTitle: '🎂 Birthday saved',
-        setSuccess: (date) => `${em('ic_ok', '✅')} Your birthday is saved: **${date}**`,
-        setError: em('ic_off', em('ic_off', '❌')) + ' Invalid date. Example: `/birthday set day:15 month:6 year:2000`',
-        removeTitle: '🎂 Birthday removed',
-        removeSuccess: em('ic_ok', '✅') + ' Your birthday has been removed.',
-        removeError: em('ic_off', em('ic_off', '❌')) + ' You have no birthday saved.',
-        checkTitle: '🎂 Birthday',
-        checkUser: (user, date) => `🎉 **${user}**'s birthday is on **${date}**`,
-        checkSelf: (date) => `🎂 Your birthday is on **${date}**`,
-        checkNone: em('ic_off', em('ic_off', '❌')) + ' No birthday saved.',
-        listTitle: '📅 Upcoming birthdays',
-        listEmpty: 'No birthdays in the next 90 days.',
-        listEntry: (user, date, days) => `• **${user}** — ${date} (in ${days} d)`,
-        todayEntry: (user, date) => `• **${user}** — ${date} 🎂 **today**`,
-        announcementTitle: '🎉 Happy birthday!',
-        announcementDesc: (user, age) => `Everyone wishes **${user}** a happy birthday!\n${age ? 'They turn **' + age + '** today.' : ''}`,
-        announcementFooter: '🎂 Drop a birthday wish in chat.',
-        wishButton: 'Wish happy birthday',
-        giftButton: 'Send a gift',
-        months: ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'],
-        noPermission: em('ic_off', '❌') + " You don't have permission to change someone else's birthday.",
-        invalidDay: em('ic_off', em('ic_off', '❌')) + ' Day must be between 1 and 31.',
-        invalidMonth: em('ic_off', em('ic_off', '❌')) + ' Month must be between 1 and 12.',
-        invalidYear: em('ic_off', em('ic_off', '❌')) + ' Year must be between 1900 and 2020.',
-        invalidDate: em('ic_off', em('ic_off', '❌')) + ' That date does not exist.'
-    },
-    fr: {
-        setTitle: '🎂 Anniversaire enregistré',
-        setSuccess: (date) => `${em('ic_ok', '✅')} Ton anniversaire est enregistré : **${date}**`,
-        setError: em('ic_off', em('ic_off', '❌')) + ' Date invalide. Exemple : `/birthday set jour:15 mois:6 annee:2000`',
-        removeTitle: '🎂 Anniversaire supprimé',
-        removeSuccess: em('ic_ok', '✅') + ' Ton anniversaire a été supprimé.',
-        removeError: em('ic_off', '❌') + " Tu n'as aucun anniversaire enregistré.",
-        checkTitle: '🎂 Anniversaire',
-        checkUser: (user, date) => `🎉 L'anniversaire de **${user}** est le **${date}**`,
-        checkSelf: (date) => `🎂 Ton anniversaire est le **${date}**`,
-        checkNone: em('ic_off', em('ic_off', '❌')) + ' Aucun anniversaire enregistré.',
-        listTitle: '📅 Anniversaires à venir',
-        listEmpty: 'Aucun anniversaire dans les 90 prochains jours.',
-        listEntry: (user, date, days) => `• **${user}** — ${date} (dans ${days} j)`,
-        todayEntry: (user, date) => `• **${user}** — ${date} 🎂 **aujourd'hui**`,
-        announcementTitle: '🎉 Joyeux anniversaire !',
-        announcementDesc: (user, age) => `Tout le monde souhaite un joyeux anniversaire à **${user}** !\n${age ? '**' + age + '** ans aujourd\'hui !' : ''}`,
-        announcementFooter: "🎂 Laisse-lui un petit mot dans le chat !",
-        wishButton: 'Souhaiter un bon anniversaire',
-        giftButton: 'Offrir un cadeau',
-        months: ['JAN', 'FÉV', 'MAR', 'AVR', 'MAI', 'JUN', 'JUL', 'AOÛ', 'SEP', 'OCT', 'NOV', 'DÉC'],
-        noPermission: em('ic_off', '❌') + " Tu n'as pas la permission de modifier l'anniversaire d'un autre membre.",
-        invalidDay: em('ic_off', em('ic_off', '❌')) + ' Le jour doit être entre 1 et 31.',
-        invalidMonth: em('ic_off', em('ic_off', '❌')) + ' Le mois doit être entre 1 et 12.',
-        invalidYear: em('ic_off', '❌') + " L'année doit être entre 1900 et 2020.",
-        invalidDate: em('ic_off', '❌') + " Cette date n'existe pas."
-    }
-};
-
-// ================= VALIDATION PROTOCOLS =================
+// ================= DATES =================
 function isValidDate(day, month, year) {
-    const date = new Date(year, month - 1, day);
-    return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year;
+    const d = new Date(Date.UTC(year || 2000, month - 1, day));
+    return d.getUTCDate() === day && d.getUTCMonth() === month - 1;
 }
-
-function calculateAge(birthYear) {
-    if (!birthYear) return null;
-    const today = new Date();
-    let age = today.getFullYear() - birthYear;
-    return age > 0 ? age : null;
-}
-
+// "14 November" or "14 November 2000", in the reader's language
 function formatDate(day, month, year, lang) {
-    const months = t[lang].months;
-    const m = months[month - 1];
-    if (year) return `${day} ${m} ${year}`;
-    return `${day} ${m}`;
+    const d = new Date(Date.UTC(year || 2000, month - 1, day, 12));
+    return d.toLocaleDateString(LOCALE[lang] || 'en-US', { day: 'numeric', month: 'long', ...(year ? { year: 'numeric' } : {}), timeZone: 'UTC' });
 }
+const monthName = (month, lang) => new Date(Date.UTC(2000, month - 1, 1, 12)).toLocaleDateString(LOCALE[lang] || 'en-US', { month: 'long', timeZone: 'UTC' });
 
-function getDaysUntil(day, month) {
-    const today = new Date();
-    const currentYear = today.getFullYear();
-    let birthday = new Date(currentYear, month - 1, day);
-    if (birthday < today) birthday = new Date(currentYear + 1, month - 1, day);
-    return Math.ceil((birthday - today) / (1000 * 60 * 60 * 24));
+const ZODIAC = [ // [key, from month, from day]
+    ['capricorn', 1, 1], ['aquarius', 1, 20], ['pisces', 2, 19], ['aries', 3, 21], ['taurus', 4, 20], ['gemini', 5, 21], ['cancer', 6, 21],
+    ['leo', 7, 23], ['virgo', 8, 23], ['libra', 9, 23], ['scorpio', 10, 23], ['sagittarius', 11, 22], ['capricorn', 12, 22],
+];
+function zodiacKey(day, month) {
+    let key = 'capricorn';
+    for (const [k, m, d] of ZODIAC) if (month > m || (month === m && day >= d)) key = k;
+    return key;
 }
-
-// ================= ZODIAC INTELLIGENCE =================
-function getZodiacSign(day, month) {
-    const signs = [
-        { name: 'Capricorn', emoji: '♑', start: [12, 22] }, { name: 'Aquarius', emoji: '♒', start: [1, 20] },
-        { name: 'Pisces', emoji: '♓', start: [2, 19] }, { name: 'Aries', emoji: '♈', start: [3, 21] },
-        { name: 'Taurus', emoji: '♉', start: [4, 20] }, { name: 'Gemini', emoji: '♊', start: [5, 21] },
-        { name: 'Cancer', emoji: '♋', start: [6, 21] }, { name: 'Leo', emoji: '♌', start: [7, 23] },
-        { name: 'Virgo', emoji: '♍', start: [8, 23] }, { name: 'Libra', emoji: '♎', start: [9, 23] },
-        { name: 'Scorpio', emoji: '♏', start: [10, 23] }, { name: 'Sagittarius', emoji: '♐', start: [11, 22] },
-        { name: 'Capricorn', emoji: '♑', start: [12, 22] }
-    ];
-    for (let i = 0; i < signs.length - 1; i++) {
-        const curr = signs[i], next = signs[i + 1];
-        if ((month === curr.start[0] && day >= curr.start[1]) || (month === next.start[0] && day < next.start[1])) {
-            return `${curr.emoji} ${curr.name}`;
-        }
-    }
-    return '♑ Capricorn';
-}
-
-// ================= DATABASE OPERATIONS =================
-function saveBirthday(db, userId, day, month, year, timezone = 'UTC') {
-    db.prepare(`INSERT INTO birthday (user_id, day, month, year, timezone, created_at) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET day = excluded.day, month = excluded.month, year = excluded.year, timezone = excluded.timezone`)
-        .run(userId, day, month, year || null, timezone, Date.now());
-    birthdays.set(userId, { day, month, year, timezone });
-}
-
-function loadBirthday(db, userId) {
-    const row = db.prepare(`SELECT day, month, year, timezone FROM birthday WHERE user_id = ?`).get(userId);
-    if (row) birthdays.set(userId, { day: row.day, month: row.month, year: row.year, timezone: row.timezone || 'UTC' });
-    return row;
-}
-
-function deleteBirthday(db, userId) {
-    db.prepare(`DELETE FROM birthday WHERE user_id = ?`).run(userId);
-    birthdays.delete(userId);
-}
-
-function loadAllBirthdays(db) {
-    const rows = db.prepare(`SELECT user_id, day, month, year, timezone FROM birthday`).all();
-    for (const row of rows) {
-        birthdays.set(row.user_id, { day: row.day, month: row.month, year: row.year, timezone: row.timezone || 'UTC' });
-    }
-    return rows;
-}
-
-function getUpcomingBirthdays(daysAhead = 90) {
-    const upcoming = [];
-    const today = new Date();
-    for (const [userId, bday] of birthdays) {
-        const birthdayThisYear = new Date(today.getFullYear(), bday.month - 1, bday.day);
-        const birthdayNextYear = new Date(today.getFullYear() + 1, bday.month - 1, bday.day);
-        const nextBirthday = birthdayThisYear >= today ? birthdayThisYear : birthdayNextYear;
-        const daysUntil = Math.ceil((nextBirthday - today) / (1000 * 60 * 60 * 24));
-        if (daysUntil <= daysAhead) upcoming.push({ userId, ...bday, daysUntil });
-    }
-    return upcoming.sort((a, b) => a.daysUntil - b.daysUntil);
-}
-
-// ================= MILESTONE INTELLIGENCE =================
-function getMilestoneData(age) {
-    if (!age) return { color: '#FFD700', badge: '', title: '' };
-    const milestones = {
-        18: { color: '#00FFCC', badge: '🎓', title: 'ADULT' },
-        21: { color: '#9B59B6', badge: '🥂', title: 'LEGAL' },
-        30: { color: '#E74C3C', badge: '🔥', title: 'DIRTY 30' },
-        40: { color: '#E67E22', badge: '👑', title: 'FAB 40' },
-        50: { color: '#F1C40F', badge: '💛', title: 'GOLDEN' },
-        60: { color: '#3498DB', badge: '💎', title: 'DIAMOND' },
-        70: { color: '#1ABC9C', badge: '👴', title: 'PLATINUM' },
-        80: { color: '#E91E63', badge: '👑', title: 'IMMORTAL' },
-        100: { color: '#FFD700', badge: '⭐', title: 'CENTENARIAN' }
-    };
-    if (milestones[age]) return milestones[age];
-    if (age % 10 === 0) return { color: '#3498DB', badge: '🎯', title: `DECADE ${age}` };
-    if (age % 5 === 0) return { color: '#9B59B6', badge: '🔮', title: `HALF-DECADE ${age}` };
-    return { color: '#FFD700', badge: '', title: '' };
-}
-
-function getAgeCategory(age) {
-    if (!age) return { msg: '🎁 Another trip around the sun!', color: '#FFD700' };
-    if (age < 13) return { msg: `🎈 Turning **${age}** — Happy Birthday, young star!`, color: '#FF69B4' };
-    if (age < 20) return { msg: `🎓 Turning **${age}** — Welcome to your teenage years!`, color: '#9B59B6' };
-    if (age < 30) return { msg: `🌟 Turning **${age}** — Living your best twenties!`, color: '#3498DB' };
-    if (age < 40) return { msg: `💪 Turning **${age}** — Thriving in your thirties!`, color: '#2ECC71' };
-    if (age < 50) return { msg: `👑 Turning **${age}** — Fabulous forties!`, color: '#E67E22' };
-    if (age < 60) return { msg: `✨ Turning **${age}** — Golden fifties!`, color: '#F1C40F' };
-    if (age < 70) return { msg: `🏆 Turning **${age}** — Legendary status!`, color: '#E74C3C' };
-    if (age < 100) return { msg: `👴 Turning **${age}** — Immortal tier!`, color: '#1ABC9C' };
-    return { msg: `⭐ Turning **${age}** — CENTENARIAN!`, color: '#FFD700' };
-}
+const sign = (day, month, lang) => B(`zodiac.${zodiacKey(day, month)}`, lang);
 
 // ================= TIMEZONES =================
 // Stored zones are IANA names (Africa/Bamako) or the "UTC-5" offsets the old
@@ -385,66 +242,162 @@ function markAnnounced(db, userId, year) {
     try { db.prepare('UPDATE birthday SET last_announced_year = ? WHERE user_id = ?').run(year, userId); } catch {}
 }
 
-async function checkAndAnnounceBirthdays(client) {
-    const today = new Date();
+
+// The member's own calendar: today's date in their zone, days until their next birthday (0 = today), their age today
+function birthdayInfo(b) {
+    const local = localParts(b.timezone || 'UTC');
+    const today = Date.UTC(local.year, local.month - 1, local.day);
+    const dayIn = (y) => (b.month === 2 && b.day === 29 && !isLeapYear(y)) ? 28 : b.day;
+    let next = Date.UTC(local.year, b.month - 1, dayIn(local.year));
+    if (next < today) next = Date.UTC(local.year + 1, b.month - 1, dayIn(local.year + 1));
+    const daysUntil = Math.round((next - today) / 86400000);
+    let age = null;
+    if (b.year) {
+        const hadIt = local.month > b.month || (local.month === b.month && local.day >= dayIn(local.year));
+        age = local.year - b.year - (hadIt ? 0 : 1);
+        if (age < 0) age = null;
+    }
+    return { daysUntil, age, nextAge: b.year ? (daysUntil === 0 ? age : (age ?? 0) + 1) : null, localYear: local.year };
+}
+
+// ================= DATABASE =================
+function ensureTables(db) {
+    if (ensureTables.done || !db) return;
+    db.exec(`CREATE TABLE IF NOT EXISTS birthday (user_id TEXT PRIMARY KEY, day INTEGER NOT NULL, month INTEGER NOT NULL, year INTEGER, timezone TEXT DEFAULT 'UTC', created_at INTEGER)`);
+    for (const col of [`timezone TEXT DEFAULT 'UTC'`, 'show_age INTEGER DEFAULT 0']) { try { db.exec(`ALTER TABLE birthday ADD COLUMN ${col}`); } catch { /* already there */ } }
+    db.exec(`CREATE TABLE IF NOT EXISTS birthday_wishes (guild_id TEXT, user_id TEXT, year INTEGER, wisher_id TEXT, at INTEGER, PRIMARY KEY (guild_id, user_id, year, wisher_id))`);
+    db.exec(`CREATE TABLE IF NOT EXISTS birthday_gifts (guild_id TEXT, user_id TEXT, year INTEGER, giver_id TEXT, amount INTEGER, at INTEGER)`);
+    ensureTables.done = true;
+}
+function saveBirthday(db, userId, day, month, year, timezone = 'UTC') {
+    const keep = birthdays.get(userId)?.showAge ? 1 : 0;
+    db.prepare(`INSERT INTO birthday (user_id, day, month, year, timezone, created_at, show_age) VALUES (?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET day = excluded.day, month = excluded.month, year = excluded.year, timezone = excluded.timezone`)
+        .run(userId, day, month, year || null, timezone, Date.now(), keep);
+    birthdays.set(userId, { day, month, year: year || null, timezone, showAge: !!keep });
+}
+function deleteBirthday(db, userId) {
+    db.prepare('DELETE FROM birthday WHERE user_id = ?').run(userId);
+    birthdays.delete(userId);
+}
+function setShowAge(db, userId, on) {
+    db.prepare('UPDATE birthday SET show_age = ? WHERE user_id = ?').run(on ? 1 : 0, userId);
+    const b = birthdays.get(userId); if (b) b.showAge = !!on;
+}
+function loadAllBirthdays(db) {
+    const rows = db.prepare('SELECT user_id, day, month, year, timezone, show_age FROM birthday').all();
+    for (const r of rows) birthdays.set(r.user_id, { day: r.day, month: r.month, year: r.year, timezone: r.timezone || 'UTC', showAge: !!r.show_age });
+    return rows;
+}
+const wishesOf = (db, gid, uid, year) => { try { return db.prepare('SELECT wisher_id FROM birthday_wishes WHERE guild_id = ? AND user_id = ? AND year = ? ORDER BY at').all(gid, uid, year).map((r) => r.wisher_id); } catch { return []; } };
+const giftsOf = (db, gid, uid, year) => { try { return db.prepare('SELECT COALESCE(SUM(amount), 0) AS n FROM birthday_gifts WHERE guild_id = ? AND user_id = ? AND year = ?').get(gid, uid, year)?.n || 0; } catch { return 0; } };
+
+// ================= CARDS =================
+// The announcement on one server: the greeting, the date and sign, the wishes and gifts so far, and the two buttons
+function announceCard(client, guild, member, year, lang) {
+    const b = birthdays.get(member.id) || {};
+    const info = b.day ? birthdayInfo(b) : {};
     const db = client.db;
+    const wishes = wishesOf(db, guild.id, member.id, year);
+    const gifts = giftsOf(db, guild.id, member.id, year);
+    const shown = wishes.slice(0, 5).map((id) => `<@${id}>`).join(' ') + (wishes.length > 5 ? ` ${B('more', lang, { n: wishes.length - 5 })}` : '');
+    const wishLine = !wishes.length ? B('wishesNone', lang) : B(wishes.length === 1 ? 'wishesOne' : 'wishesMany', lang, { n: wishes.length, who: shown });
+    const facts = [b.day ? formatDate(b.day, b.month, null, lang) : null, b.day ? sign(b.day, b.month, lang) : null, b.showAge && info.age ? B('announceAge', lang, { age: info.age }) : null].filter(Boolean).join(' · ');
+    let money = String(gifts);
+    try { money = require('./credit').words(client, guild.id, lang).money(gifts); } catch { /* plain number */ }
+    return card(PINK, [
+        { thumbnail: [`## ${icon('gift', guild)} ${B('announceTitle', lang, { user: `<@${member.id}>` })}\n${B('announceLine', lang, { server: guild.name })}`, member.displayAvatarURL({ size: 256, extension: 'png' })] },
+        { rule: true },
+        { text: `-# ${facts}\n${wishLine}${gifts ? `\n-# ${B('giftsLine', lang, { amount: money })}` : ''}` },
+        { row: new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`bday:wish:${member.id}:${year}`).setLabel(`${B('btnWish', lang)}${wishes.length ? ` (${wishes.length})` : ''}`).setEmoji(icon('weekend', guild)).setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId(`bday:gift:${member.id}:${year}`).setLabel(B('btnGift', lang)).setEmoji(icon('coins', guild)).setStyle(ButtonStyle.Secondary)) },
+    ]);
+}
+
+// /birthday view: own (private, with buttons) or another member's (age only if they chose to show it)
+function viewCard(guild, user, viewerId, lang) {
+    const b = birthdays.get(user.id);
+    const own = user.id === viewerId;
+    if (!b) return card(GREY, [{ text: own ? B('noneSelf', lang) : B('noneOther', lang, { user: `<@${user.id}>` }) }]);
+    const info = birthdayInfo(b);
+    const when = info.daysUntil === 0 ? `**${B('today', lang)}**` : info.daysUntil === 1 ? B('tomorrow', lang) : B('inDays', lang, { n: info.daysUntil });
+    const showAgeHere = own || b.showAge;
+    const ageText = showAgeHere && b.year ? (info.daysUntil === 0 ? B('turningToday', lang, { age: info.age }) : B('turning', lang, { age: info.nextAge })) : null;
+    const date = formatDate(b.day, b.month, showAgeHere ? b.year : null, lang);
+    const lines = [
+        `## ${icon('gift', guild)} ${own ? B('viewSelf', lang) : B('viewOther', lang, { user: `<@${user.id}>` })}`,
+        `${date} · ${sign(b.day, b.month, lang)}${own ? ` · ${B('tzLine', lang, { tz: b.timezone || 'UTC' })}` : ''}`,
+        `-# ${[when, ageText, own && b.year ? B(b.showAge ? 'ageShown' : 'ageHidden', lang) : null].filter(Boolean).join(' · ')}`,
+    ];
+    const items = [{ thumbnail: [lines.join('\n'), user.displayAvatarURL({ size: 256, extension: 'png' })] }];
+    if (own) {
+        const row = new ActionRowBuilder();
+        if (b.year) row.addComponents(new ButtonBuilder().setCustomId(`bday:age:${user.id}`).setLabel(B(b.showAge ? 'btnHideAge' : 'btnShowAge', lang)).setEmoji(icon(b.showAge ? 'lock' : 'member', guild)).setStyle(ButtonStyle.Secondary));
+        row.addComponents(new ButtonBuilder().setCustomId(`bday:del:${user.id}`).setLabel(B('btnRemove', lang)).setStyle(ButtonStyle.Danger));
+        items.push({ row });
+    }
+    return card(info.daysUntil === 0 ? PINK : PURPLE, items);
+}
+
+// /birthday list: members of this server only, next 90 days, grouped by month
+async function listCard(guild, lang) {
+    const ids = [...birthdays.keys()];
+    const here = new Set();
+    for (let i = 0; i < ids.length; i += 100) {
+        const chunk = ids.slice(i, i + 100);
+        const got = await guild.members.fetch({ user: chunk }).catch(() => null);
+        if (got) for (const id of got.keys()) here.add(id);
+        else for (const id of chunk) if (guild.members.cache.has(id)) here.add(id);
+    }
+    const rows = [...here].map((id) => ({ id, b: birthdays.get(id), info: birthdayInfo(birthdays.get(id)) }))
+        .filter((r) => r.info.daysUntil <= 90).sort((a, b) => a.info.daysUntil - b.info.daysUntil);
+    const head = `## ${icon('clock', guild)} ${B('listTitle', lang)}\n-# ${B('listSub', lang, { server: guild.name, n: here.size })}`;
+    if (!rows.length) return card(GREY, [{ text: `${head}\n\n${B('listEmpty', lang)}` }]);
+    const lines = [];
+    let lastMonth = null;
+    for (const r of rows.slice(0, 30)) {
+        if (r.info.daysUntil === 0) { lines.push(`**${B('listToday', lang)}** · <@${r.id}>`); continue; }
+        if (r.info.daysUntil === 1) { lines.push(`**${B('listTomorrow', lang)}** · <@${r.id}>`); continue; }
+        if (r.b.month !== lastMonth) { lastMonth = r.b.month; const m = monthName(r.b.month, lang); lines.push(`\n**${m.charAt(0).toLocaleUpperCase(LOCALE[lang]) + m.slice(1)}**`); }
+        lines.push(`${formatDate(r.b.day, r.b.month, null, lang)} · <@${r.id}> -# ${B('listIn', lang, { n: r.info.daysUntil })}`.replace(' -# ', ' · '));
+    }
+    if (rows.length > 30) lines.push(`-# ${B('more', lang, { n: rows.length - 30 })}`);
+    return card(PURPLE, [{ text: head }, { rule: true }, { text: lines.join('\n').trim() }]);
+}
+
+// ================= ANNOUNCEMENTS =================
+// Each birthday is announced once a year, at 8:00 in its owner's zone, on every server they are a member of
+// (it used to stop at the first server found). The channel: the daily channel, else the server's system channel.
+async function checkAndAnnounceBirthdays(client) {
+    const db = client.db;
+    ensureTables(db);
     ensureBirthdayColumns(db);
-
     for (const [userId, bday] of birthdays) {
-        // The owner's own date and hour, from their timezone.
         const local = localParts(bday.timezone);
-        const currentYear = local.year;
-        // Feb 29 birthdays are celebrated on Feb 28 in non-leap years.
         const bDay = (bday.month === 2 && bday.day === 29 && !isLeapYear(local.year)) ? 28 : bday.day;
-        if (bDay === local.day && bday.month === local.month && local.hour >= 8 && !alreadyAnnounced(db, userId, local.year)) {
-            // Mark before sending, so a failed or slow send can never repeat.
-            markAnnounced(db, userId, local.year);
-            for (const [guildId, guild] of client.guilds.cache) {
-                const member = await guild.members.fetch(userId).catch(() => null);
-                if (!member) continue;
-                
-                const ss = client.getServerSettings?.(guildId) || {};
-                const configuredChannelId = ss.birthday_channel || ss.level_channel || ss.daily_channel;
-                // The channel the admins chose; without one, the server's system channel. Never a channel nobody chose.
-                const channel = configuredChannelId ? guild.channels.cache.get(configuredChannelId) : guild.systemChannel;
-                if (!channel && !configuredChannelId) continue;
-                
-                const lang = ['fr', 'en'].includes(ss.language) ? ss.language : (String(guild.preferredLocale || '').startsWith('fr') ? 'fr' : 'en');
-                const strings = t[lang];
-                const age = calculateAge(bday.year);
-                const milestone = getMilestoneData(age);
-                const ageCat = getAgeCategory(age);
-                const zodiac = getZodiacSign(bday.day, bday.month);
-                const color = parseInt(String(milestone.color || ageCat.color || '#FFD700').replace('#', ''), 16);
-
-                const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId(`bday_celebrate_${userId}`).setLabel(strings.wishButton).setEmoji('🎉').setStyle(ButtonStyle.Success),
-                    new ButtonBuilder().setCustomId(`bday_gift_${userId}`).setLabel(strings.giftButton).setEmoji(icon('gift')).setStyle(ButtonStyle.Primary)
-                );
-                const { card } = require('../lib/games/v2');
-                const payload = card(color, [
-                    { thumbnail: [`## ${strings.announcementTitle}\n${strings.announcementDesc(String(member), age)}`, member.user.displayAvatarURL({ size: 256 })] },
-                    { rule: true },
-                    { text: `🎂 ${bday.day} ${strings.months[bday.month - 1]}${zodiac ? ` · ${String(zodiac).split(' ')[0]}` : ''}${milestone.badge ? ` · ${milestone.badge}` : ''}` },
-                    { text: `-# ${strings.announcementFooter}` },
-                    { row },
-                ]);
-                // the member is the one person notified
-                payload.allowedMentions = { users: [userId] };
-                await require('../lib/safeSend').safeSend('birthday', channel, payload, { guild, channelId: configuredChannelId, quiet: !configuredChannelId });
-                
-                console.log(`[BIRTHDAY] 🎂 Announced birthday for ${member.user.tag} (Age: ${age || 'unknown'})`);
-                break;
-            }
+        if (bDay !== local.day || bday.month !== local.month || local.hour < 8 || alreadyAnnounced(db, userId, local.year)) continue;
+        markAnnounced(db, userId, local.year);   // before sending: a slow or failed send never repeats
+        let sent = 0;
+        for (const [guildId, guild] of client.guilds.cache) {
+            const member = await guild.members.fetch(userId).catch(() => null);
+            if (!member) continue;
+            const ss = client.getServerSettings?.(guildId) || {};
+            const configured = ss.daily_channel || ss.dailyChannel || ss.birthday_channel || ss.level_channel || null;
+            const channel = configured ? guild.channels.cache.get(String(configured)) : guild.systemChannel;
+            if (!channel) continue;
+            const lang = langOf(client, guildId, null, null);
+            const payload = announceCard(client, guild, member, local.year, lang);
+            payload.allowedMentions = { users: [userId] };   // the member is the one person notified
+            const msg = await require('../lib/safeSend').safeSend('birthday', channel, payload, { guild, channelId: configured, quiet: !configured });
+            if (msg) sent++;
         }
+        console.log(`[BIRTHDAY] announced ${userId} on ${sent} server(s)`);
     }
 }
 
-// ================= SCHEDULE DAILY CHECK =================
 function scheduleDailyCheck(client) {
-    // Every 5 minutes. A birthday is announced once its owner reaches 08:00 in
-    // their own timezone; the database guard stops repeats, so a restart or
-    // outage at 08:00 catches up later that day instead of skipping it.
+    // Every 5 minutes; the database guard stops repeats, so a restart or an outage at 8:00 catches up later that day
     let running = false;
     const run = async () => {
         if (running) return;
@@ -457,371 +410,155 @@ function scheduleDailyCheck(client) {
     setInterval(run, 5 * 60000);
 }
 
-// ================= MAIN COMMAND =================
+// ================= BUTTONS =================
+// bday:wish:<uid>:<year> · bday:gift:<uid>:<year> · bday:give:<uid>:<year>:<amount>:<messageId> · bday:age:<uid> · bday:del:<uid>
+async function handleComponent(ix, client) {
+    const db = client.db;
+    ensureTables(db);
+    const guild = ix.guild;
+    const lang = langOf(client, ix.guildId, ix, ix.user.id);
+    const [, action, uid, yearS, amountS, msgId] = ix.customId.split(':');
+    const say = (content) => ix.reply({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => {});
+    if (!guild) return say(B('serverOnly', lang));
+    const year = Number(yearS);
+
+    if (action === 'age' || action === 'del') {
+        if (ix.user.id !== uid) return say(B('notYours', lang, { user: `<@${uid}>` }));
+        if (action === 'del') {
+            deleteBirthday(db, uid);
+            return ix.update({ ...card(GREY, [{ text: B('removed', lang) }]), allowedMentions: { parse: [] } }).catch(() => {});
+        }
+        setShowAge(db, uid, !birthdays.get(uid)?.showAge);
+        return ix.update({ ...viewCard(guild, ix.user, ix.user.id, lang), allowedMentions: { parse: [] } }).catch(() => {});
+    }
+
+    const member = await guild.members.fetch(uid).catch(() => null);
+    if (action === 'wish') {
+        if (ix.user.id === uid) return say(B('wishSelf', lang));
+        const r = db.prepare('INSERT OR IGNORE INTO birthday_wishes (guild_id, user_id, year, wisher_id, at) VALUES (?, ?, ?, ?, ?)').run(guild.id, uid, year, ix.user.id, Date.now());
+        if (!r.changes) return say(B('wishAlready', lang));
+        if (!member) return ix.deferUpdate().catch(() => {});
+        const cardLang = langOf(client, guild.id, null, null);
+        return ix.update({ ...announceCard(client, guild, member, year, cardLang), allowedMentions: { parse: [] } }).catch(() => {});
+    }
+
+    if (action === 'gift') {
+        if (ix.user.id === uid) return say(B('giftSelf', lang));
+        const w = require('./credit').words(client, guild.id, lang);
+        const have = client.liveCredits?.(ix.user.id, guild.id) || 0;
+        return ix.reply({ ...card(PINK, [
+            { text: `### ${icon('coins', guild)} ${B('giftTitle', lang, { user: `<@${uid}>` })}\n-# ${B('giftHint', lang, { have: w.money(have) })}` },
+            { row: new ActionRowBuilder().addComponents(...GIFTS.map((n) =>
+                new ButtonBuilder().setCustomId(`bday:give:${uid}:${year}:${n}:${ix.message.id}`).setLabel(w.money(n)).setStyle(ButtonStyle.Primary).setDisabled(have < n))) },
+        ]), flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => {});
+    }
+
+    if (action === 'give') {
+        const amount = Number(amountS);
+        if (!GIFTS.includes(amount)) return say(B('giftFailed', lang));
+        if (ix.user.id === uid) return say(B('giftSelf', lang));
+        if (!member) return say(B('giftFailed', lang));
+        const r = await require('./credit').send(client, guild, ix.user, ix.member, member.user, amount, lang).catch(() => ({ ok: false, text: B('giftFailed', lang) }));
+        if (!r.ok) return ix.update({ ...card(GREY, [{ text: r.text || B('giftFailed', lang) }]), allowedMentions: { parse: [] } }).catch(() => {});
+        db.prepare('INSERT INTO birthday_gifts (guild_id, user_id, year, giver_id, amount, at) VALUES (?, ?, ?, ?, ?, ?)').run(guild.id, uid, year, ix.user.id, amount, Date.now());
+        const w = require('./credit').words(client, guild.id, lang);
+        await ix.update({ ...card(0x2ECC71, [{ text: `${icon('ok', guild)} ${B('giftDone', lang, { amount: w.money(amount), user: `<@${uid}>` })}` }]), allowedMentions: { parse: [] } }).catch(() => {});
+        // the announcement shows the new total
+        try {
+            const msg = msgId ? await ix.channel.messages.fetch(msgId) : null;
+            if (msg) await msg.edit({ ...announceCard(client, guild, member, year, langOf(client, guild.id, null, null)), allowedMentions: { parse: [] } });
+        } catch { /* the gift went through; the counter catches up on the next wish */ }
+        return;
+    }
+    return say(B('giftFailed', lang));
+}
+
+// ================= COMMAND =================
+async function setBirthday(client, userId, day, month, year, zoneInput, lang, guild) {
+    if (year && (year < 1900 || year > MAX_YEAR())) return { text: B('invalidYear', lang, { max: MAX_YEAR() }) };
+    if (!isValidDate(day, month, year || 2000)) return { text: B('invalidDate', lang) };
+    const timezone = zoneInput ? resolveTimezone(zoneInput) : (birthdays.get(userId)?.timezone || 'UTC');
+    if (!timezone) return { text: B('unknownZone', lang, { zone: zoneInput }) };
+    saveBirthday(client.db, userId, day, month, year, timezone);
+    return { payload: card(PINK, [{ text: `## ${icon('ok', guild)} ${B('setTitle', lang)}\n${B('setLine', lang, { date: formatDate(day, month, year, lang), sign: sign(day, month, lang), tz: offsetLabel(timezone) === timezone ? timezone : `${timezone} (${offsetLabel(timezone)})` })}\n-# ${B('setHint', lang)}` }]) };
+}
+
 module.exports = {
     name: 'birthday',
-    aliases: ['bday', 'anniversaire'],
-    description: '🎂 Birthday intelligence system — set, check, and celebrate birthdays',
+    aliases: ['bday', 'anniversaire', 'anniv'],
+    description: '🎂 Save your birthday and celebrate members on theirs',
     category: 'UTILITY',
+    cooldown: 3000,
+    handleComponent,
+    _announce: (client) => checkAndAnnounceBirthdays(client),   // tests
 
     autocomplete: async (interaction, client) => {
         const focused = interaction.options.getFocused(true);
         if (focused.name !== 'timezone') return interaction.respond([]).catch(() => {});
         let preferred = null;
         try { preferred = client?.getServerSettings?.(interaction.guildId)?.timezone || null; } catch {}
-        const choices = suggestZones(focused.value, { preferred, locale: interaction.locale, db: client?.db });
-        return interaction.respond(choices).catch(() => {});
+        return interaction.respond(suggestZones(focused.value, { preferred, locale: interaction.locale, db: client?.db })).catch(() => {});
     },
-    cooldown: 3000,
 
     data: new SlashCommandBuilder()
         .setName('birthday')
-        .setDescription('🎂 Birthday intelligence system — set, check, and celebrate birthdays')
-        .addSubcommand(sub => sub
-            .setName('set')
-            .setDescription('Register your birthday in the intelligence database')
-            .addIntegerOption(opt => opt.setName('day').setDescription('Day of birth (1-31)').setRequired(true).setMinValue(1).setMaxValue(31))
-            .addIntegerOption(opt => opt.setName('month').setDescription('Month of birth (1-12)').setRequired(true).setMinValue(1).setMaxValue(12))
-            .addIntegerOption(opt => opt.setName('year').setDescription('Year of birth (optional)').setRequired(false).setMinValue(1900).setMaxValue(2020))
-            .addStringOption(opt => opt.setName('timezone').setDescription('Your country, city or UTC offset — e.g. Mali, Brésil, +5:30').setRequired(false)
-                .setAutocomplete(true)))
-        .addSubcommand(sub => sub.setName('remove').setDescription('Purge your birthday record from the database'))
-        .addSubcommand(sub => sub.setName('check').setDescription('Query birthday intelligence on a target')
-            .addUserOption(opt => opt.setName('user').setDescription('Target user to investigate').setRequired(false)))
-        .addSubcommand(sub => sub.setName('list').setDescription('Display upcoming birthdays intelligence')),
+        .setDescription('Save your birthday and see the ones coming up')
+        .addSubcommand((s) => s.setName('set').setDescription('Save your birthday')
+            .addIntegerOption((o) => o.setName('day').setDescription('Day (1-31)').setRequired(true).setMinValue(1).setMaxValue(31))
+            .addIntegerOption((o) => o.setName('month').setDescription('Month (1-12)').setRequired(true).setMinValue(1).setMaxValue(12))
+            .addIntegerOption((o) => o.setName('year').setDescription('Year (optional, hidden from others unless you show it)').setRequired(false).setMinValue(1900).setMaxValue(2100))
+            .addStringOption((o) => o.setName('timezone').setDescription('Your country, city or UTC offset, like Mali or +5:30').setRequired(false).setAutocomplete(true)))
+        .addSubcommand((s) => s.setName('view').setDescription("See your birthday, or a member's")
+            .addUserOption((o) => o.setName('user').setDescription('The member (default: you)').setRequired(false)))
+        .addSubcommand((s) => s.setName('list').setDescription('Birthdays coming up on this server')),
 
-    run: async (client, message, args, db) => {
-    const guildId = message.guild?.id ?? 'DM';
-        const lang = message.content?.toLowerCase().includes('anniversaire') ? 'fr' : (client.detectLanguage ? client.detectLanguage('birthday') : 'en');
-        const strings = t[lang];
-        const subcommand = args[0]?.toLowerCase();
-
-        if (subcommand === 'set') {
-            const day = parseInt(args[1]);
-            const month = parseInt(args[2]);
-            const year = args[3] ? parseInt(args[3]) : null;
-            if (!day || !month) return message.reply(strings.setError);
-            if (day < 1 || day > 31) return message.reply(strings.invalidDay);
-            if (month < 1 || month > 12) return message.reply(strings.invalidMonth);
-            if (year && (year < 1900 || year > 2020)) return message.reply(strings.invalidYear);
-            if (!isValidDate(day, month, year || 2000)) return message.reply(strings.invalidDate);
-            saveBirthday(db, message.author.id, day, month, year);
-            const dateStr = formatDate(day, month, year, lang);
-            return message.reply(toV2({ 
-                embeds: [new EmbedBuilder()
-                    .setColor('#FF69B4')
-                    .setAuthor({ name: strings.setTitle, iconURL: message.author.displayAvatarURL() })
-                    .setDescription(strings.setSuccess(dateStr))
-                    .setFooter({ text: '🎂 Birthday Intelligence Division' })
-                    .setTimestamp()
-                ] 
-            }));
+    run: async (client, message, args) => {
+        ensureTables(client.db);
+        const lang = langOf(client, message.guild?.id, message, message.author.id);
+        const sub = String(args[0] || 'view').toLowerCase();
+        const reply = (p) => message.reply({ ...p, allowedMentions: { parse: [] } }).catch(() => {});
+        if (sub === 'set') {
+            const r = await setBirthday(client, message.author.id, parseInt(args[1], 10), parseInt(args[2], 10), args[3] ? parseInt(args[3], 10) : null, args.slice(4).join(' ') || null, lang, message.guild);
+            return r.payload ? reply(r.payload) : reply({ content: r.text });
         }
-
-        if (subcommand === 'remove') {
-            const exists = birthdays.get(message.author.id);
-            if (!exists) return message.reply(strings.removeError);
-            deleteBirthday(db, message.author.id);
-            return message.reply(toV2({ 
-                embeds: [new EmbedBuilder()
-                    .setColor('#FF69B4')
-                    .setAuthor({ name: strings.removeTitle, iconURL: message.author.displayAvatarURL() })
-                    .setDescription(strings.removeSuccess)
-                    .setFooter({ text: '🎂 Birthday Intelligence Division' })
-                    .setTimestamp()
-                ] 
-            }));
+        if (sub === 'remove' || sub === 'delete') {
+            if (!birthdays.has(message.author.id)) return reply({ content: B('noneSelf', lang) });
+            deleteBirthday(client.db, message.author.id);
+            return reply({ content: B('removed', lang) });
         }
-
-        if (subcommand === 'check') {
-            const user = message.mentions.users.first() || message.author;
-            const bday = birthdays.get(user.id);
-            if (!bday) return message.reply(user.id === message.author.id ? strings.checkNone : strings.checkNone);
-            const dateStr = formatDate(bday.day, bday.month, bday.year, lang);
-            const msg = user.id === message.author.id ? strings.checkSelf(dateStr) : strings.checkUser(user.username, dateStr);
-            const daysUntil = getDaysUntil(bday.day, bday.month);
-            const zodiac = getZodiacSign(bday.day, bday.month);
-            const age = calculateAge(bday.year);
-            
-            return message.reply(toV2({ 
-                embeds: [new EmbedBuilder()
-                    .setColor('#FF69B4')
-                    .setAuthor({ name: strings.checkTitle, iconURL: user.displayAvatarURL() })
-                    .setDescription(msg)
-                    .addFields(
-                        { name: '📅 Date', value: dateStr, inline: true },
-                        { name: '♈ Zodiac', value: zodiac, inline: true },
-                        { name: '🎂 Age', value: age ? `${age} years` : 'Hidden', inline: true },
-                        { name: '⏳ Countdown', value: daysUntil === 0 ? '🎉 TODAY!' : `${daysUntil} days`, inline: true }
-                    )
-                    .setFooter({ text: '🎂 Birthday Intelligence Division' })
-                    .setTimestamp()
-                ] 
-            }));
+        if (sub === 'list') {
+            if (!message.guild) return reply({ content: B('serverOnly', lang) });
+            return reply(await listCard(message.guild, lang));
         }
-
-        if (subcommand === 'list') {
-            const upcoming = getUpcomingBirthdays(90);
-            if (upcoming.length === 0) return message.reply(toV2({ 
-                embeds: [new EmbedBuilder()
-                    .setColor('#FF69B4')
-                    .setAuthor({ name: strings.listTitle, iconURL: client.user.displayAvatarURL() })
-                    .setDescription(strings.listEmpty)
-                    .setFooter({ text: '🎂 Birthday Intelligence Division' })
-                ] 
-            }));
-            const embed = new EmbedBuilder()
-                .setColor('#FF69B4')
-                .setAuthor({ name: strings.listTitle, iconURL: client.user.displayAvatarURL() })
-                .setDescription(upcoming.map(b => {
-                    const user = client.users.cache.get(b.userId)?.username || 'Unknown';
-                    const dateStr = `${b.day} ${strings.months[b.month - 1]}`;
-                    return b.daysUntil === 0 ? strings.todayEntry(user, dateStr) : strings.listEntry(user, dateStr, b.daysUntil);
-                }).join('\n'))
-                .setFooter({ text: `🎂 ${upcoming.length} upcoming birthdays • 90-day window` })
-                .setTimestamp();
-            return message.reply(toV2({ embeds: [embed] }));
-        }
-
-        return message.reply(toV2({ 
-            embeds: [new EmbedBuilder()
-                .setColor('#FF69B4')
-                .setAuthor({ name: '🎂 Birthday Intelligence Division', iconURL: client.user.displayAvatarURL() })
-                .setDescription(
-                    '```\n' +
-                    'BIRTHDAY COMMAND SYNTAX\n' +
-                    '━━━━━━━━━━━━━━━━━━━━━━━\n' +
-                    '.birthday set <day> <month> [year]  — Register birthday\n' +
-                    '.birthday remove                    — Purge record\n' +
-                    '.birthday check [@user]             — Query intelligence\n' +
-                    '.birthday list                      — Upcoming birthdays\n' +
-                    '```'
-                )
-                .setFooter({ text: '🎂 Birthday Intelligence Division' })
-            ] 
-        }));
+        if (sub === 'view' || sub === 'check') return reply(viewCard(message.guild, message.mentions.users.first() || message.author, message.author.id, lang));
+        return reply({ content: B('usage', lang, { p: client.getServerSettings?.(message.guild?.id)?.prefix || '.' }) });
     },
 
     execute: async (interaction, client) => {
-        const db = client.db;
-        const subcommand = interaction.options.getSubcommand();
-        const lang = interaction.locale === 'fr' ? 'fr' : 'en';
-        const strings = t[lang];
-        const isPrivate = ['set', 'remove'].includes(subcommand);
-        await interaction.deferReply({ flags: isPrivate ? 1 << 6 : 0 });
-
-        if (subcommand === 'set') {
-            const day = interaction.options.getInteger('day');
-            const month = interaction.options.getInteger('month');
-            const year = interaction.options.getInteger('year');
-            const timezoneInput = interaction.options.getString('timezone') || 'UTC';
-            const timezone = resolveTimezone(timezoneInput);
-            if (!timezone) {
-                return interaction.editReply(lang === 'fr'
-                    ? `${em('ic_off', '❌')} Fuseau horaire inconnu : **${timezoneInput}**. Choisissez une suggestion dans la liste.`
-                    : `${em('ic_off', '❌')} Unknown timezone: **${timezoneInput}**. Pick one of the suggestions.`);
-            }
-            if (day < 1 || day > 31) return interaction.editReply(strings.invalidDay);
-            if (month < 1 || month > 12) return interaction.editReply(strings.invalidMonth);
-            if (year && (year < 1900 || year > 2020)) return interaction.editReply(strings.invalidYear);
-            if (!isValidDate(day, month, year || 2000)) return interaction.editReply(strings.invalidDate);
-            saveBirthday(db, interaction.user.id, day, month, year, timezone);
-            const dateStr = formatDate(day, month, year, lang);
-            const zodiac = getZodiacSign(day, month);
-            
-            return interaction.editReply(toV2({ 
-                embeds: [new EmbedBuilder()
-                    .setColor('#FF69B4')
-                    .setAuthor({ name: strings.setTitle, iconURL: interaction.user.displayAvatarURL() })
-                    .setDescription(strings.setSuccess(dateStr) + `\n\n♈ **Zodiac:** ${zodiac}\n🕐 **Timezone:** ${timezone} (${offsetLabel(timezone)})`)
-                    .setFooter({ text: '🎂 Birthday Intelligence Division' })
-                    .setTimestamp()
-                ] 
-            }));
+        ensureTables(client.db);
+        const lang = langOf(client, interaction.guildId, interaction, interaction.user.id);
+        const sub = interaction.options.getSubcommand();
+        if (sub === 'set') {
+            const r = await setBirthday(client, interaction.user.id, interaction.options.getInteger('day'), interaction.options.getInteger('month'),
+                interaction.options.getInteger('year'), interaction.options.getString('timezone'), lang, interaction.guild);
+            return interaction.reply(r.payload ? { ...r.payload, flags: r.payload.flags | MessageFlags.Ephemeral } : { content: r.text, flags: MessageFlags.Ephemeral });
         }
-
-        if (subcommand === 'remove') {
-            const exists = birthdays.get(interaction.user.id);
-            if (!exists) return interaction.editReply(strings.removeError);
-            deleteBirthday(db, interaction.user.id);
-            return interaction.editReply(toV2({ 
-                embeds: [new EmbedBuilder()
-                    .setColor('#FF69B4')
-                    .setAuthor({ name: strings.removeTitle, iconURL: interaction.user.displayAvatarURL() })
-                    .setDescription(strings.removeSuccess)
-                    .setFooter({ text: '🎂 Birthday Intelligence Division' })
-                    .setTimestamp()
-                ] 
-            }));
-        }
-
-        if (subcommand === 'check') {
+        if (sub === 'view') {
             const user = interaction.options.getUser('user') || interaction.user;
-            const bday = birthdays.get(user.id);
-            
-            if (!bday) {
-                const noBdayEmbed = new EmbedBuilder()
-                    .setColor('#95a5a6')
-                    .setAuthor({ name: user.username, iconURL: user.displayAvatarURL() })
-                    .setDescription(user.id === interaction.user.id 
-                        ? (lang === 'fr' ? em('ic_off', em('ic_off', '❌')) + ' Aucun dossier anniversaire trouve.\nUtilisez `/birthday set` pour l\'ajouter.' : em('ic_off', em('ic_off', '❌')) + ' No birthday record found.\nUse `/birthday set` to register.')
-                        : (lang === 'fr' ? `${em('ic_off', '❌')} ${user.username} n'a pas de dossier anniversaire.` : `${em('ic_off', '❌')} ${user.username} has no birthday record.`))
-                    .setFooter({ text: '🎂 Birthday Intelligence Division' });
-                return interaction.editReply(toV2({ embeds: [noBdayEmbed] }));
-            }
-            
-            const daysUntil = getDaysUntil(bday.day, bday.month);
-            const age = bday.year ? calculateAge(bday.year) : null;
-            const nextAge = bday.year ? (daysUntil === 0 ? age : age + 1) : null;
-            const zodiac = getZodiacSign(bday.day, bday.month);
-            const milestone = getMilestoneData(nextAge);
-            
-            let countdownText = '';
-            let countdownEmoji = '';
-            if (daysUntil === 0) {
-                countdownText = lang === 'fr' ? '🎉 **AUJOURD\'HUI !** 🎉' : '🎉 **TODAY!** 🎉';
-                countdownEmoji = '🎂';
-            } else if (daysUntil === 1) {
-                countdownText = lang === 'fr' ? '⏰ **DEMAIN !** Preparez-vous !' : '⏰ **Tomorrow!** Get ready!';
-                countdownEmoji = '⏰';
-            } else if (daysUntil <= 7) {
-                countdownText = lang === 'fr' ? `🔜 **${daysUntil} jours** avant le grand jour !` : `🔜 **${daysUntil} days** until the big day!`;
-                countdownEmoji = '🔜';
-            } else {
-                countdownText = lang === 'fr' ? `📅 **${daysUntil} jours** restants` : `📅 **${daysUntil} days** remaining`;
-                countdownEmoji = '📅';
-            }
-            
-            const progressPercent = Math.min(100, Math.max(0, Math.floor(((365 - daysUntil) / 365) * 100)));
-            const progressBar = '▓'.repeat(Math.floor(progressPercent / 10)) + '░'.repeat(10 - Math.floor(progressPercent / 10));
-            
-            const embed = new EmbedBuilder()
-                .setColor(daysUntil === 0 ? '#FFD700' : (daysUntil <= 7 ? '#FF69B4' : '#9B59B6'))
-                .setAuthor({ 
-                    name: `🎂 ${user.username}'s Birthday Dossier ${zodiac}`, 
-                    iconURL: user.displayAvatarURL() 
-                })
-                .setThumbnail(user.displayAvatarURL({ size: 256 }))
-                .addFields(
-                    { name: '📅 ' + (lang === 'fr' ? 'Date de Naissance' : 'Birth Date'), value: `**${formatDate(bday.day, bday.month, bday.year, lang)}**`, inline: true },
-                    { name: '🎂 ' + (lang === 'fr' ? 'Age' : 'Age'), value: age ? `**${age}** ${lang === 'fr' ? 'ans' : 'years'}` : (lang === 'fr' ? '*(masqué)*' : '*(hidden)*'), inline: true },
-                    { name: '🌍 Timezone', value: `**${bday.timezone || 'UTC'}**`, inline: true },
-                    { name: countdownEmoji + ' ' + (daysUntil === 0 ? '🎉 TODAY!' : (lang === 'fr' ? 'Compte a Rebours' : 'Countdown')), value: `${countdownText}\n\`${progressBar}\` ${progressPercent}%`, inline: false }
-                )
-                .setFooter({ 
-                    text: daysUntil === 0 
-                        ? (lang === 'fr' ? '🎂 Souhaitez un joyeux anniversaire !' : '🎂 Wish them a happy birthday!') 
-                        : (lang === 'fr' ? `⏳ ${daysUntil} jours restants` : `⏳ ${daysUntil} days remaining`),
-                    iconURL: client.user.displayAvatarURL() 
-                });
-            
-            if (nextAge && daysUntil > 0) {
-                embed.addFields({
-                    name: '🔮 ' + (lang === 'fr' ? 'Prochain Age' : 'Turning'),
-                    value: milestone.badge ? `${milestone.badge} **${milestone.title}** — Will be **${nextAge}**!` : `Will be **${nextAge}** ${lang === 'fr' ? 'ans' : 'years old'}!`,
-                    inline: true
-                });
-            }
-            
-            if (daysUntil === 0) {
-                embed.addFields({
-                    name: '🎁 ' + (lang === 'fr' ? 'C\'est le Moment !' : 'It\'s Time!'),
-                    value: lang === 'fr' ? 'Envoyez un message de joyeux anniversaire !' : 'Send them a birthday message!',
-                    inline: false
-                });
-            }
-            
-            const components = [];
-            if (daysUntil === 0) {
-                const row = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId(`bday_celebrate_${user.id}`)
-                        .setLabel(lang === 'fr' ? '🎉 Celebrer !' : '🎉 Celebrate!')
-                        .setStyle(ButtonStyle.Success)
-                        .setEmoji('🎂')
-                );
-                components.push(row);
-            }
-            
-            return interaction.editReply(toV2({ embeds: [embed], components: components.length > 0 ? components : undefined }));
+            const view = viewCard(interaction.guild, user, interaction.user.id, lang);
+            return interaction.reply({ ...view, flags: view.flags | MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
         }
-
-        if (subcommand === 'list') {
-            const upcoming = getUpcomingBirthdays(90);
-            if (upcoming.length === 0) {
-                const emptyEmbed = new EmbedBuilder()
-                    .setColor('#95a5a6')
-                    .setAuthor({ name: '📅 ' + strings.listTitle, iconURL: client.user.displayAvatarURL() })
-                    .setDescription('✨ ' + strings.listEmpty)
-                    .setFooter({ text: '🎂 Use /birthday set to register your birthday' });
-                return interaction.editReply(toV2({ embeds: [emptyEmbed] }));
-            }
-            
-            const grouped = {};
-            const today = new Date();
-            const currentMonth = today.getMonth() + 1;
-            
-            upcoming.forEach(b => { 
-                if (!grouped[b.month]) grouped[b.month] = []; 
-                grouped[b.month].push(b); 
-            });
-            
-            const embed = new EmbedBuilder()
-                .setColor('#FF69B4')
-                .setAuthor({ 
-                    name: `🎂 ${strings.listTitle} • ${upcoming.length} Upcoming`, 
-                    iconURL: client.user.displayAvatarURL() 
-                })
-                .setThumbnail('https://cdn.discordapp.com/emojis/1120816625522311178.png')
-                .setDescription('*📅 Birthdays in the next 90 days — Intelligence Briefing*\n');
-            
-            const sortedMonths = Object.keys(grouped).sort((a, b) => {
-                const mA = parseInt(a), mB = parseInt(b);
-                if (mA >= currentMonth && mB < currentMonth) return -1;
-                if (mA < currentMonth && mB >= currentMonth) return 1;
-                return mA - mB;
-            });
-            
-            const monthEmojis = ['❄️', '💕', '🌸', '🌷', '🌺', '☀️', '🌊', '🍂', '🎃', '🦃', '🎄', '⛄'];
-            
-            for (const monthKey of sortedMonths) {
-                const month = parseInt(monthKey);
-                const bdays = grouped[monthKey].sort((a, b) => a.day - b.day);
-                let fieldValue = '';
-                
-                bdays.forEach(b => {
-                    const user = client.users.cache.get(b.userId);
-                    const displayName = user?.username || 'Unknown Agent';
-                    const zodiac = getZodiacSign(b.day, month);
-                    
-                    if (b.daysUntil === 0) fieldValue += `🎂 **${displayName}** — *TODAY!* ${zodiac}\n`;
-                    else if (b.daysUntil === 1) fieldValue += `🎂 **${displayName}** — *Tomorrow!* ${zodiac}\n`;
-                    else if (b.daysUntil <= 7) fieldValue += `🎂 **${displayName}** — ${b.day} ${strings.months[month-1]} (🔜 T-${b.daysUntil}d) ${zodiac}\n`;
-                    else fieldValue += `🎂 **${displayName}** — ${b.day} ${strings.months[month-1]} (T-${b.daysUntil}d) ${zodiac}\n`;
-                });
-                
-                embed.addFields({ 
-                    name: `${monthEmojis[month-1]} ${strings.months[month-1]} ${month === currentMonth ? '👑 CURRENT' : ''}`, 
-                    value: fieldValue || '*No agents registered*', 
-                    inline: false 
-                });
-            }
-            
-            embed.setFooter({ 
-                text: `🎉 ${birthdays.size} total registered • Birthday Intelligence Division • Updated just now`, 
-                iconURL: client.user.displayAvatarURL() 
-            }).setTimestamp();
-            
-            return interaction.editReply(toV2({ embeds: [embed] }));
+        if (sub === 'list') {
+            if (!interaction.guild) return interaction.reply({ content: B('serverOnly', lang), flags: MessageFlags.Ephemeral });
+            await interaction.deferReply();
+            return interaction.editReply({ ...(await listCard(interaction.guild, lang)), allowedMentions: { parse: [] } });
         }
     },
 
     initialize: (client) => {
-        const db = client.db;
-        try { db.exec(`ALTER TABLE birthday ADD COLUMN timezone TEXT DEFAULT 'UTC'`); } catch (e) {}
-        db.exec(`CREATE TABLE IF NOT EXISTS birthday (user_id TEXT PRIMARY KEY, day INTEGER NOT NULL, month INTEGER NOT NULL, year INTEGER, timezone TEXT DEFAULT 'UTC', created_at INTEGER)`);
-        loadAllBirthdays(db);
+        ensureTables(client.db);
+        loadAllBirthdays(client.db);
         scheduleDailyCheck(client);
-        console.log(`\x1b[36m[BIRTHDAY]\x1b[0m Intelligence Division initialized — ${birthdays.size} agents registered`);
-    }
+        console.log(`\x1b[36m[BIRTHDAY]\x1b[0m ${birthdays.size} birthdays saved, announcements active`);
+    },
 };

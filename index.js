@@ -3400,6 +3400,12 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
         });
     }
+    if (interaction.isButton() && interaction.customId.startsWith('bday:')) {
+        return require('./plugins/birthday').handleComponent(interaction, client).catch(e => {
+            console.error(`[BIRTHDAY] button guild=${interaction.guildId}:`, e.stack || e.message);
+            if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
+        });
+    }
     if ((interaction.isButton() || interaction.isModalSubmit()) && interaction.customId.startsWith('wel:')) {
         return require('./plugins/welcome').handleComponent(interaction, client).catch(e => {
             console.error(`[WELCOME] panel guild=${interaction.guildId}:`, e.stack || e.message);

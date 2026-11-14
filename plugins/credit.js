@@ -322,5 +322,6 @@ module.exports = {
     handleComponent,
     // for plugins/transfer.js
     payFromMessage, askToPay, fromInteraction, fromTelegram, words,
+    send,   // for plugins/birthday.js (birthday gifts): the same checks, transfer and DM as /credit pay
     _parseAmount: parseAmount,
 };
