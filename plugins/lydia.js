@@ -455,7 +455,7 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
 // MEMORY SYSTEM
 // ═══════════════════════════════════════════════════════════════════════════════
 
-function parseAndStoreMemory(reply, userId, database) {
+function parseAndStoreMemory(reply, userId, database, guildId = '') {
   if (!reply?.includes('[MEMORY:')) return;
   const regex = /\[MEMORY:\s*([^|]+?)\s*\|\s*([^\]]+?)\s*\]/g;
   let match;
@@ -465,9 +465,9 @@ function parseAndStoreMemory(reply, userId, database) {
     if (!key || !value || key.length > 50 || value.length > 200) continue;
     try {
       database.prepare(`
-        INSERT OR REPLACE INTO lydia_memory (user_id, memory_key, memory_value, updated_at)
-        VALUES (?, ?, ?, ?)
-      `).run(userId, key, value, Date.now());
+        INSERT OR REPLACE INTO lydia_memory (user_id, guild_id, memory_key, memory_value, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(userId, String(guildId || ''), key, value, Date.now());
       console.log(`${C.green}[MEMORY]${C.reset} Stored ${key} for user ${userId}`);
     } catch (dbError) {
       console.log(`${C.yellow}[MEMORY ERR]${C.reset} ${dbError.message}`);
@@ -781,8 +781,8 @@ async function handleLydiaMessage(message, client, database) {
     try {
       memories = database.prepare(`
         SELECT memory_key, memory_value FROM lydia_memory
-        WHERE user_id = ? ORDER BY updated_at DESC LIMIT ?
-      `).all(message.author.id, CFG.MAX_MEMORY_PER_USER);
+        WHERE user_id = ? AND guild_id = ? ORDER BY updated_at DESC LIMIT ?
+      `).all(message.author.id, message.guild.id, CFG.MAX_MEMORY_PER_USER);   // only what they told her on THIS server
     } catch (e) {}
 
     // Only ARCHON's owner is "the developer" and sees the owner-only commands. Every server owner used to be
@@ -868,13 +868,22 @@ async function handleLydiaMessage(message, client, database) {
       ? `[Web search results \u2014 cite sources using [1], [2], etc. when referencing]:\n${searchResults}\n\n[User question]: ${userPrompt}`
       : userPrompt;
 
+    // This server's live facts (lib/lydia-context.js): modules, commands turned off, public channels, Premium, and the
+    // asker's own numbers; server managers also get AutoMod, Premium end and open tickets. Nothing from other servers.
+    const isManager = !!message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild);
+    try {
+      const ctx = require('../lib/lydia-context');
+      fullSystem += `\n\n${ctx.build(client, message.guild, message.member)}`;
+      if (isManager) fullSystem += `\n${ctx.forManagers(client, message.guild)}`;
+    } catch (e) { console.error('[LYDIA] server facts:', e.message); }
+
     // Setup questions ("what's left to set up?"): server managers get this server's checklist (lib/setup-checklist.js,
     // the same list /setup shows), read only and without channel or role names. Other members get no configuration.
     // It stays for the follow-up messages too (the last turns were about setup), so Lydia never answers a follow-up
     // without the data and then takes back an answer that was right.
     const setupTalk = SETUP_QUESTION.test(message.content || '') || history.slice(-4).some((h) => SETUP_QUESTION.test(String(h.content || '')));
     if (setupTalk) {
-      if (message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild)) {
+      if (isManager) {
         try {
           const list = require('../lib/setup-checklist');
           fullSystem += `\n\n[SERVER SETUP — live data, checked by ARCHON for this very message. It is real and current: rely on it, and never say you can't see the server's setup. Read only: you cannot change any setting and must never say you did. The person asking manages this server. Tell them what is done and what is left, most important first, and for each missing item name the place after the arrow where they fix it. /setup shows the same list with buttons.]\n${list.summaryText(list.compute(client, message.guild), lang)}`;
@@ -924,7 +933,7 @@ async function handleLydiaMessage(message, client, database) {
       `).run(message.channel.id, message.guild.id, client.user.id, botName, 'assistant', safeReply, Math.floor(Date.now() / 1000));
     } catch (e) {}
 
-    parseAndStoreMemory(safeReply, message.author.id, database);
+    parseAndStoreMemory(safeReply, message.author.id, database, message.guild.id);   // memories belong to this server
     // The tags are read from the reply before they are stripped (they were stripped first, so no reminder was ever set)
     parseAndScheduleReminder(safeReply, message.author.id, message.channel.id, client, database, message.guild.id);
     const finalReply = cleanReply;
@@ -1055,7 +1064,11 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
   }
 
   try {
-    const memories = database.prepare(`SELECT memory_key, memory_value, updated_at FROM lydia_memory WHERE user_id = ? ORDER BY updated_at DESC`).all(userId);
+    // this server's memories, plus the older ones saved before memories were kept per server (shown, never used)
+    const gid = interactionOrMessage.guild?.id || null;
+    const memories = gid
+      ? database.prepare(`SELECT memory_key, memory_value, updated_at, guild_id FROM lydia_memory WHERE user_id = ? AND guild_id IN (?, '') ORDER BY guild_id DESC, updated_at DESC`).all(userId, gid)
+      : database.prepare(`SELECT memory_key, memory_value, updated_at, guild_id FROM lydia_memory WHERE user_id = ? ORDER BY updated_at DESC`).all(userId);
 
     if (!memories.length) {
       const c = new ContainerBuilder().setAccentColor(0xf1c40f);
@@ -1074,7 +1087,7 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
       // Discord shows the date in each reader's own format (stored in ms; older rows may be in seconds)
       const ms = Number(m.updated_at) < 1e12 ? Number(m.updated_at) * 1000 : Number(m.updated_at);
       const date = ms > 0 ? `<t:${Math.floor(ms / 1000)}:D>` : '—';
-      c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**📌 ${m.memory_key}**\n${m.memory_value}\n-# ${t('lydia.memory_saved_on', lang, { date })}`));
+      c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**📌 ${m.memory_key}**\n${m.memory_value}\n-# ${t('lydia.memory_saved_on', lang, { date })}${m.guild_id ? '' : ` · ${t('lydia.memory_legacy', lang)}`}`));
     }
     
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${memories.length > 25 ? t('lydia.memory_showing', lang, { count: 25, total: memories.length }) : t('lydia.memory_footer', lang)} · ${t('lydia.memory_forget_hint', lang)}`));
@@ -1089,7 +1102,7 @@ async function handleMemorySubcommand(interactionOrMessage, database, isSlash = 
   }
 }
 
-// Deletes every memory Archon keeps about the member who asks (memories follow the member across servers)
+// Deletes every memory Archon keeps about the member who asks, on every server (the older ones too)
 async function forgetMemories(src, database, client) {
   const userId = src.user?.id || src.author?.id;
   let lang = 'en';
@@ -1171,8 +1184,8 @@ function setupLydia(client, database) {
 
     database.prepare(`
       CREATE TABLE IF NOT EXISTS lydia_memory (
-        user_id TEXT, memory_key TEXT, memory_value TEXT, updated_at INTEGER,
-        PRIMARY KEY (user_id, memory_key)
+        user_id TEXT, guild_id TEXT NOT NULL DEFAULT '', memory_key TEXT, memory_value TEXT, updated_at INTEGER,
+        PRIMARY KEY (user_id, guild_id, memory_key)
       )
     `).run();
 
@@ -1190,6 +1203,20 @@ function setupLydia(client, database) {
         is_active INTEGER DEFAULT 0, updated_at INTEGER
       )
     `).run();
+
+    // Memories are kept per server (they used to follow a member everywhere, so what they told Lydia on one server
+    // could come up on another). Older rows keep guild_id '': listed in the member's memory card, never used in answers.
+    try {
+      const mcols = database.prepare('PRAGMA table_info(lydia_memory)').all().map(c => c.name);
+      if (!mcols.includes('guild_id')) {
+        database.exec(`
+          CREATE TABLE lydia_memory_v2 (user_id TEXT, guild_id TEXT NOT NULL DEFAULT '', memory_key TEXT, memory_value TEXT, updated_at INTEGER DEFAULT 0, PRIMARY KEY (user_id, guild_id, memory_key));
+          INSERT OR IGNORE INTO lydia_memory_v2 (user_id, guild_id, memory_key, memory_value, updated_at) SELECT user_id, '', memory_key, memory_value, updated_at FROM lydia_memory;
+          DROP TABLE lydia_memory;
+          ALTER TABLE lydia_memory_v2 RENAME TO lydia_memory;`);
+        console.log(`${C.green}[MIGRATION]${C.reset} Lydia memories are now kept per server`);
+      }
+    } catch (e) { console.error(`${C.red}[MIGRATION]${C.reset} lydia_memory:`, e.message); }
 
     try {
       const cols = database.prepare('PRAGMA table_info(lydia_conversations)').all().map(c => c.name);

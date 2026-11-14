@@ -82,11 +82,11 @@ function welcomeScreen(lang, guild, client, userId = '0') {
     let res = { items: [], doneCount: 0, total: 0, coreLeft: 0 };
     try { res = require('../lib/setup-checklist').compute(client, guild); } catch (e) { console.error('[SETUP] checklist:', e.message); }
     const cmd = (name) => { try { return require('../lib/cmd').slash(client, name, { guild }); } catch { return `/${name}`; } };
-    const fixLabel = (panel) => panel === 'language' ? cmd('setlang') : panel === 'verify' ? cmd('verify') : C(`panel_${panel}`);
+    const fixLabel = (panel) => panel === 'language' ? cmd('setlang') : panel === 'verify' ? cmd('verify') : panel === 'automod' ? cmd('automod') : C(`panel_${panel}`);
     const line = (i) => {
         if (i.done) return `${icon('ok', guild)} ${C(`item_${i.key}`)}`;
         const why = i.problem ? C(`problem_${i.problem}`) : C('notSet');
-        return `${i.problem ? icon('warn', guild) : i.level === 'core' ? icon('off', guild) : '○'} ${C(`item_${i.key}`)} · ${why}\n-# ${C('fixIn', { where: fixLabel(i.panel) })}`;
+        return `${i.problem && i.problem !== 'notOn' ? icon('warn', guild) : i.level === 'core' ? icon('off', guild) : '○'} ${C(`item_${i.key}`)} · ${why}\n-# ${C('fixIn', { where: fixLabel(i.panel) })}`;
     };
     const filled = res.total ? Math.round((res.doneCount / res.total) * 10) : 0;
     const items = [{ text: `-# ARCHON · ${T(lang, 'title')}\n## ${icon('ch_title', guild)} ${C('heading', { server: safeName(guild.name) })}\n${C('progress', { done: res.doneCount, total: res.total })}${res.coreLeft ? ` · ${C(res.coreLeft === 1 ? 'coreLeftOne' : 'coreLeft', { n: res.coreLeft })}` : ` · ${C('coreDone')}`}\n\`${'█'.repeat(filled)}${'░'.repeat(10 - filled)}\`` }];

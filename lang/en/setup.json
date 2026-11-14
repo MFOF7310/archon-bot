@@ -87,6 +87,10 @@
     "panel_verify": "/verify",
     "panel_discord": "Server Settings → Roles: drag ARCHON's role higher",
     "problem_verifyRoles": "it's on, but its roles are missing or can't be given safely",
-    "problem_verifyPanel": "its panel channel was deleted"
+    "problem_verifyPanel": "its panel channel was deleted",
+    "item_automod": "AutoMod",
+    "problem_logGone": "its log channel was deleted",
+    "panel_automod": "/automod",
+    "problem_notOn": "not turned on"
   }
 }

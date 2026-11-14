@@ -132,5 +132,6 @@
   "ai_off_server": "整个服务器的 AI 已关闭，所以我不会在任何地方回复。请在控制面板重新开启。",
   "on_title": "Archon 现在在这里回复",
   "off_title": "Archon 不再在这里回复",
-  "off_back": "用 {cmd} 重新开启我。"
+  "off_back": "用 {cmd} 重新开启我。",
+  "memory_legacy": "保存于记忆按服务器分开之前：仅在此显示，不再使用"
 }

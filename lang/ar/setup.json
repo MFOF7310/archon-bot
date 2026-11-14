@@ -87,6 +87,10 @@
     "panel_verify": "/verify",
     "panel_discord": "إعدادات الخادم ← الرتب: اسحب رتبة ARCHON إلى الأعلى",
     "problem_verifyRoles": "مفعّل، لكن رتبه مفقودة أو لا يمكن منحها بأمان",
-    "problem_verifyPanel": "تم حذف قناة لوحته"
+    "problem_verifyPanel": "تم حذف قناة لوحته",
+    "item_automod": "الإشراف التلقائي (AutoMod)",
+    "problem_logGone": "تم حذف قناة سجله",
+    "panel_automod": "/automod",
+    "problem_notOn": "غير مفعّل"
   }
 }

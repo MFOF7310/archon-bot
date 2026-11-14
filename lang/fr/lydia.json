@@ -132,5 +132,6 @@
   "ai_off_server": "L'IA est désactivée pour tout le serveur, donc je ne réponds nulle part. Réactive-la depuis le dashboard.",
   "on_title": "Archon répond maintenant ici",
   "off_title": "Archon ne répond plus ici",
-  "off_back": "Réactive-moi avec {cmd}."
+  "off_back": "Réactive-moi avec {cmd}.",
+  "memory_legacy": "enregistré avant que les mémoires soient séparées par serveur : affiché ici, plus utilisé"
 }

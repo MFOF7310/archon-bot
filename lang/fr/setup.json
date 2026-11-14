@@ -87,6 +87,10 @@
     "panel_verify": "/verify",
     "panel_discord": "Paramètres du serveur → Rôles : monte le rôle d'ARCHON",
     "problem_verifyRoles": "activée, mais ses rôles manquent ou ne peuvent pas être donnés sans risque",
-    "problem_verifyPanel": "le salon de son panneau a été supprimé"
+    "problem_verifyPanel": "le salon de son panneau a été supprimé",
+    "item_automod": "AutoMod",
+    "problem_logGone": "son salon de journal a été supprimé",
+    "panel_automod": "/automod",
+    "problem_notOn": "pas activé"
   }
 }

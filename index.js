@@ -422,9 +422,9 @@ const requiredTables = {
     
     // ✅ FIXED
    lydia_memory: `CREATE TABLE IF NOT EXISTS lydia_memory (
-    user_id TEXT, memory_key TEXT, memory_value TEXT, 
-    updated_at INTEGER DEFAULT 0, 
-    PRIMARY KEY (user_id, memory_key)
+    user_id TEXT, guild_id TEXT NOT NULL DEFAULT '', memory_key TEXT, memory_value TEXT,
+    updated_at INTEGER DEFAULT 0,
+    PRIMARY KEY (user_id, guild_id, memory_key)
 )`,
     
    lydia_agents: `CREATE TABLE IF NOT EXISTS lydia_agents (

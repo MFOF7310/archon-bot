@@ -132,5 +132,6 @@
   "ai_off_server": "AI is turned off for the whole server, so I answer nowhere. Turn it back on from the dashboard.",
   "on_title": "Archon now answers here",
   "off_title": "Archon stopped answering here",
-  "off_back": "Turn me back on with {cmd}."
+  "off_back": "Turn me back on with {cmd}.",
+  "memory_legacy": "saved before memories were kept per server: shown here, no longer used"
 }
