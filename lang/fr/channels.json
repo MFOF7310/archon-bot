@@ -65,5 +65,9 @@
   "not_yours": "Seule la personne qui a ouvert ce panneau peut l'utiliser.",
   "expired": "Ce panneau est périmé. Relance la commande.",
   "gone_title": "Salons supprimés dans Discord",
-  "gone_hint": "ARCHON les a retirés de ses réglages. Choisis-en d'autres avec {cmd}."
+  "gone_hint": "ARCHON les a retirés de ses réglages. Choisis-en d'autres avec {cmd}.",
+  "summary_important": "{n} salons importants sur {total} configurés · les facultatifs peuvent rester vides",
+  "optional": "facultatif",
+  "recommended": "conseillé",
+  "optional_daily": "Vide : /claim marche dans tous les salons. Choisi : /claim seulement dans celui-là."
 }

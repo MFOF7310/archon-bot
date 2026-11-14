@@ -65,5 +65,9 @@
   "not_yours": "Only the person who opened this panel can use it.",
   "expired": "This panel is out of date. Run the command again.",
   "gone_title": "Channels deleted in Discord",
-  "gone_hint": "ARCHON removed them from its settings. Pick new ones with {cmd}."
+  "gone_hint": "ARCHON removed them from its settings. Pick new ones with {cmd}.",
+  "summary_important": "{n} of {total} important channels set · optional ones can stay empty",
+  "optional": "optional",
+  "recommended": "recommended",
+  "optional_daily": "Empty: /claim works in every channel. Set: /claim only works there."
 }

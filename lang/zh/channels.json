@@ -65,5 +65,9 @@
   "not_yours": "只有打开此面板的人才能使用它。",
   "expired": "此面板已过期，请重新运行命令。",
   "gone_title": "频道已在 Discord 中删除",
-  "gone_hint": "ARCHON 已将它们从设置中移除。请用 {cmd} 选择新的频道。"
+  "gone_hint": "ARCHON 已将它们从设置中移除。请用 {cmd} 选择新的频道。",
+  "summary_important": "已设置 {n}/{total} 个重要频道 · 可选频道可以留空",
+  "optional": "可选",
+  "recommended": "建议设置",
+  "optional_daily": "留空：/claim 在所有频道都可用。设置后：/claim 只能在该频道使用。"
 }

@@ -18,17 +18,19 @@ const cut = (s, n) => (String(s).length > n ? String(s).slice(0, n - 1) + '…' 
 const L = (k, lang, v) => t(`channels.${k}`, lang, v || {});
 
 // key, settings column, group, what ARCHON needs there (canPost feature; 'see' = members are only sent there)
+// level: how much it matters, the same words as the /setup checklist (lib/setup-checklist). An empty optional slot
+// is not a gap: daily, for one, only limits /claim to that channel when it is set.
 const SLOTS = [
-    { key: 'welcome', col: 'welcome_channel', group: 'core', need: 'welcome' },
-    { key: 'goodbye', col: 'goodbye_channel', group: 'core', need: 'goodbye' },
-    { key: 'rules', col: 'rules_channel', group: 'core', need: 'see' },
-    { key: 'general', col: 'general_channel', group: 'core', need: 'see' },
-    { key: 'modlog', col: 'mod_log_channel', group: 'moderation', need: 'modlog' },
-    { key: 'log', col: 'log_channel', group: 'moderation', need: null },
-    { key: 'ticket', col: 'ticket_transcript_channel', group: 'moderation', need: 'ticket-log' },
-    { key: 'daily', col: 'daily_channel', group: 'activity', need: null },
-    { key: 'levelup', col: 'levelup_channel', group: 'activity', need: 'levelup-milestone' },
-    { key: 'updates', col: 'updates_channel', group: 'activity', need: null },
+    { key: 'welcome', col: 'welcome_channel', group: 'core', need: 'welcome', level: 'core' },
+    { key: 'goodbye', col: 'goodbye_channel', group: 'core', need: 'goodbye', level: 'recommended' },
+    { key: 'rules', col: 'rules_channel', group: 'core', need: 'see', level: 'core' },
+    { key: 'general', col: 'general_channel', group: 'core', need: 'see', level: 'recommended' },
+    { key: 'modlog', col: 'mod_log_channel', group: 'moderation', need: 'modlog', level: 'core' },
+    { key: 'log', col: 'log_channel', group: 'moderation', need: null, level: 'optional' },
+    { key: 'ticket', col: 'ticket_transcript_channel', group: 'moderation', need: 'ticket-log', level: 'optional' },
+    { key: 'daily', col: 'daily_channel', group: 'activity', need: null, level: 'optional' },
+    { key: 'levelup', col: 'levelup_channel', group: 'activity', need: 'levelup-milestone', level: 'recommended' },
+    { key: 'updates', col: 'updates_channel', group: 'activity', need: null, level: 'optional' },
 ];
 const BY_KEY = Object.fromEntries(SLOTS.map((s) => [s.key, s]));
 const GROUPS = ['core', 'moderation', 'activity'];
@@ -65,11 +67,16 @@ function stateOf(guild, slot, saved, lang) {
     return { state: 'warn', id, why, note };
 }
 
-const MARK = { ok: '✓', warn: '!', gone: '×', unset: '–' };
+const OPTIONAL_HINT = new Set(['daily']);   // optional slots whose empty state needs a word of explanation
+const MARK = { ok: '✓', warn: '!', gone: '×', unset: '–', optional: '○' };
+// an empty slot: "not set" (and "recommended" when it is), or "optional" with what being empty means
+const unsetText = (slot, lang) => slot.level === 'optional'
+    ? `${L('optional', lang)}${OPTIONAL_HINT.has(slot.key) ? `\n-# ${L(`optional_${slot.key}`, lang)}` : ''}`
+    : `${L('not_set', lang)}${slot.level === 'recommended' ? ` · ${L('recommended', lang)}` : ''}`;
 function slotLine(guild, slot, saved, lang) {
     const s = stateOf(guild, slot, saved, lang);
     const name = `${icon(`ch_${slot.key}`, guild)} **${L(`label_${slot.key}`, lang)}**`;
-    if (s.state === 'unset') return `\`${MARK.unset}\` ${name} · ${L('not_set', lang)}`;
+    if (s.state === 'unset') return `\`${slot.level === 'optional' ? MARK.optional : MARK.unset}\` ${name} · ${unsetText(slot, lang)}`;
     if (s.state === 'gone') return `\`${MARK.gone}\` ${name} · ${L('status_gone', lang)}`;
     const extra = [s.note, s.why].filter(Boolean).map((x) => `\n-# ${x}`).join('');
     return `\`${MARK[s.state]}\` ${name} · <#${s.id}>${extra}`;
@@ -78,12 +85,14 @@ function slotLine(guild, slot, saved, lang) {
 function mainView(guild, db, lang, ownerId, notice) {
     const saved = readAll(db, guild.id);
     const states = SLOTS.map((s) => stateOf(guild, s, saved, lang).state);
-    const set = states.filter((x) => x !== 'unset').length;
+    // the count is about what matters: core and recommended slots (optional ones can stay empty)
+    const important = SLOTS.filter((x) => x.level !== 'optional');
+    const set = important.filter((x) => stateOf(guild, x, saved, lang).state !== 'unset').length;
     const problems = states.filter((x) => x === 'warn' || x === 'gone').length;
     const c = new ContainerBuilder().setAccentColor(problems ? 0xE67E22 : ACCENT);
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
         `-# ARCHON · ${L('title', lang)}\n## ${icon('ch_title', guild)} ${L('heading', lang, { guild: guild.name })}\n`
-        + `${L('summary', lang, { n: set, total: SLOTS.length })}${problems ? ` · ${L(problems === 1 ? 'problems_one' : 'problems', lang, { n: problems })}` : ''}`));
+        + `${L('summary_important', lang, { n: set, total: important.length })}${problems ? ` · ${L(problems === 1 ? 'problems_one' : 'problems', lang, { n: problems })}` : ''}`));
     if (notice) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`> ${notice}`));
     for (const g of GROUPS) {
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
@@ -97,8 +106,9 @@ function mainView(guild, db, lang, ownerId, notice) {
             .setPlaceholder(cut(L('pick_placeholder', lang), 150))
             .addOptions(SLOTS.map((s) => {
                 const st = stateOf(guild, s, saved, lang);
-                const where = st.id ? (guild.channels.cache.get(st.id)?.name ? `#${guild.channels.cache.get(st.id).name}` : L('status_gone', lang)) : L('not_set', lang);
-                return { label: cut(L(`label_${s.key}`, lang), 100), description: cut(`${MARK[st.state]} ${where}`, 100), value: s.key, emoji: icon(`ch_${s.key}`, guild) };
+                const where = st.id ? (guild.channels.cache.get(st.id)?.name ? `#${guild.channels.cache.get(st.id).name}` : L('status_gone', lang)) : s.level === 'optional' ? L('optional', lang) : L('not_set', lang);
+                const mark = st.state === 'unset' && s.level === 'optional' ? MARK.optional : MARK[st.state];
+                return { label: cut(L(`label_${s.key}`, lang), 100), description: cut(`${mark} ${where}`, 100), value: s.key, emoji: icon(`ch_${s.key}`, guild) };
             }))));
     try {
         const { dashboardUrl } = require('../lib/postProblems');
@@ -159,6 +169,7 @@ const typeChoices = (o) => o.setName('type').setDescription('Which channel').set
     .addChoices(...SLOTS.map((s) => ({ name: t(`channels.label_${s.key}`, 'en'), value: s.key })));
 
 module.exports = {
+    _mainView: mainView,   // for the tests
     name: 'channels',
     aliases: ['channel', 'setchannel', 'salons'],
     description: 'View and change the channels ARCHON uses',
