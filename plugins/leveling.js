@@ -860,8 +860,12 @@ async function autocomplete(ix, client) {
 // The config card's buttons: lvl:reset (colours) and lvl:create (level roles), and the theme card (lvl:t…)
 async function handleComponent(ix, client) {
     const lang = require('../lib/pick-lang').pickLang(client, ix.guildId, ix, ix.user.id);
+    // banner colours are cosmetic: Manage Server is enough (like /welcome, which opens them); creating roles needs Administrator
+    if (ix.customId === 'lvl:theme' || ix.customId.startsWith('lvl:t')) {
+        if (!ix.member?.permissions?.has(PermissionFlagsBits.ManageGuild)) return ix.reply({ content: L('admin_only', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+        return handleTheme(ix, client, lang);
+    }
     if (!ix.member?.permissions?.has(PermissionFlagsBits.Administrator)) return ix.reply({ content: L('admin_only', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
-    if (ix.customId === 'lvl:theme' || ix.customId.startsWith('lvl:t')) return handleTheme(ix, client, lang);
     if (ix.customId === 'lvl:create' || ix.customId === 'lvl:streak') {
         await ix.deferUpdate().catch(() => {});
         const r = await createRoles(ix.guild, client.db, lang, ix.customId === 'lvl:streak' ? 'streak' : 'level');

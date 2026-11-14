@@ -101,6 +101,8 @@ function toEmoji(value) {
 function readSaved(row) {
     try {
         const g = row && row.gaming ? JSON.parse(row.gaming) : null;
+        // every new member starts with {"game":"CODM","rank":"Unranked"} (index.js): that placeholder is not a choice
+        if (g && g.game === 'CODM' && g.rank === 'Unranked' && !g.mode && !g.timestamp && !g.lastUpdated) return null;
         return g && g.game ? { game: String(g.game), mode: String(g.mode || ''), rank: String(g.rank || '') } : null;
     } catch (e) { return null; }
 }
