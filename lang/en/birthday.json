@@ -38,7 +38,7 @@
   "notYours": "Only {user} can use these buttons.",
   "listTitle": "Upcoming birthdays",
   "listSub": "{server} · {n} members registered",
-  "listEmpty": "No birthdays in the next 90 days. Add yours with /birthday set.",
+  "listEmpty": "Nobody here has saved their birthday yet. Add yours with /birthday set.",
   "listToday": "Today",
   "listTomorrow": "Tomorrow",
   "listIn": "in {n} d",
@@ -60,5 +60,6 @@
     "capricorn": "Capricorn",
     "aquarius": "Aquarius",
     "pisces": "Pisces"
-  }
+  },
+  "listSubOne": "{server} · 1 member registered"
 }

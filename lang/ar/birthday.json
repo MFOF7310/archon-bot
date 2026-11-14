@@ -38,7 +38,7 @@
   "notYours": "فقط {user} يمكنه استخدام هذه الأزرار.",
   "listTitle": "أعياد الميلاد القادمة",
   "listSub": "{server} · {n} أعضاء مسجلون",
-  "listEmpty": "لا توجد أعياد ميلاد خلال الأيام الـ90 القادمة. أضف عيد ميلادك بالأمر /birthday set.",
+  "listEmpty": "لم يسجل أحد هنا عيد ميلاده بعد. أضف عيد ميلادك بالأمر /birthday set.",
   "listToday": "اليوم",
   "listTomorrow": "غدًا",
   "listIn": "بعد {n} يوم",
@@ -60,5 +60,6 @@
     "capricorn": "الجدي",
     "aquarius": "الدلو",
     "pisces": "الحوت"
-  }
+  },
+  "listSubOne": "{server} · عضو واحد مسجل"
 }

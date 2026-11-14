@@ -38,7 +38,7 @@
   "notYours": "只有 {user} 可以使用这些按钮。",
   "listTitle": "即将到来的生日",
   "listSub": "{server} · 已登记 {n} 位成员",
-  "listEmpty": "未来 90 天内没有生日。用 /birthday set 添加你的生日。",
+  "listEmpty": "这里还没有人登记生日。用 /birthday set 添加你的生日。",
   "listToday": "今天",
   "listTomorrow": "明天",
   "listIn": "{n} 天后",
@@ -60,5 +60,6 @@
     "capricorn": "摩羯座",
     "aquarius": "水瓶座",
     "pisces": "双鱼座"
-  }
+  },
+  "listSubOne": "{server} · 已登记 1 位成员"
 }

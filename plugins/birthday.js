@@ -350,9 +350,10 @@ async function listCard(guild, lang) {
         if (got) for (const id of got.keys()) here.add(id);
         else for (const id of chunk) if (guild.members.cache.has(id)) here.add(id);
     }
+    // everyone registered here, by next birthday (the whole year: a 90-day window counted people it didn't show)
     const rows = [...here].map((id) => ({ id, b: birthdays.get(id), info: birthdayInfo(birthdays.get(id)) }))
-        .filter((r) => r.info.daysUntil <= 90).sort((a, b) => a.info.daysUntil - b.info.daysUntil);
-    const head = `## ${icon('clock', guild)} ${B('listTitle', lang)}\n-# ${B('listSub', lang, { server: guild.name, n: here.size })}`;
+        .sort((a, b) => a.info.daysUntil - b.info.daysUntil);
+    const head = `## ${icon('clock', guild)} ${B('listTitle', lang)}\n-# ${B(here.size === 1 ? 'listSubOne' : 'listSub', lang, { server: guild.name, n: here.size })}`;
     if (!rows.length) return card(GREY, [{ text: `${head}\n\n${B('listEmpty', lang)}` }]);
     const lines = [];
     let lastMonth = null;

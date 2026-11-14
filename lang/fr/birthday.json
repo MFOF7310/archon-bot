@@ -38,7 +38,7 @@
   "notYours": "Seul {user} peut utiliser ces boutons.",
   "listTitle": "Anniversaires à venir",
   "listSub": "{server} · {n} membres enregistrés",
-  "listEmpty": "Aucun anniversaire dans les 90 prochains jours. Ajoute le tien avec /birthday set.",
+  "listEmpty": "Personne ici n'a encore enregistré son anniversaire. Ajoute le tien avec /birthday set.",
   "listToday": "Aujourd'hui",
   "listTomorrow": "Demain",
   "listIn": "dans {n} j",
@@ -60,5 +60,6 @@
     "capricorn": "Capricorne",
     "aquarius": "Verseau",
     "pisces": "Poissons"
-  }
+  },
+  "listSubOne": "{server} · 1 membre enregistré"
 }
