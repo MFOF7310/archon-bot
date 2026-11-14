@@ -41,7 +41,7 @@ const CFG = {
   MAX_HISTORY: 8,
   MAX_MEMORY_PER_USER: 25,
   CHANNEL_COOLDOWN: 1500,
-  MAX_TOKENS: 700,
+  MAX_TOKENS: 1500,   // thinking models count their reasoning in this budget too: 700 left a few words for the answer
   RESPONSE_TIMEOUT: 15000,
   MAX_REPLY_CHARS: 3600,     // a Components V2 message holds 4000 characters of text in total
   FREE_DAILY_LIMIT: 30,      // messages per member per day on servers without Premium (protects the OpenRouter bill)
@@ -328,7 +328,17 @@ function bench(model, status) {
 }
 const isBenched = (m) => (benched.get(m.id) || 0) > Date.now();
 
-async function tryModel(model, messages, timeoutMs, keyOverride = null) {
+// A cut answer (finish_reason "length") ends at its last full sentence with "…", never in the middle of a word
+function endCleanly(text) {
+  const t = String(text).trimEnd();
+  const stop = Math.max(t.lastIndexOf('. '), t.lastIndexOf('.\n'), t.lastIndexOf('! '), t.lastIndexOf('? '), t.lastIndexOf('\n\n'));
+  let out = stop > t.length * 0.5 ? t.slice(0, stop + 1) : t;
+  if ((out.match(/\*\*/g) || []).length % 2) out += '**';   // close a bold cut in the middle
+  if ((out.match(/```/g) || []).length % 2) out += '\n```';
+  return `${out.trimEnd()} …`;
+}
+
+async function tryModel(model, messages, timeoutMs, keyOverride = null, maxTokens = CFG.MAX_TOKENS) {
   const apiKey = keyOverride || process.env.OPENROUTER_API_KEY;
   if (!apiKey) return null;
 
@@ -345,8 +355,9 @@ async function tryModel(model, messages, timeoutMs, keyOverride = null) {
         model: model.id,
         messages,
         temperature: 0.65,
-        max_tokens: CFG.MAX_TOKENS,
-        top_p: 0.9
+        max_tokens: maxTokens,
+        top_p: 0.9,
+        reasoning: { exclude: true }   // a thinking model's reasoning is never sent back to us (it still counts in max_tokens)
       }, {
         headers: {
           'Authorization': `Bearer ${apiKey}`,
@@ -359,7 +370,19 @@ async function tryModel(model, messages, timeoutMs, keyOverride = null) {
 
       clearTimeout(timer);
       const latency = Date.now() - startTime;
-      const content = response.data?.choices?.[0]?.message?.content;
+      const choice = response.data?.choices?.[0];
+      let content = choice?.message?.content;
+      const cut = choice?.finish_reason === 'length';
+      const thought = response.data?.usage?.completion_tokens_details?.reasoning_tokens || 0;
+      if (cut) {
+        console.log(`${C.yellow}[AI CUT]${C.reset} ${model.id} | budget ${maxTokens} | reasoning ${thought} | answer ${String(content || '').length} chars`);
+        // once, with twice the room: the answer is worth the wait more than half a sentence
+        if (maxTokens < CFG.MAX_TOKENS * 2) {
+          clearTimeout(timer);
+          return resolve(await tryModel(model, messages, timeoutMs, keyOverride, CFG.MAX_TOKENS * 2));
+        }
+        if (content) content = endCleanly(content);
+      }
 
       if (content && content.trim().length > 0) {
         const approxTokens = Math.ceil(content.length / 4);
