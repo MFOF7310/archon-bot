@@ -63,5 +63,7 @@
   "cleared": "{label} retiré.",
   "save_failed": "Ce changement n'a pas pu être enregistré. Réessaie dans un instant.",
   "not_yours": "Seule la personne qui a ouvert ce panneau peut l'utiliser.",
-  "expired": "Ce panneau est périmé. Relance la commande."
+  "expired": "Ce panneau est périmé. Relance la commande.",
+  "gone_title": "Salons supprimés dans Discord",
+  "gone_hint": "ARCHON les a retirés de ses réglages. Choisis-en d'autres avec {cmd}."
 }

@@ -1923,6 +1923,7 @@ async function executePluginCommand(command, client, message, args, db, usedComm
 client.once(Events.ClientReady, async () => {
     // Roles deleted while ARCHON was offline: their settings are emptied (quietly)
     setTimeout(() => { try { require('./lib/role-cleanup').sweep(client); } catch (e) { console.error('[ROLES] sweep:', e.message); } }, 15000);
+    setTimeout(() => { require('./lib/channel-cleanup').sweep(client).catch((e) => console.error('[CHANNELS] sweep:', e.message)); }, 20000);
     // Re-arm the "verify in time or be kicked" deadlines that were running when the bot stopped
     Promise.resolve(require('./plugins/verify.js').resumeKickTimers?.(client, db)).catch((e) => console.error('[VERIFY] resume failed:', e.message));
     // Raid mode: pick up a raid that was active when the bot stopped
@@ -3908,6 +3909,9 @@ safeOn(Events.GuildMemberAdd, async (member) => {
 
 // A role deleted in Discord leaves ARCHON's settings too, so "Create missing roles" can make it again (lib/role-cleanup)
 safeOn(Events.GuildRoleDelete, async (role) => { require('./lib/role-cleanup').onDelete(role, client); });
+// the same for channels (and threads used as one): lib/channel-cleanup
+safeOn(Events.ChannelDelete, async (channel) => { require('./lib/channel-cleanup').onDelete(channel, client); });
+safeOn(Events.ThreadDelete, async (thread) => { require('./lib/channel-cleanup').onDelete(thread, client); });
 
 // A moderator verified someone by hand in Discord (gave the verified role or took the unverified one): the welcome
 // card that waited for their verification goes out now. afterVerify sends it once at most.

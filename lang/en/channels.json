@@ -63,5 +63,7 @@
   "cleared": "{label} removed.",
   "save_failed": "That change couldn't be saved. Try again in a moment.",
   "not_yours": "Only the person who opened this panel can use it.",
-  "expired": "This panel is out of date. Run the command again."
+  "expired": "This panel is out of date. Run the command again.",
+  "gone_title": "Channels deleted in Discord",
+  "gone_hint": "ARCHON removed them from its settings. Pick new ones with {cmd}."
 }

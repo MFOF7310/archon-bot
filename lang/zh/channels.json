@@ -63,5 +63,7 @@
   "cleared": "已移除 {label}。",
   "save_failed": "无法保存这项更改，请稍后再试。",
   "not_yours": "只有打开此面板的人才能使用它。",
-  "expired": "此面板已过期，请重新运行命令。"
+  "expired": "此面板已过期，请重新运行命令。",
+  "gone_title": "频道已在 Discord 中删除",
+  "gone_hint": "ARCHON 已将它们从设置中移除。请用 {cmd} 选择新的频道。"
 }
