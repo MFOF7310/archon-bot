@@ -548,7 +548,19 @@ async function bannerPreview(theme, lang) {
     return cv.encode('png');
 }
 
-async function configCard(client, guild, db, lang, isAdmin) {
+// Who may do what on the config card: colours are cosmetic (Manage Server, like /welcome); creating roles follows
+// /roles (owner, Administrator, or Manage Server with Manage Roles). `who` is the member, or true for both.
+function rights(who) {
+    if (who === true) return { theme: true, roles: true };
+    if (!who) return { theme: false, roles: false };
+    const owner = who.guild?.ownerId === who.id;
+    let roles = false;
+    try { roles = require('../lib/role-rules').canManage(who); } catch { roles = owner || !!who.permissions?.has(PermissionFlagsBits.Administrator); }
+    return { theme: owner || !!who.permissions?.has(PermissionFlagsBits.ManageGuild), roles };
+}
+
+async function configCard(client, guild, db, lang, who) {
+    const can = rights(who);
     const { icon } = require('../lib/ui/icons');
     const { card } = require('../lib/games/v2');
     const { dashboardUrl } = require('../lib/postProblems');
@@ -594,10 +606,10 @@ async function configCard(client, guild, db, lang, isAdmin) {
         new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(dashboardUrl(guild.id)).setLabel(L('btnDashboard', lang)).setEmoji(icon('dashboard', guild)));
     // one tap creates the missing level roles (cosmetic only), when ARCHON may manage roles here
     const missingRoles = MILESTONES.some((m) => !row[`level_${m}_role`]);
-    if (isAdmin && missingRoles && guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:create').setStyle(ButtonStyle.Success).setLabel(L('btnCreate', lang)).setEmoji(icon('ok', guild)));
+    if (can.roles && missingRoles && guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:create').setStyle(ButtonStyle.Success).setLabel(L('btnCreate', lang)).setEmoji(icon('ok', guild)));
     const missingStreak = STREAK_ROLES.some(([, col]) => !row[col]);
-    if (isAdmin && missingStreak && guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:streak').setStyle(ButtonStyle.Success).setLabel(L('btnCreateStreak', lang)).setEmoji(icon('streak', guild)));
-    if (isAdmin) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:theme').setStyle(ButtonStyle.Primary).setLabel(L('btnTheme', lang)).setEmoji(icon('palette', guild)));
+    if (can.roles && missingStreak && guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:streak').setStyle(ButtonStyle.Success).setLabel(L('btnCreateStreak', lang)).setEmoji(icon('streak', guild)));
+    if (can.theme) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:theme').setStyle(ButtonStyle.Primary).setLabel(L('btnTheme', lang)).setEmoji(icon('palette', guild)));
     items.push({ row: buttons });
     return { ...card(0xE6A817, items), files: [new AttachmentBuilder(await bannerPreview(theme, lang), { name: 'lvl-theme.png' })] };
 }
@@ -780,7 +792,7 @@ async function handleTheme(ix, client, lang) {
     };
 
     if (id === 'lvl:theme' || id.startsWith('lvl:tm:')) { await ix.deferUpdate().catch(() => {}); return redraw(id === 'lvl:theme' ? 'level' : id.split(':')[2]); }
-    if (id === 'lvl:tback') { await ix.deferUpdate().catch(() => {}); return ix.editReply({ ...(await configCard(client, ix.guild, db, lang, true)), attachments: [] }).catch(() => {}); }
+    if (id === 'lvl:tback') { await ix.deferUpdate().catch(() => {}); return ix.editReply({ ...(await configCard(client, ix.guild, db, lang, ix.member)), attachments: [] }).catch(() => {}); }
 
     // a colour typed by hand (name or hex)
     if (id.startsWith('lvl:tmodal:')) {
@@ -860,21 +872,21 @@ async function autocomplete(ix, client) {
 // The config card's buttons: lvl:reset (colours) and lvl:create (level roles), and the theme card (lvl:t…)
 async function handleComponent(ix, client) {
     const lang = require('../lib/pick-lang').pickLang(client, ix.guildId, ix, ix.user.id);
-    // banner colours are cosmetic: Manage Server is enough (like /welcome, which opens them); creating roles needs Administrator
+    // banner colours are cosmetic: Manage Server is enough (like /welcome, which opens them); creating roles follows /roles
     if (ix.customId === 'lvl:theme' || ix.customId.startsWith('lvl:t')) {
-        if (!ix.member?.permissions?.has(PermissionFlagsBits.ManageGuild)) return ix.reply({ content: L('admin_only', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+        if (!rights(ix.member).theme) return ix.reply({ content: L('theme_only', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
         return handleTheme(ix, client, lang);
     }
-    if (!ix.member?.permissions?.has(PermissionFlagsBits.Administrator)) return ix.reply({ content: L('admin_only', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+    if (!rights(ix.member).roles) return ix.reply({ content: t('roles.need_perms', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
     if (ix.customId === 'lvl:create' || ix.customId === 'lvl:streak') {
         await ix.deferUpdate().catch(() => {});
         const r = await createRoles(ix.guild, client.db, lang, ix.customId === 'lvl:streak' ? 'streak' : 'level');
         try { client.settings?.delete?.(ix.guildId); } catch { /* the settings cache reloads the new roles */ }
-        await ix.editReply(await configCard(client, ix.guild, client.db, lang, true)).catch(() => {});
+        await ix.editReply(await configCard(client, ix.guild, client.db, lang, ix.member)).catch(() => {});
         return ix.followUp({ content: r.error ? L(r.error, lang) : (r.made || r.reused) ? [r.made ? L('createDone', lang, { n: r.made }) : null, r.reused ? L('createReused', lang, { n: r.reused }) : null].filter(Boolean).join('\n') : L('createNothing', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
     }
     if (client.db) client.db.prepare('DELETE FROM leveling_themes WHERE guild_id = ?').run(ix.guildId);
-    await ix.update(await configCard(client, ix.guild, client.db, lang, true)).catch(() => {});
+    await ix.update(await configCard(client, ix.guild, client.db, lang, ix.member)).catch(() => {});
     return ix.followUp({ content: L('resetDone', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
 }
 
@@ -913,12 +925,10 @@ module.exports = {
         const sub = args[0]?.toLowerCase() || 'rank';
         if (sub === 'rank') return handleRank(message, args, client, db, lang);
         if (sub === 'config') {
-            const admin = message.member?.permissions?.has(PermissionFlagsBits.Administrator);
-            return message.reply({ ...(await configCard(client, message.guild, db, lang, admin)), allowedMentions: { parse: [] } }).catch(() => { });
+            return message.reply({ ...(await configCard(client, message.guild, db, lang, message.member)), allowedMentions: { parse: [] } }).catch(() => { });
         }
         if (sub === 'theme') {
-            const adm = message.member.permissions.has(PermissionFlagsBits.Administrator);
-            if (!adm) return message.reply(t('leveling.admin_only', lang)).catch(() => { });
+            if (!rights(message.member).theme) return message.reply(L('theme_only', lang)).catch(() => { });
             const type = args[1]?.toLowerCase();
             if (type === 'reset') { if (db) db.prepare(`DELETE FROM leveling_themes WHERE guild_id = ?`).run(message.guild.id); return message.reply(t('leveling.theme_reset', lang)).catch(() => { }); }
             if (!type || !['level', 'welcome'].includes(type)) return message.reply(L('themeUsage', lang)).catch(() => { });
@@ -958,13 +968,11 @@ module.exports = {
 
         if (sc === 'config') {
             await ix.deferReply({ flags: MessageFlags.Ephemeral });
-            const admin = ix.member?.permissions?.has(PermissionFlagsBits.Administrator);
-            return ix.editReply({ ...(await configCard(client, ix.guild, db, lang, admin)), flags: MessageFlags.IsComponentsV2 }).catch(() => { });
+            return ix.editReply({ ...(await configCard(client, ix.guild, db, lang, ix.member)), flags: MessageFlags.IsComponentsV2 }).catch(() => { });
         }
 
         if (group === 'theme') {
-            const adm = ix.member.permissions.has(PermissionFlagsBits.Administrator);
-            if (!adm) return ix.reply({ content: t('leveling.admin_only', lang), flags: 1 << 6 });
+            if (!rights(ix.member).theme) return ix.reply({ content: L('theme_only', lang), flags: 1 << 6 });
 
             if (sc === 'reset') {
                 if (db) db.prepare(`DELETE FROM leveling_themes WHERE guild_id = ?`).run(ix.guild.id);

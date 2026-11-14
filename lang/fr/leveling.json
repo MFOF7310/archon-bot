@@ -100,5 +100,6 @@
   "preset_neon": "Néon",
   "preset_rose": "Rose",
   "preset_dark": "Sombre",
-  "themeDefaultWelcome": "par défaut (la couleur du rôle du membre, sinon vert)"
+  "themeDefaultWelcome": "par défaut (la couleur du rôle du membre, sinon vert)",
+  "theme_only": "🔒 Il te faut la permission Gérer le serveur pour changer les couleurs des bannières."
 }

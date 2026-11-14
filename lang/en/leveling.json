@@ -100,5 +100,6 @@
   "preset_neon": "Neon",
   "preset_rose": "Rose",
   "preset_dark": "Dark",
-  "themeDefaultWelcome": "default (the member's role colour, otherwise green)"
+  "themeDefaultWelcome": "default (the member's role colour, otherwise green)",
+  "theme_only": "🔒 You need the Manage Server permission to change the banner colours."
 }
