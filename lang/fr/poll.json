@@ -1,8 +1,10 @@
 {
-  "title": "📊 SONDAGE",
-  "createdBy": "Créé par",
-  "reactToVote": "Réagissez avec l'emoji correspondant pour voter !",
-  "invalid": "❌ Utilisation: `.poll \"Question\" \"Option1\" \"Option2\" ...`\nExemple: `.poll \"Couleur préférée ?\" \"Rouge\" \"Bleu\" \"Vert\"`",
-  "maxOptions": "❌ Maximum 9 options autorisées.",
-  "minOptions": "❌ Il faut au moins 2 options."
+  "invalid": "Utilisation : `.poll \"Question\" \"Option 1\" \"Option 2\" ...` (2 à 9 options). Exemple : `.poll \"Jeu préféré ?\" \"CODM\" \"Valorant\"`",
+  "maxOptions": "9 options au maximum.",
+  "minOptions": "Un sondage a besoin d'une question et d'au moins 2 options.",
+  "tooLongQuestion": "La question est trop longue ({max} caractères au maximum).",
+  "tooLongAnswer": "Une option est trop longue ({max} caractères au maximum) : « {answer}… »",
+  "duplicate": "Deux options sont identiques. Donne un texte différent à chacune.",
+  "noPerm": "ARCHON ne peut pas publier de sondage dans ce salon : il lui faut la permission **Envoyer des sondages** ici.",
+  "failed": "Le sondage n'a pas pu être publié. Réessaie dans un instant."
 }

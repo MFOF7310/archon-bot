@@ -1,160 +1,85 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
-const i18n = require('../lib/i18n');
+// /poll — a real Discord poll: one vote per member (or several if allowed), live results, a set end time, and the
+// final result posted by Discord itself. It used to be a card with number reactions: anyone could react to every
+// option, nothing was counted, and the slash version crashed on every use.
+//   /poll question option1 option2 [option3..option9] [duration] [multiple]
+//   .poll "Question" "Option 1" "Option 2" ...   (open for 24 hours)
+const { SlashCommandBuilder, PermissionFlagsBits, MessageFlags } = require('discord.js');
+const { t } = require('../lib/i18n');
+
+const LANGS = ['en', 'fr', 'zh', 'ar'];
+const P = (k, lang, v) => t(`poll.${k}`, lang, v || {});
+const MAX_OPTIONS = 9;
+const LIMIT = { question: 300, answer: 55 };   // Discord's own limits
+const DURATIONS = [[1, '1 hour'], [6, '6 hours'], [12, '12 hours'], [24, '1 day'], [72, '3 days'], [168, '1 week']];
+const langOf = (client, gid, where, uid) => { const l = require('../lib/pick-lang').pickLang(client, gid, where, uid); return LANGS.includes(l) ? l : 'en'; };
+
+// The poll to send, or { error } with the text to show
+function buildPoll(question, options, hours, multiple, lang) {
+    question = String(question || '').trim();
+    const answers = options.map((o) => String(o || '').trim()).filter(Boolean);
+    if (!question || answers.length < 2) return { error: P('minOptions', lang) };
+    if (answers.length > MAX_OPTIONS) return { error: P('maxOptions', lang) };
+    if (question.length > LIMIT.question) return { error: P('tooLongQuestion', lang, { max: LIMIT.question }) };
+    const long = answers.find((a) => a.length > LIMIT.answer);
+    if (long) return { error: P('tooLongAnswer', lang, { max: LIMIT.answer, answer: long.slice(0, 30) }) };
+    if (new Set(answers.map((a) => a.toLowerCase())).size !== answers.length) return { error: P('duplicate', lang) };
+    return { poll: { question: { text: question }, answers: answers.map((text) => ({ text })), duration: hours, allowMultiselect: !!multiple } };
+}
+
+// Discord needs Send Polls in the channel (it is not part of Send Messages)
+function missingPerm(channel, guild) {
+    if (!guild || !PermissionFlagsBits.SendPolls || typeof channel?.permissionsFor !== 'function') return false;
+    const p = channel.permissionsFor(guild.members.me);
+    return !!p && !p.has(PermissionFlagsBits.SendPolls);
+}
 
 module.exports = {
     name: 'poll',
-    aliases: ['survey', 'vote', 'sondage'],
-    description: '📊 Create a quick poll with reactions.',
+    aliases: ['survey', 'sondage'],
+    description: '📊 Create a poll: one vote per member, live results, a set end time.',
     category: 'UTILITY',
     cooldown: 5000,
-    usage: '.poll "Question" "Option1" "Option2" ...',
-    examples: ['.poll "Quel jeu ?" "CODM" "Valorant" "Fortnite"'],
+    usage: '.poll "Question" "Option 1" "Option 2" ...',
+    examples: ['.poll "Quel jeu ce soir ?" "CODM" "Valorant" "Fortnite"'],
 
-data: new SlashCommandBuilder()
-    .setName('poll')
-    .setDescription('📊 Create a quick poll / Créer un sondage rapide')
-    .addStringOption(opt => opt
-        .setName('question')
-        .setDescription('The poll question / La question du sondage')
-        .setRequired(true))
-    .addStringOption(opt => opt
-        .setName('option1')
-        .setDescription('Option 1')
-        .setRequired(true))
-    .addStringOption(opt => opt
-        .setName('option2')
-        .setDescription('Option 2')
-        .setRequired(true))
-    .addStringOption(opt => opt
-        .setName('option3')
-        .setDescription('Option 3 (optional)')
-        .setRequired(false))
-    .addStringOption(opt => opt
-        .setName('option4')
-        .setDescription('Option 4 (optional)')
-        .setRequired(false))
-    .addStringOption(opt => opt
-        .setName('option5')
-        .setDescription('Option 5 (optional)')
-        .setRequired(false))
-    .addStringOption(opt => opt
-        .setName('option6')
-        .setDescription('Option 6 (optional)')
-        .setRequired(false))
-    .addStringOption(opt => opt
-        .setName('option7')
-        .setDescription('Option 7 (optional)')
-        .setRequired(false))
-    .addStringOption(opt => opt
-        .setName('option8')
-        .setDescription('Option 8 (optional)')
-        .setRequired(false))
-    .addStringOption(opt => opt
-        .setName('option9')
-        .setDescription('Option 9 (optional)')
-        .setRequired(false)),
+    data: (() => {
+        const b = new SlashCommandBuilder()
+            .setName('poll')
+            .setDescription('Create a poll: one vote per member, live results, a set end time')
+            .addStringOption((o) => o.setName('question').setDescription('The question').setRequired(true).setMaxLength(LIMIT.question))
+            .addStringOption((o) => o.setName('option1').setDescription('Option 1').setRequired(true).setMaxLength(LIMIT.answer))
+            .addStringOption((o) => o.setName('option2').setDescription('Option 2').setRequired(true).setMaxLength(LIMIT.answer));
+        b.addStringOption((o) => o.setName('duration').setDescription('How long it stays open (default: 1 day)').setRequired(false)
+            .addChoices(...DURATIONS.map(([h, name]) => ({ name, value: String(h) }))));
+        b.addBooleanOption((o) => o.setName('multiple').setDescription('Members can pick several options (default: one)').setRequired(false));
+        for (let i = 3; i <= MAX_OPTIONS; i++) b.addStringOption((o) => o.setName(`option${i}`).setDescription(`Option ${i} (optional)`).setRequired(false).setMaxLength(LIMIT.answer));
+        return b;
+    })(),
 
-run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
-        
-        const OKL = ['en','fr','bm','zh','ar'];
-        lang = OKL.includes(serverSettings?.language) ? serverSettings.language : (OKL.includes(lang) ? lang : 'en');
-                const t = (k, v) => i18n.t('poll.' + k, lang, v);
-
-        // Parse arguments (support quoted strings)
-        const regex = /"([^"]+)"|'([^']+)'|(\S+)/g;
+    run: async (client, message, args) => {
+        const lang = langOf(client, message.guild?.id, message, message.author.id);
         const parts = [];
-        let match;
-        while ((match = regex.exec(args.join(' '))) !== null) {
-            parts.push(match[1] || match[2] || match[3]);
-        }
-
-        if (parts.length < 3) {
-            return message.reply({ content: t('invalid'), flags: 64 }).catch(() => {});
-        }
-
-        const question = parts[0];
-        const options = parts.slice(1);
-
-        if (options.length > 9) {
-            return message.reply({ content: t('maxOptions'), flags: 64 }).catch(() => {});
-        }
-
-        const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
-        
-        let description = `**${question}**\n\n`;
-        options.forEach((opt, i) => {
-            description += `${emojis[i]} **${opt}**\n`;
-        });
-        description += `\n📢 *${t('reactToVote')}*`;
-
-        const embed = new EmbedBuilder()
-            .setColor('#9b59b6')
-            .setTitle(t('title'))
-            .setDescription(description)
-            .setFooter({ text: `${t('createdBy')}: ${message.author.tag}`, iconURL: message.author.displayAvatarURL() })
-            .setTimestamp();
-
-        const pollMsg = await message.channel.send({ embeds: [embed] }).catch(() => {});
-        if (!pollMsg) return;
-
-        // Add reactions
-        for (let i = 0; i < options.length; i++) {
-            await pollMsg.react(emojis[i]).catch(() => {});
-        }
-
-                // Delete command message for cleanliness
-        await message.delete().catch(() => {});
+        for (const m of args.join(' ').matchAll(/"([^"]+)"|'([^']+)'|“([^”]+)”|(\S+)/g)) parts.push(m[1] || m[2] || m[3] || m[4]);
+        if (parts.length < 3) return message.reply(P('invalid', lang)).catch(() => {});
+        if (missingPerm(message.channel, message.guild)) return message.reply(P('noPerm', lang)).catch(() => {});
+        const r = buildPoll(parts[0], parts.slice(1), 24, false, lang);
+        if (r.error) return message.reply(r.error).catch(() => {});
+        const sent = await message.channel.send({ poll: r.poll }).catch((e) => { console.error('[POLL] send:', e.message); return null; });
+        if (!sent) return message.reply(P('failed', lang)).catch(() => {});
+        await message.delete().catch(() => {});   // the poll replaces the command
     },
 
     execute: async (interaction, client) => {
-        const lang = require('../lib/i18n').slashLang(interaction, ['en','fr','zh','ar']);
-        
-        const t = {
-            en: { title: '📊 POLL', createdBy: 'Created by', reactToVote: 'React with the corresponding emoji to vote!', maxOptions: '❌ Maximum 9 options allowed.', minOptions: '❌ You must provide at least 2 options.' },
-            fr: { title: '📊 SONDAGE', createdBy: 'Créé par', reactToVote: 'Réagissez avec l\'emoji correspondant pour voter !', maxOptions: '❌ Maximum 9 options autorisées.', minOptions: '❌ Il faut au moins 2 options.' },
-            zh: { title: '📊 投票', createdBy: '发起人', reactToVote: '用对应的表情符号投票吧！', invalid: '❌ 用法：`.poll "问题" "选项1" "选项2" ...`\n例如：`.poll "最喜欢什么颜色？" "红" "蓝" "绿"`', maxOptions: '❌ 最多 9 个选项。', minOptions: '❌ 至少需要 2 个选项。' },
-        }[lang];
-
-        const question = interaction.options.getString('question');
-        
-        // Collect all provided options
+        const lang = langOf(client, interaction.guildId, interaction, interaction.user.id);
+        const o = interaction.options;
         const options = [];
-        for (let i = 1; i <= 9; i++) {
-            const opt = interaction.options.getString(`option${i}`);
-            if (opt) options.push(opt);
-        }
-
-        if (options.length < 2) {
-            return interaction.reply({ content: t('minOptions'), flags: 64 });
-        }
-
-        if (options.length > 9) {
-            return interaction.reply({ content: t('maxOptions'), flags: 64 });
-        }
-
-        const emojis = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣'];
-        
-        let description = `**${question}**\n\n`;
-        options.forEach((opt, i) => {
-            description += `${emojis[i]} **${opt}**\n`;
+        for (let i = 1; i <= MAX_OPTIONS; i++) options.push(o.getString(`option${i}`));
+        const r = buildPoll(o.getString('question'), options, Number(o.getString('duration') || 24), o.getBoolean('multiple'), lang);
+        if (r.error) return interaction.reply({ content: r.error, flags: MessageFlags.Ephemeral });
+        if (missingPerm(interaction.channel, interaction.guild)) return interaction.reply({ content: P('noPerm', lang), flags: MessageFlags.Ephemeral });
+        return interaction.reply({ poll: r.poll }).catch((e) => {
+            console.error('[POLL] reply:', e.message);
+            if (!interaction.replied) interaction.reply({ content: P('failed', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
         });
-        description += `\n📢 *${t('reactToVote')}*`;
-
-        const embed = new EmbedBuilder()
-            .setColor('#9b59b6')
-            .setTitle(t('title'))
-            .setDescription(description)
-            .setFooter({ text: `${t('createdBy')}: ${interaction.user.tag}`, iconURL: interaction.user.displayAvatarURL() })
-            .setTimestamp();
-
-        await interaction.reply({ embeds: [embed] });
-        
-        const pollMsg = await interaction.fetchReply();
-        
-        // Add reactions
-        for (let i = 0; i < options.length; i++) {
-            await pollMsg.react(emojis[i]).catch(() => {});
-        }
-    }
+    },
 };

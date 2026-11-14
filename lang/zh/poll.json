@@ -1,8 +1,10 @@
 {
-  "title": "📊 投票",
-  "createdBy": "发起人",
-  "reactToVote": "用对应的表情符号投票吧！",
-  "invalid": "❌ 用法：`.poll \"问题\" \"选项1\" \"选项2\" ...`\n例如：`.poll \"最喜欢什么颜色？\" \"红\" \"蓝\" \"绿\"`",
-  "maxOptions": "❌ 最多 9 个选项。",
-  "minOptions": "❌ 至少需要 2 个选项。"
+  "invalid": "用法：`.poll \"问题\" \"选项1\" \"选项2\" ...`（2 到 9 个选项）。例如：`.poll \"最喜欢的游戏？\" \"CODM\" \"Valorant\"`",
+  "maxOptions": "最多 9 个选项。",
+  "minOptions": "投票需要一个问题和至少 2 个选项。",
+  "tooLongQuestion": "问题太长了（最多 {max} 个字符）。",
+  "tooLongAnswer": "有个选项太长了（最多 {max} 个字符）：“{answer}…”",
+  "duplicate": "有两个选项相同，请给每个选项不同的文字。",
+  "noPerm": "ARCHON 无法在这个频道发起投票：它需要这里的 **发送投票** 权限。",
+  "failed": "投票发布失败，请稍后再试。"
 }

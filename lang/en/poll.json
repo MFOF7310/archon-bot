@@ -1,8 +1,10 @@
 {
-  "title": "📊 POLL",
-  "createdBy": "Created by",
-  "reactToVote": "React with the corresponding emoji to vote!",
-  "invalid": "❌ Usage: `.poll \"Question\" \"Option1\" \"Option2\" ...`\nExample: `.poll \"Favorite color?\" \"Red\" \"Blue\" \"Green\"`",
-  "maxOptions": "❌ Maximum 9 options allowed.",
-  "minOptions": "❌ You must provide at least 2 options."
+  "invalid": "Usage: `.poll \"Question\" \"Option 1\" \"Option 2\" ...` (2 to 9 options). Example: `.poll \"Favourite game?\" \"CODM\" \"Valorant\"`",
+  "maxOptions": "9 options at most.",
+  "minOptions": "A poll needs a question and at least 2 options.",
+  "tooLongQuestion": "The question is too long ({max} characters at most).",
+  "tooLongAnswer": "An option is too long ({max} characters at most): \"{answer}…\"",
+  "duplicate": "Two options are the same. Give each one a different text.",
+  "noPerm": "ARCHON can't post polls in this channel: it needs the **Send Polls** permission here.",
+  "failed": "The poll couldn't be posted. Try again in a moment."
 }
