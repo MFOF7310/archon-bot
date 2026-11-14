@@ -62,7 +62,7 @@
     "failed": "I couldn't apply **{label}**. Try the dashboard.",
     "already": "**{label}** is already {value}, nothing to change.",
     "notAllowed": "I can't change `{key}` from here. Use the dashboard for that.",
-    "premiumOnly": "Changing settings by chat is a **premium** feature. You can still do it in the dashboard → Settings, or with `/serversettings set`.",
+    "premiumOnly": "Changing settings by chat is a **premium** feature. You can still do it in the dashboard → Settings, or with `/setup`.",
     "needManage": "You need **Manage Server** to change **{label}**. Ask an admin.",
     "invalid": "`{value}` isn't a valid value for **{label}**{range}.",
     "modlog": "**{label}**: {from} → {to}\nvia Lydia · requested by <@{id}>",

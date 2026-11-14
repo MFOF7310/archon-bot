@@ -39,7 +39,7 @@
   },
   "attention": "Needs your attention",
   "postcheckHint": "Run {cmd} in that channel for the exact steps.",
-  "next": "You can change any of this later with /serversettings, and add more channels with /channels set.",
+  "next": "You can change any of this later with /setup, and add more channels with /channels.",
   "prefixLine": "Your prefix is `{prefix}`, so commands also work as `{prefix}help`.",
   "cancelled": "Setup cancelled. Nothing else was changed.",
   "cancelledSaved": "Setup cancelled. What you already picked is saved.",
@@ -91,6 +91,15 @@
     "item_automod": "AutoMod",
     "problem_logGone": "its log channel was deleted",
     "panel_automod": "/automod",
-    "problem_notOn": "not turned on"
+    "problem_notOn": "not turned on",
+    "btn_export": "Export",
+    "btn_reset": "Reset everything",
+    "export_done": "Here's a copy of this server's settings. Keep it: it's what you need to set everything up the same way again.",
+    "reset_title": "Reset everything on {server}?",
+    "reset_gone": "ARCHON's channels, roles, welcome messages, language, automod and turned-off commands will be erased. This can't be undone.",
+    "reset_kept": "Levels, money, Premium and the Discord roles themselves stay as they are.",
+    "reset_tip": "Tip: export a copy first.",
+    "reset_yes": "Yes, erase everything",
+    "reset_done": "Settings erased. The checklist starts from zero."
   }
 }

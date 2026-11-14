@@ -39,7 +39,7 @@
   },
   "attention": "需要你注意",
   "postcheckHint": "在该频道中运行 {cmd} 查看具体步骤。",
-  "next": "你之后可以随时用 /serversettings 修改这些设置，并用 /channels set 添加更多频道。",
+  "next": "你之后可以随时用 /setup 修改这些设置，并用 /channels 添加更多频道。",
   "prefixLine": "你的前缀是 `{prefix}`，所以命令也可以写成 `{prefix}help`。",
   "cancelled": "设置已取消，其他内容没有改动。",
   "cancelledSaved": "设置已取消，你之前选好的内容已经保存。",
@@ -91,6 +91,15 @@
     "item_automod": "自动管理（AutoMod）",
     "problem_logGone": "它的日志频道已被删除",
     "panel_automod": "/automod",
-    "problem_notOn": "未开启"
+    "problem_notOn": "未开启",
+    "btn_export": "导出",
+    "btn_reset": "全部重置",
+    "export_done": "这是本服务器设置的副本。请保存好：用它可以把一切按原样重新设置。",
+    "reset_title": "要重置 {server} 的全部设置吗？",
+    "reset_gone": "ARCHON 的频道、角色、欢迎消息、语言、自动审核和已关闭的命令都将被清除。此操作无法撤销。",
+    "reset_kept": "等级、金钱、Premium 以及 Discord 角色本身都不会改变。",
+    "reset_tip": "建议：先导出一份副本。",
+    "reset_yes": "是的，全部清除",
+    "reset_done": "设置已清除。清单从零开始。"
   }
 }

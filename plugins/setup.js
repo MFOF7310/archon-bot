@@ -103,7 +103,35 @@ function welcomeScreen(lang, guild, client, userId = '0') {
         new ButtonBuilder().setCustomId(`chan:back:${userId}`).setLabel(C('panel_channels')).setStyle(ButtonStyle.Secondary).setEmoji(icon('ch_title', guild)),
         new ButtonBuilder().setCustomId(`roles:back:${userId}`).setLabel(C('panel_roles')).setStyle(ButtonStyle.Secondary).setEmoji(icon('member', guild)),
         new ButtonBuilder().setCustomId(`wel:open:welcome:${userId}`).setLabel(C('panel_welcome')).setStyle(ButtonStyle.Secondary).setEmoji(icon('ch_welcome', guild))) });
+    // a copy of the settings, and a way back to zero (it asks first)
+    items.push({ row: new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('setup_export').setLabel(C('btn_export')).setStyle(ButtonStyle.Secondary).setEmoji(icon('file', guild)),
+        new ButtonBuilder().setCustomId('setup_reset').setLabel(C('btn_reset')).setStyle(ButtonStyle.Danger).setEmoji(icon('refresh', guild))) });
     return card(res.coreLeft ? AMBER : GREEN, items);
+}
+
+// The settings row as it is saved, plus the commands turned off: what a server would need to be set up again
+function exportFile(client, guild) {
+    const db = client.db;
+    let settings = {}, commands = [];
+    try { settings = db.prepare('SELECT * FROM server_settings WHERE guild_id = ?').get(guild.id) || {}; } catch { /* nothing saved */ }
+    try { commands = db.prepare('SELECT * FROM server_command_settings WHERE guild_id = ?').all(guild.id); } catch { /* no table */ }
+    const clean = Object.fromEntries(Object.entries(settings).filter(([, v]) => v !== null && v !== ''));
+    const body = { server: { id: guild.id, name: guild.name }, exportedAt: new Date().toISOString(), settings: clean, commands };
+    return { attachment: Buffer.from(JSON.stringify(body, null, 2), 'utf-8'), name: `archon-settings-${guild.id}.json` };
+}
+
+// Asks before wiping: what goes, what stays, and the advice to export first
+function resetScreen(lang, guild) {
+    const { card } = require('../lib/games/v2');
+    const C = (k, v) => T(lang, `check.${k}`, v);
+    return card(0xE74C3C, [
+        { text: `-# ARCHON · ${T(lang, 'title')}\n## ${icon('warn', guild)} ${C('reset_title', { server: safeName(guild.name) })}\n${C('reset_gone')}\n-# ${C('reset_kept')}\n-# ${C('reset_tip')}` },
+        { row: new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('setup_reset_ok').setLabel(C('reset_yes')).setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('setup_export').setLabel(C('btn_export')).setStyle(ButtonStyle.Secondary).setEmoji(icon('file', guild)),
+            new ButtonBuilder().setCustomId('setup_reset_no').setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary)) },
+    ]);
 }
 
 function questionScreen(lang, guild, idx, notice, suggestion = suggestFor(guild, STEPS[idx])) {
@@ -165,7 +193,7 @@ function channelWarning(lang, guild, step, id) {
 module.exports = {
     name: 'setup',
     category: 'ADMIN',
-    aliases: ['wizard', 'config', 'configure'],
+    aliases: ['wizard', 'config', 'configure', 'serversettings', 'ss', 'serverconfig', 'guildsettings', 'gs', 'settings'],   // the old /serversettings names open this checklist
     description: '🧙‍♂️ Interactive setup wizard for new servers',
     usage: '.setup',
     permissions: ['Administrator'],
@@ -229,6 +257,19 @@ module.exports = {
                 if (!i.customId.startsWith('setup_')) return collector.stop('left');
                 if (i.customId === 'setup_cancel') { collector.stop('cancelled'); return i.update(plainScreen(lang, savedCount() ? 'cancelledSaved' : 'cancelled')).catch(() => {}); }
                 if (i.customId === 'setup_start' && idx === -1) return advance(i);
+                if (i.customId === 'setup_export') {
+                    return i.reply({ content: T(lang, 'check.export_done'), files: [exportFile(client, guild)], flags: 1 << 6 }).catch((e) => console.error('[SETUP] export:', e.message));
+                }
+                if (i.customId === 'setup_reset' && idx === -1) return i.update(resetScreen(lang, guild)).catch(() => {});
+                if (i.customId === 'setup_reset_no' && idx === -1) return i.update(welcomeScreen(lang, guild, client, userId)).catch(() => {});
+                if (i.customId === 'setup_reset_ok' && idx === -1) {
+                    try { client.db.prepare('DELETE FROM server_settings WHERE guild_id = ?').run(guild.id); } catch (e) { console.error('[SETUP] reset:', e.message); }
+                    try { client.db.prepare('DELETE FROM server_command_settings WHERE guild_id = ?').run(guild.id); } catch { /* no table */ }
+                    try { client.settings?.delete?.(guild.id); client.invalidateGuildCache?.(guild.id); } catch { /* reloads on next read */ }
+                    console.log(`[SETUP] settings reset for ${guild.id} by ${i.user.id}`);
+                    const back = welcomeScreen(lang, guild, client, userId);
+                    return i.update(back).then(() => i.followUp({ content: T(lang, 'check.reset_done'), flags: 1 << 6 })).catch(() => {});
+                }
                 if (i.customId === 'setup_skip' && idx >= 0) return advance(i);
                 if ((i.customId === 'setup_pick' || i.customId.startsWith('setup_use:')) && idx >= 0) {
                     const step = STEPS[idx];
@@ -255,6 +296,8 @@ module.exports = {
 
     // Used by the installer's self-test.
     _warning: (lang, guild, step, id) => channelWarning(lang, guild, step, id),
+    _resetScreen: resetScreen,
+    _exportFile: exportFile,
 
     // Used by the installer's self-test: builds every screen in one language with the real discord.js builders.
     _preview(lang) {

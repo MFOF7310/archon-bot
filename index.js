@@ -5584,7 +5584,7 @@ apiApp.post('/api/roles-config/:guildId', requireAdmin, async (req, res) => {
 });
 
 // ── COMMAND TOGGLES ──
-const LOCKED_COMMANDS = new Set(['help', 'verify', 'serversettings', 'settings', 'premium', 'dashboard', 'channels', 'roles']);
+const LOCKED_COMMANDS = new Set(['help', 'verify', 'setup', 'setlang', 'welcome', 'premium', 'dashboard', 'channels', 'roles']);
 const _toggleCache = new Map();
 const HIDDEN_CATS = new Set(['SYSTEM', 'OWNER']);
 const catOf = cmd => String(cmd?.category || 'GENERAL').toUpperCase();

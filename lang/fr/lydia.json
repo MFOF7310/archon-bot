@@ -62,7 +62,7 @@
     "failed": "Je n'ai pas réussi à appliquer **{label}**. Essaie depuis le dashboard.",
     "already": "**{label}** a déjà cette valeur ({value}), rien à changer.",
     "notAllowed": "Je ne peux pas modifier `{key}` depuis ici. Passe par le dashboard.",
-    "premiumOnly": "Modifier les réglages par chat est une option **premium**. Tu peux quand même le faire dans le dashboard → Réglages, ou avec `/serversettings set`.",
+    "premiumOnly": "Modifier les réglages par chat est une option **premium**. Tu peux quand même le faire dans le dashboard → Réglages, ou avec `/setup`.",
     "needManage": "Il te faut la permission **Gérer le serveur** pour modifier **{label}**. Demande à un admin.",
     "invalid": "`{value}` n'est pas une valeur valide pour **{label}**{range}.",
     "modlog": "**{label}** : {from} → {to}\nvia Lydia · demandé par <@{id}>",

@@ -39,7 +39,7 @@
   },
   "attention": "À vérifier",
   "postcheckHint": "Lance {cmd} dans ce salon pour voir les étapes exactes.",
-  "next": "Tu peux tout modifier plus tard avec /serversettings, et ajouter d'autres salons avec /channels set.",
+  "next": "Tu peux tout modifier plus tard avec /setup, et ajouter d'autres salons avec /channels.",
   "prefixLine": "Ton préfixe est `{prefix}`, donc les commandes marchent aussi avec `{prefix}help`.",
   "cancelled": "Configuration annulée. Rien d'autre n'a été modifié.",
   "cancelledSaved": "Configuration annulée. Ce que tu as déjà choisi est enregistré.",
@@ -91,6 +91,15 @@
     "item_automod": "AutoMod",
     "problem_logGone": "son salon de journal a été supprimé",
     "panel_automod": "/automod",
-    "problem_notOn": "pas activé"
+    "problem_notOn": "pas activé",
+    "btn_export": "Exporter",
+    "btn_reset": "Tout réinitialiser",
+    "export_done": "Voici une copie des réglages de ce serveur. Garde-la : elle sert à tout refaire à l'identique.",
+    "reset_title": "Tout réinitialiser sur {server} ?",
+    "reset_gone": "Les salons, rôles, messages de bienvenue, langue, automod et commandes désactivées d'ARCHON seront effacés. On ne peut pas annuler.",
+    "reset_kept": "Les niveaux, l'argent, le Premium et les rôles Discord eux-mêmes ne bougent pas.",
+    "reset_tip": "Conseil : exporte d'abord une copie.",
+    "reset_yes": "Oui, tout effacer",
+    "reset_done": "Réglages effacés. La checklist repart de zéro."
   }
 }
