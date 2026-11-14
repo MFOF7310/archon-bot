@@ -22,5 +22,7 @@
   "unknown": "I don't know the language `{code}`. Pick it from the menu.",
   "guildOnly": "This command only works in a server.",
   "need": "You need the Manage Server permission to change the language.",
-  "saveFailed": "I couldn't save the language. Try again in a moment."
+  "saveFailed": "I couldn't save the language. Try again in a moment.",
+  "you_mylang": "You: {name}, picked with {mylang}.",
+  "you_locale": "You: {name}, the server's Discord language."
 }

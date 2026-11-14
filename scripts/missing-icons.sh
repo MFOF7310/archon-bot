@@ -39,4 +39,7 @@ make ic_category category
 make ic_games device-gamepad-2
 make ic_toggle_off toggle-left "$RED"
 make catFood tools-kitchen-2
+make ic_language language "$AMBER"
+make ic_world world
+make ic_user user
 echo "Done. Now run: pm2 restart Architect-CG223"

@@ -48,13 +48,16 @@ function save(client, gid, code) {
     } catch (e) { console.error('[LANG] save:', e.message); return false; }
 }
 
-function panel(client, guild, ownerId, lang, notice) {
+// where = the interaction or message the panel is shown in, so custom icons are used only where they display
+function panel(client, guild, ownerId, lang, notice, where = guild) {
     const { icon } = require('../lib/ui/icons');
+    const ic = (k) => icon(k, where);
+    const asEmoji = (e) => { const m = /^<(a?):(\w+):(\d+)>$/.exec(e || ''); return m ? { id: m[3], name: m[2], animated: m[1] === 'a' } : { name: e }; };
     const cur = serverLang(client, guild.id);
     const mylang = mention(client, 'mylang');
     const c = new ContainerBuilder().setAccentColor(0x1D9E75);
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(
-        `-# ARCHON · ${SL('panel_title', lang)}\n## ${icon('globe', guild)} ${SL('heading', lang, { guild: guild.name })}`));
+        `-# ARCHON · ${SL('panel_title', lang)}\n## ${ic('language')} ${SL('heading', lang, { guild: guild.name })}`));
     if (notice) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(notice));
 
     let state;
@@ -63,14 +66,18 @@ function panel(client, guild, ownerId, lang, notice) {
         state = `${SL('mode_auto', lang)}\n-# ${loc
             ? SL('auto_how', lang, { mylang, locale: `${flagOf(loc)} ${LANGUAGES[loc].native}` })
             : SL('auto_how_nolocale', lang, { mylang })}`;
+        let mine = null;
+        try { mine = require('../lib/member-lang').get(ownerId, guild.id); } catch { /* no member choices */ }
+        const you = LANGUAGES[mine] ? mine : (loc || null);
+        if (you) state += `\n-# ${ic('user')} ${SL(LANGUAGES[mine] ? 'you_mylang' : 'you_locale', lang, { name: `${flagOf(you)} ${LANGUAGES[you].native}`, mylang })}`;
     } else {
         state = `${SL('mode_fixed', lang, { name: `${flagOf(cur)} ${LANGUAGES[cur].native}` })}\n-# ${SL('fixed_how', lang, { mylang })}`;
-        if (LANGUAGES[cur].soon) state += `\n-# ${icon('warn', guild)} ${SL('bm_note', lang)}`;
+        if (LANGUAGES[cur].soon) state += `\n-# ${ic('warn')} ${SL('bm_note', lang)}`;
     }
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(state));
 
-    const opts = [{ label: SL('opt_auto', lang), value: 'auto', description: SL('opt_auto_desc', lang), emoji: '🌐', default: cur === 'auto' }];
+    const opts = [{ label: SL('opt_auto', lang), value: 'auto', description: SL('opt_auto_desc', lang), emoji: ic('world'), default: cur === 'auto' }];
     for (const [code, x] of Object.entries(LANGUAGES)) {
         opts.push({
             label: x.native, value: code, emoji: flagOf(code), default: cur === code,
@@ -79,16 +86,13 @@ function panel(client, guild, ownerId, lang, notice) {
     }
     const menu = new StringSelectMenuBuilder().setCustomId(`lang:pick:${ownerId}`).setPlaceholder(SL('select_ph', lang).slice(0, 150));
     // emoji objects for custom flags, plain strings for the standard ones
-    menu.addOptions(opts.map((o) => {
-        const m = /^<(a?):(\w+):(\d+)>$/.exec(o.emoji || '');
-        return { ...o, emoji: m ? { id: m[3], name: m[2], animated: m[1] === 'a' } : { name: o.emoji } };
-    }));
+    menu.addOptions(opts.map((o) => ({ ...o, emoji: asEmoji(o.emoji) })));
     c.addActionRowComponents(new ActionRowBuilder().addComponents(menu));
 
-    if (cur === 'auto') c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${icon('warn', guild)} ${SL('warn_fixed', lang, { mylang })}`));
+    if (cur === 'auto') c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${ic('warn')} ${SL('warn_fixed', lang, { mylang })}`));
     const buttons = new ActionRowBuilder();
-    if (cur === 'auto') buttons.addComponents(new ButtonBuilder().setCustomId(`lang:mine:${ownerId}`).setLabel(SL('btn_mine', lang)).setStyle(ButtonStyle.Secondary).setEmoji('👤'));
-    else buttons.addComponents(new ButtonBuilder().setCustomId(`lang:auto:${ownerId}`).setLabel(SL('btn_auto', lang)).setStyle(ButtonStyle.Secondary).setEmoji('🌐'));
+    if (cur === 'auto') buttons.addComponents(new ButtonBuilder().setCustomId(`lang:mine:${ownerId}`).setLabel(SL('btn_mine', lang)).setStyle(ButtonStyle.Secondary).setEmoji(asEmoji(ic('user'))));
+    else buttons.addComponents(new ButtonBuilder().setCustomId(`lang:auto:${ownerId}`).setLabel(SL('btn_auto', lang)).setStyle(ButtonStyle.Secondary).setEmoji(asEmoji(ic('refresh'))));
     c.addActionRowComponents(buttons);
     return { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };
 }
@@ -111,12 +115,12 @@ async function handleComponent(ix, client) {
 
     const code = action === 'auto' ? 'auto' : action === 'pick' ? String(ix.values?.[0] || '') : '';
     if (code !== 'auto' && !LANGUAGES[code]) return say(SL('expired', lang));
-    if (code === serverLang(client, guild.id)) return ix.update(panel(client, guild, ownerId, lang)).catch(() => {});
+    if (code === serverLang(client, guild.id)) return ix.update(panel(client, guild, ownerId, lang, null, ix)).catch(() => {});
     if (!save(client, guild.id, code)) return say(SL('saveFailed', lang));
     // redrawn in the language members will now see
     const now = panelLang(client, guild.id, ix, ix.user.id);
     const notice = `> ${code === 'auto' ? SL('saved_auto', now) : SL('saved', now, { name: `${flagOf(code)} ${LANGUAGES[code].native}` })}`;
-    return ix.update(panel(client, guild, ownerId, now, notice)).catch((e) => console.error('[LANG] panel:', e.message));
+    return ix.update(panel(client, guild, ownerId, now, notice, ix)).catch((e) => console.error('[LANG] panel:', e.message));
 }
 
 module.exports = {
@@ -151,14 +155,14 @@ module.exports = {
                 notice = `> ${typed === 'auto' ? SL('saved_auto', L) : SL('saved', L, { name: `${flagOf(typed)} ${LANGUAGES[typed].native}` })}`;
             }
         }
-        return message.reply(panel(client, message.guild, message.author.id, L, notice)).catch((e) => console.error('[LANG] panel:', e.message));
+        return message.reply(panel(client, message.guild, message.author.id, L, notice, message)).catch((e) => console.error('[LANG] panel:', e.message));
     },
 
     async execute(ix, client) {
         const lang = panelLang(client, ix.guildId, ix, ix.user.id);
         if (!ix.guild) return ix.reply({ content: SL('guildOnly', lang), flags: MessageFlags.Ephemeral });
         if (!canManage(ix.member)) return ix.reply({ content: SL('need', lang), flags: MessageFlags.Ephemeral });
-        const view = panel(client, ix.guild, ix.user.id, lang);
+        const view = panel(client, ix.guild, ix.user.id, lang, null, ix);
         return ix.reply({ ...view, flags: view.flags | MessageFlags.Ephemeral });
     },
 };

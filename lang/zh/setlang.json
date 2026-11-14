@@ -22,5 +22,7 @@
   "unknown": "我不认识语言 `{code}`。请从菜单中选择。",
   "guildOnly": "此命令只能在服务器中使用。",
   "need": "你需要「管理服务器」权限才能更改语言。",
-  "saveFailed": "无法保存语言。请稍后再试。"
+  "saveFailed": "无法保存语言。请稍后再试。",
+  "you_mylang": "你：{name}，通过 {mylang} 选择。",
+  "you_locale": "你：{name}，服务器在 Discord 上的语言。"
 }
