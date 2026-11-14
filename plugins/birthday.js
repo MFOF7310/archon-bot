@@ -267,6 +267,8 @@ function ensureTables(db) {
     for (const col of [`timezone TEXT DEFAULT 'UTC'`, 'show_age INTEGER DEFAULT 0']) { try { db.exec(`ALTER TABLE birthday ADD COLUMN ${col}`); } catch { /* already there */ } }
     db.exec(`CREATE TABLE IF NOT EXISTS birthday_wishes (guild_id TEXT, user_id TEXT, year INTEGER, wisher_id TEXT, at INTEGER, PRIMARY KEY (guild_id, user_id, year, wisher_id))`);
     db.exec(`CREATE TABLE IF NOT EXISTS birthday_gifts (guild_id TEXT, user_id TEXT, year INTEGER, giver_id TEXT, amount INTEGER, at INTEGER)`);
+    // where each member chose to show their birthday: nowhere else sees it (no list, no view by others, no announcement)
+    db.exec(`CREATE TABLE IF NOT EXISTS birthday_shares (user_id TEXT, guild_id TEXT, at INTEGER, PRIMARY KEY (user_id, guild_id))`);
     ensureTables.done = true;
 }
 function saveBirthday(db, userId, day, month, year, timezone = 'UTC') {
@@ -278,8 +280,14 @@ function saveBirthday(db, userId, day, month, year, timezone = 'UTC') {
 }
 function deleteBirthday(db, userId) {
     db.prepare('DELETE FROM birthday WHERE user_id = ?').run(userId);
+    try { db.prepare('DELETE FROM birthday_shares WHERE user_id = ?').run(userId); } catch { /* no table yet */ }
     birthdays.delete(userId);
 }
+// The date belongs to the person; each server only sees it if they chose that server
+const sharedOn = (db, uid, gid) => { try { return !!gid && !!db.prepare('SELECT 1 FROM birthday_shares WHERE user_id = ? AND guild_id = ?').get(String(uid), String(gid)); } catch { return false; } };
+const shareOn = (db, uid, gid) => db.prepare('INSERT OR IGNORE INTO birthday_shares (user_id, guild_id, at) VALUES (?, ?, ?)').run(String(uid), String(gid), Date.now());
+const unshareOn = (db, uid, gid) => db.prepare('DELETE FROM birthday_shares WHERE user_id = ? AND guild_id = ?').run(String(uid), String(gid));
+const sharedIds = (db, gid) => { try { return db.prepare('SELECT user_id FROM birthday_shares WHERE guild_id = ?').all(String(gid)).map((r) => r.user_id); } catch { return []; } };
 function setShowAge(db, userId, on) {
     db.prepare('UPDATE birthday SET show_age = ? WHERE user_id = ?').run(on ? 1 : 0, userId);
     const b = birthdays.get(userId); if (b) b.showAge = !!on;
@@ -316,10 +324,12 @@ function announceCard(client, guild, member, year, lang) {
 }
 
 // /birthday view: own (private, with buttons) or another member's (age only if they chose to show it)
-function viewCard(guild, user, viewerId, lang) {
+function viewCard(guild, user, viewerId, lang, db) {
     const b = birthdays.get(user.id);
     const own = user.id === viewerId;
-    if (!b) return card(GREY, [{ text: own ? B('noneSelf', lang) : B('noneOther', lang, { user: `<@${user.id}>` }) }]);
+    const here = guild ? sharedOn(db, user.id, guild.id) : own;
+    // someone else's birthday is only seen on a server they chose; elsewhere it looks unset
+    if (!b || (!own && !here)) return card(GREY, [{ text: own ? B('noneSelf', lang) : B('noneOther', lang, { user: `<@${user.id}>` }) }]);
     const info = birthdayInfo(b);
     const when = info.daysUntil === 0 ? `**${B('today', lang)}**` : info.daysUntil === 1 ? B('tomorrow', lang) : B('inDays', lang, { n: info.daysUntil });
     const showAgeHere = own || b.showAge;
@@ -329,11 +339,13 @@ function viewCard(guild, user, viewerId, lang) {
         `## ${icon('gift', guild)} ${own ? B('viewSelf', lang) : B('viewOther', lang, { user: `<@${user.id}>` })}`,
         `${date} · ${sign(b.day, b.month, lang)}${own ? ` · ${B('tzLine', lang, { tz: b.timezone || 'UTC' })}` : ''}`,
         `-# ${[when, ageText, own && b.year ? B(b.showAge ? 'ageShown' : 'ageHidden', lang) : null].filter(Boolean).join(' · ')}`,
+        ...(own && guild ? [`-# ${B(here ? 'sharedHere' : 'notSharedHere', lang, { server: guild.name })}`] : []),
     ];
     const items = [{ thumbnail: [lines.join('\n'), user.displayAvatarURL({ size: 256, extension: 'png' })] }];
     if (own) {
         const row = new ActionRowBuilder();
         if (b.year) row.addComponents(new ButtonBuilder().setCustomId(`bday:age:${user.id}`).setLabel(B(b.showAge ? 'btnHideAge' : 'btnShowAge', lang)).setEmoji(icon(b.showAge ? 'lock' : 'member', guild)).setStyle(ButtonStyle.Secondary));
+        if (guild) row.addComponents(new ButtonBuilder().setCustomId(`bday:${here ? 'hide' : 'show'}:${user.id}`).setLabel(B(here ? 'btnHideHere' : 'btnShowHere', lang)).setEmoji(icon(here ? 'lock' : 'member', guild)).setStyle(here ? ButtonStyle.Secondary : ButtonStyle.Success));
         row.addComponents(new ButtonBuilder().setCustomId(`bday:del:${user.id}`).setLabel(B('btnRemove', lang)).setStyle(ButtonStyle.Danger));
         items.push({ row });
     }
@@ -341,8 +353,8 @@ function viewCard(guild, user, viewerId, lang) {
 }
 
 // /birthday list: members of this server only, next 90 days, grouped by month
-async function listCard(guild, lang) {
-    const ids = [...birthdays.keys()];
+async function listCard(guild, lang, db) {
+    const ids = sharedIds(db, guild.id).filter((id) => birthdays.has(id));   // only those who chose this server
     const here = new Set();
     for (let i = 0; i < ids.length; i += 100) {
         const chunk = ids.slice(i, i + 100);
@@ -381,6 +393,7 @@ async function checkAndAnnounceBirthdays(client) {
         markAnnounced(db, userId, local.year);   // before sending: a slow or failed send never repeats
         let sent = 0;
         for (const [guildId, guild] of client.guilds.cache) {
+            if (!sharedOn(db, userId, guildId)) continue;   // only the servers they chose
             const member = await guild.members.fetch(userId).catch(() => null);
             if (!member) continue;
             const ss = client.getServerSettings?.(guildId) || {};
@@ -423,6 +436,11 @@ async function handleComponent(ix, client) {
     if (!guild) return say(B('serverOnly', lang));
     const year = Number(yearS);
 
+    if (action === 'show' || action === 'hide') {
+        if (ix.user.id !== uid) return say(B('notYours', lang, { user: `<@${uid}>` }));
+        if (action === 'show') shareOn(db, uid, guild.id); else unshareOn(db, uid, guild.id);
+        return ix.update({ ...viewCard(guild, ix.user, ix.user.id, lang, db), allowedMentions: { parse: [] } }).catch(() => {});
+    }
     if (action === 'age' || action === 'del') {
         if (ix.user.id !== uid) return say(B('notYours', lang, { user: `<@${uid}>` }));
         if (action === 'del') {
@@ -430,7 +448,7 @@ async function handleComponent(ix, client) {
             return ix.update({ ...card(GREY, [{ text: B('removed', lang) }]), allowedMentions: { parse: [] } }).catch(() => {});
         }
         setShowAge(db, uid, !birthdays.get(uid)?.showAge);
-        return ix.update({ ...viewCard(guild, ix.user, ix.user.id, lang), allowedMentions: { parse: [] } }).catch(() => {});
+        return ix.update({ ...viewCard(guild, ix.user, ix.user.id, lang, db), allowedMentions: { parse: [] } }).catch(() => {});
     }
 
     const member = await guild.members.fetch(uid).catch(() => null);
@@ -481,6 +499,7 @@ async function setBirthday(client, userId, day, month, year, zoneInput, lang, gu
     const timezone = zoneInput ? resolveTimezone(zoneInput) : (birthdays.get(userId)?.timezone || 'UTC');
     if (!timezone) return { text: B('unknownZone', lang, { zone: zoneInput }) };
     saveBirthday(client.db, userId, day, month, year, timezone);
+    if (guild) shareOn(client.db, userId, guild.id);   // shown on this server; other servers only when they choose them too
     return { payload: card(PINK, [{ text: `## ${icon('ok', guild)} ${B('setTitle', lang)}\n${B('setLine', lang, { date: formatDate(day, month, year, lang), sign: sign(day, month, lang), tz: offsetLabel(timezone) === timezone ? timezone : `${timezone} (${offsetLabel(timezone)})` })}\n-# ${B('setHint', lang)}` }]) };
 }
 
@@ -529,9 +548,9 @@ module.exports = {
         }
         if (sub === 'list') {
             if (!message.guild) return reply({ content: B('serverOnly', lang) });
-            return reply(await listCard(message.guild, lang));
+            return reply(await listCard(message.guild, lang, client.db));
         }
-        if (sub === 'view' || sub === 'check') return reply(viewCard(message.guild, message.mentions.users.first() || message.author, message.author.id, lang));
+        if (sub === 'view' || sub === 'check') return reply(viewCard(message.guild, message.mentions.users.first() || message.author, message.author.id, lang, client.db));
         return reply({ content: B('usage', lang, { p: client.getServerSettings?.(message.guild?.id)?.prefix || '.' }) });
     },
 
@@ -546,13 +565,13 @@ module.exports = {
         }
         if (sub === 'view') {
             const user = interaction.options.getUser('user') || interaction.user;
-            const view = viewCard(interaction.guild, user, interaction.user.id, lang);
+            const view = viewCard(interaction.guild, user, interaction.user.id, lang, client.db);
             return interaction.reply({ ...view, flags: view.flags | MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
         }
         if (sub === 'list') {
             if (!interaction.guild) return interaction.reply({ content: B('serverOnly', lang), flags: MessageFlags.Ephemeral });
             await interaction.deferReply();
-            return interaction.editReply({ ...(await listCard(interaction.guild, lang)), allowedMentions: { parse: [] } });
+            return interaction.editReply({ ...(await listCard(interaction.guild, lang, client.db)), allowedMentions: { parse: [] } });
         }
     },
 

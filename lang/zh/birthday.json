@@ -18,7 +18,7 @@
   "giftFailed": "礼物没能送出，请稍后再试。",
   "setTitle": "生日已保存",
   "setLine": "{date} · {sign} · 时区 {tz}",
-  "setHint": "ARCHON 会在你当地时间 8:00，在你们共同所在的每个服务器为你庆祝。除非你在 /birthday view 中选择显示，否则你的年龄会保持隐藏。",
+  "setHint": "仅在本服务器可见。在其他服务器上，打开 /birthday view 并点击「在此显示」。你的年龄保持隐藏，除非你选择显示。",
   "viewSelf": "你的生日",
   "viewOther": "{user} 的生日",
   "today": "就是今天！",
@@ -31,7 +31,7 @@
   "tzLine": "时区 {tz}",
   "btnShowAge": "显示我的年龄",
   "btnHideAge": "隐藏我的年龄",
-  "btnRemove": "删除",
+  "btnRemove": "全部删除",
   "removed": "你的生日已删除。随时可以用 /birthday set 重新添加。",
   "noneSelf": "你还没有保存生日。请使用 /birthday set。",
   "noneOther": "{user} 还没有保存生日。",
@@ -61,5 +61,9 @@
     "aquarius": "水瓶座",
     "pisces": "双鱼座"
   },
-  "listSubOne": "{server} · 已登记 1 位成员"
+  "listSubOne": "{server} · 已登记 1 位成员",
+  "sharedHere": "在 {server} 可见：ARCHON 会在你当地时间 8:00 为你庆祝。",
+  "notSharedHere": "在 {server} 不可见：这里没有人能看到。",
+  "btnShowHere": "在此显示",
+  "btnHideHere": "在此隐藏"
 }

@@ -18,7 +18,7 @@
   "giftFailed": "Le cadeau n'a pas pu passer. Réessaie dans un instant.",
   "setTitle": "Anniversaire enregistré",
   "setLine": "{date} · {sign} · fuseau {tz}",
-  "setHint": "ARCHON te fête à 8 h, heure locale, sur chaque serveur que tu partages avec lui. Ton âge reste masqué, sauf si tu choisis de le montrer dans /birthday view.",
+  "setHint": "Visible seulement sur ce serveur. Sur un autre serveur, ouvre /birthday view et touche « Afficher ici ». Ton âge reste masqué, sauf si tu choisis de le montrer.",
   "viewSelf": "Ton anniversaire",
   "viewOther": "Anniversaire de {user}",
   "today": "Aujourd'hui !",
@@ -31,7 +31,7 @@
   "tzLine": "fuseau {tz}",
   "btnShowAge": "Montrer mon âge",
   "btnHideAge": "Masquer mon âge",
-  "btnRemove": "Supprimer",
+  "btnRemove": "Supprimer partout",
   "removed": "Ton anniversaire a été supprimé. Tu peux le remettre quand tu veux avec /birthday set.",
   "noneSelf": "Tu n'as pas encore enregistré ton anniversaire. Utilise /birthday set.",
   "noneOther": "{user} n'a pas enregistré d'anniversaire.",
@@ -61,5 +61,9 @@
     "aquarius": "Verseau",
     "pisces": "Poissons"
   },
-  "listSubOne": "{server} · 1 membre enregistré"
+  "listSubOne": "{server} · 1 membre enregistré",
+  "sharedHere": "Visible sur {server} : ARCHON t'y fête à 8 h, heure locale.",
+  "notSharedHere": "Pas visible sur {server} : personne ici ne le voit.",
+  "btnShowHere": "Afficher ici",
+  "btnHideHere": "Masquer ici"
 }

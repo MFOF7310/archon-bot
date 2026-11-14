@@ -18,7 +18,7 @@
   "giftFailed": "The gift couldn't go through. Try again in a moment.",
   "setTitle": "Birthday saved",
   "setLine": "{date} · {sign} · time zone {tz}",
-  "setHint": "ARCHON celebrates you at 8:00 your time, on every server you share with it. Your age stays hidden unless you choose to show it in /birthday view.",
+  "setHint": "Visible on this server only. On another server, open /birthday view and tap Show here. Your age stays hidden unless you choose to show it.",
   "viewSelf": "Your birthday",
   "viewOther": "{user}'s birthday",
   "today": "Today!",
@@ -31,7 +31,7 @@
   "tzLine": "time zone {tz}",
   "btnShowAge": "Show my age",
   "btnHideAge": "Hide my age",
-  "btnRemove": "Remove",
+  "btnRemove": "Delete everywhere",
   "removed": "Your birthday was removed. Add it again anytime with /birthday set.",
   "noneSelf": "You haven't saved your birthday yet. Use /birthday set.",
   "noneOther": "{user} hasn't saved a birthday.",
@@ -61,5 +61,9 @@
     "aquarius": "Aquarius",
     "pisces": "Pisces"
   },
-  "listSubOne": "{server} · 1 member registered"
+  "listSubOne": "{server} · 1 member registered",
+  "sharedHere": "Visible on {server}: ARCHON celebrates you there at 8:00, your time.",
+  "notSharedHere": "Not visible on {server}: nobody here sees it.",
+  "btnShowHere": "Show here",
+  "btnHideHere": "Hide here"
 }

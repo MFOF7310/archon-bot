@@ -18,7 +18,7 @@
   "giftFailed": "تعذّر إرسال الهدية. حاول مجددًا بعد قليل.",
   "setTitle": "تم حفظ عيد الميلاد",
   "setLine": "{date} · {sign} · المنطقة الزمنية {tz}",
-  "setHint": "يحتفل بك ARCHON في الساعة 8:00 بتوقيتك، في كل خادم تشاركه معه. يبقى عمرك مخفيًا ما لم تختر إظهاره في /birthday view.",
+  "setHint": "مرئي على هذا الخادم فقط. على خادم آخر، افتح /birthday view واضغط «إظهار هنا». يبقى عمرك مخفياً إلا إذا اخترت إظهاره.",
   "viewSelf": "عيد ميلادك",
   "viewOther": "عيد ميلاد {user}",
   "today": "اليوم!",
@@ -31,7 +31,7 @@
   "tzLine": "المنطقة الزمنية {tz}",
   "btnShowAge": "إظهار عمري",
   "btnHideAge": "إخفاء عمري",
-  "btnRemove": "حذف",
+  "btnRemove": "حذف من كل مكان",
   "removed": "تم حذف عيد ميلادك. يمكنك إضافته مجددًا في أي وقت بالأمر /birthday set.",
   "noneSelf": "لم تحفظ عيد ميلادك بعد. استخدم /birthday set.",
   "noneOther": "لم يحفظ {user} عيد ميلاد.",
@@ -61,5 +61,9 @@
     "aquarius": "الدلو",
     "pisces": "الحوت"
   },
-  "listSubOne": "{server} · عضو واحد مسجل"
+  "listSubOne": "{server} · عضو واحد مسجل",
+  "sharedHere": "مرئي على {server}: يحتفل بك ARCHON هناك الساعة 8:00 بتوقيتك.",
+  "notSharedHere": "غير مرئي على {server}: لا أحد هنا يراه.",
+  "btnShowHere": "إظهار هنا",
+  "btnHideHere": "إخفاء هنا"
 }
