@@ -55,7 +55,7 @@ module.exports = {
     usage: '/war record | /war stats | /war history | /war delete',
     cooldown: 3000,
 
-    data: new SlashCommandBuilder().setName('war').setDescription(`${EMOJIS.duel_sword} Clan war tracker`)
+    data: new SlashCommandBuilder().setName('war').setDescription('⚔️ Clan war tracker')
         .addSubcommand(s => s.setName('record').setDescription('Record a match result (admin)')
             .addStringOption(o => o.setName('opponent').setDescription('Clan you played').setRequired(true))
             .addStringOption(o => o.setName('result').setDescription('How it went').setRequired(true)

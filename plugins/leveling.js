@@ -882,6 +882,8 @@ module.exports = {
     handleComponent,
     autocomplete,
     _configCard: (...a) => configCard(...a),
+    createRoles: (...a) => createRoles(...a),   // /roles: create missing reward roles
+    roleNames: (lang) => ({ level: LEVEL_ROLES.map(([lvl, emoji]) => ({ col: `level_${lvl}_role`, emoji, name: L(`roleName${lvl}`, lang) })), streak: STREAK_ROLES.map(([days, col, emoji]) => ({ col, emoji, name: L('streakName', lang, { days }) })) }),
     name: 'leveling',
     category: 'SOCIAL',
     aliases: ['level', 'lvl', 'progress', 'rank', 'xp', 'rang', 'niveau'],   // the old /level and /rank commands

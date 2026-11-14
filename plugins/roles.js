@@ -28,6 +28,67 @@ function iconFor(key) {
     return require('../lib/emoji-check').pick(k && E[k], plain);
 }
 
+// Reward roles ARCHON can create in one go (cosmetic: no permissions). Economy ones live here; level and daily-streak
+// ones come from plugins/leveling.js, so a role made from either place has the same name and is reused, not duplicated.
+const ECONOMY_ROLES = [['investor', '📈', 0x2ECC71], ['quizmaster', '🧠', 0x9B59B6], ['duelist', '⚔️', 0xE74C3C]];
+const COL_KEY = Object.fromEntries(R.SLOTS.map((s) => [s.col, s.key]));
+
+// The reward roles not set yet (or whose role was deleted), grouped: [{ group, items: [{ key, emoji, name }] }]
+function missingRewards(guild, db, lang) {
+    const saved = R.readSlots(db, guild.id);
+    const missing = (key) => !saved[key] || !guild.roles.cache.has(String(saved[key]));
+    const lv = require('./leveling.js').roleNames(lang);
+    const groups = [
+        { group: 'economy', items: ECONOMY_ROLES.filter(([k]) => missing(k)).map(([k, emoji]) => ({ key: k, emoji, name: label(k, lang) })) },
+        { group: 'daily', set: 'streak', items: lv.streak.filter((x) => COL_KEY[x.col] && missing(COL_KEY[x.col])).map((x) => ({ key: COL_KEY[x.col], emoji: x.emoji, name: x.name })) },
+        { group: 'levels', set: 'level', items: lv.level.filter((x) => COL_KEY[x.col] && missing(COL_KEY[x.col])).map((x) => ({ key: COL_KEY[x.col], emoji: x.emoji, name: x.name })) },
+    ];
+    return groups.filter((g) => g.items.length);
+}
+const countMissing = (groups) => groups.reduce((n, g) => n + g.items.length, 0);
+
+// The card shown before anything is created: what each role is for, and that it is cosmetic
+function createView(guild, db, lang, ownerId) {
+    const groups = missingRewards(guild, db, lang);
+    const n = countMissing(groups);
+    const c = new ContainerBuilder().setAccentColor(ACCENT);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t('roles.mk_title', lang)}\n${t('roles.mk_intro', lang)}`));
+    for (const g of groups) {
+        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${iconFor(g.group)} ${t(`roles.${g.group}`, lang)}\n${g.items.map((x) => `${x.emoji} **${x.name}** · ${t(`roles.hints.${x.key}`, lang)}`).join('\n')}`));
+    }
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('roles.mk_reuse', lang)}`));
+    c.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`roles:mkok:${ownerId}`).setLabel(t('roles.btn_confirm', lang, { n })).setStyle(ButtonStyle.Success).setDisabled(!n),
+        new ButtonBuilder().setCustomId(`roles:back:${ownerId}`).setLabel(t('roles.btn_cancel', lang)).setStyle(ButtonStyle.Secondary)));
+    return { components: [c] };
+}
+
+// Creates the missing economy roles like leveling.js does its own: no permissions, not mentionable, not hoisted,
+// just under ARCHON's role; on boosted servers the emoji becomes the role icon, elsewhere it goes in the name
+async function createEconomyRoles(guild, db, lang, actor) {
+    const saved = R.readSlots(db, guild.id);
+    const icons = guild.features?.includes?.('ROLE_ICONS');
+    const next = { ...saved };
+    let made = 0, reused = 0;
+    for (const [key, emoji, color] of ECONOMY_ROLES) {
+        if (saved[key] && guild.roles.cache.has(String(saved[key]))) continue;
+        const base = label(key, lang);
+        const name = icons ? base : `${emoji} ${base}`;
+        let role = guild.roles.cache.find((r) => r.name === name || r.name === base || r.name === `${emoji} ${base}`);
+        if (role && R.checkRole(guild, role, 'grant', null)) continue;   // an existing role ARCHON can't give is left alone
+        if (!role) {
+            const opts = { name, color, permissions: [], hoist: false, mentionable: false, reason: t('roles.mk_reason', lang, { user: actor.user?.tag || actor.id }) };
+            if (icons) opts.unicodeEmoji = emoji;
+            role = await guild.roles.create(opts).catch(() => (icons ? guild.roles.create({ ...opts, unicodeEmoji: undefined }).catch(() => null) : null));
+            if (!role) continue;
+            made++;
+        } else reused++;
+        next[key] = role.id;
+    }
+    return { next, made, reused };
+}
+
 // How a slot reads in the overview: the role, or "Not set", plus a short warning when the saved role can't be used
 function slotLine(guild, slot, saved, lang) {
     let value = saved[slot.key];
@@ -64,6 +125,10 @@ function mainView(guild, db, lang, ownerId, notice) {
                 emoji: iconFor(s.key),
             })))
     ));
+    // one tap creates the reward roles that are still missing (after a card that says exactly what they are)
+    const n = guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles) ? countMissing(missingRewards(guild, db, lang)) : 0;
+    if (n) c.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`roles:mk:${ownerId}`).setLabel(cut(t('roles.btn_create', lang, { n }), 80)).setStyle(ButtonStyle.Secondary).setEmoji(iconFor('levels'))));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('roles.footer', lang)}`));
     return { components: [c] };
 }
@@ -201,6 +266,33 @@ module.exports = {
             return update(editView(guild, client.db, lang, ownerId, key));
         }
         if (action === 'back') return update(mainView(guild, client.db, lang, ownerId));
+        if (action === 'mk') {
+            if (!guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) return deny('roles.mk_noperm');
+            return update(createView(guild, client.db, lang, ownerId));
+        }
+        if (action === 'mkok') {
+            if (!guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) return deny('roles.mk_noperm');
+            await interaction.deferUpdate().catch(() => {});
+            const db = client.db;
+            const before = R.readSlots(db, guild.id);
+            const groups = missingRewards(guild, db, lang);
+            if (!countMissing(groups)) return interaction.editReply({ ...mainView(guild, db, lang, ownerId, t('roles.mk_nothing', lang)), flags: V2, allowedMentions: { parse: [] } }).catch(() => {});
+            let made = 0, reused = 0;
+            const eco = await createEconomyRoles(guild, db, lang, member);
+            made += eco.made; reused += eco.reused;
+            R.writeSlots(client, db, guild.id, R.readSlots(db, guild.id), eco.next);
+            for (const g of groups.filter((x) => x.set)) {
+                const r = await require('./leveling.js').createRoles(guild, db, lang, g.set).catch(() => ({}));
+                made += r.made || 0; reused += r.reused || 0;
+            }
+            try { client.settings?.delete?.(guild.id); } catch { /* reloads */ }
+            const after = R.readSlots(db, guild.id);
+            const changes = R.SLOTS.filter((x) => (before[x.key] || null) !== (after[x.key] || null)).map((x) => ({ key: x.key, before: before[x.key] || null, after: after[x.key] || null }));
+            console.log(`[ROLES] guild=${guild.id} by=${interaction.user.id} reward roles: ${made} created, ${reused} reused`);
+            await R.logChanges(guild, db, changes, interaction.user.id, 'discord', lang);
+            const notice = [made ? t('roles.mk_done', lang, { n: made }) : null, reused ? t('roles.mk_reused', lang, { n: reused }) : null].filter(Boolean).join(' ') || t('roles.mk_nothing', lang);
+            return interaction.editReply({ ...mainView(guild, db, lang, ownerId, notice), flags: V2, allowedMentions: { parse: [] } }).catch(() => {});
+        }
 
         const key = parts[2];
         if (!R.BY_KEY[key]) return deny('roles.expired');

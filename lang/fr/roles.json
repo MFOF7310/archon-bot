@@ -84,5 +84,16 @@
   "usage_remove": "Utilisation : `.roles remove <type>`",
   "admin_only": "Il te faut les permissions Gérer le serveur et Gérer les rôles pour modifier les rôles.",
   "status_unsafe_line": "Inutilisable : {reason}",
-  "levels": "Récompenses de niveau"
+  "levels": "Récompenses de niveau",
+  "btn_create": "Créer les rôles de récompense manquants ({n})",
+  "mk_title": "Créer les rôles de récompense",
+  "mk_intro": "ARCHON va créer ces rôles. Ce sont des rôles **cosmétiques** : aucune permission, ils n'ouvrent aucun salon, personne ne peut les mentionner et ils ne sont pas affichés à part dans la liste des membres. ARCHON les place juste sous son propre rôle et les donne tout seul quand un membre les gagne.",
+  "mk_reuse": "Un rôle qui existe déjà avec le même nom est réutilisé, pas créé en double. Chaque rôle créé est noté dans le journal de modération.",
+  "btn_confirm": "Créer {n} rôles",
+  "btn_cancel": "Annuler",
+  "mk_done": "{n} rôles créés.",
+  "mk_reused": "{n} rôles existants réutilisés.",
+  "mk_nothing": "Rien à créer : tous les rôles de récompense sont déjà réglés.",
+  "mk_noperm": "ARCHON a besoin de la permission Gérer les rôles pour créer des rôles.",
+  "mk_reason": "Rôle de récompense ARCHON, demandé par {user}"
 }

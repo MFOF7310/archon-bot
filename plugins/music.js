@@ -1497,8 +1497,8 @@ module.exports = {
                     {name: '🔊 Bass Boost', value: 'bassboost'},
                     {name: '🐰 Nightcore', value: 'nightcore'},
                     {name: '🌴 Vaporwave', value: 'vaporwave'},
-                    {name: `${em('charts', '📊')} Normalize (default)`, value: 'normalize'},
-                    {name: `${em('ic_off', '❌')} Off`, value: 'off'}
+                    {name: 'Normalize (default)', value: 'normalize'},
+                    {name: 'Off', value: 'off'}
                 )))
         .addSubcommand(s => s.setName('library').setDescription('📚 Browse the curated music library — interactive browser')
             .addStringOption(o => o.setName('search').setDescription('🔍 Search inside the library (optional)').setRequired(false).setAutocomplete(true))),

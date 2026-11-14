@@ -1740,8 +1740,8 @@ module.exports = {
         addSubcommand(s => s.setName('channels').setDescription('Restrict AutoMod to specific channels').addStringOption(o => o.setName('action').setDescription('add, remove, list, or clear').setRequired(true).addChoices({name:'📋 List restricted channels',value:'list'},{name:'➕ Add channel',value:'add'},{name:'➖ Remove channel',value:'remove'},{name:'🔄 Clear all',value:'clear'})).addChannelOption(o => o.setName('channel').setDescription('Channel to add/remove').setRequired(false))).
         addSubcommand(s => s.setName('raid').setDescription('🛡️ Configure raid detection').
             addStringOption(o => o.setName('action').setDescription('Action').setRequired(true).addChoices(
-                {name:em('ic_ok', '✅') + ' Enable', value:'enable'},
-                {name:em('ic_off', '❌') + ' Disable', value:'disable'},
+                {name:'🟢 Enable', value:'enable'},
+                {name:'🔴 Disable', value:'disable'},
                 {name:'📊 Status', value:'status'},
                 {name:'⚙️ Set threshold', value:'threshold'},
                 {name:'👶 Min account age', value:'minage'}

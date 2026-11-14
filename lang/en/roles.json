@@ -84,5 +84,16 @@
   "usage_remove": "Usage: `.roles remove <type>`",
   "admin_only": "You need the Manage Server and Manage Roles permissions to change role settings.",
   "status_unsafe_line": "Not usable: {reason}",
-  "levels": "Level rewards"
+  "levels": "Level rewards",
+  "btn_create": "Create missing reward roles ({n})",
+  "mk_title": "Create the reward roles",
+  "mk_intro": "ARCHON will create these roles. They are **cosmetic**: no permissions, they open no channel, nobody can mention them and they are not shown apart in the member list. ARCHON puts them just under its own role and hands them out by itself when a member earns them.",
+  "mk_reuse": "A role that already exists with the same name is reused, not created twice. Every role created is written in the mod log.",
+  "btn_confirm": "Create {n} roles",
+  "btn_cancel": "Cancel",
+  "mk_done": "{n} roles created.",
+  "mk_reused": "{n} existing roles reused.",
+  "mk_nothing": "Nothing to create: every reward role is already set.",
+  "mk_noperm": "ARCHON needs the Manage Roles permission to create roles.",
+  "mk_reason": "ARCHON reward role, asked by {user}"
 }
