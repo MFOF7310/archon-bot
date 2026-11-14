@@ -3424,6 +3424,12 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
         });
     }
+    if ((interaction.isButton() || interaction.isAnySelectMenu()) && interaction.customId.startsWith('lang:')) {
+        return require('./plugins/setlang').handleComponent(interaction, client).catch(e => {
+            console.error(`[LANG] panel guild=${interaction.guildId}:`, e.stack || e.message);
+            if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
+        });
+    }
     if ((interaction.isButton() || interaction.isAnySelectMenu()) && interaction.customId.startsWith('roles:')) {
         return require('./plugins/roles').handleComponent(interaction, client).catch(e => {
             console.error(`[ROLES] component guild=${interaction.guildId}:`, e.stack || e.message);

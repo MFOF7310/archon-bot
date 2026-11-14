@@ -87,6 +87,7 @@ async function handleComponent(interaction, client) {
 
 module.exports = {
     handleComponent,
+    buildCard,
     name: 'mylang',
     aliases: ['mylanguage', 'malangue', 'monlangue'],
     description: 'Choose the language ARCHON answers you in (servers with their own /setlang keep theirs).',
