@@ -118,7 +118,12 @@
     "investor_role": "投资者身份组",
     "quiz_master_role": "问答大师身份组",
     "duelist_role": "决斗者身份组",
-    "gamer_role": "玩家身份组"
+    "gamer_role": "玩家身份组",
+    "level_5_role": "5 级身份组",
+    "level_10_role": "10 级身份组",
+    "level_15_role": "15 级身份组",
+    "level_20_role": "20 级身份组",
+    "level_25_role": "25 级身份组"
   },
   "short": {
     "private": "私有频道，ARCHON 不在其中",

@@ -78,7 +78,7 @@ async function createEconomyRoles(guild, db, lang, actor) {
         let role = guild.roles.cache.find((r) => r.name === name || r.name === base || r.name === `${emoji} ${base}`);
         if (role && R.checkRole(guild, role, 'grant', null)) continue;   // an existing role ARCHON can't give is left alone
         if (!role) {
-            const opts = { name, color, permissions: [], hoist: false, mentionable: false, reason: t('roles.mk_reason', lang, { user: actor.user?.tag || actor.id }) };
+            const opts = { name, colors: { primaryColor: color }, permissions: [], hoist: false, mentionable: false, reason: t('roles.mk_reason', lang, { user: actor.user?.tag || actor.id }) };
             if (icons) opts.unicodeEmoji = emoji;
             role = await guild.roles.create(opts).catch(() => (icons ? guild.roles.create({ ...opts, unicodeEmoji: undefined }).catch(() => null) : null));
             if (!role) continue;

@@ -118,7 +118,12 @@
     "investor_role": "Investor role",
     "quiz_master_role": "Quiz master role",
     "duelist_role": "Duelist role",
-    "gamer_role": "Gamer role"
+    "gamer_role": "Gamer role",
+    "level_5_role": "Level 5 role",
+    "level_10_role": "Level 10 role",
+    "level_15_role": "Level 15 role",
+    "level_20_role": "Level 20 role",
+    "level_25_role": "Level 25 role"
   },
   "short": {
     "private": "private channel, ARCHON is not in it",

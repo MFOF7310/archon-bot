@@ -647,7 +647,7 @@ async function createRoles(guild, db, lang, set = 'level') {
         let role = guild.roles.cache.find((r) => r.name === name || r.name === base || r.name === `${emoji} ${base}`);
         if (!role) {
             const m = /^<a?:\w+:(\d+)>$/.exec(String((iconKey && E[iconKey]) || ''));
-            const opts = { name, color, permissions: [], hoist: false, mentionable: false, reason: set === 'streak' ? 'ARCHON daily streak rewards' : 'ARCHON level rewards' };
+            const opts = { name, colors: { primaryColor: color }, permissions: [], hoist: false, mentionable: false, reason: set === 'streak' ? 'ARCHON daily streak rewards' : 'ARCHON level rewards' };
             if (icons) { if (m) opts.icon = `https://cdn.discordapp.com/emojis/${m[1]}.png`; else opts.unicodeEmoji = emoji; }
             role = await guild.roles.create(opts).catch(async (e) => {
                 // an icon Discord refuses must not stop the role itself

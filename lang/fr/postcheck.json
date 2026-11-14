@@ -118,7 +118,12 @@
     "investor_role": "Rôle investisseur",
     "quiz_master_role": "Rôle maître du quiz",
     "duelist_role": "Rôle duelliste",
-    "gamer_role": "Rôle gamer"
+    "gamer_role": "Rôle gamer",
+    "level_5_role": "Rôle niveau 5",
+    "level_10_role": "Rôle niveau 10",
+    "level_15_role": "Rôle niveau 15",
+    "level_20_role": "Rôle niveau 20",
+    "level_25_role": "Rôle niveau 25"
   },
   "short": {
     "private": "salon privé, ARCHON n'y est pas",

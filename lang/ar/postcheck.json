@@ -118,7 +118,12 @@
     "investor_role": "رتبة المستثمر",
     "quiz_master_role": "رتبة سيد الاختبار",
     "duelist_role": "رتبة المبارز",
-    "gamer_role": "رتبة اللاعب"
+    "gamer_role": "رتبة اللاعب",
+    "level_5_role": "رتبة المستوى 5",
+    "level_10_role": "رتبة المستوى 10",
+    "level_15_role": "رتبة المستوى 15",
+    "level_20_role": "رتبة المستوى 20",
+    "level_25_role": "رتبة المستوى 25"
   },
   "short": {
     "private": "قناة خاصة، ARCHON ليس فيها",
