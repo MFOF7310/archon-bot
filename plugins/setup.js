@@ -74,14 +74,36 @@ function suggestFor(guild, step) {
 }
 
 // ── the screens ──────────────────────────────────────
-function welcomeScreen(lang, guild, client) {
-    const embed = new EmbedBuilder().setColor(GOLD)
-        .setAuthor({ name: T(lang, 'title'), iconURL: client?.user?.displayAvatarURL?.() })
-        .setDescription(T(lang, 'welcome', { server: safeName(guild.name), total: STEPS.length }));
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('setup_start').setLabel(T(lang, 'start')).setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('setup_cancel').setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary));
-    return toV2({ embeds: [embed], components: [row] });
+// The first screen: where this server stands (lib/setup-checklist.js, the same list Lydia reads), the wizard's
+// Start button, and shortcuts to the panels that fix the rest. Opener id in the shortcuts: only they can drive them.
+function welcomeScreen(lang, guild, client, userId = '0') {
+    const { card } = require('../lib/games/v2');
+    const C = (k, v) => T(lang, `check.${k}`, v);
+    let res = { items: [], doneCount: 0, total: 0, coreLeft: 0 };
+    try { res = require('../lib/setup-checklist').compute(client, guild); } catch (e) { console.error('[SETUP] checklist:', e.message); }
+    const cmd = (name) => { try { return require('../lib/cmd').slash(client, name, { guild }); } catch { return `/${name}`; } };
+    const fixLabel = (panel) => panel === 'language' ? cmd('setlang') : panel === 'verify' ? cmd('verify') : C(`panel_${panel}`);
+    const line = (i) => {
+        if (i.done) return `${icon('ok', guild)} ${C(`item_${i.key}`)}`;
+        const why = i.problem ? C(`problem_${i.problem}`) : C('notSet');
+        return `${i.problem ? icon('warn', guild) : i.level === 'core' ? icon('off', guild) : '○'} ${C(`item_${i.key}`)} · ${why}\n-# ${C('fixIn', { where: fixLabel(i.panel) })}`;
+    };
+    const filled = res.total ? Math.round((res.doneCount / res.total) * 10) : 0;
+    const items = [{ text: `-# ARCHON · ${T(lang, 'title')}\n## ${icon('ch_title', guild)} ${C('heading', { server: safeName(guild.name) })}\n${C('progress', { done: res.doneCount, total: res.total })}${res.coreLeft ? ` · ${C(res.coreLeft === 1 ? 'coreLeftOne' : 'coreLeft', { n: res.coreLeft })}` : ` · ${C('coreDone')}`}\n\`${'█'.repeat(filled)}${'░'.repeat(10 - filled)}\`` }];
+    for (const level of ['core', 'recommended', 'optional']) {
+        const list = res.items.filter((i) => i.level === level);
+        if (!list.length) continue;
+        items.push({ rule: true }, { text: `### ${C(`level_${level}`)}\n${list.map(line).join('\n')}` });
+    }
+    items.push({ rule: true }, { text: C('wizardHint', { total: STEPS.length, start: T(lang, 'start') }) });
+    items.push({ row: new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('setup_start').setLabel(T(lang, 'start')).setStyle(ButtonStyle.Success).setEmoji(icon('next', guild)),
+        new ButtonBuilder().setCustomId('setup_cancel').setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary)) });
+    items.push({ row: new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`chan:back:${userId}`).setLabel(C('panel_channels')).setStyle(ButtonStyle.Secondary).setEmoji(icon('ch_title', guild)),
+        new ButtonBuilder().setCustomId(`roles:back:${userId}`).setLabel(C('panel_roles')).setStyle(ButtonStyle.Secondary).setEmoji(icon('member', guild)),
+        new ButtonBuilder().setCustomId(`wel:open:welcome:${userId}`).setLabel(C('panel_welcome')).setStyle(ButtonStyle.Secondary).setEmoji(icon('ch_welcome', guild))) });
+    return card(res.coreLeft ? AMBER : GREEN, items);
 }
 
 function questionScreen(lang, guild, idx, notice, suggestion = suggestFor(guild, STEPS[idx])) {
@@ -181,8 +203,8 @@ module.exports = {
 
         let msg;
         try {
-            const first = welcomeScreen(lang, guild, client);
-            if (isSlash) { await context.reply(first); msg = await context.fetchReply(); } else msg = await context.reply(first);
+            const first = welcomeScreen(lang, guild, client, userId);
+            if (isSlash) { await context.reply({ ...first, flags: first.flags | (1 << 6) }); msg = await context.fetchReply(); } else msg = await context.reply(first);
         } catch (e) { console.error('[SETUP] could not open the wizard:', e.message); return; }
 
         const collector = msg.createMessageComponentCollector({ idle: IDLE_MS });
@@ -203,6 +225,8 @@ module.exports = {
         collector.on('collect', async (i) => {
             try {
                 if (i.user.id !== userId) return i.reply({ content: T(lang, 'notYours'), flags: 1 << 6 }).catch(() => {});
+                // a shortcut to another panel: that panel's own handler takes over this message, the wizard steps aside
+                if (!i.customId.startsWith('setup_')) return collector.stop('left');
                 if (i.customId === 'setup_cancel') { collector.stop('cancelled'); return i.update(plainScreen(lang, savedCount() ? 'cancelledSaved' : 'cancelled')).catch(() => {}); }
                 if (i.customId === 'setup_start' && idx === -1) return advance(i);
                 if (i.customId === 'setup_skip' && idx >= 0) return advance(i);
@@ -236,7 +260,7 @@ module.exports = {
     _preview(lang) {
         const guild = { name: 'Test Server', channels: { cache: new Map() }, members: { me: null } };
         const state = { rules: '111111111111111111', welcome: '222222222222222222', member: '333333333333333333' };
-        const shots = [welcomeScreen(lang, guild, null), ...STEPS.map((_, n) => questionScreen(lang, guild, n)), questionScreen(lang, guild, 2, T(lang, 'roleManaged')),
+        const shots = [ ...STEPS.map((_, n) => questionScreen(lang, guild, n)), questionScreen(lang, guild, 2, T(lang, 'roleManaged')),
             summaryScreen(lang, guild, state, ['example warning'], '.'), plainScreen(lang, 'cancelled'), plainScreen(lang, 'timeoutSaved')];
         return shots.map((s) => JSON.stringify({ flags: s.flags, components: s.components.map((c) => c.toJSON()) }));
     }

@@ -652,6 +652,9 @@ function relevantCommands(userMessage, commands, limit = 8) {
     .join('\n');
 }
 
+// A question about setting the server up, in en/fr/zh/ar ("what's left to set up?", "qu'est-ce qui manque ?", "设置", "إعداد")
+const SETUP_QUESTION = /\b(set ?up|config\w*|settings?|what'?s left|missing|r[ée]glag\w*|param[èe]tr\w*|configur\w*|qu.?est.ce qui (manque|reste)|il (me )?reste|à faire|salons?|channels?|r[ôo]les?|bienvenue|welcome|v[ée]rif\w*)\b|设置|配置|还缺|إعداد|ضبط|الإعدادات/i;
+
 function buildSystemPrompt(botName, userName, guild, isOwner, theme, prefix = '.', lang = 'en', pluginCount = 0, userMessage = '', commands = null, premiumActions = false, moduleStats = null) {
   let pluginBreakdown = '';
   const ms = moduleStats;
@@ -811,9 +814,21 @@ async function handleLydiaMessage(message, client, database) {
 
     const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang, client.commands?.size || 0, message.content, client.commands, !!(message.guild?.id && isPremium(database, message.guild.id)), client.moduleStats);
 
-    const fullSystem = memories.length > 0
+    let fullSystem = memories.length > 0
       ? `${systemPrompt}\n\n[Your memories about this user]:\n${memories.map(m => `\u2022 ${m.memory_key}: ${m.memory_value}`).join('\n')}`
       : systemPrompt;
+    // Setup questions ("what's left to set up?"): server managers get this server's checklist (lib/setup-checklist.js,
+    // the same list /setup shows), read only and without channel or role names. Other members get no configuration.
+    if (SETUP_QUESTION.test(message.content || '')) {
+      if (message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild)) {
+        try {
+          const list = require('../lib/setup-checklist');
+          fullSystem += `\n\n[This server's setup, checked by ARCHON just now. Read only: you cannot change any setting and must never say you did. The person asking manages this server. Tell them what is done and what is left, most important first, and for each missing item name the place after the arrow where they fix it. /setup shows the same list with buttons.]\n${list.summaryText(list.compute(client, message.guild), lang)}`;
+        } catch (e) { console.error('[LYDIA] setup checklist:', e.message); }
+      } else {
+        fullSystem += `\n\n[The person asking does not manage this server. Do not describe how the server is configured (channels, roles, verification, logs); suggest they ask a server admin, who can see everything with /setup.]`;
+      }
+    }
 
     let history = [];
     try {

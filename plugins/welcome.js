@@ -450,6 +450,7 @@ async function handleComponent(ix, client) {
     if (!k) return say(WL('panel_expired', lang));
     const redraw = (notice) => (ix.isModalSubmit?.() && !ix.isFromMessage?.() ? say(notice) : ix.update(panel(guild, client, lang, ownerId, notice)).catch((e) => console.error('[WELCOME] panel:', e.message)));
 
+    if (action === 'open') return ix.update(panel(guild, client, lang, ownerId)).catch((e) => console.error('[WELCOME] panel:', e.message));   // from /setup
     if (action === 'toggle') {
         const on = readCfg(client.db, guild.id)[k.enabled] !== 0;
         writeCol(client, guild.id, k.enabled, on ? 0 : 1);
