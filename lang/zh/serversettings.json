@@ -39,5 +39,6 @@
   "restricted_desc": "此命令仅供服务器管理员使用。",
   "confirm_reset": "输入 `CONFIRM` 继续。",
   "footer": "使用下面的命令进行修改",
-  "no_settings": "此类别中未找到设置。"
+  "no_settings": "此类别中未找到设置。",
+  "all_set": "这里的设置都已配置，没有需要设置的项目。"
 }

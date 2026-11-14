@@ -337,7 +337,7 @@ async execute(interaction, client) {
 
         if (filteredSections.length === 0) {
             c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*${tr('no_settings')}*`));
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(category === 'unconfigured' ? `${em('ic_ok', '✅')} ${tr('all_set')}` : `*${tr('no_settings')}*`));
         } else {
             filteredSections.forEach((sec, index) => {
                 c.addSeparatorComponents(new SeparatorBuilder().setDivider(true));

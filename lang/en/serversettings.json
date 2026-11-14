@@ -39,5 +39,6 @@
   "restricted_desc": "This command is reserved for server administrators.",
   "confirm_reset": "Type `CONFIRM` to proceed.",
   "footer": "Use the command below to modify",
-  "no_settings": "No settings found in this category."
+  "no_settings": "No settings found in this category.",
+  "all_set": "Everything here is configured. Nothing left to set."
 }
