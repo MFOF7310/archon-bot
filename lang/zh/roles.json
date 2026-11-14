@@ -95,5 +95,7 @@
   "mk_reused": "已使用 {n} 个现有身份组。",
   "mk_nothing": "无需创建：所有奖励身份组都已设置。",
   "mk_noperm": "ARCHON 需要“管理身份组”权限才能创建身份组。",
-  "mk_reason": "ARCHON 奖励身份组，由 {user} 请求"
+  "mk_reason": "ARCHON 奖励身份组，由 {user} 请求",
+  "gone_title": "身份组已在 Discord 中删除",
+  "gone_hint": "ARCHON 已将它们从设置中移除。可用 {cmd} → 创建缺少的奖励身份组 重新创建。"
 }

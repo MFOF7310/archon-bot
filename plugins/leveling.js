@@ -603,9 +603,10 @@ async function configCard(client, guild, db, lang, who) {
     const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(dashboardUrl(guild.id)).setLabel(L('btnDashboard', lang)).setEmoji(icon('dashboard', guild)));
     // one tap creates the missing level roles (cosmetic only), when ARCHON may manage roles here
-    const missingRoles = MILESTONES.some((m) => !row[`level_${m}_role`]);
+    const gone = (id) => !id || !guild.roles.cache.has(String(id));   // empty, or deleted in Discord
+    const missingRoles = MILESTONES.some((m) => gone(row[`level_${m}_role`]));
     if (can.roles && missingRoles && guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:create').setStyle(ButtonStyle.Success).setLabel(L('btnCreate', lang)).setEmoji(icon('ok', guild)));
-    const missingStreak = STREAK_ROLES.some(([, col]) => !row[col]);
+    const missingStreak = STREAK_ROLES.some(([, col]) => gone(row[col]));
     if (can.roles && missingStreak && guild.members.me?.permissions?.has(PermissionFlagsBits.ManageRoles)) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:streak').setStyle(ButtonStyle.Success).setLabel(L('btnCreateStreak', lang)).setEmoji(icon('streak', guild)));
     if (can.theme) buttons.addComponents(new ButtonBuilder().setCustomId('lvl:theme').setStyle(ButtonStyle.Primary).setLabel(L('btnTheme', lang)).setEmoji(icon('palette', guild)));
     items.push({ row: buttons });

@@ -95,5 +95,7 @@
   "mk_reused": "{n} existing roles reused.",
   "mk_nothing": "Nothing to create: every reward role is already set.",
   "mk_noperm": "ARCHON needs the Manage Roles permission to create roles.",
-  "mk_reason": "ARCHON reward role, asked by {user}"
+  "mk_reason": "ARCHON reward role, asked by {user}",
+  "gone_title": "Roles deleted in Discord",
+  "gone_hint": "ARCHON removed them from its settings. Make them again with {cmd} → Create missing reward roles."
 }
