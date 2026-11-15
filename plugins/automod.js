@@ -20,6 +20,33 @@ const clampInt = (v, min, max, dflt) => { const n = parseInt(v, 10); return Numb
 // The dashboard's spam, mention, link and invite settings used to be ignored: AutoMod always used 3 messages,
 // 6 mentions, and blocked links and invites. They are now applied. Once, before that, every server's saved
 // values are set to what AutoMod really did, so nothing changes until an admin changes them.
+// The channel list used to mean "AutoMod runs only here" but only limited the 3 Premium checks; it now means
+// "AutoMod ignores these channels". Lists saved with the old meaning are emptied once, and the admin is told on the
+// AutoMod card (bot_state 'automod_channels_notice' holds the servers still to tell).
+function migrateIgnoredChannels(db) {
+    try {
+        if (db.prepare("SELECT 1 FROM bot_state WHERE key = 'automod_channels_ignore'").get()) return;
+        const rows = db.prepare("SELECT guild_id FROM server_settings WHERE automod_channels IS NOT NULL AND TRIM(automod_channels) != ''").all();
+        db.transaction(() => {
+            db.prepare("UPDATE server_settings SET automod_channels = NULL WHERE automod_channels IS NOT NULL").run();
+            db.prepare("INSERT OR REPLACE INTO bot_state (key, value) VALUES ('automod_channels_notice', ?)").run(JSON.stringify(rows.map((r) => r.guild_id)));
+            db.prepare("INSERT OR REPLACE INTO bot_state (key, value) VALUES ('automod_channels_ignore', '1')").run();
+        })();
+        if (rows.length) console.log(`[AUTOMOD] channel lists now mean "ignored": ${rows.length} old list(s) emptied, their admins will be told`);
+    } catch (e) { console.error('[AUTOMOD] channel list change failed:', e.message); }
+}
+// true once per server whose old list was emptied (then forgotten)
+function takeChannelsNotice(db, gid) {
+    try {
+        const row = db.prepare("SELECT value FROM bot_state WHERE key = 'automod_channels_notice'").get();
+        const list = row ? JSON.parse(row.value || '[]') : [];
+        if (!list.includes(String(gid))) return false;
+        db.prepare("UPDATE bot_state SET value = ? WHERE key = 'automod_channels_notice'").run(JSON.stringify(list.filter((g) => g !== String(gid))));
+        return true;
+    } catch { return false; }
+}
+const ignoredChannels = (ss) => String(ss?.automodChannels || ss?.automod_channels || '').split(',').map((c) => c.trim()).filter(Boolean);
+
 function migrateFilterSettings(db) {
     try {
         if (!db.prepare("SELECT 1 FROM bot_state WHERE key = 'automod_settings_live'").get()) {
@@ -745,7 +772,7 @@ function advancedAutomodOn(db, gid) {
 
 async function scanMessage(message, client, db) {
     if (!message.guild || message.author.bot || message.webhookId) return false;
-    if (!_migrated) { _migrated = true; migrateFilterSettings(db); loadState(db); client.settings?.clear?.(); }
+    if (!_migrated) { _migrated = true; migrateFilterSettings(db); migrateIgnoredChannels(db); loadState(db); client.settings?.clear?.(); }
     const ss = client.getServerSettings?.(message.guild.id);
     if (!ss?.autoModEnabled) return false;
     const member = message.member;
@@ -756,6 +783,9 @@ async function scanMessage(message, client, db) {
         const wl = ss.autoModWhitelist.split(',');
         if (wl.some(rid => member?.roles.cache.has(rid))) return false;
     }
+    // ignored channels (and threads inside them): no check at all, no strike, no warning
+    const ignored = ignoredChannels(ss);
+    if (ignored.length && (ignored.includes(message.channel.id) || (message.channel.isThread?.() && ignored.includes(message.channel.parentId)))) return false;
 
     const uid = message.author.id, gid = message.guild.id;
     const k = key(uid, gid), now = Date.now();
@@ -777,10 +807,6 @@ async function scanMessage(message, client, db) {
     const spamLimit = clampInt(ss?.spamThreshold, 3, 15, SPAM_THRESHOLD);
     const mentionLimit = clampInt(ss?.mentionLimit, 3, 20, MENTION_LIMIT);
 
-    // ── PER-SERVER CHANNEL RESTRICTION ──
-    const rawChannels = ss?.automodChannels || ss?.automod_channels || '';
-    const restrictedChannels = rawChannels ? rawChannels.split(',').map(c => c.trim()) : null;
-    const isRestrictedChannel = restrictedChannels ? restrictedChannels.includes(message.channel.id) : true;
 
     // 1. Message spam (same channel)
     if (recent.filter(m => m.channelId === message.channel.id).length >= spamLimit && !seen.has('spam')) {
@@ -829,7 +855,7 @@ async function scanMessage(message, client, db) {
     }
 
     // ── FIX 3: @everyone/@here — only flag when combined with 2+ attachments (spam pattern) ──
-    if (advanced && isRestrictedChannel && !seen.has('everyone')) {
+    if (advanced && !seen.has('everyone')) {
         const hasEveryoneText = message.content.includes('@everyone') || message.content.includes('@here');
         const hasEveryoneResolved = message.mentions.everyone === true;
         const hasEveryone = hasEveryoneText || hasEveryoneResolved;
@@ -875,7 +901,7 @@ async function scanMessage(message, client, db) {
     }
 
     // ── Image/attachment spam ──
-    if (advanced && isRestrictedChannel && !seen.has('image_spam')) {
+    if (advanced && !seen.has('image_spam')) {
         const imageRecent = h.filter(m =>
             now - m.ts <= IMAGE_SPAM_WINDOW &&
             m.channelId === message.channel.id &&
@@ -893,7 +919,7 @@ async function scanMessage(message, client, db) {
     }
 
     // ── Attachment-only spam ──
-    if (advanced && isRestrictedChannel && !seen.has('attachment_spam') && message.attachments.size > 0) {
+    if (advanced && !seen.has('attachment_spam') && message.attachments.size > 0) {
         const textContent = message.content.trim();
         const hasOnlyMentions = textContent.length > 0 && /^[@<>:!&\s\d]+$/.test(textContent);
         if (textContent.length === 0 || hasOnlyMentions) {
@@ -1188,8 +1214,10 @@ function buildStatusCard(client, guild, ss, opts = {}) {
     const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
     const wl = ss?.autoModWhitelist;
     const domainList = parseDomainWhitelist(ss?.autoModDomains);
-    const rawChannels = ss?.automodChannels || ss?.automod_channels || '';
-    const channelList = rawChannels ? rawChannels.split(',').map(c => `<#${c}>`).join(' ') : _T('admin_statusAllChannels');
+    if (client.db) migrateIgnoredChannels(client.db);
+    const ign = ignoredChannels(ss);
+    const channelList = ign.length ? ign.map(c => `<#${c}>`).join(' ') : _T('admin_statusAllChannels');
+    const channelsNotice = client.db ? takeChannelsNotice(client.db, guild.id) : false;
     const pendingCount = formatPendingAppeals(guild.id).length;
     const on = !!ss?.autoModEnabled;
 
@@ -1214,7 +1242,8 @@ function buildStatusCard(client, guild, ss, opts = {}) {
     );
 
     const view = v2card(on ? 0x2ecc71 : 0x95a5a6, [
-        { text: `## ${ui.em('automod', '🛡️')} AutoMod\n*Protection, link filtering and appeals.*` },
+        { text: `## ${ui.em('automod', '🛡️')} AutoMod\n*${_T('admin_statusSub')}*` },
+        ...(channelsNotice ? [{ text: `> ${_T('admin_channelsChanged')}` }] : []),
         { rule: true },
         { text: body },
         { rule: true },
@@ -1464,8 +1493,7 @@ function buildDomainsCard(client, guild, ss) {
 function buildChannelsCard(client, guild, ss) {
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
     const _T = (k, v) => _adminT(client, guild, k, v);
-    const raw = ss?.automodChannels || ss?.automod_channels || '';
-    const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
+    const list = ignoredChannels(ss);
     const body = list.length ? list.map(c => `<#${c}>`).join(' ') : _T('admin_channelsAllChannels');
     const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('automod_channels_add').setLabel(_T('admin_btnAdd')).setEmoji(iconObj('ic_add', null, '➕')).setStyle(ButtonStyle.Primary),
@@ -1476,7 +1504,7 @@ function buildChannelsCard(client, guild, ss) {
         new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(iconObj('ic_back', null, '↩️')).setStyle(ButtonStyle.Secondary),
     );
     const view = v2card(0x2ecc71, [
-        { text: `## 📢 ${_T('admin_channelsTitle')}\n*AutoMod only runs in the channels listed below.*` },
+        { text: `## 📢 ${_T('admin_channelsTitle')}\n*${_T('admin_channelsHint')}*` },
         { rule: true },
         { text: `**${_T('admin_channelsActiveLabel')}**\n${body}` },
         { rule: true },
@@ -1560,14 +1588,14 @@ async function handleAdminButton(interaction, client) {
 
     // ── Channels ──
     if (id === 'automod_channels_add') {
-        const sel = new ChannelSelectMenuBuilder().setCustomId('automod_select_channels_add').setPlaceholder(_T('admin_channelsSelectAdd')).setChannelTypes([ChannelType.GuildText, ChannelType.GuildAnnouncement]).setMinValues(1).setMaxValues(1);
+        const sel = new ChannelSelectMenuBuilder().setCustomId('automod_select_channels_add').setPlaceholder(_T('admin_channelsSelectAdd')).setChannelTypes([ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.GuildForum, ChannelType.GuildVoice]).setMinValues(1).setMaxValues(1);
         return interaction.update({ components: [new ActionRowBuilder().addComponents(sel)], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
     }
     if (id === 'automod_channels_remove') {
         const raw = ss?.automodChannels || ss?.automod_channels || '';
         const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
         if (!list.length) return interaction.reply({ content: _T('admin_channelsAllChannels'), flags: 64 });
-        const sel = new ChannelSelectMenuBuilder().setCustomId('automod_select_channels_remove').setPlaceholder(_T('admin_channelsSelectRemove')).setChannelTypes([ChannelType.GuildText, ChannelType.GuildAnnouncement]).setMinValues(1).setMaxValues(1);
+        const sel = new ChannelSelectMenuBuilder().setCustomId('automod_select_channels_remove').setPlaceholder(_T('admin_channelsSelectRemove')).setChannelTypes([ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.GuildForum, ChannelType.GuildVoice]).setMinValues(1).setMaxValues(1);
         return interaction.update({ components: [new ActionRowBuilder().addComponents(sel)], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
     }
     if (id === 'automod_channels_clear') {
