@@ -45,6 +45,12 @@ function exactWeapon(name) {
     if (same(found)) return found;
     return W.searchWeapons(String(name).toLowerCase(), 25).find(same) || null;
 }
+// A menu option takes an emoji object, not the <:name:id> text.
+function emojiOf(kind, where) {
+    const s = icon(kind, where);
+    const m = /^<(a?):(\w+):(\d+)>$/.exec(s);
+    return m ? { id: m[3], name: m[2], animated: m[1] === 'a' } : { name: s };
+}
 const hex = (s) => parseInt(String(s || '').replace('#', ''), 16) || PLAIN_COLOR;
 
 // ─── screenshots ─────────────────────────────────────────────────────────
@@ -202,6 +208,7 @@ async function listView(client, guild, viewerId, page, filter, lang, where) {
                     label: `${b.weapon} — ${nameOf(b.user_id)}`.slice(0, 100),
                     description: `#${b.id}${exactWeapon(b.weapon)?.tier ? ` · ${T('tier', lang, { tier: exactWeapon(b.weapon).tier })}` : ''}`.slice(0, 100),
                     value: String(b.id),
+                    emoji: emojiOf('target', where),
                 })))),
         },
     ];
@@ -246,8 +253,9 @@ async function handleComponent(ix, client) {
     const lang = langOf(client, ix);
     const db = client.db;
     const [, act, a, b] = ix.customId.split(':');
-    const say = (key, vars) => ix.reply({ content: T(key, lang, vars), flags: EPH }).catch(() => {});
-    const gone = () => say('gone');
+    const say = (key, vars, ic) => ix.reply({ content: `${ic ? icon(ic, ix) + ' ' : ''}${T(key, lang, vars)}`, flags: EPH, allowedMentions: { parse: [] } }).catch(() => {});
+    const gone = () => say('gone', null, 'no');
+    const tell = (ic, key, vars) => ix.update({ content: `${icon(ic, ix)} ${T(key, lang, vars)}`, components: [] });
 
     // ◀ ▶ on a build card
     if (act === 'go') {
@@ -266,7 +274,7 @@ async function handleComponent(ix, client) {
         const filter = ix.customId.split(':').slice(4).join(':');
         const mine = ix.user.id === a;
         const view = await listView(client, ix.guild, ix.user.id, Number(b), filter, lang, ix);
-        if (!view) return say('listEmpty', { cmd: '/build save' });
+        if (!view) return say('listEmpty');
         return mine ? ix.update(view) : ix.reply({ ...view, flags: V2 | EPH });
     }
 
@@ -281,7 +289,7 @@ async function handleComponent(ix, client) {
     if (act === 'edit') {
         const build = getBuild(db, ix.guildId, Number(a));
         if (!build) return gone();
-        if (!mayChange(ix.member, ix.user.id, build)) return say('notYours');
+        if (!mayChange(ix.member, ix.user.id, build)) return say('notYours', null, 'lock');
         const field = (id, label, max, value) => new ActionRowBuilder().addComponents(new TextInputBuilder()
             .setCustomId(id).setLabel(label.slice(0, 45)).setStyle(TextInputStyle.Paragraph).setMaxLength(max).setRequired(false)
             .setValue((value || '').slice(0, max)));
@@ -296,12 +304,12 @@ async function handleComponent(ix, client) {
     if (act === 'save' && ix.isModalSubmit()) {
         const build = getBuild(db, ix.guildId, Number(a));
         if (!build) return gone();
-        if (!mayChange(ix.member, ix.user.id, build)) return say('notYours');
+        if (!mayChange(ix.member, ix.user.id, build)) return say('notYours', null, 'lock');
         const value = (id) => ix.fields.getTextInputValue(id).trim() || null;
         db.prepare("UPDATE member_builds SET attachments = ?, note = ?, updated_at = strftime('%s','now') WHERE id = ?")
             .run(value('attachments'), value('note'), build.id);
         const fresh = getBuild(db, ix.guildId, build.id);
-        if (!ix.isFromMessage()) return say('updated');
+        if (!ix.isFromMessage()) return say('updated', null, 'ok');
         const view = await buildView(client, ix.guild, fresh, b || ix.user.id, lang, ix, `${icon('ok', ix)} ${T('updated', lang)}`);
         return ix.update({ ...view, attachments: [] });
     }
@@ -309,13 +317,13 @@ async function handleComponent(ix, client) {
     if (act === 'del') {
         const build = getBuild(db, ix.guildId, Number(a));
         if (!build) return gone();
-        if (!mayChange(ix.member, ix.user.id, build)) return say('notYours');
+        if (!mayChange(ix.member, ix.user.id, build)) return say('notYours', null, 'lock');
         const theirs = build.user_id !== ix.user.id;
         return ix.reply({
-            content: T(theirs ? 'confirmOther' : 'confirmMine', lang, { weapon: build.weapon, id: build.id, user: `<@${build.user_id}>` }),
+            content: `${icon('warn', ix)} ` + T(theirs ? 'confirmOther' : 'confirmMine', lang, { weapon: build.weapon, id: build.id, user: `<@${build.user_id}>` }),
             components: [new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId(`bld:delok:${build.id}`).setStyle(ButtonStyle.Danger).setLabel(T('btnDelete', lang)).setEmoji(icon('trash', ix)),
-                new ButtonBuilder().setCustomId('bld:delno').setStyle(ButtonStyle.Secondary).setLabel(T('btnKeep', lang)),
+                new ButtonBuilder().setCustomId('bld:delno').setStyle(ButtonStyle.Secondary).setLabel(T('btnKeep', lang)).setEmoji(icon('back', ix)),
             )],
             flags: EPH,
             allowedMentions: { parse: [] },
@@ -324,13 +332,13 @@ async function handleComponent(ix, client) {
 
     if (act === 'delok') {
         const build = getBuild(db, ix.guildId, Number(a));
-        if (!build) return ix.update({ content: T('gone', lang), components: [] });
-        if (!mayChange(ix.member, ix.user.id, build)) return ix.update({ content: T('notYours', lang), components: [] });
+        if (!build) return tell('no', 'gone');
+        if (!mayChange(ix.member, ix.user.id, build)) return tell('lock', 'notYours');
         deleteBuild(client, ix.guild, build, ix.user.id);
-        return ix.update({ content: T('deleted', lang, { id: build.id, weapon: build.weapon }), components: [] });
+        return tell('trash', 'deleted', { id: build.id, weapon: build.weapon });
     }
 
-    if (act === 'delno') return ix.update({ content: T('kept', lang), components: [] });
+    if (act === 'delno') return tell('ok', 'kept');
 }
 
 // ─── command ─────────────────────────────────────────────────────────────
@@ -404,7 +412,7 @@ module.exports = {
         const gid = interaction.guild.id;
         const uid = interaction.user.id;
         const sub = interaction.options.getSubcommand();
-        const eph = (key, vars) => interaction.reply({ content: T(key, lang, vars), flags: EPH, allowedMentions: { parse: [] } });
+        const eph = (key, vars, ic) => interaction.reply({ content: `${ic ? icon(ic, interaction) + ' ' : ''}${T(key, lang, vars)}`, flags: EPH, allowedMentions: { parse: [] } });
         const send = (view) => interaction.reply({ ...view, flags: V2 }).catch((e) => console.error(`[BUILD] ${sub} guild=${gid}:`, e.message));
 
         if (sub === 'save') {
@@ -415,12 +423,12 @@ module.exports = {
             const note = interaction.options.getString('note')?.trim().slice(0, 300) || null;
             const shot = interaction.options.getAttachment('screenshot');
 
-            if (!weapon) return eph('noWeapon');
-            if (shot && !(shot.contentType || '').startsWith('image/')) return eph('notAnImage');
-            if (shot && shot.size > MAX_IMAGE) return eph('tooBig', { mb: MAX_IMAGE / 1024 / 1024 });
+            if (!weapon) return eph('noWeapon', null, 'warn');
+            if (shot && !(shot.contentType || '').startsWith('image/')) return eph('notAnImage', null, 'no');
+            if (shot && shot.size > MAX_IMAGE) return eph('tooBig', { mb: MAX_IMAGE / 1024 / 1024 }, 'no');
 
             const existing = db.prepare('SELECT * FROM member_builds WHERE guild_id = ? AND user_id = ? AND LOWER(weapon) = LOWER(?)').get(gid, uid, weapon);
-            if (!existing && countBuilds(db, gid, uid) >= MAX_PER_USER) return eph('limitReached', { max: MAX_PER_USER });
+            if (!existing && countBuilds(db, gid, uid) >= MAX_PER_USER) return eph('limitReached', { max: MAX_PER_USER }, 'warn');
 
             // the screenshot download can take longer than the 3 seconds Discord waits for an answer
             await interaction.deferReply();
@@ -444,7 +452,7 @@ module.exports = {
                 } catch (e) {
                     console.error('[BUILD] image download failed:', e.message);
                     db.prepare('UPDATE member_builds SET image_url = ? WHERE id = ?').run(shot.url, id);
-                    warn = ` · ${T('imageWarning', lang)}`;
+                    warn = `\n-# ${icon('warn', interaction)} ${T('imageWarning', lang)}`;
                 }
             }
 
@@ -478,10 +486,10 @@ module.exports = {
         if (sub === 'delete') {
             const id = interaction.options.getInteger('id');
             const build = getBuild(db, gid, id);
-            if (!build) return eph('deleteNotFound', { id });
-            if (!mayChange(interaction.member, uid, build)) return eph('notYours');
+            if (!build) return eph('deleteNotFound', { id }, 'no');
+            if (!mayChange(interaction.member, uid, build)) return eph('notYours', null, 'lock');
             deleteBuild(client, interaction.guild, build, uid);
-            return eph('deleted', { id, weapon: build.weapon });
+            return eph('deleted', { id, weapon: build.weapon }, 'trash');
         }
     },
 
