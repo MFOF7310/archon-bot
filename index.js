@@ -2183,47 +2183,12 @@ buildAliasLanguageMap();
     console.log(`${green}[BIRTHDAY]${reset} Birthday reminder system active`);
 
     // ================= REGISTER SLASH COMMANDS =================
-    const commands = [];
-    let slashSkipped = 0;
-    let slashRegistered = 0;
-
-    // Server-only commands are not offered in DMs at all (Discord hides them there), instead of failing once picked
-    const GUILD_ONLY_CATS = new Set(['MODERATION', 'ADMIN', 'ECONOMY', 'PROFILE', 'GAMING', 'MUSIC']);
-    const serverOnly = (command, json) => command.guildOnly === true || GUILD_ONLY_CATS.has(String(command.category || '').toUpperCase()) || !!json.default_member_permissions;
-    let serverOnlyCount = 0;
-
-    client.commands.forEach(command => {
-        if (!command.data) return;
-        
-        try {
-            if (typeof command.data.toJSON === 'function') {
-                const json = command.data.toJSON();
-                if (serverOnly(command, json) && !json.contexts) { json.contexts = [0]; delete json.dm_permission; serverOnlyCount++; }
-                commands.push(json);
-                slashRegistered++;
-            } else if (typeof command.data === 'object' && command.data !== null && command.data.name) {
-                commands.push(command.data);
-                slashRegistered++;
-            } else {
-                slashSkipped++;
-            }
-        } catch (err) {
-            slashSkipped++;
-            console.log(`${yellow}[SLASH WARN]${reset} ${command.name}: ${err.message}`);
-        }
-    });
-
-    // [LYDIA-FIX] Guarantee lydia is in the slash payload
-    try {
-        const lm = require('./plugins/lydia.js');
-        if (lm.data && !commands.some(c => c.name === 'lydia')) {
-            commands.push(lm.data.toJSON());
-            slashRegistered++;
-            console.log(`${cyan}[SLASH]${reset} lydia injected into payload`);
-        }
-    } catch(e) { console.log(`${yellow}[SLASH WARN]${reset} lydia inject: ${e.message}`); }
-
-    console.log(`${cyan}[SLASH]${reset} ${slashRegistered} commands prepared (${serverOnlyCount} server-only), ${slashSkipped} skipped`);
+    // lib/slash-payload builds the list (scripts/deploy-commands.js uses the same one, so the two never disagree).
+    const slashList = require('./lib/slash-payload').build(client.commands.values());
+    const commands = slashList.commands;
+    for (const sk of slashList.skipped) console.log(`${yellow}[SLASH WARN]${reset} skipped ${sk}`);
+    for (const pr of slashList.problems) console.log(`${red}[SLASH ERROR]${reset} ${pr}`);
+    console.log(`${cyan}[SLASH]${reset} ${commands.length} commands prepared (${slashList.serverOnly} server-only), ${slashList.skipped.length} skipped`);
 
     const botToken = process.env.DISCORD_TOKEN;
     const clientId = process.env.CLIENT_ID;
@@ -2251,36 +2216,7 @@ buildAliasLanguageMap();
             };
 
             try {
-// ================= GHOST COMMAND FILTER ENGAGED =================
-const cleanCommands = commands.filter(cmd => {
-    // Handle both raw JSON objects and Discord.js builders
-    let name, description;
-    
-    if (cmd && typeof cmd === 'object') {
-        // If it's already a plain JSON object (from .toJSON() or manual)
-        if (cmd.name && (cmd.description || cmd.type)) {
-            name = cmd.name;
-            description = cmd.description;
-        }
-        // If it's a SlashCommandBuilder or similar with .toJSON method
-        else if (typeof cmd.toJSON === 'function') {
-            try {
-                const json = cmd.toJSON();
-                name = json.name;
-                description = json.description;
-            } catch (e) {
-                return false;
-            }
-        }
-    }
-    
-    const isValid = !!name && (!!description || cmd.type === 1); // type 1 = CHAT_INPUT
-    if (!isValid) {
-        console.log(`\x1b[33m[SLASH FILTER]\x1b[0m ⚠️ Filtered out malformed command: ${name || 'Unknown Name'}`);
-    }
-    return isValid;
-});
-
+const cleanCommands = commands;   // already checked by lib/slash-payload
                 await rest.put(
                     Routes.applicationCommands(clientId),
                     { body: cleanCommands }, // Pushing verified payload only
