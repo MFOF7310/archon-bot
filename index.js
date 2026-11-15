@@ -3427,6 +3427,23 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
         });
     }
+    // The owner answers a support request from the website (lib/support-tickets): button → window → saved and sent
+    if ((interaction.isButton() || interaction.isModalSubmit()) && interaction.customId.startsWith('sup:')) {
+        if (interaction.user.id !== process.env.OWNER_ID) return interaction.reply({ content: 'Only the owner answers support requests.', flags: 64 }).catch(() => {});
+        const [, act, tid] = interaction.customId.split(':');
+        const S = require('./lib/support-tickets');
+        if (act === 'reply' && interaction.isButton()) {
+            if (!S.ticketOf(db, tid)) return interaction.reply({ content: 'This request no longer exists.', flags: 64 }).catch(() => {});
+            const { ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+            return interaction.showModal(new ModalBuilder().setCustomId(`sup:send:${tid}`).setTitle(`Reply to #${tid}`)
+                .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('text').setLabel('Your answer').setStyle(TextInputStyle.Paragraph).setMaxLength(1500).setRequired(true)))).catch(() => {});
+        }
+        if (act === 'send' && interaction.isModalSubmit()) {
+            const r = await S.reply(client, tid, interaction.fields.getTextInputValue('text')).catch((e) => ({ ok: false, error: e.message }));
+            return interaction.reply({ content: S.replyNote(r), flags: 64 }).catch(() => {});
+        }
+        return;
+    }
     if ((interaction.isButton() || interaction.isAnySelectMenu()) && interaction.customId.startsWith('lang:')) {
         return require('./plugins/setlang').handleComponent(interaction, client).catch(e => {
             console.error(`[LANG] panel guild=${interaction.guildId}:`, e.stack || e.message);
@@ -4692,25 +4709,35 @@ apiApp.post('/api/admin/prices', requireAdmin, (req, res) => {
 });
 
 // "Talk to a person" from the site's support chat: the conversation goes to the owner on Telegram and by Discord DM
+// Support from the website (lib/support-tickets): a new request, or the visitor's next message on one.
+// Body: { contact?, discordId?, lang, messages } to open one → { ok, ticket, token }; { ticket, token, text } to add to it.
 apiApp.post('/api/admin/support-handoff', requireAdmin, async (req, res) => {
     try {
-        const clip = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
-        const contact = clip(req.body?.contact, 60);
-        if (contact.length < 2) return res.status(400).json({ ok: false });
-        const lang = req.body?.lang === 'fr' ? 'FR' : 'EN';
-        const msgs = (Array.isArray(req.body?.messages) ? req.body.messages : []).slice(-10)
-            .map((m) => `${m?.role === 'user' ? '👤' : '🤖'} ${clip(m?.content, 400)}`);
-        const text = [`🆘 Support request (${lang})`, `Contact: ${contact}`, req.body?.note ? `Note: ${clip(req.body.note, 500)}` : null, '', ...msgs].filter((x) => x !== null).join('\n');
-        let sent = 0;
-        try { const r = await client.telegramBridge?.send?.(text.slice(0, 3900), { force: true }); if (r?.success !== false) sent++; } catch (_) {}
-        try {
-            const owner = await client.users.fetch(process.env.OWNER_ID).catch(() => null);
-            if (owner && await owner.send({ content: text.slice(0, 1990), allowedMentions: { parse: [] } }).then(() => true).catch(() => false)) sent++;
-        } catch (_) {}
-        console.log(`[SUPPORT] Handoff from ${contact}: delivered ${sent}/2`);
-        res.json({ ok: sent > 0 });
+        const S = require('./lib/support-tickets');
+        const b = req.body || {};
+        if (b.ticket) {
+            if (!S.follow(db, b.ticket, b.token, b.text)) return res.status(404).json({ ok: false });
+            const sent = await S.notify(client, b.ticket, { follow: true });
+            return res.json({ ok: sent > 0 });
+        }
+        const messages = (Array.isArray(b.messages) ? b.messages : []).filter((m) => m && typeof m.content === 'string');
+        if (!messages.some((m) => m.role === 'user')) return res.status(400).json({ ok: false });
+        const t = S.create(db, { contact: b.contact, discordId: b.discordId, lang: b.lang, messages });
+        const sent = await S.notify(client, t.id);
+        res.json({ ok: sent > 0, ticket: t.id, token: t.token });
     } catch (err) {
         console.error('[API /api/admin/support-handoff]', err.message);
+        res.status(500).json({ ok: false });
+    }
+});
+// The visitor's request as the site shows it: their messages and the owner's replies (the token proves it is theirs)
+apiApp.get('/api/admin/support-ticket/:id', requireAdmin, (req, res) => {
+    try {
+        const t = require('./lib/support-tickets').read(db, req.params.id, req.query.token);
+        if (!t) return res.status(404).json({ ok: false });
+        res.json({ ok: true, ...t });
+    } catch (err) {
+        console.error('[API /api/admin/support-ticket]', err.message);
         res.status(500).json({ ok: false });
     }
 });
