@@ -39,5 +39,6 @@
   "notYours": "Ces boutons sont pour {user}. Ouvre ton propre profil avec /profile.",
   "noData": "Pas encore de profil pour **{user}** sur ce serveur.",
   "failed": "Le profil n'a pas pu être chargé. Réessaie dans un instant.",
-  "noBoard": "Personne n'est encore classé sur ce serveur."
+  "noBoard": "Personne n'est encore classé sur ce serveur.",
+  "btnRewards": "Récompenses"
 }

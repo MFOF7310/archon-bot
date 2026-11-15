@@ -1,0 +1,17 @@
+{
+  "title": "Récompenses",
+  "heading": "Récompenses de {user}",
+  "summary": "{n} sur {total} obtenues · niveau {level} · série de {streak} jours",
+  "levels": "Niveaux",
+  "daily": "Séries quotidiennes",
+  "economy": "Économie",
+  "levelOf": "niveau {n} / {of}",
+  "daysOf": "{n} / {of} jours, /claim chaque jour",
+  "reached": "niveau atteint : donné au prochain passage de niveau",
+  "nextLevel": "{role}, encore {n} niveau(x)",
+  "nextDaily": "{role}, dans {n} jour(s)",
+  "next": "Prochaine récompense : {what}",
+  "all": "Toutes les récompenses de ce serveur sont à toi.",
+  "none": "Ce serveur n'a pas encore de rôles de récompense.",
+  "noneAdmin": "Crée-les avec /roles → Créer les rôles de récompense manquants."
+}

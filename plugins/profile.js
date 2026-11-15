@@ -541,7 +541,8 @@ async function profileMessage(client, guild, target, lang, own) {
         .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL('attachment://profile.png')))
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${P('cardLine', lang, { user: `<@${target.id}>`, guild: guild?.name || 'ARCHON' })}`));
     const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('prof:lb').setLabel(P('btnBoard', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('trophy', guild)));
+        new ButtonBuilder().setCustomId('prof:lb').setLabel(P('btnBoard', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('trophy', guild)),
+        new ButtonBuilder().setCustomId(`prof:rew:${target.id}`).setLabel(P('btnRewards', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('gift', guild)));
     if (own) row.addComponents(
         new ButtonBuilder().setCustomId(`prof:inv:${target.id}`).setLabel(P('btnInventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('inventory', guild)),
         new ButtonBuilder().setCustomId(`prof:game:${target.id}`).setLabel(P('btnGame', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('games', guild)));
@@ -549,7 +550,7 @@ async function profileMessage(client, guild, target, lang, own) {
     return { components: [c], files: [new AttachmentBuilder(buffer, { name: 'profile.png' })], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };
 }
 
-// prof:lb (anyone: the XP leaderboard, just for them) · prof:inv:<id> and prof:game:<id> (only that member)
+// prof:lb (anyone: the XP leaderboard, just for them) · prof:rew:<id> (anyone: that member's reward roles) · prof:inv:<id> and prof:game:<id> (only that member)
 async function handleComponent(ix, client) {
     const { MessageFlags } = require('discord.js');
     const lang = langFor(client, ix.guildId, ix, ix.user.id);
@@ -560,6 +561,13 @@ async function handleComponent(ix, client) {
         const card = await require('./leaderboard').cardFor(client, ix.guild, ix.user.id, 'xp', lang, ix).catch(() => null);
         if (!card) return say(P('noBoard', lang));
         return ix.reply({ ...card, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => {});
+    }
+    // anyone may look: reward roles are public on Discord anyway
+    if (action === 'rew') {
+        const member = await ix.guild.members.fetch(ownerId).catch(() => null);
+        if (!member) return say(P('noData', lang, { user: '?' }));
+        const view = require('../lib/rewards-card').build(client, ix.guild, member, lang, require('../lib/access').can(ix.member, 'roles').ok);
+        return ix.reply({ ...view, flags: view.flags | MessageFlags.Ephemeral }).catch(() => {});
     }
     if (ownerId && ix.user.id !== ownerId) return say(P('notYours', lang, { user: `<@${ownerId}>` }));
     if (action === 'inv') {

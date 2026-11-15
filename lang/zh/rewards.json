@@ -1,0 +1,17 @@
+{
+  "title": "奖励",
+  "heading": "{user} 的奖励",
+  "summary": "已获得 {n}/{total} · 等级 {level} · 连签 {streak} 天",
+  "levels": "等级",
+  "daily": "每日连签",
+  "economy": "经济",
+  "levelOf": "等级 {n} / {of}",
+  "daysOf": "{n} / {of} 天，每天 /claim",
+  "reached": "已达到等级：下次升级时发放",
+  "nextLevel": "{role}，还差 {n} 级",
+  "nextDaily": "{role}，还有 {n} 天",
+  "next": "下一个奖励：{what}",
+  "all": "本服务器的所有奖励都归你了。",
+  "none": "本服务器还没有奖励身份组。",
+  "noneAdmin": "用 /roles → 创建缺少的奖励身份组 来创建。"
+}

@@ -1,0 +1,17 @@
+{
+  "title": "Rewards",
+  "heading": "{user}'s rewards",
+  "summary": "{n} of {total} earned · level {level} · {streak}-day streak",
+  "levels": "Levels",
+  "daily": "Daily streaks",
+  "economy": "Economy",
+  "levelOf": "level {n} / {of}",
+  "daysOf": "{n} / {of} days, /claim every day",
+  "reached": "level reached: given at the next level-up",
+  "nextLevel": "{role}, {n} more level(s)",
+  "nextDaily": "{role}, in {n} day(s)",
+  "next": "Next reward: {what}",
+  "all": "Every reward on this server is yours.",
+  "none": "This server has no reward roles yet.",
+  "noneAdmin": "Create them with /roles → Create missing reward roles."
+}

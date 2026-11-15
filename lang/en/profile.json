@@ -39,5 +39,6 @@
   "notYours": "These buttons are for {user}. Open your own profile with /profile.",
   "noData": "No profile yet for **{user}** on this server.",
   "failed": "Couldn't load the profile. Try again in a moment.",
-  "noBoard": "Nobody is ranked on this server yet."
+  "noBoard": "Nobody is ranked on this server yet.",
+  "btnRewards": "Rewards"
 }

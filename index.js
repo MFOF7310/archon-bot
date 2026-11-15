@@ -2901,19 +2901,9 @@ if (message.content && message.content.length > 4000) {
                 tierEmoji = '🌟';
             }
 
-            // UNIFIED TIER ASCENSION
-            let roleResult = null;
-            if (message.guild) {
-                roleResult = await client.assignRole(
-                    message.guild,
-                    message.author.id,
-                    `Tier: ${levelTier}`,
-                    levelTierColor,
-                    client.ROLE_SOURCES.LEVELING,
-                    `Level ${newLevel} reached`
-                );
-                if (!roleResult.ok) console.log(`[ROLE] Failed in ${message.guild?.name || message.guild?.id} for ${message.author?.tag || message.author?.id}: ${roleResult.why} (roleId: ${roleResult.roleId || "unknown"})`);
-            }
+            // The old "Tier: …" roles were looked up by name and existed on almost no server (it only filled the log with
+            // role_not_found). Level reward roles are the ones set in /roles, given by plugins/leveling.js.
+            const roleResult = null;
 
             // ================= RESPECT levelup_channel SETTING =================
             const levelupChannelId = serverSettings.levelupChannel;

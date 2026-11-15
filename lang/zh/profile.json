@@ -39,5 +39,6 @@
   "notYours": "这些按钮属于 {user}。用 /profile 打开你自己的资料。",
   "noData": "**{user}** 在这个服务器还没有资料。",
   "failed": "资料加载失败，请稍后再试。",
-  "noBoard": "这个服务器还没有人上榜。"
+  "noBoard": "这个服务器还没有人上榜。",
+  "btnRewards": "奖励"
 }
