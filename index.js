@@ -1924,6 +1924,8 @@ client.once(Events.ClientReady, async () => {
     // Roles deleted while ARCHON was offline: their settings are emptied (quietly)
     setTimeout(() => { try { require('./lib/role-cleanup').sweep(client); } catch (e) { console.error('[ROLES] sweep:', e.message); } }, 15000);
     setTimeout(() => { require('./lib/channel-cleanup').sweep(client).catch((e) => console.error('[CHANNELS] sweep:', e.message)); }, 20000);
+    // AFK absences with an end time get their timers back
+    try { require('./plugins/afk.js').resume(client); } catch (e) { console.error('[AFK] resume:', e.message); }
     // Re-arm the "verify in time or be kicked" deadlines that were running when the bot stopped
     Promise.resolve(require('./plugins/verify.js').resumeKickTimers?.(client, db)).catch((e) => console.error('[VERIFY] resume failed:', e.message));
     // Raid mode: pick up a raid that was active when the bot stopped
@@ -2816,43 +2818,8 @@ if (message.content && message.content.length > 4000) {
         cacheUserData(userId, guildId, userData);
     }
 
-    // ================= AFK SYSTEM =================
-    if (message.mentions.users.size > 0) {
-        const lang = require('./lib/pick-lang').pickLang(client, message.guild?.id, null, message.author.id);
-        
-        for (const [mentionedId, user] of message.mentions.users) {
-            if (afkUsers.has(mentionedId)) {
-                const afkData = afkUsers.get(mentionedId);
-                const minutes = Math.floor((Date.now() - afkData.timestamp) / 60000);
-                const timeText = minutes === 0 ? t('index.afk_just_now', lang) : `${minutes} min`;
-                
-                const { EmbedBuilder: AfkEmbed } = require('discord.js');
-                const afkPingEmbed = new AfkEmbed()
-                    .setColor('#5865F2')
-                    .setDescription(t('index.afk_ping_desc', lang, { user: user.username, time: timeText, reason: afkData.reason }))
-                    .setFooter({ text: t('index.footer', lang) });
-                await message.reply({ embeds: [afkPingEmbed], allowedMentions: { repliedUser: false } }).catch(() => {});
-                break;
-            }
-        }
-    }
-
-    if (afkUsers.has(message.author.id)) {
-        const afkData = afkUsers.get(message.author.id);
-        const minutes = Math.floor((Date.now() - afkData.timestamp) / 60000);
-        
-        afkUsers.delete(message.author.id);
-        
-        const lang = require('./lib/pick-lang').pickLang(client, message.guild?.id, null, message.author.id);
-        
-        const { EmbedBuilder: ReturnEmbed } = require('discord.js');
-        const returnEmbed = new ReturnEmbed()
-            .setColor('#2ecc71')
-            .setDescription(t('index.afk_return_desc', lang, { user: message.author.username, minutes }))
-            .setFooter({ text: t('index.footer', lang) });
-        await message.reply({ embeds: [returnEmbed] }).catch(() => {});
-        console.log(`[AFK] ${message.author.tag} returned after ${minutes} min`);
-    }
+    // ================= AFK (plugins/afk.js): the author coming back, AFK members being mentioned =================
+    try { await require('./plugins/afk.js').onMessage(message, client); } catch (e) { console.error('[AFK]', e.message); }
 
     // ================= PER-SERVER DYNAMIC LEVELING SYSTEM =================
     const serverSettings = message.guild ? getServerSettings(message.guild.id) : DEFAULT_SETTINGS;
@@ -3426,6 +3393,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             console.error(`[CHANNELS] component guild=${interaction.guildId}:`, e.stack || e.message);
             if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
         });
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('afk:')) {
+        return require('./plugins/afk.js').handleComponent(interaction, client).catch((e) => console.error('[AFK] button:', e.message));
     }
     // The owner answers a support request from the website (lib/support-tickets): button → window → saved and sent
     if ((interaction.isButton() || interaction.isModalSubmit()) && interaction.customId.startsWith('sup:')) {
@@ -4889,7 +4859,7 @@ apiApp.get('/api/stats', (req, res) => {
                 lydia: Object.keys(client.lydiaAgents || {}).length > 0,
                 telegram: client.telegramBridge?.enabled || false,
                 market: typeof getMarketState === 'function',
-                afk: afkUsers?.size || 0,
+                afk: require('./plugins/afk.js').activeCount(db),
                 reminders: (() => {
                     try {
                         return db.prepare("SELECT COUNT(*) as count FROM reminders WHERE status = 'pending'").get()?.count || 0;

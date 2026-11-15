@@ -47,4 +47,5 @@ make ic_status_ok circle-check "#23A55A"
 make ic_status_warn alert-circle "$AMBER"
 make ic_status_bad circle-x "$RED"
 make ic_status_wait hourglass
+make ic_moon moon "#7F77DD"
 echo "Done. Now run: pm2 restart Architect-CG223"
