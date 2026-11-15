@@ -53,4 +53,8 @@ make ic_car car
 make ic_dice dice-5
 make ic_coin coin "$AMBER"
 make ic_hand hand-stop
+make ic_target target "#D85A30"
+make ic_tool tool
+make ic_edit pencil
+make ic_trash trash "$RED"
 echo "Done. Now run: pm2 restart Architect-CG223"
