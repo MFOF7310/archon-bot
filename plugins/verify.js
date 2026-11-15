@@ -549,8 +549,12 @@ module.exports = {
         const [, action, nonce] = interaction.customId.split(':');
         const gid = guild.id, uid = interaction.user.id, key = `${uid}:${gid}`;
         const now = Date.now();
-        const eph = (content) => interaction.reply({ content, flags: 64 });
         const lang = pickLang(client, gid, interaction) || 'en';
+        // The code form: giving the roles, the log and the welcome can take more than the 3 seconds Discord waits,
+        // so the answer is reserved first (the member used to be verified but saw "Unknown interaction").
+        const isModal = interaction.isModalSubmit?.() === true;
+        if (isModal) await interaction.deferReply({ flags: 64 });
+        const eph = (content) => (isModal ? interaction.editReply({ content }) : interaction.reply({ content, flags: 64 }));
 
         const { isPremium } = require('./premium.js');
         const settings = db.prepare('SELECT verify_enabled, verify_role_id, verify_unverified_role_id FROM server_settings WHERE guild_id = ?').get(gid);
@@ -633,7 +637,8 @@ module.exports = {
                 await logVerify(guild, db, 0xff3311, vt(lang, 'logFailedPanel'), uid, '3 wrong attempts', lang);
                 return eph(vt(lang, 'tooManyPanel'));
             }
-            return interaction.reply(challenge(attempts, vt(lang, 'incorrectNote')));
+            const { flags: _f, ...again } = challenge(attempts, vt(lang, 'incorrectNote'));
+            return interaction.editReply(again);
         }
     },
 
