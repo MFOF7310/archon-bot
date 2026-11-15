@@ -186,12 +186,21 @@ async function claim(client, { user, member, guild, channel, lang }) {
         client.queueUserUpdate?.(user.id, gid, updated);
         updated.level = Math.max(Number(data.level || 1), levelOf(xp));
 
-        // Streak roles at 3, 7, 30 and 100 days
-        const hit = MILESTONES.find(([d]) => d === streak);
-        if (hit && guild && member) {
-            const roleId = settings[hit[1]] || (gid === process.env.GUILD_ID ? process.env[hit[2]] : null);
-            const role = roleId && guild.roles.cache.get(roleId);
-            if (role && !member.roles.cache.has(role.id)) await member.roles.add(role, `Daily streak: ${streak} days`).catch(() => {});
+        // Streak roles at 3, 7, 30 and 100 days. Every tier reached is given if missing, not only on the exact day:
+        // a role created or fixed after someone passed its day used to be never given. Read fresh from the database
+        // (a role made a minute ago may not be in the cached settings yet), and a refusal is logged with its reason.
+        if (guild && member) {
+            let fresh = {};
+            try { fresh = db.prepare('SELECT daily_initiate_role, daily_warrior_role, daily_champion_role, daily_legend_role FROM server_settings WHERE guild_id = ?').get(gid) || {}; } catch { fresh = {}; }
+            const COL = { dailyInitiateRoleId: 'daily_initiate_role', dailyWarriorRoleId: 'daily_warrior_role', dailyChampionRoleId: 'daily_champion_role', dailyLegendRoleId: 'daily_legend_role' };
+            for (const [days, key, env] of MILESTONES) {
+                if (streak < days) break;
+                const roleId = fresh[COL[key]] || settings[key] || (gid === process.env.GUILD_ID ? process.env[env] : null);
+                const role = roleId && guild.roles.cache.get(String(roleId));
+                if (!role || member.roles.cache.has(role.id)) continue;
+                await member.roles.add(role, `Daily streak: ${streak} days (tier ${days})`)
+                    .catch((e) => console.log(`[CLAIM] guild=${gid} could not give "${role.name}" to ${user.id}: ${e.message}${role.position >= (guild.members.me?.roles?.highest?.position ?? 0) ? ' (the role is above ARCHON\'s)' : ''}`));
+            }
         }
 
         const on = guild ? remindersOn(db, user.id, gid) : false;
