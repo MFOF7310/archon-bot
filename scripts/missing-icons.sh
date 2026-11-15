@@ -66,4 +66,11 @@ make ic_flame flame "#D85A30"
 make ic_win circle-check "#23A55A"
 make ic_loss circle-x "$RED"
 make ic_draw circle-minus "$AMBER"
+make ic_share share
+make ic_broadcast broadcast
+make ic_users users
+make ic_code code
+make ic_link link
+make ic_github brand-github
+make ic_discord brand-discord "#5865F2"
 echo "Done. Now run: pm2 restart Architect-CG223"

@@ -50,7 +50,7 @@
   "btn_vote": "Vote",
   "btn_dashboard": "Dashboard",
   "btn_add": "Add to server",
-  "prefix_usage": "Pick one: `ping`, `stats`, `activity`, `about` or `invite`. For example `{prefix}bot ping`.",
+  "prefix_usage": "Pick one: `ping`, `stats`, `activity`, `about`, `invite` or `socials`. For example `{prefix}bot ping`.",
   "alive_title": "System Status",
   "alive_status": "Status",
   "alive_resources": "System Resources",
@@ -62,5 +62,18 @@
   "act_totals": "Since the start · {cmds} commands · {ai} chats with Lydia · {people} members helped · {buttons} buttons pressed",
   "act_level": "ARCHON is level {level}, ranked #{rank} of {total} on this server.",
   "btn_insights": "See Insights",
-  "prefix": "Prefix"
+  "prefix": "Prefix",
+  "socials_title": "Find us",
+  "socials_desc": "CODM meta, live streams and community events, straight from Bamako.",
+  "socials_media": "Social media",
+  "socials_community": "Community and help",
+  "socials_project": "Project",
+  "socials_tiktok": "live streams and clips",
+  "socials_instagram": "gameplay clips",
+  "socials_facebook": "the community page",
+  "socials_discord": "the official server",
+  "socials_whatsapp": "direct help",
+  "socials_github": "the source code",
+  "socials_dashboard": "the bot's settings online",
+  "socials_from": "Made in Bamako, Mali 🇲🇱"
 }

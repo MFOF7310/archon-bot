@@ -9,11 +9,19 @@ const { t, slashLang, LANGS } = require('../lib/i18n');
 const v2 = require('../lib/games/v2');
 const ui = require('../lib/games/ui');
 const E = require('../config/emojis');
+const { icon } = require('../lib/ui/icons');
 const BotStats = require('./bot-stats.js');
 
 const SUPPORT_URL = 'https://discord.gg/NFSMFJajp9';
 const DASHBOARD_URL = 'https://bamako-steel-dev.xyz';
 const GITHUB_URL = 'https://github.com/MFOF7310';
+// /bot socials: one list of links (the old socials.js wrote them twice)
+const SOCIALS = {
+    tiktok: 'https://www.tiktok.com/@cloudgaming223',
+    instagram: 'https://www.instagram.com/mfof7310',
+    facebook: 'https://www.facebook.com/share/17KysmJrtm/',
+    whatsapp: 'https://wa.me/15485200518',
+};
 const REFRESH_PAUSE_MS = 3000;
 const COLOR = { ok: 0x2ecc71, warn: 0xf1c40f, bad: 0xe74c3c, wait: 0x95a5a6, info: 0x5865f2 };
 
@@ -25,6 +33,7 @@ const SUB_ALIASES = {
     activity: ['botstats', 'bs', 'bstats', 'archonstats', 'activity', 'activite'],
     about: ['about', 'apropos', 'botinfo'],
     invite: ['invite', 'inviter', 'invitelink'],
+    socials: ['socials', 'social', 'links', 'connect', 'reseaux', 'sociaux'],   // the old /socials command
 };
 
 const em = (k, fb = '') => E[k] || fb;
@@ -239,6 +248,47 @@ function inviteCard(client, lang) {
 }
 
 
+// ─── Socials ───
+// Link buttons only: they never expire, even after a restart. Stats stay in /bot stats.
+function socialsCard(client, lang, where) {
+    const _ = tr(lang);
+    const link = (label, url, kind) => new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url).setEmoji(icon(kind, where));
+    const line = (kind, name, key) => `${icon(kind, where)} **${name}** · ${_(key)}`;
+    return v2.card(0x378add, [
+        { thumbnail: [`-# ARCHON CG-223\n## ${icon('share', where)} ${_('socials_title')}\n${_('socials_desc')}`, client.user.displayAvatarURL({ size: 128 })] },
+        { rule: true },
+        { text: [
+            `**${icon('broadcast', where)} ${_('socials_media')}**`,
+            line('tiktok', 'TikTok', 'socials_tiktok'),
+            line('instagram', 'Instagram', 'socials_instagram'),
+            line('facebook', 'Facebook', 'socials_facebook'),
+        ].join('\n') },
+        { text: [
+            `**${icon('users', where)} ${_('socials_community')}**`,
+            line('discord', 'Discord', 'socials_discord'),
+            line('whatsapp', 'WhatsApp', 'socials_whatsapp'),
+        ].join('\n') },
+        { text: [
+            `**${icon('code', where)} ${_('socials_project')}**`,
+            line('github', 'GitHub', 'socials_github'),
+            line('dashboard', 'Dashboard', 'socials_dashboard'),
+        ].join('\n') },
+        { row: new ActionRowBuilder().addComponents(
+            link('TikTok', SOCIALS.tiktok, 'tiktok'),
+            link('Instagram', SOCIALS.instagram, 'instagram'),
+            link('Facebook', SOCIALS.facebook, 'facebook'),
+            link('Discord', SUPPORT_URL, 'discord'),
+            link('WhatsApp', SOCIALS.whatsapp, 'whatsapp'),
+        ) },
+        { row: new ActionRowBuilder().addComponents(
+            link('GitHub', GITHUB_URL, 'github'),
+            link(_('btn_dashboard'), DASHBOARD_URL, 'dashboard'),
+            link(_('btn_add'), inviteUrl(client), 'link'),
+        ) },
+        { text: `-# ${_('socials_from')} · v${version(client)}` },
+    ]);
+}
+
 // ─── Alive (System Health) ───
 function aliveCard(client, lang, db, guildName) {
     const _ = tr(lang);
@@ -289,6 +339,7 @@ async function build(sub, client, lang, db, guild, userId) {
         case 'activity': return activityCard(client, lang, db, guild);
         case 'about': return aboutCard(client, lang, userId);
         case 'invite': return inviteCard(client, lang);
+        case 'socials': return socialsCard(client, lang, guild);
         default: return null;
     }
 }
@@ -315,12 +366,13 @@ const SUB_DESC = {
     activity: desc('ARCHON’s level and activity in this server', 'Le niveau et l’activité d’ARCHON sur ce serveur', 'ARCHON 在本服务器的等级和活跃度'),
     about: desc('What ARCHON is and who made it', 'Ce qu’est ARCHON et qui l’a créé', 'ARCHON 是什么，由谁制作'),
     invite: desc('Add ARCHON to another server', 'Ajoute ARCHON à un autre serveur', '把 ARCHON 添加到其他服务器'),
+    socials: desc('ARCHON’s social links, community and source code', 'Les réseaux, la communauté et le code d’ARCHON', 'ARCHON 的社交链接、社区和源代码'),
 };
 
 const data = new SlashCommandBuilder()
     .setName('bot')
-    .setDescription('Ping, stats, activity, about and invite')
-    .setDescriptionLocalizations({ fr: 'Ping, stats, activité, à propos et invitation', 'zh-CN': '延迟、统计、活跃度、关于和邀请' });
+    .setDescription('Ping, stats, activity, about, invite and socials')
+    .setDescriptionLocalizations({ fr: 'Ping, stats, activité, à propos, invitation et réseaux', 'zh-CN': '延迟、统计、活跃度、关于、邀请和社交' });
 for (const [name, d] of Object.entries(SUB_DESC)) {
     data.addSubcommand(s => s.setName(name).setDescription(d.en).setDescriptionLocalizations(d.loc));
 }
@@ -328,10 +380,10 @@ for (const [name, d] of Object.entries(SUB_DESC)) {
 module.exports = {
     name: 'bot',
     aliases: Object.values(SUB_ALIASES).flat(),
-    description: 'Ping, stats, activity, about and invite',
+    description: 'Ping, stats, activity, about, invite and socials',
     category: 'SYSTEM',
     cooldown: 3000,
-    usage: '.bot <ping|stats|activity|about|invite>',
+    usage: '.bot <ping|stats|activity|about|invite|socials>',
     examples: ['.bot ping', '.ping', '.about'],
     data,
 

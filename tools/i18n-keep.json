@@ -67,14 +67,6 @@
     "quickButtons_fortnite",
     "quickButtons_val"
   ],
-  "socials.json": [
-    "discord",
-    "facebook",
-    "github",
-    "instagram",
-    "tiktok",
-    "whatsapp"
-  ],
   "status.json": [
     "discordVersion",
     "nodeVersion",

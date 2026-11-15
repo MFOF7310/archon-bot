@@ -50,7 +50,7 @@
   "btn_vote": "Voter",
   "btn_dashboard": "Tableau de bord",
   "btn_add": "Ajouter au serveur",
-  "prefix_usage": "Choisis : `ping`, `stats`, `activity`, `about` ou `invite`. Par exemple `{prefix}bot ping`.",
+  "prefix_usage": "Choisis : `ping`, `stats`, `activity`, `about`, `invite` ou `socials`. Par exemple `{prefix}bot ping`.",
   "alive_title": "État du Système",
   "alive_status": "Statut",
   "alive_resources": "Ressources Système",
@@ -62,5 +62,18 @@
   "act_totals": "Depuis le début · {cmds} commandes · {ai} échanges avec Lydia · {people} membres aidés · {buttons} boutons pressés",
   "act_level": "ARCHON est niveau {level}, classé #{rank} sur {total} sur ce serveur.",
   "btn_insights": "Voir Insights",
-  "prefix": "Préfixe"
+  "prefix": "Préfixe",
+  "socials_title": "Retrouve-nous",
+  "socials_desc": "Meta CODM, lives et événements de la communauté, depuis Bamako.",
+  "socials_media": "Réseaux",
+  "socials_community": "Communauté et aide",
+  "socials_project": "Projet",
+  "socials_tiktok": "lives et clips",
+  "socials_instagram": "extraits de parties",
+  "socials_facebook": "la page de la communauté",
+  "socials_discord": "le serveur officiel",
+  "socials_whatsapp": "aide directe",
+  "socials_github": "le code source",
+  "socials_dashboard": "les réglages du bot en ligne",
+  "socials_from": "Fait à Bamako, Mali 🇲🇱"
 }

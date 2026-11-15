@@ -50,7 +50,7 @@
   "btn_vote": "تصويت",
   "btn_dashboard": "لوحة التحكم",
   "btn_add": "إضافة إلى الخادم",
-  "prefix_usage": "اختر واحداً: `ping` أو `stats` أو `activity` أو `about` أو `invite`. مثال: `{prefix}bot ping`.",
+  "prefix_usage": "اختر واحداً: `ping` أو `stats` أو `activity` أو `about` أو `invite` أو `socials`. مثلاً `{prefix}bot ping`.",
   "alive_title": "حالة النظام",
   "alive_status": "الحالة",
   "alive_resources": "موارد النظام",
@@ -62,5 +62,18 @@
   "act_totals": "منذ البداية · {cmds} أمر · {ai} محادثة مع Lydia · {people} عضو تمت مساعدتهم · {buttons} ضغطة زر",
   "act_level": "ARCHON في المستوى {level}، المرتبة #{rank} من {total} على هذا الخادم.",
   "btn_insights": "عرض Insights",
-  "prefix": "البادئة"
+  "prefix": "البادئة",
+  "socials_title": "تابعنا",
+  "socials_desc": "ميتا CODM والبث المباشر وفعاليات المجتمع، من باماكو مباشرة.",
+  "socials_media": "وسائل التواصل",
+  "socials_community": "المجتمع والمساعدة",
+  "socials_project": "المشروع",
+  "socials_tiktok": "بث مباشر ومقاطع",
+  "socials_instagram": "مقاطع من اللعب",
+  "socials_facebook": "صفحة المجتمع",
+  "socials_discord": "الخادم الرسمي",
+  "socials_whatsapp": "مساعدة مباشرة",
+  "socials_github": "الشيفرة المصدرية",
+  "socials_dashboard": "إعدادات البوت عبر الإنترنت",
+  "socials_from": "صُنع في باماكو، مالي 🇲🇱"
 }

@@ -50,7 +50,7 @@
   "btn_vote": "投票",
   "btn_dashboard": "控制面板",
   "btn_add": "添加到服务器",
-  "prefix_usage": "请选择：`ping`、`stats`、`activity`、`about` 或 `invite`。例如 `{prefix}bot ping`。",
+  "prefix_usage": "请选择：`ping`、`stats`、`activity`、`about`、`invite` 或 `socials`。例如 `{prefix}bot ping`。",
   "alive_title": "系统状态",
   "alive_status": "状态",
   "alive_resources": "系统资源",
@@ -62,5 +62,18 @@
   "act_totals": "累计 · {cmds} 条命令 · 与 Lydia 对话 {ai} 次 · 帮助了 {people} 位成员 · 按钮点击 {buttons} 次",
   "act_level": "ARCHON 等级 {level}，在本服务器排名 #{rank} / {total}。",
   "btn_insights": "查看 Insights",
-  "prefix": "前缀"
+  "prefix": "前缀",
+  "socials_title": "关注我们",
+  "socials_desc": "来自巴马科的 CODM 版本攻略、直播和社区活动。",
+  "socials_media": "社交媒体",
+  "socials_community": "社区与帮助",
+  "socials_project": "项目",
+  "socials_tiktok": "直播和精彩片段",
+  "socials_instagram": "游戏片段",
+  "socials_facebook": "社区主页",
+  "socials_discord": "官方服务器",
+  "socials_whatsapp": "直接帮助",
+  "socials_github": "源代码",
+  "socials_dashboard": "在线管理机器人设置",
+  "socials_from": "制作于马里巴马科 🇲🇱"
 }
