@@ -220,7 +220,7 @@ async function handleWelcome(member, client, db, opts = {}) {
     // We rename it to 'welcome_ai_assistant' so it doesn't conflict with the new Help button.
     const EMOJI_MAP = {
         '📜': em('rules', '📜'),
-        '💬': em('general', '💬'),
+        '💬': em('ic_general', '💬'),
         '🤖': em('ai_assistant', '🤖'),
         '👤': em('myprofile', '👤'),
         '❓': em('help', '❓'),

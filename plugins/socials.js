@@ -50,7 +50,7 @@ module.exports = {
         const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setLabel('TikTok').setURL(socialLinks.tiktok).setStyle(ButtonStyle.Link).setEmoji(iconObj('tiktok_logo', null, '🎬')),
             new ButtonBuilder().setLabel('Instagram').setURL(socialLinks.instagram).setStyle(ButtonStyle.Link).setEmoji(iconObj('instagram', null, '📸')),
-            new ButtonBuilder().setLabel('Facebook').setURL(socialLinks.facebook).setStyle(ButtonStyle.Link).setEmoji(iconObj('facebook', null, '')),
+            new ButtonBuilder().setLabel('Facebook').setURL(socialLinks.facebook).setStyle(ButtonStyle.Link).setEmoji(iconObj('facebook', null, '📘')),
             new ButtonBuilder().setLabel('GitHub').setURL(socialLinks.github).setStyle(ButtonStyle.Link).setEmoji(iconObj('developericon', null, '💻'))
         );
 
@@ -141,7 +141,7 @@ module.exports = {
         const row1 = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setLabel('TikTok').setURL(socialLinks.tiktok).setStyle(ButtonStyle.Link).setEmoji(iconObj('tiktok_logo', null, '🎬')),
             new ButtonBuilder().setLabel('Instagram').setURL(socialLinks.instagram).setStyle(ButtonStyle.Link).setEmoji(iconObj('instagram', null, '📸')),
-            new ButtonBuilder().setLabel('Facebook').setURL(socialLinks.facebook).setStyle(ButtonStyle.Link).setEmoji(iconObj('facebook', null, '')),
+            new ButtonBuilder().setLabel('Facebook').setURL(socialLinks.facebook).setStyle(ButtonStyle.Link).setEmoji(iconObj('facebook', null, '📘')),
             new ButtonBuilder().setLabel('GitHub').setURL(socialLinks.github).setStyle(ButtonStyle.Link).setEmoji(iconObj('developericon', null, '💻'))
         );
 
