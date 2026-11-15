@@ -249,39 +249,34 @@ function inviteCard(client, lang) {
 
 
 // ─── Socials ───
-// Link buttons only: they never expire, even after a restart. Stats stay in /bot stats.
+// Every name is a link; only the four main ones get a button (eight stacked buttons were too long on phones).
+// Link buttons never expire, even after a restart. Stats stay in /bot stats.
 function socialsCard(client, lang, where) {
     const _ = tr(lang);
     const link = (label, url, kind) => new ButtonBuilder().setLabel(label).setStyle(ButtonStyle.Link).setURL(url).setEmoji(icon(kind, where));
-    const line = (kind, name, key) => `${icon(kind, where)} **${name}** · ${_(key)}`;
+    const line = (kind, name, url, key) => `${icon(kind, where)} **[${name}](<${url}>)** · ${_(key)}`;
     return v2.card(0x378add, [
         { thumbnail: [`-# ARCHON CG-223\n## ${icon('share', where)} ${_('socials_title')}\n${_('socials_desc')}`, client.user.displayAvatarURL({ size: 128 })] },
         { rule: true },
         { text: [
             `**${icon('broadcast', where)} ${_('socials_media')}**`,
-            line('tiktok', 'TikTok', 'socials_tiktok'),
-            line('instagram', 'Instagram', 'socials_instagram'),
-            line('facebook', 'Facebook', 'socials_facebook'),
+            line('tiktok', 'TikTok', SOCIALS.tiktok, 'socials_tiktok'),
+            line('instagram', 'Instagram', SOCIALS.instagram, 'socials_instagram'),
+            line('facebook', 'Facebook', SOCIALS.facebook, 'socials_facebook'),
         ].join('\n') },
         { text: [
             `**${icon('users', where)} ${_('socials_community')}**`,
-            line('discord', 'Discord', 'socials_discord'),
-            line('whatsapp', 'WhatsApp', 'socials_whatsapp'),
+            line('discord', 'Discord', SUPPORT_URL, 'socials_discord'),
+            line('whatsapp', 'WhatsApp', SOCIALS.whatsapp, 'socials_whatsapp'),
         ].join('\n') },
         { text: [
             `**${icon('code', where)} ${_('socials_project')}**`,
-            line('github', 'GitHub', 'socials_github'),
-            line('dashboard', 'Dashboard', 'socials_dashboard'),
+            line('github', 'GitHub', GITHUB_URL, 'socials_github'),
+            line('dashboard', 'Dashboard', DASHBOARD_URL, 'socials_dashboard'),
         ].join('\n') },
         { row: new ActionRowBuilder().addComponents(
-            link('TikTok', SOCIALS.tiktok, 'tiktok'),
-            link('Instagram', SOCIALS.instagram, 'instagram'),
-            link('Facebook', SOCIALS.facebook, 'facebook'),
             link('Discord', SUPPORT_URL, 'discord'),
             link('WhatsApp', SOCIALS.whatsapp, 'whatsapp'),
-        ) },
-        { row: new ActionRowBuilder().addComponents(
-            link('GitHub', GITHUB_URL, 'github'),
             link(_('btn_dashboard'), DASHBOARD_URL, 'dashboard'),
             link(_('btn_add'), inviteUrl(client), 'link'),
         ) },
