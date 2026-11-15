@@ -36,7 +36,7 @@ function stop(msg) {
 
 // ─── comparing with Discord ──────────────────────────────────────────────
 // Discord fills in defaults (type 1, required false, nsfw false…) that the bot leaves out, drops the invisible
-// emoji variation mark (U+FE0F) from texts and sorts channel types: the same is done on both sides so only real
+// invisible emoji marks (U+FE0F, and the joiner U+200D in emojis like 🧙‍♂️) from texts and sorts channel types: the same is done on both sides so only real
 // differences show.
 const IGNORED = new Set(['id', 'application_id', 'version', 'guild_id', 'dm_permission', 'integration_types', 'handler', 'name_localized', 'description_localized']);
 function clean(v) {
@@ -55,7 +55,7 @@ function clean(v) {
         return Object.keys(out).length ? out : undefined;
     }
     if (v === null || v === false || v === '') return undefined;
-    return typeof v === 'string' ? v.replace(/\uFE0F/g, '') : v;
+    return typeof v === 'string' ? v.replace(/[\uFE0E\uFE0F\u200D]/g, '') : v;
 }
 const same = (a, b) => JSON.stringify(clean({ ...a, type: a.type ?? 1 })) === JSON.stringify(clean({ ...b, type: b.type ?? 1 }));
 
