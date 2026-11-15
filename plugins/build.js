@@ -198,7 +198,7 @@ async function listView(client, guild, viewerId, page, filter, lang, where) {
     });
 
     const items = [
-        { text: `## ${icon('ch_log', where)} ${T('listTitle', lang)}${f ? ` — ${f}` : ''}\n${plural(lang, 'builds', total)} · ${plural(lang, 'members', people)}` },
+        { text: `## ${icon('builds', where)} ${T('listTitle', lang)}${f ? ` — ${f}` : ''}\n${plural(lang, 'builds', total)} · ${plural(lang, 'members', people)}` },
         { rule: true },
         { text: lines.join('\n') },
         {
