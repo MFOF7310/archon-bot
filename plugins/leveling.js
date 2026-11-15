@@ -404,28 +404,9 @@ function roundRect(ctx, x, y, w, h, r) {
 }
 
 // ================= ROLE MANAGER =================
+// Every level role reached that the member is missing (lib/reward-roles): refusals are logged, not swallowed
 async function assignRoles(member, newLevel, db) {
-    const added = [];
-    const milestones = [5, 10, 15, 20, 25];
-    const guildId = member.guild.id;
-
-    // Per-guild roles from DB
-    let settings = null;
-    try {
-        settings = db?.prepare('SELECT level_5_role, level_10_role, level_15_role, level_20_role, level_25_role FROM server_settings WHERE guild_id = ?').get(guildId);
-    } catch(e) {}
-
-    for (const lvl of milestones) {
-        if (newLevel >= lvl) {
-            const roleId = settings?.[`level_${lvl}_role`];
-            if (!roleId) continue;
-            const role = member.guild.roles.cache.get(roleId);
-            if (role && !member.roles.cache.has(roleId) && member.guild.members.me.roles.highest.position > role.position) {
-                try { await member.roles.add(role); added.push(role.name); } catch(e) {}
-            }
-        }
-    }
-    return added;
+    return require('../lib/reward-roles').syncLevelRoles(member, newLevel, db);
 }
 
 // ================= DB HELPERS =================
@@ -453,6 +434,10 @@ function saveThemeDB(db, gid, data) {
 // (a short line there disappears after 15 s). The server's own level-up message replaces the default line.
 async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db, opts = {}) {
     if (!member || !member.guild) return; // Guard: user may have left server
+    // level roles first, at every level-up (not only 5, 10, 15…) and even when no channel can show the message:
+    // a role created later, or a level jumped with game or /claim XP, is caught up here
+    const added = await assignRoles(member, newLevel, db).catch(() => []);
+    if (added.length) console.log(`[LEVELING] guild=${member.guild.id} ${member.id} got: ${added.join(', ')}`);
     const isMilestone = DEFAULT_THEMES[newLevel] || (newLevel > 25 && newLevel % 5 === 0);
     const ss = client.getServerSettings?.(member.guild.id) || {};
     const chId = ss.levelupChannel || ss.levelup_channel;
@@ -475,7 +460,6 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db, 
         if (msg && !chId) setTimeout(() => msg.delete().catch(() => {}), 15000);
         return;
     }
-    const added = await assignRoles(member, newLevel, db);
     const _milestoneNeeds = require('../lib/canPost').neededFor('levelup-milestone');
     if (!canSend('levelup-milestone', ch, _milestoneNeeds, { guild: member.guild, channelId: ch.id, quiet: !chId })) return;
     const customTheme = db ? levelTheme(getThemeDB(db, member.guild.id)) : null;   // the saved columns as { bg1, bg2, accent }

@@ -12,6 +12,8 @@ module.exports = {
         if (!message.guild) return;
         const lang = pickLang(client, message.guild.id, message, message.author.id);
         const member = message.mentions.members?.first() || message.member;
+        const RR = require('../lib/reward-roles');
+        await RR.syncLevelRoles(member, RR.levelOf(client.db, member.id, message.guild.id), client.db).catch(() => {});
         const view = require('../lib/rewards-card').build(client, message.guild, member, ['en', 'fr', 'zh', 'ar'].includes(lang) ? lang : 'en',
             require('../lib/access').can(message.member, 'roles').ok);
         return message.reply(view).catch(() => {});

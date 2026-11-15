@@ -566,6 +566,8 @@ async function handleComponent(ix, client) {
     if (action === 'rew') {
         const member = await ix.guild.members.fetch(ownerId).catch(() => null);
         if (!member) return say(P('noData', lang, { user: '?' }));
+        const RR = require('../lib/reward-roles');
+        await RR.syncLevelRoles(member, RR.levelOf(client.db, member.id, ix.guild.id), client.db).catch(() => {});
         const view = require('../lib/rewards-card').build(client, ix.guild, member, lang, require('../lib/access').can(ix.member, 'roles').ok);
         return ix.reply({ ...view, flags: view.flags | MessageFlags.Ephemeral }).catch(() => {});
     }

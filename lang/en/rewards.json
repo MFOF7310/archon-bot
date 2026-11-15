@@ -7,7 +7,7 @@
   "economy": "Economy",
   "levelOf": "level {n} / {of}",
   "daysOf": "{n} / {of} days, /claim every day",
-  "reached": "level reached: given at the next level-up",
+  "reached": "level reached, but ARCHON couldn't give this role: an admin must move ARCHON's role above it",
   "nextLevel": "{role}, {n} more level(s)",
   "nextDaily": "{role}, in {n} day(s)",
   "next": "Next reward: {what}",

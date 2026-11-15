@@ -198,9 +198,10 @@ async function claim(client, { user, member, guild, channel, lang }) {
                 const roleId = fresh[COL[key]] || settings[key] || (gid === process.env.GUILD_ID ? process.env[env] : null);
                 const role = roleId && guild.roles.cache.get(String(roleId));
                 if (!role || member.roles.cache.has(role.id)) continue;
-                await member.roles.add(role, `Daily streak: ${streak} days (tier ${days})`)
-                    .catch((e) => console.log(`[CLAIM] guild=${gid} could not give "${role.name}" to ${user.id}: ${e.message}${role.position >= (guild.members.me?.roles?.highest?.position ?? 0) ? ' (the role is above ARCHON\'s)' : ''}`));
+                await require('../lib/reward-roles').give(member, role.id, `Daily streak: ${streak} days (tier ${days})`, 'CLAIM');
             }
+            // the daily XP can pass a level: its role comes now, not at the next milestone
+            await require('../lib/reward-roles').syncLevelRoles(member, updated.level, db).catch(() => {});
         }
 
         const on = guild ? remindersOn(db, user.id, gid) : false;

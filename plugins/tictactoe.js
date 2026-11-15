@@ -292,7 +292,7 @@ module.exports = {
                 const member = await message.guild.members.fetch(winnerId).catch(() => null);
                 const role   = message.guild.roles.cache.get(roleId);
                 if (member && role && !member.roles.cache.has(roleId)) {
-                    await member.roles.add(role, 'Tic-tac-toe winner').catch(() => {});
+                    await require('../lib/reward-roles').give(member, roleId, 'Tic-tac-toe winner', 'TTT');
                 }
             } catch (_) {}
         }

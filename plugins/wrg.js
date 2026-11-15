@@ -505,7 +505,7 @@ async function runGame(client, message, args, db, lang) {
                         const member = await message.guild.members.fetch(m.author.id).catch(()=>null);
                         if (member) {
                             const role = message.guild.roles.cache.get(roleId);
-                            if (role && !member.roles.cache.has(roleId)) await member.roles.add(role,'⚔️ WRG champion').catch(()=>{});
+                            if (role && !member.roles.cache.has(roleId)) await require('../lib/reward-roles').give(member, roleId, 'WRG champion', 'WRG');
                         }
                     }
                 } catch(e) {}

@@ -373,7 +373,7 @@ async function grantQuizMaster(s) {
   if (!roleId || !s.ctx.guild) return;
   const member = await s.ctx.guild.members.fetch(s.userId).catch(() => null);
   const role = s.ctx.guild.roles.cache.get(roleId);
-  if (member && role && !member.roles.cache.has(roleId)) await member.roles.add(role, '🧠 Trivia champion').catch(() => {});
+  if (member && role && !member.roles.cache.has(roleId)) await require('../lib/reward-roles').give(member, roleId, 'Trivia champion', 'TRIVIA');
 }
 
 // ───────────────────────────── command ─────────────────────────────

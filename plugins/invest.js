@@ -95,7 +95,7 @@ function place(client, db, uid, gid, amount, lang, settings, member) {
     try {
         const rid = settings?.investorRoleId || (gid === process.env.GUILD_ID ? process.env.INVESTOR_ROLE_ID : null);
         const role = rid && member?.guild?.roles.cache.get(rid);
-        if (role && !member.roles.cache.has(rid)) member.roles.add(role, 'Investment placed').catch(() => {});
+        if (role && !member.roles.cache.has(rid)) require('../lib/reward-roles').give(member, rid, 'Investment placed', 'INVEST').catch(() => {});
     } catch {}
     return `${em('ic_ok', '✅')} ${_('placed', { amount: num(amount, lang) })}`;
 }

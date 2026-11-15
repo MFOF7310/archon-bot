@@ -7,7 +7,7 @@
   "economy": "经济",
   "levelOf": "等级 {n} / {of}",
   "daysOf": "{n} / {of} 天，每天 /claim",
-  "reached": "已达到等级：下次升级时发放",
+  "reached": "已达到等级，但 ARCHON 无法发放此身份组：管理员需要把 ARCHON 的身份组移到它上面",
   "nextLevel": "{role}，还差 {n} 级",
   "nextDaily": "{role}，还有 {n} 天",
   "next": "下一个奖励：{what}",
