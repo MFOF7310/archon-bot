@@ -1,175 +1,76 @@
-const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+// plugins/slap.js — /slap <member>: a playful slap; only the one slapped can slap back (once). The count is kept per
+// server (it used to reset at every restart).
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+const fun = require('../lib/fun');
+const { card } = require('../lib/games/v2');
+const { icon } = require('../lib/ui/icons');
 
-// Slap messages for variety
-const SLAP_MESSAGES = [
-    '{from} slaps {to} across the face! 👋',
-    '{from} gives {to} a reality check slap! 🫲',
-    '{from} slaps {to} with a wet fish! 🐟',
-    '{from} delivers a legendary slap to {to}! 💥',
-    '{from} slaps {to} into next week! 🚀',
-    '{from} sneak attacks {to} with a surprise slap! 😱',
-    '{from} slaps {to} so hard they see stars! ⭐',
-    '{from} gently slaps {to}... just kidding, it was hard! 💢',
-];
+const LINES = {
+    en: ['{from} slaps {to} across the face!', '{from} gives {to} a reality-check slap!', '{from} slaps {to} with a wet fish! 🐟', '{from} lands a legendary slap on {to}! 💥',
+        '{from} slaps {to} into next week! 🚀', '{from} sneaks up on {to} with a surprise slap! 😱', '{from} slaps {to} so hard they see stars! ⭐', '{from} gives {to} a gentle slap… just kidding, it was hard! 💢'],
+    fr: ['{from} met une gifle à {to} !', '{from} remet {to} les idées en place d\'une claque !', '{from} gifle {to} avec un poisson mouillé ! 🐟', '{from} envoie une gifle légendaire à {to} ! 💥',
+        '{from} gifle {to} jusqu\'à la semaine prochaine ! 🚀', '{from} surprend {to} avec une gifle par derrière ! 😱', '{from} gifle {to} si fort qu\'il voit des étoiles ! ⭐', '{from} donne une petite tape à {to}… non, c\'était une vraie gifle ! 💢'],
+    zh: ['{from} 给了 {to} 一记耳光！', '{from} 一巴掌让 {to} 清醒过来！', '{from} 用一条湿鱼拍了 {to}！🐟', '{from} 给了 {to} 传说级的一巴掌！💥',
+        '{from} 一巴掌把 {to} 拍到了下周！🚀', '{from} 偷袭了 {to}，送上一记耳光！😱', '{from} 打得 {to} 眼冒金星！⭐', '{from} 轻轻拍了 {to} 一下……开玩笑的，很用力！💢'],
+    ar: ['{from} صفع {to} على وجهه!', '{from} أعاد {to} إلى الواقع بصفعة!', '{from} صفع {to} بسمكة مبللة! 🐟', '{from} وجّه صفعة أسطورية إلى {to}! 💥',
+        '{from} صفع {to} حتى الأسبوع القادم! 🚀', '{from} فاجأ {to} بصفعة من الخلف! 😱', '{from} صفع {to} بقوة حتى رأى النجوم! ⭐', '{from} ربّت على {to} بلطف… أمزح، كانت صفعة قوية! 💢'],
+};
 
-// Track slap counts per user (resets on bot restart — use DB for permanent storage)
-const slapCounts = new Map();
+function count(db, gid, uid) {
+    try {
+        db.exec('CREATE TABLE IF NOT EXISTS fun_slaps (guild_id TEXT, user_id TEXT, n INTEGER, PRIMARY KEY (guild_id, user_id))');
+        db.prepare('INSERT INTO fun_slaps (guild_id, user_id, n) VALUES (?, ?, 1) ON CONFLICT(guild_id, user_id) DO UPDATE SET n = n + 1').run(String(gid || 'DM'), String(uid));
+        return db.prepare('SELECT n FROM fun_slaps WHERE guild_id = ? AND user_id = ?').get(String(gid || 'DM'), String(uid))?.n || 1;
+    } catch { return 1; }
+}
+
+function slapCard(client, guild, lang, from, to, back) {
+    const n = count(client.db, guild?.id, to.id);
+    const line = fun.pick(LINES[lang] || LINES.en).replace('{from}', `<@${from.id}>`).replace('{to}', `<@${to.id}>`);
+    const items = [{ text: `-# ${icon('hand', guild)} ${fun.F(back ? 'slapBack' : 'slap', lang)}\n### ${line}\n-# ${fun.F(n === 1 ? 'slappedOnce' : 'slapped', lang, { user: `<@${to.id}>`, n })}` }];
+    if (!back) items.push({ row: new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`fun:slapback:${from.id}:${to.id}`).setLabel(fun.F('btnSlapBack', lang)).setStyle(ButtonStyle.Danger).setEmoji(icon('hand', guild))) });
+    const payload = card(back ? 0xEF9F27 : 0xE24B4A, items);
+    payload.allowedMentions = { users: [to.id] };   // the one slapped is told
+    return payload;
+}
+
+function check(lang, from, to) {
+    if (!to) return fun.F('slapWho', lang);
+    if (to.id === from.id) return fun.F('slapSelf', lang);
+    if (to.bot) return fun.F('slapBot', lang);
+    return null;
+}
+
+// fun:slapback:<from>:<to> — only <to>, once: the card turns into the slap back
+async function slapBack(ix, client, parts, lang) {
+    const [, , fromId, toId] = parts;
+    if (ix.user.id !== toId) return ix.reply({ content: fun.F('slapBackOnly', lang, { user: `<@${toId}>` }), flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => {});
+    const from = await client.users.fetch(fromId).catch(() => null);
+    if (!from) return ix.deferUpdate().catch(() => {});
+    return ix.update(slapCard(client, ix.guild, lang, ix.user, from, true)).catch(() => {});
+}
 
 module.exports = {
     name: 'slap',
     aliases: ['smack', 'hit'],
-    description: '👋 Slap someone interactively',
+    description: 'Slap someone (playfully)',
     category: 'FUN',
-    cooldown: 3,
-    
-    data: new SlashCommandBuilder()
-        .setName('slap')
-        .setDescription('Slap someone with style')
-        .addUserOption(option =>
-            option.setName('user')
-                .setDescription('Who deserves a slap?')
-                .setRequired(true)),
-    
-    run: async (client, message, args) => {
-        const target = message.mentions.users.first();
-        
-        if (!target) {
-            return message.reply('❓ Mention someone to slap! Example: `.slap @user`');
-        }
-        
-        if (target.id === message.author.id) {
-            return message.reply("🤔 You can't slap yourself... or can you? Use the button to try!");
-        }
-        
-        if (target.bot) {
-            return message.reply('🤖 Slapping bots? What did they ever do to you?');
-        }
-        
-        try {
-    const { embed, row } = createSlapResponse(message.author, target);
-    const reply = await message.reply({ content: `👋 <@${target.id}>, you got slapped!`, embeds: [embed], components: [row] });
-            
-            // Button collector
-            const collector = reply.createMessageComponentCollector({ time: 300000 }); // 5 minutes
-            
-            collector.on('collect', async (interaction) => {
-                // Only the slapped user can slap back
-                if (interaction.user.id !== target.id) {
-                    return interaction.reply({
-                        content: '❌ Only the slapped user can slap back!',
-                        flags: 64
-                    });
-                }
-                
-                const { embed: slapBackEmbed } = createSlapResponse(target, message.author, true);
-                await interaction.update({ embeds: [slapBackEmbed], components: [] });
-                collector.stop();
-            });
-            
-            collector.on('end', () => {
-                const disabledRow = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('slapback')
-                            .setLabel('👋 Slap Back')
-                            .setStyle(ButtonStyle.Danger)
-                            .setDisabled(true)
-                    );
-                reply.edit({ components: [disabledRow] }).catch(() => null);
-            });
-            
-        } catch (err) {
-            console.error('Slap command error:', err.message);
-            await message.reply('❌ The slap missed! Try again later.');
-        }
+    cooldown: 3000,
+    slapBack,
+    data: new SlashCommandBuilder().setName('slap').setDescription('Slap someone (playfully)')
+        .addUserOption((o) => o.setName('user').setDescription('Who deserves it?').setRequired(true)),
+    run: async (client, message) => {
+        const lang = fun.langOf(client, message.guild?.id, message, message.author.id);
+        const to = message.mentions.users.first();
+        const no = check(lang, message.author, to);
+        if (no) return message.reply({ content: no, allowedMentions: { parse: [] } }).catch(() => {});
+        return message.reply(slapCard(client, message.guild, lang, message.author, to, false)).catch(() => {});
     },
-    
-    execute: async (interaction) => {
-        await interaction.deferReply();
-        
-        const target = interaction.options.getUser('user');
-        
-        if (target.id === interaction.user.id) {
-            return interaction.editReply("🤔 You can't slap yourself... or can you?");
-        }
-        
-        if (target.bot) {
-            return interaction.editReply('🤖 Slapping bots? What did they ever do to you?');
-        }
-        
-        try {
-            const { embed, row } = createSlapResponse(interaction.user, target);
-            const reply = await interaction.editReply({ embeds: [embed], components: [row] });
-    await interaction.followUp({ content: `👋 <@${target.id}>, ${interaction.user.username} slapped you!` });
-            
-            const collector = reply.createMessageComponentCollector({ time: 300000 });
-            
-            collector.on('collect', async (btnInteraction) => {
-                if (btnInteraction.user.id !== target.id) {
-                    return btnInteraction.reply({
-                        content: '❌ Only the slapped user can slap back!',
-                        flags: 64
-                    });
-                }
-                
-                const { embed: slapBackEmbed } = createSlapResponse(target, interaction.user, true);
-                await btnInteraction.update({ embeds: [slapBackEmbed], components: [] });
-                collector.stop();
-            });
-            
-            collector.on('end', () => {
-                const disabledRow = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('slapback')
-                            .setLabel('👋 Slap Back')
-                            .setStyle(ButtonStyle.Danger)
-                            .setDisabled(true)
-                    );
-                interaction.editReply({ components: [disabledRow] }).catch(() => null);
-            });
-            
-        } catch (err) {
-            console.error('Slash slap error:', err.message);
-            await interaction.editReply('❌ The slap missed! Try again later.');
-        }
-    }
+    execute: async (ix, client) => {
+        const lang = fun.langOf(client, ix.guildId, ix, ix.user.id);
+        const to = ix.options.getUser('user');
+        const no = check(lang, ix.user, to);
+        if (no) return ix.reply({ content: no, flags: MessageFlags.Ephemeral });
+        return ix.reply(slapCard(client, ix.guild, lang, ix.user, to, false));
+    },
 };
-
-function createSlapResponse(from, to, isSlapBack = false) {
-    // Track slap counts
-    const key = to.id;
-    const count = (slapCounts.get(key) || 0) + 1;
-    slapCounts.set(key, count);
-    
-    // Random slap message
-    const template = SLAP_MESSAGES[Math.floor(Math.random() * SLAP_MESSAGES.length)];
-    const message = template.replace('{from}', `**${from.username}**`).replace('{to}', `**${to.username}**`);
-    
-    const title = isSlapBack 
-        ? '🔄 Slap Back!' 
-        : '👋 Slap!';
-    
-    const embed = new EmbedBuilder()
-        .setColor(isSlapBack ? 0xFFA500 : 0xFF4444)
-        .setTitle(title)
-        .setDescription(
-            `${message}\n\n` +
-            `📊 **${to.username}** has been slapped **${count}** time${count > 1 ? 's' : ''}!`
-        )
-        .setFooter({ 
-            text: isSlapBack ? 'Revenge is sweet! 🍬' : `${from.username} started it! 👀`,
-            iconURL: from.displayAvatarURL({ dynamic: true })
-        })
-        .setTimestamp();
-    
-    const row = new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId('slapback')
-                .setLabel('👋 Slap Back')
-                .setStyle(ButtonStyle.Danger)
-        );
-    
-    return { embed, row: isSlapBack ? null : row };
-}

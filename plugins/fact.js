@@ -1,51 +1,25 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-const axios = require('axios');
+// plugins/fact.js — .fact: a random fun fact, translated into the reader's language when it isn't English
+const fun = require('../lib/fun');
+const { icon } = require('../lib/ui/icons');
 
-const FACT_API_URL = 'https://uselessfacts.jsph.pl/api/v2/facts/random?language=en';
-const FETCH_TIMEOUT = 5000;
+async function funMake(client, { guild, user, lang, priv }) {
+    const d = await fun.firstOf([async function uselessFacts() { return fun.getJSON('https://uselessfacts.jsph.pl/api/v2/facts/random?language=en'); }], 'fact');
+    const text = String(d?.text || '').trim();
+    if (!text) return fun.failCard(lang, 'fact');
+    const tr = await fun.translate(text, lang);
+    const lines = [tr ? fun.F('translated', lang) : null, fun.F('source', lang, { source: 'uselessfacts.jsph.pl' })].filter(Boolean);
+    return fun.textCard(guild, lang, { color: 0x378ADD, top: `${icon('info', guild)} ${fun.F('factTitle', lang)}`, body: `### ${fun.safe(tr || text, 600)}`, lines, again: ['fact', user.id], priv });
+}
 
 module.exports = {
     name: 'fact',
     aliases: ['facts', 'randomfact'],
-    description: '💡 Get a random fun fact',
+    description: 'A random fun fact',
     category: 'FUN',
-    cooldown: 2,
-    
-
+    cooldown: 2000,
+    funMake,
     run: async (client, message) => {
-        try {
-            const embed = await createFactEmbed();
-            await message.reply({ embeds: [embed] });
-        } catch (err) {
-            console.error('Fact prefix command error:', err.message);
-            await message.reply(em('ic_off', em('ic_off', '❌')) + ' Could not fetch a fact. Try again later!');
-        }
+        const lang = fun.langOf(client, message.guild?.id, message, message.author.id);
+        return message.reply(await funMake(client, { guild: message.guild, user: message.author, lang })).catch(() => {});
     },
-    
-    execute: async (interaction) => {
-        await interaction.deferReply();
-        
-        try {
-            const embed = await createFactEmbed();
-            await interaction.editReply({ embeds: [embed] });
-        } catch (err) {
-            console.error('Fact slash command error:', err.message);
-            await interaction.editReply(em('ic_off', em('ic_off', '❌')) + ' Could not fetch a fact. Try again later!');
-        }
-    }
 };
-
-async function createFactEmbed() {
-    const response = await axios.get(FACT_API_URL, { timeout: FETCH_TIMEOUT });
-    const fact = response.data?.text;
-    
-    if (!fact) throw new Error('No fact in response');
-    
-    return new EmbedBuilder()
-        .setColor(0x00CED1)
-        .setTitle('💡 Random Fact')
-        .setDescription(fact)
-        .setFooter({ text: 'Powered by Useless Facts API' })
-        .setTimestamp();
-}

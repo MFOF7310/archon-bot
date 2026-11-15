@@ -1,55 +1,25 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-const axios = require('axios');
+// plugins/dadjoke.js — .joke: a random dad joke. Jokes are puns in English: the translation is shown with the
+// original under it, so the pun isn't lost.
+const fun = require('../lib/fun');
 
-const JOKE_API_URL = 'https://icanhazdadjoke.com/';
-const FETCH_TIMEOUT = 5000;
+async function funMake(client, { guild, user, lang, priv }) {
+    const d = await fun.firstOf([async function icanhazdadjoke() { return fun.getJSON('https://icanhazdadjoke.com/'); }], 'joke');
+    const joke = String(d?.joke || '').trim();
+    if (!joke) return fun.failCard(lang, 'joke');
+    const tr = await fun.translate(joke, lang);
+    const lines = [tr ? fun.F('original', lang, { text: fun.safe(joke, 300) }) : null, fun.F('source', lang, { source: 'icanhazdadjoke.com' })].filter(Boolean);
+    return fun.textCard(guild, lang, { color: 0xEF9F27, top: `😂 ${fun.F('jokeTitle', lang)}`, body: `### ${fun.safe(tr || joke, 500)}`, lines, again: ['joke', user.id], priv });
+}
 
 module.exports = {
     name: 'dadjoke',
     aliases: ['joke', 'dad'],
-    description: '😂 Get a random dad joke',
+    description: 'A random dad joke',
     category: 'FUN',
-    cooldown: 2,
-    
-
+    cooldown: 2000,
+    funMake,
     run: async (client, message) => {
-        try {
-            const embed = await createJokeEmbed();
-            await message.reply({ embeds: [embed] });
-        } catch (err) {
-            console.error('Dad joke prefix command error:', err.message);
-            await message.reply(em('ic_off', em('ic_off', '❌')) + ' Could not fetch a joke. Try again later!');
-        }
+        const lang = fun.langOf(client, message.guild?.id, message, message.author.id);
+        return message.reply(await funMake(client, { guild: message.guild, user: message.author, lang })).catch(() => {});
     },
-    
-    execute: async (interaction) => {
-        await interaction.deferReply();
-        
-        try {
-            const embed = await createJokeEmbed();
-            await interaction.editReply({ embeds: [embed] });
-        } catch (err) {
-            console.error('Dad joke slash command error:', err.message);
-            await interaction.editReply(em('ic_off', em('ic_off', '❌')) + ' Could not fetch a joke. Try again later!');
-        }
-    }
 };
-
-async function createJokeEmbed() {
-    const response = await axios.get(JOKE_API_URL, {
-        timeout: FETCH_TIMEOUT,
-        headers: { 'Accept': 'application/json' }
-    });
-    
-    const joke = response.data?.joke;
-    
-    if (!joke) throw new Error('No joke in response');
-    
-    return new EmbedBuilder()
-        .setColor(0xFFA500)
-        .setTitle('😂 Dad Joke')
-        .setDescription(joke)
-        .setFooter({ text: 'Powered by icanhazdadjoke' })
-        .setTimestamp();
-}

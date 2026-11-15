@@ -1,5 +1,6 @@
-const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
+// plugins/anime.js — /anime [character]: summons a character card (picture from Jikan / MyAnimeList, a line, stats)
+const { SlashCommandBuilder } = require('discord.js');
+const fun = require('../lib/fun');
 const axios = require('axios');
 
 const ANIME_API = 'https://api.jikan.moe/v4';
@@ -127,115 +128,6 @@ const CHARACTERS = {
     },
 };
 
-module.exports = {
-    name: 'anime',
-    aliases: ['animechar', 'character', 'summon'],
-    description: '🎌 Summon an anime character with style',
-    category: 'FUN',
-    cooldown: 5,
-    
-    data: new SlashCommandBuilder()
-        .setName('anime')
-        .setDescription('Summon an anime character with a quote and interactive buttons')
-        .addStringOption(option =>
-            option.setName('character')
-                .setDescription('Choose a specific character (or leave blank for random)')
-                .setRequired(false)
-                .addChoices(
-                    { name: '🍥 Naruto Uzumaki', value: 'naruto' },
-                    { name: '🏴‍☠️ Monkey D. Luffy', value: 'luffy' },
-                    { name: '💪 Goku', value: 'goku' },
-                    { name: '⚔️ Levi Ackerman', value: 'levi' },
-                    { name: '🌊 Tanjiro Kamado', value: 'tanjiro' },
-                    { name: '👁️ Satoru Gojo', value: 'gojo' },
-                    { name: '💥 Izuku Midoriya', value: 'deku' },
-                    { name: '📓 Light Yagami', value: 'light' },
-                )),
-    
-    run: async (client, message, args) => {
-        const choice = args[0]?.toLowerCase();
-        
-        try {
-            const { embed, row } = await createAnimeResponse(choice, message.author);
-            const reply = await message.reply({ embeds: [embed], components: [row] });
-            
-            // Button collector
-            const collector = reply.createMessageComponentCollector({ time: 60000 });
-            
-            collector.on('collect', async (interaction) => {
-                if (interaction.user.id !== message.author.id) {
-                    return interaction.reply({ 
-                        content: em('ic_off', em('ic_off', '❌')) + ' This summon belongs to someone else! Use `.anime` to summon your own!', 
-                        flags: 64 
-                    });
-                }
-                
-                const { embed: newEmbed } = await createAnimeResponse(null, interaction.user);
-                await interaction.update({ embeds: [newEmbed], components: [row] });
-            });
-            
-            collector.on('end', () => {
-                const disabledRow = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('resummon')
-                            .setLabel('🔄 Summon Another')
-                            .setStyle(ButtonStyle.Primary)
-                            .setDisabled(true)
-                    );
-                reply.edit({ components: [disabledRow] }).catch(() => null);
-            });
-            
-        } catch (err) {
-            console.error('Anime prefix command error:', err.message);
-            await message.reply(em('ic_off', em('ic_off', '❌')) + ' The summoning ritual failed. Try again later!');
-        }
-    },
-    
-    execute: async (interaction) => {
-        await interaction.deferReply();
-        
-        const choice = interaction.options.getString('character');
-        
-        try {
-            const { embed, row } = await createAnimeResponse(choice, interaction.user);
-            const reply = await interaction.editReply({ embeds: [embed], components: [row] });
-            
-            // Button collector
-            const collector = reply.createMessageComponentCollector({ time: 60000 });
-            
-            collector.on('collect', async (btnInteraction) => {
-                if (btnInteraction.user.id !== interaction.user.id) {
-                    return btnInteraction.reply({ 
-                        content: em('ic_off', em('ic_off', '❌')) + ' This summon belongs to someone else! Use `/anime` to summon your own!', 
-                        flags: 64 
-                    });
-                }
-                
-                const { embed: newEmbed } = await createAnimeResponse(null, btnInteraction.user);
-                await btnInteraction.update({ embeds: [newEmbed], components: [row] });
-            });
-            
-            collector.on('end', () => {
-                const disabledRow = new ActionRowBuilder()
-                    .addComponents(
-                        new ButtonBuilder()
-                            .setCustomId('resummon')
-                            .setLabel('🔄 Summon Another')
-                            .setStyle(ButtonStyle.Primary)
-                            .setDisabled(true)
-                    );
-                interaction.editReply({ components: [disabledRow] }).catch(() => null);
-            });
-            
-        } catch (err) {
-            console.error('Anime slash command error:', err.message);
-            await interaction.editReply(em('ic_off', em('ic_off', '❌')) + ' The summoning ritual failed. Try again later!');
-        }
-    }
-};
-
-
 async function fetchCharacterImage(charData) {
     for (let attempt = 1; attempt <= 2; attempt++) {
         try {
@@ -259,78 +151,44 @@ async function fetchCharacterImage(charData) {
     return null;
 }
 
-async function createAnimeResponse(choice, user) {
-    let charData;
-    
-    if (choice && CHARACTERS[choice]) {
-        charData = CHARACTERS[choice];
-    } else {
-        const keys = Object.keys(CHARACTERS);
-        const randomKey = keys[Math.floor(Math.random() * keys.length)];
-        charData = CHARACTERS[randomKey];
-    }
-    
-    // Random quote from character's pool
-const quote = charData.quotes[Math.floor(Math.random() * charData.quotes.length)];
-
-// Intelligent summoner-based footer messages
-const summonerMessages = [
-    `${user.username} called upon the anime gods`,
-    `${user.username}'s spiritual energy manifested`,
-    `${user.username} tore open a dimensional rift`,
-    `${user.username} channeled their inner otaku`,
-    `${user.username} rolled the gacha of fate`,
-    `${user.username} awakened a new ally`,
-    `${user.username} unleashed a legendary summon`,
-    `${user.username} bent reality to their will`,
-];
-
-const summonMessage = summonerMessages[Math.floor(Math.random() * summonerMessages.length)];
-
-    // Fetch character image - try multiple sources
-    // Fetch character image
-    const imageUrl = await fetchCharacterImage(charData);
-    
-    // Stats for fun
-    const stats = {
-        power: Math.floor(Math.random() * 30) + 70,   // 70-100
-        speed: Math.floor(Math.random() * 40) + 60,   // 60-100
-        wisdom: Math.floor(Math.random() * 50) + 50,  // 50-100
-    };
-    
-    // Star rating
-    const stars = '⭐'.repeat(Math.floor(Math.random() * 2) + 4); // 4-5 stars
-    
-    const embed = new EmbedBuilder()
-        .setColor(charData.color)
-        .setTitle(`${charData.emoji} **${charData.name}** Has Been Summoned!`)
-        .setDescription(
-            `### 💬 *"${quote}"*\n` +
-            `\n📺 **Anime:** ${charData.series}` +
-            `\n📊 **Rarity:** ${stars}` +
-            `\n💡 **Fun Fact:** ${charData.funFact}` +
-            `\n\n### ⚔️ **Battle Stats**\n` +
-            `💪 Power: ${'█'.repeat(stats.power / 10)}${'░'.repeat(10 - stats.power / 10)} ${stats.power}%\n` +
-            `💨 Speed: ${'█'.repeat(stats.speed / 10)}${'░'.repeat(10 - stats.speed / 10)} ${stats.speed}%\n` +
-            `🧠 Wisdom: ${'█'.repeat(stats.wisdom / 10)}${'░'.repeat(10 - stats.wisdom / 10)} ${stats.wisdom}%`
-        )
-        .setFooter({ 
-    text: `${summonMessage} • Click 🔄 to summon another`,
-    iconURL: user.displayAvatarURL({ dynamic: true })
-})
-        .setTimestamp();
-    
-    if (imageUrl) {
-    embed.setThumbnail(imageUrl);
+// The character card (lib/fun): picture, series, a line they're known for, playful stats
+async function funMake(client, { guild, user, lang, arg, priv }) {
+    const keys = Object.keys(CHARACTERS);
+    let key = arg && CHARACTERS[arg] ? arg : fun.pick(keys);
+    if (!arg && keys.length > 1 && key === funMake.last) key = keys[(keys.indexOf(key) + 1) % keys.length];
+    funMake.last = key;
+    const c = CHARACTERS[key];
+    const image = await fetchCharacterImage(c);
+    const stat = (name, min) => { const v = min + Math.floor(Math.random() * (101 - min)); return `${fun.F(name, lang)} \`${'▰'.repeat(Math.round(v / 10))}${'▱'.repeat(10 - Math.round(v / 10))}\` ${v}%`; };
+    const stars = '⭐'.repeat(4 + Math.floor(Math.random() * 2));
+    const head = `-# ${fun.F('summonedBy', lang, { user: fun.safe(user.displayName || user.globalName || user.username, 40) })}\n### ${c.emoji} ${c.name}\n${fun.F('series', lang, { series: c.series })} · ${stars}\n*« ${fun.pick(c.quotes)} »*`;
+    const items = [image ? { thumbnail: [head, image] } : { text: head }];
+    items.push({ rule: true }, { text: [stat('power', 70), stat('speed', 60), stat('wisdom', 50), `-# ${c.funFact}`].join('\n') });
+    const row = fun.buttons(guild, lang, { again: ['anime', user.id, null, fun.F('summonAgain', lang)], priv });
+    if (row) items.push({ row });
+    return require('../lib/games/v2').card(c.color, items);
 }
-    
-    const row = new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder()
-                .setCustomId('resummon')
-                .setLabel('🔄 Summon Another')
-                .setStyle(ButtonStyle.Primary)
-        );
-    
-    return { embed, row };
-}
+
+module.exports = {
+    name: 'anime',
+    aliases: ['animechar', 'character', 'summon'],
+    description: 'Summon an anime character card',
+    category: 'FUN',
+    cooldown: 5000,
+    funMake,
+    data: new SlashCommandBuilder()
+        .setName('anime')
+        .setDescription('Summon an anime character card')
+        .addStringOption((o) => o.setName('character').setDescription('A character (default: random)').setRequired(false)
+            .addChoices(...Object.entries(CHARACTERS).map(([value, c]) => ({ name: `${c.emoji} ${c.name}`.slice(0, 100), value })))),
+    run: async (client, message, args) => {
+        const lang = fun.langOf(client, message.guild?.id, message, message.author.id);
+        const pick = String(args[0] || '').toLowerCase();
+        return message.reply(await funMake(client, { guild: message.guild, user: message.author, lang, arg: CHARACTERS[pick] ? pick : null })).catch(() => {});
+    },
+    execute: async (ix, client) => {
+        const lang = fun.langOf(client, ix.guildId, ix, ix.user.id);
+        await ix.deferReply();
+        return ix.editReply(await funMake(client, { guild: ix.guild, user: ix.user, lang, arg: ix.options.getString('character') }));
+    },
+};

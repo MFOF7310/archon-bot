@@ -48,4 +48,9 @@ make ic_status_warn alert-circle "$AMBER"
 make ic_status_bad circle-x "$RED"
 make ic_status_wait hourglass
 make ic_moon moon "#7F77DD"
+make ic_paw paw
+make ic_car car
+make ic_dice dice-5
+make ic_coin coin "$AMBER"
+make ic_hand hand-stop
 echo "Done. Now run: pm2 restart Architect-CG223"

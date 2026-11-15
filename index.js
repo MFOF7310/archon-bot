@@ -3626,63 +3626,12 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
     }
 
     // ================= MEME BUTTONS =================
-    if (interaction.isButton() && interaction.customId && interaction.customId.startsWith('meme_')) {
-        try {
-            const memeModule = require('./plugins/meme.js');
-            if (memeModule.handleButton) {
-                await memeModule.handleButton(interaction, client);
-                return;
-            }
-        } catch (err) {
-            console.error(`${red}[MEME BUTTON]${reset}`, err.message);
-            await interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.meme_failed', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: MessageFlags.Ephemeral }).catch(() => {});
-        }
-        return;
+    // The fun pack (lib/fun): Another / Share / Slap back. Buttons from before the rebuild just say they expired.
+    if (interaction.isButton() && interaction.customId?.startsWith('fun:')) {
+        return require('./lib/fun').handleComponent(interaction, client).catch((e) => console.error('[FUN] button:', e.message));
     }
-
-    // ================= CAT BUTTONS =================
-    if (interaction.isButton() && interaction.customId && interaction.customId.startsWith('cat_')) {
-        try {
-            const catModule = require('./plugins/cat.js');
-            if (catModule.handleButton) {
-                await catModule.handleButton(interaction, client);
-                return;
-            }
-        } catch (err) {
-            console.error(`${red}[CAT BUTTON]${reset}`, err.message);
-            await interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.cat_failed', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: MessageFlags.Ephemeral }).catch(() => {});
-        }
-        return;
-    }
-
-    // ================= DOG BUTTONS =================
-    if (interaction.isButton() && interaction.customId && interaction.customId.startsWith('dog_')) {
-        try {
-            const dogModule = require('./plugins/dog.js');
-            if (dogModule.handleButton) {
-                await dogModule.handleButton(interaction, client);
-                return;
-            }
-        } catch (err) {
-            console.error(`${red}[DOG BUTTON]${reset}`, err.message);
-            await interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.dog_failed', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: MessageFlags.Ephemeral }).catch(() => {});
-        }
-        return;
-    }
-
-    // ================= CAR BUTTONS =================
-    if (interaction.isButton() && interaction.customId && interaction.customId.startsWith('car_')) {
-        try {
-            const carModule = require('./plugins/car.js');
-            if (carModule.handleButton) {
-                await carModule.handleButton(interaction, client);
-                return;
-            }
-        } catch (err) {
-            console.error(`${red}[CAR BUTTON]${reset}`, err.message);
-            await interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.car_failed', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: MessageFlags.Ephemeral }).catch(() => {});
-        }
-        return;
+    if (interaction.isButton() && /^(meme|cat|dog|car)_|^(slapback|resummon)$/.test(interaction.customId || '')) {
+        return interaction.reply({ content: require('./lib/i18n').t('funcards.expired', require('./lib/botPerms').langOf(interaction)), flags: 64 }).catch(() => {});
     }
 });
 

@@ -1,33 +1,31 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
-const { t } = require('../lib/i18n');
+// plugins/coinflip.js — /coinflip: heads or tails (lib/fun cards, Flip again in the same card)
+const { SlashCommandBuilder } = require('discord.js');
+const fun = require('../lib/fun');
+const { icon } = require('../lib/ui/icons');
 
-const OKL = ['en','fr','bm','zh','ar'];
-const gl = (o) => OKL.includes(o?.language) ? o.language : 'en';
+function funMake(client, { guild, user, lang, priv }) {
+    const heads = Math.random() < 0.5;
+    return fun.textCard(guild, lang, {
+        color: 0xEF9F27, body: `### ${icon('coin', guild)} ${fun.F(heads ? 'heads' : 'tails', lang)}`,
+        lines: [fun.F('by', lang, { user: fun.safe(user.displayName || user.globalName || user.username, 40) })],
+        again: ['coin', user.id, null, fun.F('flipAgain', lang)], priv,
+    });
+}
 
 module.exports = {
     name: 'coinflip',
     aliases: ['coin', 'flip'],
-    description: '🪙 Flip a coin',
+    description: 'Flip a coin',
     category: 'FUN',
-    cooldown: 1,
-
+    cooldown: 1000,
+    funMake,
     data: new SlashCommandBuilder().setName('coinflip').setDescription('Flip a coin'),
-
-    _flip: (client, gid) => {
-        const lang = gl(client?.getServerSettings?.(gid) || {});
-        const heads = Math.random() < 0.5;
-        return new EmbedBuilder()
-            .setColor(0xFFD700)
-            .setTitle(t('fun.coinTitle', lang))
-            .setDescription(t('fun.coinResult', lang, { result: t(heads ? 'fun.heads' : 'fun.tails', lang) }))
-            .setTimestamp();
-    },
-
     run: async (client, message) => {
-        await message.reply({ embeds: [module.exports._flip(client, message.guild?.id)] });
+        const lang = fun.langOf(client, message.guild?.id, message, message.author.id);
+        return message.reply(funMake(client, { guild: message.guild, user: message.author, lang })).catch(() => {});
     },
-
-    execute: async (interaction, client) => {
-        await interaction.reply({ embeds: [module.exports._flip(client, interaction.guildId)] });
-    }
+    execute: async (ix, client) => {
+        const lang = fun.langOf(client, ix.guildId, ix, ix.user.id);
+        return ix.reply(funMake(client, { guild: ix.guild, user: ix.user, lang }));
+    },
 };
