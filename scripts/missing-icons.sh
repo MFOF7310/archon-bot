@@ -73,4 +73,7 @@ make ic_code code
 make ic_link link
 make ic_github brand-github
 make ic_discord brand-discord "#5865F2"
+make ic_shield shield
+make ic_heal heart-plus
+make ic_bolt bolt "$AMBER"
 echo "Done. Now run: pm2 restart Architect-CG223"

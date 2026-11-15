@@ -170,7 +170,12 @@ const td = (content) => new TextDisplayBuilder().setContent(String(content));
 const divider = () => new SeparatorBuilder().setDivider(true);
 const v2 = (container, extra = {}) => ({ components: [container], flags: MessageFlags.IsComponentsV2, ...extra });
 
-const BUTTON_ICONS = { small_check: em('ic_ok', '✅'), small_cross: em('ic_off', '❌'), duel_sword: '⚔️', shield: '🛡️', duel_heal: '💚', duel_bolt: '⚡' };
+// Battle buttons use ARCHON's own icons (lib/ui/icons), with the standard emoji as fallback.
+const { icon } = require('../lib/ui/icons');
+const BUTTON_ICONS = {
+    small_check: em('ic_ok', '✅'), small_cross: em('ic_off', '❌'),
+    duel_sword: icon('swords'), shield: icon('shield'), duel_heal: icon('heal'), duel_bolt: icon('bolt'),
+};
 function button(id, label, style, emojiKey) {
     const b = new ButtonBuilder().setCustomId(id).setLabel(label).setStyle(style);
     const e = emojiKey ? toEmoji(BUTTON_ICONS[emojiKey] || '') : undefined;
