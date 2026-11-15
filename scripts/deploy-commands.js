@@ -35,11 +35,16 @@ function stop(msg) {
 }
 
 // ─── comparing with Discord ──────────────────────────────────────────────
-// Discord fills in defaults (type 1, required false, nsfw false…) that the bot leaves out: they are dropped on both
-// sides so only real differences show.
+// Discord fills in defaults (type 1, required false, nsfw false…) that the bot leaves out, drops the invisible
+// emoji variation mark (U+FE0F) from texts and sorts channel types: the same is done on both sides so only real
+// differences show.
 const IGNORED = new Set(['id', 'application_id', 'version', 'guild_id', 'dm_permission', 'integration_types', 'handler', 'name_localized', 'description_localized']);
 function clean(v) {
-    if (Array.isArray(v)) { const a = v.map(clean).filter((x) => x !== undefined); return a.length ? a : undefined; }
+    if (Array.isArray(v)) {
+        const a = v.map(clean).filter((x) => x !== undefined);
+        if (a.length && a.every((x) => typeof x === 'number')) a.sort((x, y) => x - y);
+        return a.length ? a : undefined;
+    }
     if (v && typeof v === 'object') {
         const out = {};
         for (const k of Object.keys(v).sort()) {
@@ -50,7 +55,7 @@ function clean(v) {
         return Object.keys(out).length ? out : undefined;
     }
     if (v === null || v === false || v === '') return undefined;
-    return v;
+    return typeof v === 'string' ? v.replace(/\uFE0F/g, '') : v;
 }
 const same = (a, b) => JSON.stringify(clean({ ...a, type: a.type ?? 1 })) === JSON.stringify(clean({ ...b, type: b.type ?? 1 }));
 
