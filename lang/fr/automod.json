@@ -332,5 +332,6 @@
   "tb_outApproved": "Un avertissement retiré.",
   "tb_outBanLifted": "Bannissement levé.",
   "tb_outRejected": "La sanction reste. Nouvel appel possible dans 24 heures.",
-  "tb_outPaused": "Plus d'appel pendant 7 jours, un avertissement ajouté."
+  "tb_outPaused": "Plus d'appel pendant 7 jours, un avertissement ajouté.",
+  "appeal_sentBtn": "Appel envoyé"
 }

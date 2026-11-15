@@ -332,5 +332,6 @@
   "tb_outApproved": "One strike removed.",
   "tb_outBanLifted": "Ban lifted.",
   "tb_outRejected": "The action stays. They can appeal again in 24 hours.",
-  "tb_outPaused": "No appeals for 7 days, one strike added."
+  "tb_outPaused": "No appeals for 7 days, one strike added.",
+  "appeal_sentBtn": "Appeal sent"
 }

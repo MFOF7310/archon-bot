@@ -332,5 +332,6 @@
   "tb_outApproved": "已撤销一次警告。",
   "tb_outBanLifted": "封禁已解除。",
   "tb_outRejected": "处罚维持不变，24 小时后可再次申诉。",
-  "tb_outPaused": "7 天内不能申诉，并增加一次警告。"
+  "tb_outPaused": "7 天内不能申诉，并增加一次警告。",
+  "appeal_sentBtn": "申诉已发送"
 }

@@ -3334,9 +3334,14 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             return interaction.reply({ content: require('./lib/i18n').t('appealNotYours', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
         }
 
-        const modal = require('./plugins/automod.js').appealModal(userId, guildId, interaction.user);
-
-        return interaction.showModal(modal).catch(() => {});
+        const AM = require('./plugins/automod.js');
+        // already appealed (or appeals paused): say so at once and grey the button, no form to fill for nothing
+        const blocked = AM.appealBlocked(client, interaction.user, guildId);
+        if (blocked) {
+            await interaction.reply({ content: blocked.text, flags: 1 << 6 }).catch(() => {});
+            return AM.greyAppealButton(interaction.message, blocked.lang);
+        }
+        return interaction.showModal(AM.appealModal(userId, guildId, interaction.user)).catch(() => {});
     }
 
     // ================= APPEAL MODAL SUBMIT =================

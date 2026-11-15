@@ -1120,9 +1120,44 @@ async function handleAppealModal(interaction, client) {
     const guild = client.guilds.cache.get(guildId);
     await interaction.deferReply().catch(() => {});
     const reason = String(interaction.fields.getTextInputValue('appeal_reason') || '').trim().slice(0, 500) || '—';
+    const started = Date.now();
     const payload = guild ? await submitAppeal(client, interaction.user, guild, reason, lang) : _note(C.RED, _t0('appeal_failedTitle'), _t0('appeal_failedDesc'));
     await interaction.editReply(payload).catch(() => {});
+    // sent (the cooldown was just set): the strike card's Appeal button greys out, so it can't be pressed twice
+    if ((appealCooldowns.get(`${userId}:${guildId}`) || 0) >= started && interaction.message) await greyAppealButton(interaction.message, lang);
     return true;
+}
+
+// The strike card with its Appeal button disabled and labelled "Appeal sent" (the rest of the card is kept as it is)
+async function greyAppealButton(message, lang) {
+    const label = require('../lib/i18n').t('automod.appeal_sentBtn', lang);
+    const walk = (c) => {
+        const j = typeof c?.toJSON === 'function' ? c.toJSON() : c;
+        if (j?.type === 2 && String(j.custom_id || '').startsWith('automod_appeal_')) return { ...j, disabled: true, label };
+        if (Array.isArray(j?.components)) j.components = j.components.map(walk);
+        return j;
+    };
+    try { await message.edit({ components: (message.components || []).map(walk) }); }
+    catch (e) { console.log('[APPEAL] could not grey the button:', e.message); }
+}
+
+// The Appeal button: an appeal already sent (or appeals paused) answers at once and greys the button, without the form
+function appealBlocked(client, user, guildId) {
+    const now = Date.now();
+    const lang = userLang(user);
+    const T = (k, v) => require('../lib/i18n').t('automod.' + k, lang, v);
+    const server = client.guilds.cache.get(String(guildId))?.name || '?';
+    const banUntil = appealCooldowns.get(`ban:${user.id}:${guildId}`);
+    if (banUntil && now < banUntil) {
+        const d = Math.ceil((banUntil - now) / 86400000);
+        return { lang, text: `**${T('appeal_bannedTitle')}**\n${T('appeal_bannedDesc', { server, days: T(d === 1 ? 'daysOne' : 'daysMany', { n: d }) })}` };
+    }
+    const last = appealCooldowns.get(`${user.id}:${guildId}`);
+    if (last && now - last < APPEAL_COOLDOWN) {
+        const h = Math.ceil((APPEAL_COOLDOWN - (now - last)) / 3600000);
+        return { lang, text: `**${T('appeal_cooldownTitle')}**\n${T('appeal_cooldownDesc', { server, hours: T(h === 1 ? 'hoursOne' : 'hoursMany', { n: h }) })}` };
+    }
+    return null;
 }
 
 // The form itself, in the member's language
@@ -1711,7 +1746,7 @@ async function handleStatusButton(interaction, client) {
 }
 
 module.exports = {
-    handleAppealModal, appealModal,
+    handleAppealModal, appealModal, appealBlocked, greyAppealButton,
     isElevated,
     name: 'automod', category: 'MODERATION', aliases: ['am', 'modai'],
     description: '🛡️ Discord-native AutoMod system with timeouts, AI toxicity detection, domain-based link blocking, image spam detection, @everyone protection, and appeals.',
