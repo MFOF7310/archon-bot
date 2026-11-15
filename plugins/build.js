@@ -153,10 +153,10 @@ async function buildView(client, guild, build, viewerId, lang, where, notice) {
         const next = ids[i + 1];
         row.addComponents(
             new ButtonBuilder().setCustomId(`bld:go:${viewerId}:${prev || 'x'}`).setStyle(ButtonStyle.Secondary)
-                .setEmoji(icon('back', where)).setDisabled(!prev),
+                .setEmoji(icon('page_prev', where)).setDisabled(!prev),
             new ButtonBuilder().setCustomId('bld:pg').setStyle(ButtonStyle.Secondary).setLabel(`${i + 1} / ${ids.length}`).setDisabled(true),
             new ButtonBuilder().setCustomId(`bld:go:${viewerId}:${next || 'y'}`).setStyle(ButtonStyle.Secondary)
-                .setEmoji(icon('next', where)).setDisabled(!next),
+                .setEmoji(icon('page_next', where)).setDisabled(!next),
         );
     }
     row.addComponents(
@@ -216,9 +216,9 @@ async function listView(client, guild, viewerId, page, filter, lang, where) {
         const id = (n) => `bld:lp:${viewerId}:${n}:${f}`.slice(0, 100);
         items.push({
             row: new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(p > 0 ? id(p - 1) : 'bld:lp:x').setStyle(ButtonStyle.Secondary).setEmoji(icon('back', where)).setDisabled(p === 0),
+                new ButtonBuilder().setCustomId(p > 0 ? id(p - 1) : 'bld:lp:x').setStyle(ButtonStyle.Secondary).setEmoji(icon('page_prev', where)).setDisabled(p === 0),
                 new ButtonBuilder().setCustomId('bld:lpg').setStyle(ButtonStyle.Secondary).setLabel(`${p + 1} / ${pages}`).setDisabled(true),
-                new ButtonBuilder().setCustomId(p < pages - 1 ? id(p + 1) : 'bld:lp:y').setStyle(ButtonStyle.Secondary).setEmoji(icon('next', where)).setDisabled(p >= pages - 1),
+                new ButtonBuilder().setCustomId(p < pages - 1 ? id(p + 1) : 'bld:lp:y').setStyle(ButtonStyle.Secondary).setEmoji(icon('page_next', where)).setDisabled(p >= pages - 1),
             ),
         });
     }

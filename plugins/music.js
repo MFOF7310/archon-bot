@@ -1894,8 +1894,8 @@ module.exports = {
 
                     // Row 3 — pagination + shuffle
                     const nav = new ARB();
-                    nav.addComponents(new BB().setCustomId('mlb_prev').setLabel('◀ Prev').setStyle(BS.Secondary).setDisabled(state.page <= 1));
-                    nav.addComponents(new BB().setCustomId('mlb_next').setLabel('Next ▶').setStyle(BS.Primary).setDisabled(state.page >= totalPages));
+                    nav.addComponents(new BB().setCustomId('mlb_prev').setLabel('Prev').setEmoji(icon('page_prev', interaction)).setStyle(BS.Secondary).setDisabled(state.page <= 1));
+                    nav.addComponents(new BB().setCustomId('mlb_next').setLabel('Next').setEmoji(icon('page_next', interaction)).setStyle(BS.Primary).setDisabled(state.page >= totalPages));
                     nav.addComponents(new BB().setCustomId('mlb_home').setLabel('📚 Folders').setStyle(BS.Secondary));
                     nav.addComponents(new BB().setCustomId('mlb_shuffle').setLabel('🔀 Shuffle').setStyle(BS.Success).setDisabled(!tracks.length));
                     rows.push(nav);

@@ -531,9 +531,9 @@ module.exports = {
                             const components = [];
                             if (totalPages > 1) {
                                 const navRow = new ActionRowBuilder().addComponents(
-                                    new ButtonBuilder().setCustomId('list_prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(true),
+                                    new ButtonBuilder().setCustomId('list_prev').setEmoji(icon('page_prev')).setStyle(ButtonStyle.Secondary).setDisabled(true),
                                     new ButtonBuilder().setCustomId('list_page').setLabel(`${currentPage}/${totalPages}`).setStyle(ButtonStyle.Primary).setDisabled(true),
-                                    new ButtonBuilder().setCustomId('list_next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(totalPages === 1)
+                                    new ButtonBuilder().setCustomId('list_next').setEmoji(icon('page_next')).setStyle(ButtonStyle.Secondary).setDisabled(totalPages === 1)
                                 );
                                 components.push(navRow);
                             }
@@ -588,9 +588,9 @@ module.exports = {
                         const components = [];
                         if (totalPages > 1) {
                             const navRow = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder().setCustomId('list_prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(true),
+                                new ButtonBuilder().setCustomId('list_prev').setEmoji(icon('page_prev')).setStyle(ButtonStyle.Secondary).setDisabled(true),
                                 new ButtonBuilder().setCustomId('list_page').setLabel(`${currentPage}/${totalPages}`).setStyle(ButtonStyle.Primary).setDisabled(true),
-                                new ButtonBuilder().setCustomId('list_next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(totalPages === 1)
+                                new ButtonBuilder().setCustomId('list_next').setEmoji(icon('page_next')).setStyle(ButtonStyle.Secondary).setDisabled(totalPages === 1)
                             );
                             components.push(navRow);
                         }
@@ -623,9 +623,9 @@ module.exports = {
                         const components = [];
                         if (totalPages > 1) {
                             const navRow = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder().setCustomId('list_prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 1),
+                                new ButtonBuilder().setCustomId('list_prev').setEmoji(icon('page_prev')).setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 1),
                                 new ButtonBuilder().setCustomId('list_page').setLabel(`${currentPage}/${totalPages}`).setStyle(ButtonStyle.Primary).setDisabled(true),
-                                new ButtonBuilder().setCustomId('list_next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === totalPages)
+                                new ButtonBuilder().setCustomId('list_next').setEmoji(icon('page_next')).setStyle(ButtonStyle.Secondary).setDisabled(currentPage === totalPages)
                             );
                             components.push(navRow);
                         }
@@ -651,9 +651,9 @@ module.exports = {
                         const components = [];
                         if (totalPages > 1) {
                             const navRow = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder().setCustomId('list_prev').setLabel('◀').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 1),
+                                new ButtonBuilder().setCustomId('list_prev').setEmoji(icon('page_prev')).setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 1),
                                 new ButtonBuilder().setCustomId('list_page').setLabel(`${currentPage}/${totalPages}`).setStyle(ButtonStyle.Primary).setDisabled(true),
-                                new ButtonBuilder().setCustomId('list_next').setLabel('▶').setStyle(ButtonStyle.Secondary).setDisabled(currentPage === totalPages)
+                                new ButtonBuilder().setCustomId('list_next').setEmoji(icon('page_next')).setStyle(ButtonStyle.Secondary).setDisabled(currentPage === totalPages)
                             );
                             components.push(navRow);
                         }

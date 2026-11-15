@@ -57,4 +57,6 @@ make ic_target target "#D85A30"
 make ic_tool tool
 make ic_edit pencil
 make ic_trash trash "$RED"
+make ic_chevron_left chevron-left
+make ic_chevron_right chevron-right
 echo "Done. Now run: pm2 restart Architect-CG223"

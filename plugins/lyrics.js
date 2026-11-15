@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { iconObj } = require('../lib/ui/icons');
+const { icon } = require('../lib/ui/icons');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const EMOJIS = require('../config/emojis');
 const { resolveEmoji } = require('../lib/emoji-resolver');
@@ -143,13 +143,13 @@ function buildPaginationRow(page, total) {
         new ButtonBuilder()
             .setCustomId('lyrics_prev')
             .setLabel('Back')
-            .setEmoji(iconObj('mc_prev', null, '⏮️'))
+            .setEmoji(icon('page_prev'))
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(page === 0),
         new ButtonBuilder()
             .setCustomId('lyrics_next')
             .setLabel('Next')
-            .setEmoji(iconObj('mc_skip', null, '⏭️'))
+            .setEmoji(icon('page_next'))
             .setStyle(ButtonStyle.Primary)
             .setDisabled(page === total - 1),
     );
