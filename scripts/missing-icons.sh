@@ -60,4 +60,10 @@ make ic_edit pencil
 make ic_trash trash "$RED"
 make ic_chevron_left chevron-left
 make ic_chevron_right chevron-right
+make ic_swords swords
+make ic_history history
+make ic_flame flame "#D85A30"
+make ic_win circle-check "#23A55A"
+make ic_loss circle-x "$RED"
+make ic_draw circle-minus "$AMBER"
 echo "Done. Now run: pm2 restart Architect-CG223"
