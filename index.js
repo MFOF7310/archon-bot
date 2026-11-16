@@ -2774,8 +2774,10 @@ if (message.content && message.content.length > 4000) {
         const xpGain = Math.floor((Math.random() * (maxGain - minGain + 1) + minGain) * multiplier);
         const oldXP = userData.xp || 0;
         const newXP = oldXP + xpGain;
-        const oldLevel = Math.floor(0.1 * Math.sqrt(oldXP)) + 1;
-        const newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
+        // Compared with the SAVED level, not the level of the old XP: XP from games or /claim can pass a level without
+        // saving it, and the next message then fixed the level silently (no announcement, no level role)
+        const oldLevel = Number(userData.level) || (Math.floor(0.1 * Math.sqrt(oldXP)) + 1);
+        const newLevel = Math.max(oldLevel, Math.floor(0.1 * Math.sqrt(newXP)) + 1);
         const totalMsgs = (userData.total_messages || 0) + 1;
 
         // Queue update with composite key ${userId}:${guildId}
