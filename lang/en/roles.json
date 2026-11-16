@@ -97,5 +97,11 @@
   "mk_noperm": "ARCHON needs the Manage Roles permission to create roles.",
   "mk_reason": "ARCHON reward role, asked by {user}",
   "gone_title": "Roles deleted in Discord",
-  "gone_hint": "ARCHON removed them from its settings. Make them again with {cmd} → Create missing reward roles."
+  "gone_hint": "ARCHON removed them from its settings. Make them again with {cmd} → Create missing reward roles.",
+  "give_failed": "I couldn't give {role} to {user}.",
+  "give_why_no_perm": "ARCHON doesn't have the Manage Roles permission: give it to the {bot} role in Server Settings → Roles.",
+  "give_why_above": "The role is at or above ARCHON's: drag the {bot} role above it in Server Settings → Roles.",
+  "give_why_other": "Discord refused: {error}",
+  "give_for": "Reward: {reason}",
+  "give_once": "told once every 6 hours for this role"
 }
