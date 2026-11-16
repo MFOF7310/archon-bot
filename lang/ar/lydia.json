@@ -107,7 +107,7 @@
   "welcome_msg": "مرحبًا {user}! 👋 سيكون أحد أعضاء فريقنا معك قريبًا. لا تتردد في إضافة أي تفاصيل أو لقطات شاشة أدناه.",
   "thinkingEmbed.label": "أفكر...",
   "thinkingEmbed.text": "أعطني لحظة لمعالجة ذلك...",
-  "sourcesTitle": "🔗 المصادر",
+  "sourcesTitle": "المصادر",
   "memory_card_title": "🧠 ما أتذكره عن {user}",
   "memory_empty_title": "📭 لا شيء محفوظ بعد",
   "memory_count": "{n} محفوظة",

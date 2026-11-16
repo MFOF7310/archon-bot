@@ -107,7 +107,7 @@
   "welcome_msg": "你好 {user}！👋 我们的团队成员很快就会为你服务。请随时在下方添加任何额外细节或截图。",
   "thinkingEmbed.label": "思考中...",
   "thinkingEmbed.text": "给我一秒钟处理一下...",
-  "sourcesTitle": "🔗 来源",
+  "sourcesTitle": "来源",
   "memory_card_title": "🧠 我记得的关于 {user} 的事",
   "memory_empty_title": "📭 还没有保存任何内容",
   "memory_count": "已保存 {n} 条",

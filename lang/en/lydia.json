@@ -107,7 +107,7 @@
   "welcome_msg": "Hey {user}! 👋 A member of our team will be with you shortly. Feel free to drop any extra details or screenshots below.",
   "thinkingEmbed.label": "Thinking...",
   "thinkingEmbed.text": "Give me a second to process that...",
-  "sourcesTitle": "🔗 Sources",
+  "sourcesTitle": "Sources",
   "memory_card_title": "🧠 What I remember about {user}",
   "memory_empty_title": "📭 Nothing saved yet",
   "memory_count": "{n} saved",

@@ -107,7 +107,7 @@
   "welcome_msg": "Salut {user} ! 👋 Un membre de notre équipe sera avec toi sous peu. N'hésite pas à ajouter des détails ou des captures d'écran ci-dessous.",
   "thinkingEmbed.label": "Je réfléchis...",
   "thinkingEmbed.text": "Donne-moi une seconde pour traiter ça...",
-  "sourcesTitle": "🔗 Sources",
+  "sourcesTitle": "Sources",
   "memory_card_title": "🧠 Ce que je retiens sur {user}",
   "memory_empty_title": "📭 Rien d'enregistré pour l'instant",
   "memory_count": "{n} enregistré(s)",
