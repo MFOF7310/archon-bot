@@ -49,6 +49,7 @@ const T = {
   waitLive: 'The countdown updates by itself in Discord.', hm: '{h} h {m} min', mOnly: '{m} min', readyNow: 'You can vote now',
   statusTitle: 'Vote system', statusMode: 'Mode: **{mode}**',
   modeWebhook: 'webhook (instant)', modePoll: 'Top.gg check when claiming', modeFallback: 'manual only',
+  tgMonth: 'Top.gg: **{month}** this month · **{total}** in all', tgReset: 'Top.gg sets the monthly count back to 0 on the 1st at midnight UTC (next: {when}).', tgFail: "Couldn't read ARCHON's numbers from Top.gg right now.", claimsMonth: 'Claimed in ARCHON this month (all servers): **{n}**',
   apiOk: 'Top.gg API configured', apiMissing: 'Top.gg API missing: set TOPGG_API_TOKEN', hookOk: 'Webhook configured', hookMissing: 'Webhook not configured',
   notYours: "This menu isn't yours.", serverOnly: 'Servers only.', adminOnly: 'Admins only.',
   units: { day: ['day', 'days'], vote: ['vote', 'votes'], credit: ['credit', 'credits'] },
@@ -77,6 +78,7 @@ const T = {
   waitLive: 'Le compte à rebours se met à jour tout seul dans Discord.', hm: '{h} h {m} min', mOnly: '{m} min', readyNow: 'Tu peux voter maintenant',
   statusTitle: 'Système de vote', statusMode: 'Mode : **{mode}**',
   modeWebhook: 'webhook (instantané)', modePoll: 'vérification Top.gg à la récupération', modeFallback: 'manuel uniquement',
+  tgMonth: 'Top.gg : **{month}** ce mois-ci · **{total}** au total', tgReset: 'Top.gg remet le compteur du mois à 0 le 1er à minuit UTC (prochain : {when}).', tgFail: "Impossible de lire les chiffres d'ARCHON sur Top.gg pour l'instant.", claimsMonth: 'Récupérés dans ARCHON ce mois-ci (tous serveurs) : **{n}**',
   apiOk: 'API Top.gg configurée', apiMissing: 'API Top.gg manquante : renseigne TOPGG_API_TOKEN', hookOk: 'Webhook configuré', hookMissing: 'Webhook non configuré',
   notYours: "Ce menu n'est pas à toi.", serverOnly: 'Réservé aux serveurs.', adminOnly: 'Réservé aux admins.',
   units: { day: ['jour', 'jours'], vote: ['vote', 'votes'], credit: ['crédit', 'crédits'] },
@@ -105,6 +107,7 @@ const T = {
   waitLive: '倒计时会在 Discord 中自动更新。', hm: '{h} 小时 {m} 分钟', mOnly: '{m} 分钟', readyNow: '现在就可以投票',
   statusTitle: '投票系统', statusMode: '模式：**{mode}**',
   modeWebhook: 'Webhook（即时）', modePoll: '领取时检查 Top.gg', modeFallback: '仅手动',
+  tgMonth: 'Top.gg：本月 **{month}** · 累计 **{total}**', tgReset: 'Top.gg 每月 1 日 UTC 零点将本月票数清零（下次：{when}）。', tgFail: '暂时无法从 Top.gg 读取 ARCHON 的数据。', claimsMonth: '本月在 ARCHON 中领取（所有服务器）：**{n}**',
   apiOk: 'Top.gg API 已配置', apiMissing: '缺少 Top.gg API：请设置 TOPGG_API_TOKEN', hookOk: 'Webhook 已配置', hookMissing: 'Webhook 未配置',
   notYours: '这不是你的菜单。', serverOnly: '仅限服务器使用。', adminOnly: '仅限管理员。',
   units: { day: ['天', '天'], vote: ['次投票', '次投票'], credit: ['积分', '积分'] },
@@ -133,6 +136,7 @@ const T = {
   waitLive: 'العداد يتحدّث تلقائيًا في ديسكورد.', hm: '{h} س {m} د', mOnly: '{m} د', readyNow: 'يمكنك التصويت الآن',
   statusTitle: 'نظام التصويت', statusMode: 'الوضع: **{mode}**',
   modeWebhook: 'Webhook (فوري)', modePoll: 'فحص Top.gg عند الاستلام', modeFallback: 'يدوي فقط',
+  tgMonth: 'Top.gg: **{month}** هذا الشهر · **{total}** إجمالاً', tgReset: 'يعيد Top.gg عدّاد الشهر إلى 0 في اليوم الأول عند منتصف الليل UTC (القادم: {when}).', tgFail: 'تعذّرت قراءة أرقام ARCHON من Top.gg حالياً.', claimsMonth: 'طُلبت في ARCHON هذا الشهر (كل الخوادم): **{n}**',
   apiOk: 'Top.gg API مُعدّة', apiMissing: 'Top.gg API غير مُعدّة: أضف TOPGG_API_TOKEN', hookOk: 'Webhook مُعدّ', hookMissing: 'Webhook غير مُعدّ',
   notYours: 'هذه القائمة ليست لك.', serverOnly: 'للسيرفرات فقط.', adminOnly: 'للمشرفين فقط.',
   units: { day: ['يوم', 'يوم'], vote: ['تصويت', 'تصويت'], credit: ['رصيد', 'رصيد'] },
@@ -192,6 +196,17 @@ function rankOf(db, gid, uid) {
 }
 
 function topRows(db, gid) {
+    const rows = topRowsRaw(db, gid);
+    for (const r of rows) {
+        try {
+            const p = voteSync.personStreak(db, r.user_id);
+            r.current_streak = voteSync.streakAlive(p.last_vote_date) ? p.current_streak : 0;
+            r.best_streak = Math.max(p.best_streak || 0, r.current_streak);
+        } catch { /* keep the stored values */ }
+    }
+    return rows;
+}
+function topRowsRaw(db, gid) {
     // the streak is the person's (vote_streaks), the vote count is this server's
     try {
         return db.prepare(`SELECT v.user_id, v.total_votes, COALESCE(s.current_streak, v.current_streak) AS current_streak,
@@ -384,15 +399,31 @@ function waitCard(client, nextVote, lang, where) {
     ]);
 }
 
-function statusCard(lang, where) {
+// Setup checks, plus ARCHON's numbers: what Top.gg counts this month and in all, and what was claimed in the bot
+async function statusCard(lang, where, db) {
     const t = L(lang), I = (k) => icon(k, where);
     const hasApi = !!process.env.TOPGG_API_TOKEN;
     const hasWebhook = !!(process.env.TOPGG_WEBHOOK_SECRET || process.env.TOPGG_WEBHOOK_AUTH);
     const mode = hasWebhook ? t.modeWebhook : hasApi ? t.modePoll : t.modeFallback;
+    const d = new Date();
+    const monthStart = Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) / 1000);
+    const nextReset = Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1) / 1000);
+    const numbers = [];
+    if (hasApi) {
+        const tg = await voteSync.topggBotStats();
+        numbers.push(tg ? `${I('votes')} ${fill(t.tgMonth, { month: amount(tg.month, 'vote', lang), total: amount(tg.total, 'vote', lang) })}` : `${I('warn')} ${t.tgFail}`);
+    }
+    try {
+        const n = db.prepare('SELECT COUNT(*) AS n FROM vote_claims WHERE claim_date >= ?').get(monthStart).n;
+        numbers.push(`${I('coins')} ${fill(t.claimsMonth, { n: amount(n, 'vote', lang) })}`);
+    } catch { /* no claims table yet */ }
+    numbers.push(`-# ${fill(t.tgReset, { when: `<t:${nextReset}:R>` })}`);
     return card(hasApi ? COLOR.ready : COLOR.error, [
         { text: `### ${t.statusTitle}\n${fill(t.statusMode, { mode })}` },
         { rule: true },
         { text: `${I(hasApi ? 'ok' : 'no')} ${hasApi ? t.apiOk : t.apiMissing}\n${I(hasWebhook ? 'ok' : 'no')} ${hasWebhook ? t.hookOk : t.hookMissing}` },
+        { rule: true },
+        { text: numbers.join('\n') },
     ]);
 }
 
@@ -469,7 +500,7 @@ module.exports = {
         }
 
         // ---- ADMIN STATUS ----
-        if (sub === 'status' && isAdmin) return message.reply(statusCard(lang, message)).catch(() => {});
+        if (sub === 'status' && isAdmin) return message.reply(await statusCard(lang, message, db)).catch(() => {});
 
         // ---- PORTAL (default) ----
         const status = await getRealtimeStatus(client, uid, gid, db);
@@ -536,7 +567,8 @@ module.exports = {
         // ---- STATUS (admin) ----
         if (sub === 'status') {
             { const _no = require('../lib/access').deny(interaction.member, 'settings', lang); if (_no) return interaction.reply({ content: _no, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }); }
-            return interaction.reply(eph(statusCard(lang, interaction)));
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            return interaction.editReply(await statusCard(lang, interaction, db));
         }
 
         // ---- PORTAL (default) ----

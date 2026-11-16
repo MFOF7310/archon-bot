@@ -207,6 +207,21 @@ async function checkTopGGVote(userId) {
     } catch (e) { return null; }
 }
 
+// ARCHON's own numbers on Top.gg (for /vote status). Top.gg resets the monthly count on the 1st at midnight UTC.
+let _botStats = { at: 0, data: null };
+async function topggBotStats() {
+    const token = process.env.TOPGG_API_TOKEN;
+    if (!token) return null;
+    if (Date.now() - _botStats.at < 5 * 60 * 1000 && _botStats.data) return _botStats.data;
+    const botId = global.client?.user?.id || process.env.CLIENT_ID || '1472707869257367676';
+    try {
+        const res = await axios.get(`https://top.gg/api/bots/${botId}`, { headers: { Authorization: token }, timeout: 5000 });
+        const data = { month: Number(res.data?.monthlyPoints ?? 0), total: Number(res.data?.points ?? 0) };
+        _botStats = { at: Date.now(), data };
+        return data;
+    } catch (e) { return null; }
+}
+
 // ================= CALCULATE REWARD =================
 // The streak counts days (UTC, which is Bamako time), not votes: with a 12-hour cooldown two votes fit in one day,
 // so "7 days" used to be reached after 3 and a half days, and a milestone could pay twice the same day.
@@ -457,6 +472,8 @@ module.exports = {
     isWeekend,
     reminderOn,
     setReminder,
+    personStreak,
+    topggBotStats,
     remindButton,
     startReminders,
     voteUrl,

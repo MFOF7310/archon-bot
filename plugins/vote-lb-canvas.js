@@ -32,7 +32,7 @@ function roundRectVote(ctx, x, y, w, h, r) {
 
 async function buildVoteLBCanvas(entries, guildName, botAvatarURL) {
     const W = 820;
-    const HEADER_H = 100;
+    const HEADER_H = 118;   // room for the column titles under the subtitle (they overlapped at 100)
     const ROW_H = 52;
     const FOOTER_H = 50;
     const TOP = Math.min(entries.length, 10);
