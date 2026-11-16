@@ -15,7 +15,7 @@ const T = {
         streak: 'Streak of **{days}**', milestone: 'Milestone reached: **+{bonus}** bonus included',
         nextMs: 'Next milestone: {days}', allMs: 'Every milestone reached',
         weekend: 'Weekend: your vote counts double', next: 'Next vote {when}', nextRemind: 'Next vote {when}. I\'ll let you know.',
-        voteAgain: 'Vote again', remindOn: 'Remind me', remindOff: 'Stop reminders',
+        voteAgain: 'Vote again', remindOn: 'Remind me', remindOff: 'Stop reminders', remindToggle: 'Reminders on/off',
         remindTitle: 'You can vote again', remindStreak: 'Vote today to keep your **{days}** streak going.',
         remindFresh: 'Every vote earns **{base}** credits{weekend}.', weekendBit: ', double this weekend',
         remindFoot: 'You get this because you turned reminders on.',
@@ -27,7 +27,7 @@ const T = {
         streak: 'Série de **{days}**', milestone: 'Palier atteint : **+{bonus}** de bonus inclus',
         nextMs: 'Prochain palier : {days}', allMs: 'Tous les paliers sont atteints',
         weekend: 'Week-end : ton vote compte double', next: 'Prochain vote {when}', nextRemind: 'Prochain vote {when}. Je te préviens.',
-        voteAgain: 'Voter à nouveau', remindOn: 'Me rappeler', remindOff: 'Arrêter les rappels',
+        voteAgain: 'Voter à nouveau', remindOn: 'Me rappeler', remindOff: 'Arrêter les rappels', remindToggle: 'Rappels on/off',
         remindTitle: 'Tu peux voter de nouveau', remindStreak: 'Vote aujourd\'hui pour garder ta série de **{days}**.',
         remindFresh: 'Chaque vote rapporte **{base}** crédits{weekend}.', weekendBit: ', le double ce week-end',
         remindFoot: 'Tu reçois ce message parce que tu as activé les rappels.',
@@ -39,7 +39,7 @@ const T = {
         streak: '连投 **{days}**', milestone: '达成里程碑：已含 **+{bonus}** 奖励',
         nextMs: '下一个里程碑：{days}', allMs: '所有里程碑都已达成',
         weekend: '周末：你的投票算双倍', next: '下次投票：{when}', nextRemind: '下次投票：{when}。到时我会提醒你。',
-        voteAgain: '再投一票', remindOn: '提醒我', remindOff: '停止提醒',
+        voteAgain: '再投一票', remindOn: '提醒我', remindOff: '停止提醒', remindToggle: '开启/关闭提醒',
         remindTitle: '你可以再次投票了', remindStreak: '今天投票，保持你 **{days}** 的连投。',
         remindFresh: '每票可得 **{base}** 积分{weekend}。', weekendBit: '，本周末双倍',
         remindFoot: '你开启了提醒，所以收到这条消息。',
@@ -51,7 +51,7 @@ const T = {
         streak: 'سلسلة **{days}**', milestone: 'وصلت إلى محطة: تشمل **+{bonus}** إضافية',
         nextMs: 'المحطة التالية: {days}', allMs: 'وصلت إلى كل المحطات',
         weekend: 'عطلة نهاية الأسبوع: تصويتك يُحسب مرتين', next: 'التصويت التالي {when}', nextRemind: 'التصويت التالي {when}. سأنبهك.',
-        voteAgain: 'صوّت مجددًا', remindOn: 'ذكّرني', remindOff: 'أوقف التذكير',
+        voteAgain: 'صوّت مجددًا', remindOn: 'ذكّرني', remindOff: 'أوقف التذكير', remindToggle: 'تشغيل/إيقاف التذكير',
         remindTitle: 'يمكنك التصويت مجددًا', remindStreak: 'صوّت اليوم لتحافظ على سلسلة **{days}**.',
         remindFresh: 'كل تصويت يمنحك **{base}** رصيد{weekend}.', weekendBit: '، والضعف في عطلة نهاية الأسبوع',
         remindFoot: 'تصلك هذه الرسالة لأنك فعّلت التذكير.',
@@ -232,8 +232,11 @@ function setReminder(db, userId, guildId, on) {
         ON CONFLICT(user_id) DO UPDATE SET enabled = excluded.enabled, guild_id = COALESCE(excluded.guild_id, vote_reminders.guild_id)`).run(userId, guildId || null, on ? 1 : 0);
     return on;
 }
-function remindButton(lang, on, where) {
+// shared: a card everyone sees (a server card). Its button can't show each member's own state, so it flips the
+// setting of whoever presses it; the private answer then shows a button that undoes it.
+function remindButton(lang, on, where, shared = false) {
     const t = T[lang] || T.en;
+    if (shared) return new ButtonBuilder().setCustomId('vote_remind_slash').setLabel(t.remindToggle).setStyle(ButtonStyle.Secondary).setEmoji(icon('bell', where));
     return new ButtonBuilder().setCustomId(on ? 'vote_remindoff_slash' : 'vote_remindon_slash').setLabel(on ? t.remindOff : t.remindOn)
         .setStyle(ButtonStyle.Secondary).setEmoji(icon(on ? 'bellOff' : 'bell', where));
 }

@@ -254,7 +254,7 @@ function portalRows(client, status, t, sfx, where, lang, gid) {
     if (state !== 'wait') main.addComponents(new ButtonBuilder().setCustomId(`vote_claim${sfx}`).setLabel(t.btnClaim).setStyle(ButtonStyle.Success).setEmoji(icon('coins', where)));
     else main.addComponents(new ButtonBuilder().setCustomId(`vote_check_status${sfx}`).setLabel(t.btnWait).setStyle(ButtonStyle.Secondary).setEmoji(icon('clock', where)));
     // Reminders are personal: whoever presses gets their own setting changed (works from any card, and from the DM)
-    const more = new ActionRowBuilder().addComponents(voteSync.remindButton(lang, status.reminders, where));
+    const more = new ActionRowBuilder().addComponents(voteSync.remindButton(lang, status.reminders, where, !!gid));
     if (state !== 'first') more.addComponents(
         new ButtonBuilder().setCustomId(`vote_stats${sfx}`).setLabel(t.btnStats).setStyle(ButtonStyle.Secondary).setEmoji(icon('stats', where)),
         new ButtonBuilder().setCustomId(`vote_lb${sfx}`).setLabel(t.btnTop).setStyle(ButtonStyle.Secondary).setEmoji(icon('trophy', where)),
@@ -550,9 +550,19 @@ module.exports = {
         const id = interaction.customId;
         const who = whoOf(interaction.user, interaction.member);
 
-        if (id === 'vote_remindon_slash' || id === 'vote_remindoff_slash') {
-            const on = voteSync.setReminder(db, uid, gid, id === 'vote_remindon_slash');
+        if (id === 'vote_remindon_slash' || id === 'vote_remindoff_slash' || id === 'vote_remind_slash') {
             const t = L(lang);
+            // On a DM receipt or a private answer the button shows what it does; on a shared server card it flips
+            // the presser's own setting (older server cards still carry vote_remindon_slash: they flip too)
+            const isPrivate = !gid || !!interaction.message?.flags?.has?.(MessageFlags.Ephemeral);
+            const want = isPrivate && id !== 'vote_remind_slash' ? id === 'vote_remindon_slash' : !voteSync.reminderOn(db, uid);
+            const on = voteSync.setReminder(db, uid, gid, want);
+            const note = {
+                content: `${icon(on ? 'bell' : 'bellOff', interaction)} ${on ? t.remindedOn : t.remindedOff}`,
+                components: [new ActionRowBuilder().addComponents(voteSync.remindButton(lang, on, interaction))],
+            };
+            const isCard = !!interaction.message?.flags?.has?.(MessageFlags.IsComponentsV2);
+            if (gid && isPrivate && !isCard) return interaction.update(note);   // the private note's own button: flip it in place
             // In the DM receipt the button itself flips; on a server card the member gets a private note
             if (!interaction.guildId) {
                 const rows = interaction.message.components.map((c) => c.toJSON());
@@ -560,7 +570,7 @@ module.exports = {
                 rows.forEach(swap);
                 return interaction.update({ components: rows, flags: MessageFlags.IsComponentsV2 }).catch(() => interaction.reply({ content: on ? t.remindedOn : t.remindedOff }).catch(() => {}));
             }
-            return interaction.reply({ content: `${icon(on ? 'bell' : 'bellOff', interaction)} ${on ? t.remindedOn : t.remindedOff}`, flags: MessageFlags.Ephemeral });
+            return interaction.reply({ ...note, flags: MessageFlags.Ephemeral });
         }
 
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
