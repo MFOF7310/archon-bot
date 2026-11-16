@@ -76,4 +76,7 @@ make ic_discord brand-discord "#5865F2"
 make ic_shield shield
 make ic_heal heart-plus
 make ic_bolt bolt "$AMBER"
+make ic_shield_check shield-check "#23A55A"
+make ic_user_check user-check "#23A55A"
+make ic_user_x user-x "$RED"
 echo "Done. Now run: pm2 restart Architect-CG223"

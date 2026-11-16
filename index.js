@@ -3325,6 +3325,12 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
         });
     }
+    if ((interaction.isButton() || interaction.isAnySelectMenu()) && interaction.customId.startsWith('vfy:')) {
+        return require('./plugins/verify').handleAdmin(interaction, client).catch(e => {
+            console.error(`[VERIFY] admin panel guild=${interaction.guildId}:`, e.stack || e.message);
+            if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
+        });
+    }
     if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith('war:')) {
         return require('./plugins/war').handleComponent(interaction, client).catch(e => {
             console.error(`[WAR] component guild=${interaction.guildId}:`, e.stack || e.message);
@@ -5091,8 +5097,8 @@ apiApp.post('/api/verify/:guildId', requireAdmin, async (req, res) => {
                 lock = { locked: r.locked, failed: r.failed, panel: chName(r.panelId), fallback: chName(r.fallbackId) };
                 if (r.failed) warnings.push(`${r.failed} channels couldn't be updated — check ARCHON's role is above the unverified role.`);
                 if (!r.panelId) warnings.push(r.fallbackId
-                    ? `No verification panel yet: ${lock.fallback} stays open, so members can skip verification there. Post one with /verify panel.`
-                    : `No verification panel: members with closed DMs can't verify. Post one with /verify panel.`);
+                    ? `No verification panel yet: ${lock.fallback} stays open, so members can skip verification there. Post one from /verify.`
+                    : `No verification panel: members with closed DMs can't verify. Post one from /verify.`);
                 console.log(`[VERIFY-API] lock guild=${gid} locked=${r.locked} failed=${r.failed} panel=${r.panelId || '-'}`);
             }
         }
@@ -5142,7 +5148,7 @@ apiApp.get('/api/verify/:guildId/pending', requireAdmin, async (req, res) => {
     }
 });
 
-// Post (or move) the verification panel from the dashboard: same checks as /verify panel
+// Post (or move) the verification panel from the dashboard: same checks as the /verify panel
 apiApp.post('/api/verify/:guildId/panel', requireAdmin, async (req, res) => {
     try {
         const { userId, channelId } = req.body || {};
@@ -5244,7 +5250,7 @@ apiApp.get('/api/overview-health/:guildId', requireAdmin, (req, res) => {
             add(premium, 'Premium active', 'Verification is paused: renew Premium.');
             add(!s.verify_role_id || roleOk(s.verify_role_id), 'Verified role usable', 'The verified role is above the bot or has admin permissions. Pick another in Verification.', 'verify');
             add(!s.verify_unverified_role_id || roleOk(s.verify_unverified_role_id), 'Unverified role usable', 'The unverified role is above the bot or has admin permissions. Pick another in Verification.', 'verify');
-            add(chan(s.verify_panel_channel_id), 'Verify panel posted', 'Run /verify panel so members with closed DMs can verify.');
+            add(chan(s.verify_panel_channel_id), 'Verify panel posted', 'Post the panel from /verify so members with closed DMs can verify.');
             if (Number(s.verify_kick_days) > 0)
                 add(me?.permissions.has(P.Flags.KickMembers), 'Bot can kick members', 'Auto-kick is on: give the bot the Kick Members permission.');
         }
