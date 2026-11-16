@@ -17,7 +17,7 @@ const CAT_EMOJI = {
     MUSIC: 'ic_music', SOCIAL: 'ic_social', TICKETS: 'ic_ticket', CODM: 'ic_codm', LEVELING: 'level', SUPERCAR: 'ic_gaming',
 };
 const CAT_FALLBACK = { SYSTEM: '⚙️', GAMING: '🎮', AI: '🤖', PROFILE: '👤', OWNER: '🦅', UTILITY: '🧰', MODERATION: '🛡️', ECONOMY: '🪙', FUN: '🎉', ADMIN: '👑', CONFIG: '⚙️', MUSIC: '🎵', SOCIAL: '💬', TICKETS: '🎫', CODM: '🎯', LEVELING: '📈' };
-const START_HERE = [['claim'], ['profile'], ['game'], ['remind', 'set'], ['bot', 'ping']];   // /claim gives the daily reward (/daily only has check and stats)
+const START_HERE = [['claim'], ['profile'], ['game', 'menu'], ['remind', 'set'], ['bot', 'ping']];   // /claim gives the daily reward (/daily only has check and stats); /game needs a subcommand
 const SLASH_LOCALE = { fr: 'fr', zh: 'zh-CN' };
 
 const tr = (lang) => (k, vars) => t('help.' + k, lang, vars || {});
