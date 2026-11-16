@@ -1,6 +1,7 @@
 'use strict';
 
-const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder, PermissionsBitField, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { icon } = require('../lib/ui/icons');
 const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
 let axios = null;
@@ -17,16 +18,6 @@ function isPremium(db, guildId) {
 
 const lydiaActions = require('./lydia-actions');
 const { isElevated: _isElevated } = (() => { try { return require('./automod'); } catch { return { isElevated: () => false }; } })();
-
-// Per-guild custom API keys (premium) — falls back to global .env when unset
-function getGuildKey() { return null; }   // custom keys were removed (unused); kept so older callers still work
-function _unusedGuildKey(database, guildId, service) {
-  try {
-    if (!database || !guildId) return null;
-    const row = database.prepare('SELECT api_key FROM lydia_keys WHERE guild_id = ? AND service = ?').get(String(guildId), service);
-    return row?.api_key || null;
-  } catch { return null; }
-}
 
 function getGuildModel(database, guildId) {
   try {
@@ -45,7 +36,42 @@ const CFG = {
   RESPONSE_TIMEOUT: 15000,
   MAX_REPLY_CHARS: 3600,     // a Components V2 message holds 4000 characters of text in total
   FREE_DAILY_LIMIT: 30,      // messages per member per day on servers without Premium (protects the OpenRouter bill)
+  FREE_SERVER_DAILY: 200,    // messages per server per day without Premium, all members together
+  FREE_CHANNELS: 2,          // channels where she answers without Premium (the oldest switched on)
 };
+
+// ─── Plan limits (free: CFG.FREE_* · Premium: none) ─────────────────────────
+let _usageReady = false;
+function usageTable(db) {
+  if (_usageReady || !db) return;
+  db.prepare('CREATE TABLE IF NOT EXISTS lydia_usage (user_id TEXT, guild_id TEXT, day TEXT, n INTEGER DEFAULT 0, PRIMARY KEY (user_id, guild_id, day))').run();
+  _usageReady = true;
+}
+const usageDay = () => new Date().toISOString().slice(0, 10);   // UTC: resets at midnight UTC
+function usageOf(db, guildId, userId) {
+  try {
+    usageTable(db);
+    const day = usageDay();
+    const me = userId ? db.prepare('SELECT n FROM lydia_usage WHERE user_id = ? AND guild_id = ? AND day = ?').get(userId, guildId, day)?.n || 0 : 0;
+    const server = db.prepare('SELECT COALESCE(SUM(MIN(n, ?)), 0) AS n FROM lydia_usage WHERE guild_id = ? AND day = ?').get(CFG.FREE_DAILY_LIMIT, guildId, day).n;
+    return { me, server };
+  } catch { return { me: 0, server: 0 }; }
+}
+// The server's active channels, the first switched on first (the free plan answers in the first CFG.FREE_CHANNELS)
+function activeChannels(client, guild) {
+  const ids = Object.keys(client.lydiaChannels || {}).filter((id) => guild.channels.cache.has(id));
+  if (ids.length < 2) return ids;
+  const since = {};
+  try {
+    for (const r of client.db.prepare(`SELECT channel_id, updated_at FROM lydia_agents WHERE is_active = 1 AND channel_id IN (${ids.map(() => '?').join(',')})`).all(...ids)) since[r.channel_id] = r.updated_at || 0;
+  } catch { /* keep the order found */ }
+  return ids.sort((a, b) => (since[a] || 0) - (since[b] || 0));
+}
+function answeringChannels(client, guild) {
+  const all = activeChannels(client, guild);
+  return isPremium(client.db, guild.id) ? all : all.slice(0, CFG.FREE_CHANNELS);
+}
+const serverNoticeDay = new Map();   // guild → the day the "server limit reached" notice was sent
 
 let isLydiaInitialized = false;
 const userCooldowns = new Map();
@@ -426,7 +452,7 @@ async function generateAIResponse(systemPrompt, userMessage, history = [], image
   }
 
   // Premium servers may bring their own OpenRouter key — else global .env
-  const guildKey = guildId ? getGuildKey(global.client?.db || null, guildId, 'openrouter') : null;
+  const guildKey = null;   // ARCHON's own OpenRouter key (.env); per-server keys were removed
 
   // Premium servers get Claude Sonnet directly
   const isPremiumGuild = guildId ? isPremium(global.client?.db || null, guildId) : false;
@@ -740,6 +766,9 @@ async function handleLydiaMessage(message, client, database) {
     if (!(_c.startsWith(_name) || message.mentions?.has(client.user))) return;
   }
 
+  // Free plan: she answers in the first CFG.FREE_CHANNELS channels switched on, quietly ignores the others
+  if (!answeringChannels(client, message.guild).includes(message.channel.id)) return;
+
   messageProcessingLocks.add(key);
   userCooldowns.set(message.author.id, now);
   channelCooldowns.set(message.channel.id, now);
@@ -785,14 +814,7 @@ async function handleLydiaMessage(message, client, database) {
     }
 
     if (!userPrompt.trim()) {
-      const greetings = {
-        es: `\u00A1Hola ${userName}! Estoy aqu\u00ED y lista para ayudar. \u00BFQu\u00E9 te gustar\u00EDa saber?`,
-        ar: `\u0645\u0631\u062D\u0628\u0627\u064B ${userName}! \u0623\u0646\u0627 \u0647\u0646\u0627 \u0648\u0645\u0633\u062A\u0639\u062F\u0629 \u0644\u0644\u0645\u0633\u0627\u0639\u062F\u0629. \u0645\u0627\u0630\u0627 \u062A\u0648\u062F \u0623\u0646 \u062A\u0639\u0631\u0641\u061F`,
-        zh: `\u55E8 ${userName}! \u6211\u5728\u8FD9\u91CC\uFF0C\u968F\u65F6\u51C6\u5907\u5E2E\u5FD9\u3002\u4F60\u60F3\u77E5\u9053\u4EC0\u4E48\uFF1F`,
-        ja: `\u3053\u3093\u306B\u3061\u306F ${userName}\u3055\u3093! \u304A\u624B\u4F1D\u3044\u3067\u304D\u308B\u3053\u3068\u304C\u3042\u308C\u3070\u3001\u304A\u6C17\u8EFD\u306B\u3069\u3046\u305E\u3002`,
-      };
-      const staticMsg = lang === 'fr' ? t('lydia.greeting_fr', lang, { user: userName })
-        : (greetings[lang] || t('lydia.greeting_en', lang, { user: userName }));
+      const staticMsg = t(lang === 'fr' ? 'lydia.greeting_fr' : 'lydia.greeting_en', lang, { user: userName });
       const staticEmbeds = buildEmbed(staticMsg, message, { isError: false, theme, lang });
       if (thinkingMsg) await thinkingMsg.edit({ components: staticEmbeds, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
       else await message.reply({ components: staticEmbeds, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
@@ -812,17 +834,24 @@ async function handleLydiaMessage(message, client, database) {
     // introduced as the developer, and the owner was looked up with two Discord API calls on every message.
     const envOwnerId = process.env.OWNER_ID || process.env.DEVELOPER_ID || process.env.BOT_OWNER;
     const isOwner = envOwnerId && message.author.id === envOwnerId ? 'dev' : message.author.id === message.guild.ownerId ? 'server' : null;
-    // Daily limit on servers without Premium: one short notice when it's reached, then silence until tomorrow
+    // Free plan: CFG.FREE_DAILY_LIMIT messages per member and CFG.FREE_SERVER_DAILY per server each day.
+    // One short notice when a limit is reached, then silence until midnight UTC.
     if (isOwner !== 'dev' && !isPremium(database, message.guild.id)) {
-      const day = new Date().toISOString().slice(0, 10);
-      let used = 0;
-      try {
-        database.prepare('CREATE TABLE IF NOT EXISTS lydia_usage (user_id TEXT, guild_id TEXT, day TEXT, n INTEGER DEFAULT 0, PRIMARY KEY (user_id, guild_id, day))').run();
-        used = database.prepare('SELECT n FROM lydia_usage WHERE user_id = ? AND guild_id = ? AND day = ?').get(message.author.id, message.guild.id, day)?.n || 0;
-      } catch {}
-      if (used >= CFG.FREE_DAILY_LIMIT) {
-        const notice = used === CFG.FREE_DAILY_LIMIT ? t('lydia.daily_limit', lang, { n: CFG.FREE_DAILY_LIMIT }) : null;
+      const day = usageDay();
+      const { me, server } = usageOf(database, message.guild.id, message.author.id);
+      let notice = null, blocked = false;
+      if (me >= CFG.FREE_DAILY_LIMIT) {
+        blocked = true;
+        if (me === CFG.FREE_DAILY_LIMIT) notice = t('lydia.daily_limit', lang, { n: CFG.FREE_DAILY_LIMIT });
         try { database.prepare('UPDATE lydia_usage SET n = n + 1 WHERE user_id = ? AND guild_id = ? AND day = ?').run(message.author.id, message.guild.id, day); } catch {}
+      } else if (server >= CFG.FREE_SERVER_DAILY) {
+        blocked = true;
+        if (serverNoticeDay.get(message.guild.id) !== day) {
+          serverNoticeDay.set(message.guild.id, day);
+          notice = t('lydia.server_limit', lang, { n: CFG.FREE_SERVER_DAILY });
+        }
+      }
+      if (blocked) {
         if (thinkingMsg) {
           if (notice) await thinkingMsg.edit({ components: buildEmbed(notice, message, { theme, lang }), flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } }).catch(() => {});
           else await thinkingMsg.delete().catch(() => {});
@@ -877,7 +906,7 @@ async function handleLydiaMessage(message, client, database) {
     // Whole words: "update" used to match "updated", "find" matched "finder", and each one cost a paid search.
     const searchTriggers = /\b(search|google|look up|who is|what is|latest|news|weather|price|today|tonight|this week|score|météo|actualités?|prix|qui est|c'est quoi|aujourd'hui)\b/i;
     const aboutBot = /\b(archon|lydia|command|commande|prefix|préfixe|dashboard|slash)\b|^[./!]/i.test(userPrompt);
-    const braveKey = getGuildKey(database, message.guild.id, 'brave') || process.env.BRAVE_API_KEY;
+    const braveKey = process.env.BRAVE_API_KEY;
     if (braveKey && !aboutBot && searchTriggers.test(userPrompt)) {
       const searchData = await webSearch(userPrompt, braveKey);
       if (searchData) {
@@ -1000,66 +1029,114 @@ function pruneOldConversations(database) {
 // TOGGLE HANDLER
 // ═══════════════════════════════════════════════════════════════════════════════
 
-async function handleLydiaToggle(client, channelId, guildId, userId, action, respondFn = null) {
-  if (!client.lydiaChannels) client.lydiaChannels = {};
-  const lang = pickLang(client, guildId, null, userId) || 'en';
+// ─── The /lydia card: state here, active channels, plan and today's use, with buttons ───
+function statusCard(client, guild, channelId, userId, member, lang, notice) {
   const L = (k, v) => t('lydia.' + k, lang, v || {});
-  const channel = await client.channels.fetch(channelId).catch(() => null);
-  if (!channel?.guild) {
-    if (respondFn) await respondFn({ content: L('lydia_channel_missing'), flags: 64 });
-    return;
-  }
-  const guild = channel.guild;
+  const where = guild.channels.cache.get(channelId) || guild;
+  const I = (k) => icon(k, where);
+  const ss = client.getServerSettings?.(guild.id) || {};
+  const serverOff = ss.ai_enabled === 0 || ss.aiEnabled === false;
+  const premium = isPremium(client.db, guild.id);
+  const active = activeChannels(client, guild);
+  const answering = premium ? active : active.slice(0, CFG.FREE_CHANNELS);
+  const on = active.includes(channelId);
   const bot = guild.members.me?.displayName || client.user?.username || 'Archon';
-  const cmdId = client.application?.commands?.cache?.find((c) => c.name === 'lydia')?.id;
-  const cmd = (sub) => (cmdId ? `</lydia ${sub}:${cmdId}>` : `\`/lydia ${sub}\``);
-  const how = `> ${L('how_mention', { bot })}\n> ${L('how_memory')}`;
-  const card = (color, items) => {
-    const c = new ContainerBuilder().setAccentColor(color);
-    for (const it of items) {
-      if (it === '---') c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-      else c.addTextDisplayComponents(new TextDisplayBuilder().setContent(it));
-    }
-    return { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };
-  };
+  const chName = guild.channels.cache.get(channelId)?.name;
 
-  if (action === 'status') {
-    const on = !!client.lydiaChannels[channelId];
-    const ss = client.getServerSettings?.(guildId) || {};
-    const serverOff = ss.ai_enabled === 0 || ss.aiEnabled === false;   // the dashboard switch: then she answers nowhere
-    const here = Object.keys(client.lydiaChannels).filter((id) => guild.channels.cache.has(id));
-    const premium = isPremium(client.db, guildId);
-    const items = [
-      `## ${on && !serverOff ? '🟢' : '⚪'} ${bot} · ${on && !serverOff ? L('st_on') : L('st_off')}`,
-      on ? `${L('st_on_desc', { channel: `<#${channelId}>` })}\n${how}` : L('st_off_desc', { channel: `<#${channelId}>`, cmd: cmd('on') }),
-      '---',
-      `**${L('srv_title')}**\n${here.length ? L('srv_channels', { list: here.slice(0, 10).map((id) => `<#${id}>`).join(', ') + (here.length > 10 ? '…' : '') }) : L('srv_none')}\n${premium ? L('plan_premium') : L('plan_free', { n: CFG.FREE_DAILY_LIMIT })}`,
-    ];
-    if (serverOff) items.push(`⚠️ **${L('ai_off_server')}**`);
-    if (respondFn) await respondFn(card(serverOff ? 0xBA7517 : on ? 0x2ecc71 : 0x95a5a6, items));
-    return;
+  let state;
+  if (serverOff) state = `${I('warn')} ${L('c_server_off')}`;
+  else if (on && !answering.includes(channelId)) state = `${I('warn')} ${L('c_not_answering', { n: CFG.FREE_CHANNELS, list: answering.map((id) => `<#${id}>`).join(', ') })}`;
+  else if (on) state = `${I('on')} ${L('c_on')}\n-# ${L('how_mention', { bot })}`;
+  else state = `${I('off')} ${L('c_off')}`;
+
+  const head = [
+    notice ? `-# ${notice}` : null,
+    `-# ${guild.name}${chName ? ` · #${chName}` : ''}`,
+    `## ${I('sparkle')} Lydia`,
+    state,
+  ].filter(Boolean).join('\n');
+
+  const list = active.length ? active.slice(0, 10).map((id) => `<#${id}>`).join(', ') + (active.length > 10 ? '…' : '') : L('c_none');
+  const lines = [`${I('ch_title')} **${L('c_channels')}** · ${list}${premium ? '' : ` ${L('c_count', { n: Math.min(active.length, CFG.FREE_CHANNELS), max: CFG.FREE_CHANNELS })}`}`];
+  if (premium) {
+    let model = PREMIUM_MODEL.name;
+    try { const m = getGuildModel(client.db, guild.id); if (m && m !== 'auto') model = MODEL_POOL.find((x) => x.id === m)?.name || model; } catch {}
+    lines.push(`${I('star')} **${L('c_premium')}** · ${L('c_premium_desc', { model })}`);
+  } else {
+    const use = usageOf(client.db, guild.id, userId);
+    const fill = Math.min(10, Math.round((use.server / CFG.FREE_SERVER_DAILY) * 10));
+    lines.push(`${I('gift')} **${L('c_free')}** · ${L('c_free_desc', { n: CFG.FREE_DAILY_LIMIT })}`);
+    lines.push(`${L('c_today', { used: Math.min(use.server, CFG.FREE_SERVER_DAILY), max: CFG.FREE_SERVER_DAILY })}\n\`${'▰'.repeat(fill)}${'▱'.repeat(10 - fill)}\``);
+    lines.push(`-# ${L('c_reset', { me: Math.min(use.me, CFG.FREE_DAILY_LIMIT), max: CFG.FREE_DAILY_LIMIT })}`);
   }
 
-  if (action === 'on') {
-    if (client.lydiaChannels[channelId]) {
-      if (respondFn) await respondFn({ content: L('lydia_on_already'), flags: 64 });
-      return;
+  const row = new ActionRowBuilder();
+  if (member && require('../lib/access').can(member, 'settings').ok) {
+    row.addComponents(on
+      ? new ButtonBuilder().setCustomId(`lyd:toggle:${channelId}`).setStyle(ButtonStyle.Danger).setLabel(L('btn_off_here')).setEmoji(I('off'))
+      : new ButtonBuilder().setCustomId(`lyd:toggle:${channelId}`).setStyle(ButtonStyle.Success).setLabel(L('btn_on_here')).setEmoji(I('on')));
+  }
+  row.addComponents(
+    new ButtonBuilder().setCustomId('lyd:mem').setStyle(ButtonStyle.Secondary).setLabel(L('btn_memory')).setEmoji(I('brain')),
+    new ButtonBuilder().setCustomId('lyd:forget').setStyle(ButtonStyle.Secondary).setLabel(L('btn_forget')).setEmoji(I('clear')),
+  );
+  const items = [{ text: head }, { rule: true }, { text: lines.join('\n') }, { row }];
+  if (!premium) items.push({ text: `-# ${L('c_upsell')}` });
+  return require('../lib/games/v2').card(serverOff ? 0xBA7517 : on ? 0x1D9E75 : 0x95a5a6, items);
+}
+
+// Switches her on or off in one channel. Returns the notice to show, or null when nothing changed.
+function setChannel(client, guild, channelId, on, lang) {
+  const L = (k, v) => t('lydia.' + k, lang, v || {});
+  if (!client.lydiaChannels) client.lydiaChannels = {};
+  if (on) {
+    if (client.lydiaChannels[channelId]) return null;
+    if (!isPremium(client.db, guild.id)) {
+      const active = activeChannels(client, guild);
+      if (active.length >= CFG.FREE_CHANNELS) return { error: L('n_limit_channels', { n: CFG.FREE_CHANNELS, list: active.map((id) => `<#${id}>`).join(', ') }) };
     }
     client.lydiaChannels[channelId] = true;
-    try { client.db?.prepare(`INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at) VALUES (?, ?, 1, ?)`).run(channelId, 'default', Math.floor(Date.now() / 1000)); } catch (e) {}
-    if (respondFn) await respondFn(card(0x2ecc71, [`## 🟢 ${L('on_title')}`, `${L('st_on_desc', { channel: `<#${channelId}>` })}\n${how}`]));
+    try { client.db?.prepare('INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at) VALUES (?, ?, 1, ?)').run(channelId, 'default', Math.floor(Date.now() / 1000)); } catch {}
+    return { ok: L('n_on') };
+  }
+  if (!client.lydiaChannels[channelId]) return null;
+  delete client.lydiaChannels[channelId];
+  try { client.db?.prepare('UPDATE lydia_agents SET is_active = 0 WHERE channel_id = ?').run(channelId); } catch {}
+  return { ok: L('n_off') };
+}
+
+// .lydia on/off/status (prefix) — kept for those who type it
+async function handleLydiaToggle(client, channelId, guildId, userId, action, respondFn = null) {
+  const lang = pickLang(client, guildId, null, userId) || 'en';
+  const guild = client.guilds.cache.get(guildId);
+  if (!guild || !guild.channels.cache.has(channelId)) {
+    if (respondFn) await respondFn({ content: t('lydia.lydia_channel_missing', lang), flags: 64 });
     return;
   }
+  const member = await guild.members.fetch(userId).catch(() => null);
+  let notice = null;
+  if (action === 'on' || action === 'off') {
+    const r = setChannel(client, guild, channelId, action === 'on', lang);
+    notice = !r ? `${icon('info', guild)} ${t(action === 'on' ? 'lydia.lydia_on_already' : 'lydia.lydia_off_already', lang)}`
+      : r.error ? `${icon('no', guild)} ${r.error}` : `${icon('ok', guild)} ${r.ok}`;
+  }
+  if (respondFn) await respondFn(statusCard(client, guild, channelId, userId, member, lang, notice));
+}
 
-  if (action === 'off') {
-    if (!client.lydiaChannels[channelId]) {
-      if (respondFn) await respondFn({ content: L('lydia_off_already'), flags: 64 });
-      return;
-    }
-    delete client.lydiaChannels[channelId];
-    try { client.db?.prepare(`UPDATE lydia_agents SET is_active = 0 WHERE channel_id = ?`).run(channelId); } catch (e) {}
-    if (respondFn) await respondFn(card(0x95a5a6, [`## ⚪ ${L('off_title')}`, L('off_back', { cmd: cmd('on') })]));
-    return;
+// Buttons on the card: lyd:toggle:<channel> (admins), lyd:mem, lyd:forget
+async function handleComponent(ix, client) {
+  if (!ix.guild) return;
+  const lang = pickLang(client, ix.guildId, ix, ix.user.id) || 'en';
+  const [, act, channelId] = ix.customId.split(':');
+  if (act === 'mem') return handleMemorySubcommand(ix, client.db, true, client);
+  if (act === 'forget') return forgetMemories(ix, client.db, client);
+  if (act === 'toggle') {
+    const no = require('../lib/access').deny(ix.member, 'settings', lang);
+    if (no) return ix.reply({ content: no, flags: 64, allowedMentions: { parse: [] } });
+    const on = !!client.lydiaChannels?.[channelId];
+    const r = setChannel(client, ix.guild, channelId, !on, lang);
+    const notice = r?.error ? `${icon('no', ix)} ${r.error}` : r?.ok ? `${icon('ok', ix)} ${r.ok}` : null;
+    return ix.update(statusCard(client, ix.guild, channelId, ix.user.id, ix.member, lang, notice));
   }
 }
 
@@ -1285,8 +1362,8 @@ async function runLydiaCommand(client, message, args, database, serverSettings, 
   const sub = args[0]?.toLowerCase() || 'status';
   if (sub === 'memory') return await handleMemorySubcommand(message, database, false, client);
   if (sub === 'forget') return await forgetMemories(message, database, client);
-  // switching Lydia on or off is a server setting: Manage Server (lib/access)
-  { const _no = require('../lib/access').deny(message.member, 'settings', lang); if (_no) return message.reply({ content: _no, allowedMentions: { parse: [] } }).catch(() => {}); }
+  // switching Lydia on or off is a server setting: Manage Server (lib/access); the card itself is for everyone
+  if (sub === 'on' || sub === 'off') { const _no = require('../lib/access').deny(message.member, 'settings', lang); if (_no) return message.reply({ content: _no, allowedMentions: { parse: [] } }).catch(() => {}); }
 
 
   if (!['on', 'off', 'status'].includes(sub)) return;
@@ -1295,40 +1372,14 @@ async function runLydiaCommand(client, message, args, database, serverSettings, 
 
 const slashCommand = new SlashCommandBuilder()
   .setName('lydia')
-  .setDescription('\u{1F9E0} Manage Archon AI')
-  .addSubcommand(s => s.setName('on').setDescription('\u{1F7E2} Activate Archon AI'))
-  .addSubcommand(s => s.setName('off').setDescription('\u{1F534} Deactivate Archon AI'))
-  .addSubcommand(s => s.setName('status').setDescription('\u{1F4CA} Show Archon status'))
-  .addSubcommand(s => s.setName('memory').setDescription('\u{1F9E0} View your stored memories'))
-  .addSubcommand(s => s.setName('forget').setDescription('\u{1F5D1}\u{FE0F} Delete everything Archon remembers about you'))
-;
+  .setDescription('\u{2728} Archon AI in this channel: state, limits, your memory')
+  .setDescriptionLocalizations({ fr: '\u{2728} L\u2019IA Archon dans ce salon : \u00e9tat, limites, ta m\u00e9moire' });
 
+// /lydia: the card, privately. Admins get the switch for this channel; everyone gets their memory buttons.
 async function executeSlashCommand(interaction, client) {
-  const _ssX = client.getServerSettings?.(interaction.guild?.id) || {};
-  const lang = _ssX.language && _ssX.language !== 'auto' ? _ssX.language : (require('../lib/i18n').slashLang(interaction));
+  const lang = pickLang(client, interaction.guildId, interaction, interaction.user.id) || 'en';
   if (!interaction.guild) return interaction.reply({ content: t('lydia.no_guild', lang), flags: 64 });
-  const _sub = interaction.options.getSubcommand();
-  if (_sub === 'memory' || _sub === 'forget') {
-    if (!client.db) return interaction.reply({ content: t('lydia.db_offline', lang), flags: 64 });
-    return _sub === 'memory' ? handleMemorySubcommand(interaction, client.db, true, client) : forgetMemories(interaction, client.db, client);
-  }
-  { const _no = require('../lib/access').deny(interaction.member, 'settings', lang); if (_no) return interaction.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
-
-  const sub = interaction.options.getSubcommand();
-
-  if (sub === 'memory') {
-    // memory uses its own reply — no defer needed
-    const database = client.db;
-    if (!database) return interaction.reply({ content: t('lydia.db_offline', lang), flags: 64 });
-    return await handleMemorySubcommand(interaction, database, true, client);
-  }
-
-  // All other subcommands need defer first
-  await interaction.deferReply({ flags: 64 });
-
-  await handleLydiaToggle(client, interaction.channelId, interaction.guildId, interaction.user.id, sub, async (payload) => {
-    return interaction.followUp(payload);
-  });
+  return interaction.reply({ ...statusCard(client, interaction.guild, interaction.channelId, interaction.user.id, interaction.member, lang), flags: MessageFlags.IsComponentsV2 | 64 });
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1345,6 +1396,11 @@ module.exports = {
   MODEL_POOL,
   execute: executeSlashCommand,
   data: slashCommand,
+  handleComponent,
+  setChannel,
+  activeChannels,
+  usageOf,
+  CFG,
   setupLydia,
   webSearch,
   generateAIResponse,

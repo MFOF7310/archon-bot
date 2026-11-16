@@ -3325,6 +3325,12 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
         });
     }
+    if (interaction.isButton() && interaction.customId.startsWith('lyd:')) {
+        return require('./plugins/lydia').handleComponent(interaction, client).catch(e => {
+            console.error(`[LYDIA] button guild=${interaction.guildId}:`, e.stack || e.message);
+            if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
+        });
+    }
     if ((interaction.isButton() || interaction.isAnySelectMenu()) && interaction.customId.startsWith('vfy:')) {
         return require('./plugins/verify').handleAdmin(interaction, client).catch(e => {
             console.error(`[VERIFY] admin panel guild=${interaction.guildId}:`, e.stack || e.message);
@@ -5305,7 +5311,12 @@ apiApp.get('/api/lydia/:guildId', requireAdmin, async (req, res) => {
             .sort((x, y) => x.rawPosition - y.rawPosition)
             .map(c => ({ id: c.id, name: c.name, category: c.parent?.name || null }));
         let models = []; try { models = (require('./plugins/lydia.js').MODEL_POOL || []).map(m => ({ id: m.id, label: m.name })); } catch (e) {}
-        res.json({ enabled: row.ai_enabled !== 0, activeChannelIds: active, channels, models });
+        // The plan: free servers answer in L.CFG.FREE_CHANNELS channels with daily limits; the dashboard shows the same as /lydia
+        const L = require('./plugins/lydia.js');
+        const premium = require('./plugins/premium.js').isPremium(db, g.id);
+        const use = L.usageOf ? L.usageOf(db, g.id, null) : { server: 0 };
+        const plan = premium ? { premium: true } : { premium: false, maxChannels: L.CFG.FREE_CHANNELS, perMember: L.CFG.FREE_DAILY_LIMIT, serverDaily: L.CFG.FREE_SERVER_DAILY, usedToday: Math.min(use.server, L.CFG.FREE_SERVER_DAILY) };
+        res.json({ enabled: row.ai_enabled !== 0, activeChannelIds: L.activeChannels ? L.activeChannels(client, g) : active, channels, models, plan });
     } catch (e) {
         console.error(`[LYDIA-API] get guild=${req.params.guildId}:`, e.message);
         res.status(500).json({ error: 'internal' });
@@ -5322,12 +5333,9 @@ apiApp.post('/api/lydia/:guildId', requireAdmin, async (req, res) => {
         const ch = g.channels.cache.get(channelId);
         if (!ch || ch.type !== 0) return res.status(400).json({ error: 'channel not found or not a text channel' });
 
-        db.prepare('INSERT OR REPLACE INTO lydia_agents (channel_id, agent_key, is_active, updated_at) VALUES (?, ?, ?, strftime(\'%s\',\'now\'))')
-            .run(channelId, 'default', enabled ? 1 : 0);
-
-        if (!client.lydiaChannels) client.lydiaChannels = {};
-        if (enabled) client.lydiaChannels[channelId] = true;
-        else delete client.lydiaChannels[channelId];
+        // Same rules as /lydia (plugins/lydia setChannel): the free plan's channel limit included
+        const r = require('./plugins/lydia.js').setChannel(client, g, channelId, !!enabled, 'en');
+        if (r?.error) return res.status(402).json({ error: 'free_channel_limit' });
 
         res.json({ success: true, channelId, enabled: !!enabled });
     } catch (e) {
