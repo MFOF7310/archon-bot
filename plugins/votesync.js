@@ -144,9 +144,45 @@ function setupDB(db) {
     )`).run();
 }
 
+// ================= STREAK: ONE PER PERSON =================
+// Top.gg gives one vote per person every 12 hours, wherever it is claimed: the streak follows the person, while the
+// credits, vote count and leaderboard stay per server. It used to be per server, so claiming from another server
+// started a new streak at 1 and broke both.
+let _streaksReady = false;
+function streaksTable(db) {
+    if (_streaksReady) return;
+    db.prepare(`CREATE TABLE IF NOT EXISTS vote_streaks (
+        user_id TEXT PRIMARY KEY, current_streak INTEGER DEFAULT 0, best_streak INTEGER DEFAULT 0, last_vote_date INTEGER DEFAULT 0
+    )`).run();
+    _streaksReady = true;
+}
+
+// First time a person is seen: their per-server streaks are merged. The longest one still running is kept, plus one day
+// when they already voted the next day from another server (5 days on one server, then a vote the day after elsewhere → 6).
+function personStreak(db, userId) {
+    streaksTable(db);
+    const have = db.prepare('SELECT * FROM vote_streaks WHERE user_id = ?').get(userId);
+    if (have) return have;
+    const rows = db.prepare('SELECT current_streak, best_streak, last_vote_date FROM user_votes WHERE user_id = ?').all(userId);
+    const now = Math.floor(Date.now() / 1000);
+    const last = Math.max(0, ...rows.map((r) => r.last_vote_date || 0));
+    const best = Math.max(0, ...rows.map((r) => Math.max(r.best_streak || 0, r.current_streak || 0)));
+    const alive = rows.filter((r) => r.current_streak > 0 && streakAlive(r.last_vote_date, now))
+        .sort((a, b) => b.current_streak - a.current_streak || b.last_vote_date - a.last_vote_date);
+    let current = 0;
+    if (alive.length) current = alive[0].current_streak + (dayOf(last) - dayOf(alive[0].last_vote_date) === 1 ? 1 : 0);
+    const row = { user_id: userId, current_streak: current, best_streak: Math.max(best, current), last_vote_date: last };
+    db.prepare('INSERT OR IGNORE INTO vote_streaks (user_id, current_streak, best_streak, last_vote_date) VALUES (?, ?, ?, ?)')
+        .run(userId, row.current_streak, row.best_streak, row.last_vote_date);
+    return row;
+}
+
 function getStats(db, userId, guildId) {
     let s = db.prepare(`SELECT * FROM user_votes WHERE user_id = ? AND guild_id = ?`).get(userId, guildId);
     if (!s) s = { user_id: userId, guild_id: guildId, total_votes: 0, current_streak: 0, best_streak: 0, last_vote_date: 0, total_rewards: 0, votes_this_month: 0, last_month_reset: 0 };
+    // The streak and the date it counts from are the person's, whatever the server
+    const p = personStreak(db, userId);
+    s = { ...s, current_streak: p.current_streak, best_streak: p.best_streak, last_vote_date: Math.max(p.last_vote_date || 0, s.last_vote_date || 0) };
     // Year and month together: November 2027 is not "the same month" as November 2026
     const now = Math.floor(Date.now() / 1000), d = new Date(), month = d.getUTCFullYear() * 12 + d.getUTCMonth();
     const lm = s.last_month_reset ? new Date(s.last_month_reset * 1000) : null;
@@ -201,6 +237,10 @@ function updateDB(db, userId, guildId, result, stats, addCredits = null) {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(userId, guildId, newTotalVotes, result.streak, result.best, now, newTotalRewards, newVotesThisMonth, stats.last_month_reset || now);
 
     db.prepare(`INSERT OR IGNORE INTO vote_claims (user_id, guild_id, claim_date, reward) VALUES (?, ?, ?, ?)`).run(userId, guildId, now, result.total);
+    streaksTable(db);
+    db.prepare(`INSERT INTO vote_streaks (user_id, current_streak, best_streak, last_vote_date) VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET current_streak = excluded.current_streak, best_streak = excluded.best_streak, last_vote_date = excluded.last_vote_date`)
+        .run(userId, result.streak, result.best, now);
 
     // Through the bot's economy helper when there is one: it also updates the cached profile. Writing the table
     // alone let the next batched save of the cached profile put the old balance back (the credits "vanished").

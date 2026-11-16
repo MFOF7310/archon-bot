@@ -192,7 +192,12 @@ function rankOf(db, gid, uid) {
 }
 
 function topRows(db, gid) {
-    try { return db.prepare('SELECT user_id, total_votes, current_streak, best_streak, total_rewards FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC LIMIT 10').all(gid); } catch { return []; }
+    // the streak is the person's (vote_streaks), the vote count is this server's
+    try {
+        return db.prepare(`SELECT v.user_id, v.total_votes, COALESCE(s.current_streak, v.current_streak) AS current_streak,
+            COALESCE(s.best_streak, v.best_streak) AS best_streak, v.total_rewards
+            FROM user_votes v LEFT JOIN vote_streaks s ON s.user_id = v.user_id WHERE v.guild_id = ? ORDER BY v.total_votes DESC LIMIT 10`).all(gid);
+    } catch { return db.prepare('SELECT user_id, total_votes, current_streak, best_streak, total_rewards FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC LIMIT 10').all(gid); }
 }
 
 async function nameOf(client, id, display = true) {
