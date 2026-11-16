@@ -1,46 +1,31 @@
-const { SlashCommandBuilder } = require('discord.js');
+'use strict';
+// ═══════════════════════════════════════════════════════════════════════════
+// /wrg — word battle: unscramble the word before the time runs out. Anyone in the channel can answer.
+//   One card per game, edited in place: the scrambled word and a countdown, the hint at half time, then the result
+//   (the real rewards paid, inside the games' daily cap) with a Play again button (wrg:again:<tier>:<category>).
+//   Streak: wins in a row, kept in the database; it ends when a game you started ends without your win.
+// ═══════════════════════════════════════════════════════════════════════════
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 const progress = require('../lib/games/progress');
-const ui = require('../lib/games/ui');
 const { card } = require('../lib/games/v2');
+const { icon } = require('../lib/ui/icons');
+const i18n = require('../lib/i18n');
 
-// ═══════════════════════════════════════════════════════
-//  🎮 ARCHON WRG v3.0 — NEURAL GRID WORD COMBAT
-//  5 tiers · Speed bonus · Streak multiplier · Hint system
-// ═══════════════════════════════════════════════════════
+const T = (lang, k, v) => i18n.t('wrg.' + k, lang, v || {});
+const COLOR = { live: 0x378ADD, won: 0x1D9E75, lost: 0xE74C3C };
 
-// ── Level calculation ──
-function calculateLevel(xp) { return Math.floor(0.1 * Math.sqrt(xp)) + 1; }
-
-// ── Rank titles ──
-const AGENT_RANKS = [
-    { minLevel: 1,  maxLevel: 5,        title: { fr: "RECRUE",    en: "RECRUIT"    }, color: "#2ecc71", emoji: "🌱" },
-    { minLevel: 6,  maxLevel: 15,       title: { fr: "AGENT DE TERRAIN",  en: "FIELD AGENT"       }, color: "#3498db", emoji: "🔹" },
-    { minLevel: 16, maxLevel: 30,       title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST"  }, color: "#9b59b6", emoji: "💠" },
-    { minLevel: 31, maxLevel: 50,       title: { fr: "COMMANDANT BKO",    en: "BKO COMMANDER"     }, color: "#e67e22", emoji: "⚜️" },
-    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME","en": "SYSTEM ARCHITECT" }, color: "#e74c3c", emoji: "👑" }
-];
-function getRank(level) { return AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length-1]; }
-function progressBar(pct, len=15) { const f=Math.round((pct/100)*len); return '█'.repeat(Math.max(0,f))+'░'.repeat(Math.max(0,len-f)); }
-
-// ── Word sanitization ──
-function sanitize(word) { return word.toUpperCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Z]/g,''); }
+// ── Words ─────────────────────────────────────────────────────────────────
+function sanitize(word) { return String(word).toUpperCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z]/g, ''); }
 function shuffle(word) {
-    let arr = word.split('');
-    for (let i=arr.length-1;i>0;i--) { const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
-    // Ensure not same as original
-    if (arr.join('')===word && word.length>1) { [arr[0],arr[1]]=[arr[1],arr[0]]; }
+    const arr = word.split('');
+    for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+    if (arr.join('') === word && word.length > 1) [arr[0], arr[1]] = [arr[1], arr[0]];
     return arr.join('');
 }
+// one letter shown, the first one (a random one could be the last letter of a 3-letter word: no help)
+const hintOf = (word) => word.split('').map((c, i) => (i === 0 ? c : '_')).join(' ');
 
-// ── Hint: reveal one letter ──
-function buildHint(word) {
-    const idx = Math.floor(Math.random() * word.length);
-    return word.split('').map((c,i) => i===idx ? c : '_').join(' ');
-}
-
-// ═══════════════════════════════════════════════════════
-//  WORD DATABASE — 5 TIERS
-// ═══════════════════════════════════════════════════════
+// ── Word lists: 5 tiers (rewards, time) and 9 categories (words in English and French) ──
 const TIERS = {
     rookie: {
         label: { en: '⚪ ROOKIE',     fr: '⚪ RECRUE'    },
@@ -291,313 +276,233 @@ const CATEGORIES = {
 };
 
 // ── Default category mapping per tier if no category selected ──
+
 const DEFAULT_CATEGORY = 'tech';
+const TIER_KEYS = Object.keys(TIERS);
+const TIER_ALIASES = {
+    rookie: ['rookie', 'recrue', 'easy', 'facile', 'r'],
+    agent: ['agent', 'medium', 'moyen'],
+    elite: ['elite', 'hard', 'difficile', 'e'],
+    commander: ['commander', 'commandant', 'expert', 'c'],
+    architect: ['architect', 'architecte', 'legend', 'legendary', 'god', 'x'],
+};
+const CATEGORY_ALIASES = {
+    tech: ['tech', 'technology', 'technologie', 'computer', 't'],
+    science: ['science', 'sci', 's'],
+    history: ['history', 'histoire', 'hist', 'h'],
+    animals: ['animals', 'animaux', 'animal'],
+    music: ['music', 'musique', 'm'],
+    sports: ['sports', 'sport', 'sp'],
+    food: ['food', 'cuisine', 'nourriture', 'f'],
+    movies: ['movies', 'films', 'movie', 'cinema', 'mv'],
+    geography: ['geography', 'geographie', 'geo', 'g'],
+};
+const findKey = (map, word) => Object.keys(map).find((k) => map[k].includes(String(word || '').toLowerCase())) || null;
 
-// ── Active game lock (per channel) ──
-const activeGames = new Set();
-
-// ── Streak storage (per guild+user, in memory) ──
-const streaks = new Map();
-function getStreak(userId, guildId) { return streaks.get(`${userId}:${guildId}`) || 0; }
-function incStreak(userId, guildId) { const k=`${userId}:${guildId}`; streaks.set(k, (streaks.get(k)||0)+1); return streaks.get(k); }
-function resetStreak(userId, guildId) { streaks.delete(`${userId}:${guildId}`); }
-
-// ── XP calculation with speed + streak bonus ──
+// ── Rewards: speed and streak multipliers ────────────────────────────────
 function calcRewards(tier, wordLen, solveTimeMs, streakCount) {
     const base = tier.xpBase + (wordLen * 10) + tier.xpBonus;
     const credits = tier.creditBase + (wordLen * 2) + tier.creditBonus;
-
-    let speedMult = 1;
-    let speedLabel = '';
-    if (solveTimeMs <= tier.speedWindow) {
-        speedMult = 2;
-        speedLabel = '⚡ SPEED BONUS x2!';
-    } else if (solveTimeMs <= tier.speedWindow * 2) {
-        speedMult = 1.5;
-        speedLabel = '🔥 QUICK x1.5!';
-    }
-
-    let streakMult = 1;
-    let streakLabel = '';
-    if (streakCount >= 5) { streakMult = 2; streakLabel = '🌟 STREAK x2 (5+)!'; }
-    else if (streakCount >= 3) { streakMult = 1.5; streakLabel = '🔥 STREAK x1.5 (3+)!'; }
-
-    const finalXP = Math.round(base * speedMult * streakMult);
-    const finalCredits = Math.round(credits * speedMult * streakMult);
-    return { xp: finalXP, credits: finalCredits, speedLabel, streakLabel, speedMult, streakMult };
+    const speedMult = solveTimeMs <= tier.speedWindow ? 2 : solveTimeMs <= tier.speedWindow * 2 ? 1.5 : 1;
+    const streakMult = streakCount >= 5 ? 2 : streakCount >= 3 ? 1.5 : 1;
+    return { xp: Math.round(base * speedMult * streakMult), credits: Math.round(credits * speedMult * streakMult), speedMult, streakMult };
 }
 
-// ═══════════════════════════════════════════════════════
-//  CORE GAME RUNNER
-// ═══════════════════════════════════════════════════════
-async function runGame(client, message, args, db, lang) {
-    try {
-        // ── Tier selection ──
-        const tierMap = {
-            rookie:    ['rookie','recrue','easy','facile','r'],
-            agent:     ['agent','medium','moyen','a'],
-            elite:     ['elite','hard','difficile','e'],
-            commander: ['commander','commandant','expert','c'],
-            architect: ['architect','architecte','legend','legendary','god','x']
-        };
-        const categoryMap = {
-            tech:      ['tech','technology','technologie','computer','t'],
-            science:   ['science','sci','s'],
-            history:   ['history','histoire','hist','h'],
-            animals:   ['animals','animaux','animal','a'],
-            music:     ['music','musique','m'],
-            sports:    ['sports','sport','sp'],
-            food:      ['food','cuisine','nourriture','f'],
-            movies:    ['movies','films','movie','cinema','mv'],
-            geography: ['geography','geographie','geo','g']
-        };
+// ── Streaks (database) ───────────────────────────────────────────────────
+let _ready = false;
+function streakTable(db) {
+    if (_ready) return;
+    db.prepare('CREATE TABLE IF NOT EXISTS wrg_streaks (user_id TEXT NOT NULL, guild_id TEXT NOT NULL, streak INTEGER DEFAULT 0, PRIMARY KEY (user_id, guild_id))').run();
+    _ready = true;
+}
+function getStreak(db, uid, gid) { try { streakTable(db); return db.prepare('SELECT streak FROM wrg_streaks WHERE user_id = ? AND guild_id = ?').get(uid, gid)?.streak || 0; } catch { return 0; } }
+function setStreak(db, uid, gid, n) {
+    try { streakTable(db); db.prepare('INSERT INTO wrg_streaks (user_id, guild_id, streak) VALUES (?, ?, ?) ON CONFLICT(user_id, guild_id) DO UPDATE SET streak = excluded.streak').run(uid, gid, n); } catch { /* the game goes on */ }
+}
 
-        let tierKey = 'rookie';
-        let categoryKey = DEFAULT_CATEGORY;
+// ── The card ─────────────────────────────────────────────────────────────
+const fmt = (n, lang) => Number(n || 0).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US');
+const xpAt = (level) => Math.pow((level - 1) / 0.1, 2);
+function levelLine(lang, xp, level) {
+    const need = xpAt(level + 1) - xpAt(level);
+    const pct = need > 0 ? Math.max(0, Math.min(100, ((xp - xpAt(level)) / need) * 100)) : 100;
+    const f = Math.round(pct / 10);
+    return T(lang, 'level', { n: level, bar: `\`${'▰'.repeat(f)}${'▱'.repeat(10 - f)}\``, pct: Math.round(pct) });
+}
 
-        // Parse args — first arg = tier, second = category (or vice versa)
-        for (const arg of args) {
-            const a = arg.toLowerCase();
-            for (const [k, aliases] of Object.entries(tierMap)) {
-                if (aliases.includes(a)) { tierKey = k; break; }
-            }
-            for (const [k, aliases] of Object.entries(categoryMap)) {
-                if (aliases.includes(a)) { categoryKey = k; break; }
-            }
-        }
+function render(g, lang) {
+    const where = g.channel;
+    const head = `-# ${T(lang, `tier_${g.tierKey}`)} · ${T(lang, `cat_${g.catKey}`)}`;
+    const again = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`wrg:again:${g.tierKey}:${g.catKey}`)
+        .setStyle(ButtonStyle.Secondary).setLabel(T(lang, 'btnAgain')).setEmoji(icon('refresh', where)));
 
-        // ── Channel lock ──
-        const channelId = message.channel.id;
-        if (activeGames.has(channelId)) {
-            const busy = await message.channel.send(card(0xe74c3c, [{ text: '⚔️ A game is already running in this channel. Wait for it to finish.' }])).catch(() => null);
-            if (busy) setTimeout(() => busy.delete().catch(()=>{}), 4000);
-            return;
-        }
-        activeGames.add(channelId);
-
-        const tier = TIERS[tierKey];
-        const cat = CATEGORIES[categoryKey] || CATEGORIES.tech;
-        const tierWords = cat.words[lang]?.[tierKey] || cat.words.en[tierKey] || cat.words.en.rookie;
-        const rawWord = tierWords[Math.floor(Math.random() * tierWords.length)];
-        const targetWord = sanitize(rawWord);
-        let scrambled = shuffle(targetWord);
-        while (scrambled === targetWord && targetWord.length > 2) scrambled = shuffle(targetWord);
-
-        const guildId = message.guild?.id || 'DM';
-        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
-        const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
-        const streakCount = getStreak(message.author.id, guildId);
-
-        // ── User stats ──
-        let userStats = db.prepare("SELECT xp, credits, level, games_played, games_won FROM users WHERE id = ? AND guild_id = ?").get(message.author.id, guildId);
-        if (!userStats) {
-            db.prepare("INSERT OR IGNORE INTO users (id, guild_id, username, xp, level, credits) VALUES (?, ?, ?, 0, 1, 0)").run(message.author.id, guildId, message.author.username);
-            userStats = { xp: 0, credits: 0, level: 1, games_played: 0, games_won: 0 };
-        }
-        const currentLevel = userStats.level || calculateLevel(userStats.xp || 0);
-        const currentRank = getRank(currentLevel);
-        const xpNeeded = Math.pow(currentLevel / 0.1, 2) - Math.pow((currentLevel-1) / 0.1, 2);
-        const xpProgress = (userStats.xp || 0) - Math.pow((currentLevel-1) / 0.1, 2);
-        const pct = xpNeeded > 0 ? Math.min(100, Math.max(0, (xpProgress/xpNeeded)*100)) : 100;
-
-        // ── Estimate rewards ──
-        const estRewards = calcRewards(tier, targetWord.length, 9999999, streakCount);
-
-        // ── Start embed ──
-        const tierColor = parseInt(tier.color.slice(1), 16);
-        const startCard = card(tierColor, [
-            { text: `## ${ui.em('gameController', '🎮')} ${tier.label[lang]} · ${cat.label[lang]}` },
+    if (g.phase === 'live') {
+        const est = calcRewards(g.tier, g.word.length, Infinity, g.starterStreak);
+        return card(COLOR.live, [
+            { text: `${head} · ${T(lang, 'startedBy', { user: `<@${g.starterId}>` })}\n## ${icon('puzzle', where)} ${T(lang, 'title')}` },
+            { text: `# \`${g.scrambled.split('').join(' ')}\`` },
+            { text: [
+                g.hint ? `${icon('info', where)} ${T(lang, 'hint')} · \`${hintOf(g.word)}\`` : null,
+                `${icon('clock', where)} ${T(lang, 'ends', { when: `<t:${Math.floor(g.endsAt / 1000)}:R>`, n: g.word.length })}`,
+            ].filter(Boolean).join('\n') },
             { rule: true },
-            { text: `▸ **Tier** · ${tier.emoji} ${tierKey.toUpperCase()}\n▸ **Category** · ${cat.label[lang]}\n▸ **Letters** · ${targetWord.length}\n▸ **Time** · ${tier.timeLimit / 1000}s\n▸ **Scramble** · \`${scrambled}\`\n\n*${tier.hint[lang]}*` },
-            { rule: true },
-            { text: `${ui.em('coins', '💰')} **Base Rewards** \`+${estRewards.xp} XP\` · \`+${estRewards.credits}\` ${ui.em('coins', '🪙')}\n${ui.em('speed', '⚡')} **Speed Bonus** · Solve in **${tier.speedWindow / 1000}s** → **2× XP**\n${ui.em('streak', '🔥')} **Streak** · ${streakCount >= 3 ? `**${streakCount} wins!** Multiplier active.` : 'Win more for a multiplier.'}\n${currentRank.emoji} **Rank** · ${currentRank.title[lang]} · Lv.${currentLevel}\n${ui.em('progress', '📊')} **Progress** · \`${ui.progressBar(Math.round(pct), 100, 12)}\` ${pct.toFixed(0)}%\n${ui.em('hint', '💡')} **How to play** · ${lang === 'fr' ? 'Tapez votre réponse dans le chat !' : 'Type your answer in chat!'}` },
+            { text: `${icon('coin', where)} ${T(lang, 'stake', { xp: fmt(est.xp, lang), credits: fmt(est.credits, lang), secs: g.tier.speedWindow / 1000 })}\n-# ${T(lang, 'howTo')}` },
         ]);
-
-        const startMsg = await message.channel.send(startCard).catch(() => null);
-        if (startMsg) setTimeout(() => startMsg.delete().catch(()=>{}), 5000);
-
-        const gameStart = Date.now();
-        let winnerDeclared = false;
-        let hintSent = false;
-
-        // ── Hint timer (half time) ──
-        const hintTimer = setTimeout(async () => {
-            if (!winnerDeclared) {
-                hintSent = true;
-                const hintStr = buildHint(targetWord);
-                const hintCard = card(0x00d4ff, [
-                    { text: `## ${ui.em('hint', '💡')} Hint Unlocked` },
-                    { rule: true },
-                    { text: `\`${hintStr}\`\n\n*Still scrambled: \`${scrambled}\`*\n*${tier.timeLimit / 2000}s elapsed.*` },
-                ]);
-                const hintMsg = await message.channel.send(hintCard).catch(() => null);
-                if (hintMsg) setTimeout(() => hintMsg.delete().catch(() => {}), 15000);
-            }
-        }, tier.timeLimit / 2);
-
-        // ── Collector ──
-        const collector = message.channel.createMessageCollector({
-            filter: m => !m.author.bot,
-            time: tier.timeLimit
-        });
-
-        collector.on('collect', async (m) => {
-            if (winnerDeclared) return;
-            const guess = sanitize(m.content);
-            if (guess !== targetWord) return;
-
-            winnerDeclared = true;
-            activeGames.delete(message.channel.id);
-            clearTimeout(hintTimer);
-            collector.stop('winner');
-
-            const solveTime = Date.now() - gameStart;
-            const newStreak = incStreak(m.author.id, guildId);
-            const rewards = calcRewards(tier, targetWord.length, solveTime, newStreak);
-
-            // ── Update via shared engine (daily cap + user cache) ──
-            const _pre = client.getUserData?.(m.author.id, guildId) || {};
-            const oldLevel = _pre.level || progress.levelFromXp(_pre.xp);
-            const paid = progress.award(client, db, { userId: m.author.id, guildId, username: m.author.username, credits: rewards.credits, xp: rewards.xp, played: 1, won: 1 });
-            progress.recordRun(db, { game: 'wrg', userId: m.author.id, guildId, username: m.author.username, points: paid.credits + paid.xp, won: true, streak: newStreak, correct: 1, tier: tierKey, tierOrder: Object.keys(TIERS) });
-            const _post = client.getUserData?.(m.author.id, guildId) || {};
-            const newXP = _post.xp || 0;
-            const newLevel = _post.level || progress.levelFromXp(newXP);
-            const winnerData = _pre;
-
-            const finalRank = getRank(newLevel);
-            const newXpNeeded = Math.pow(newLevel/0.1,2) - Math.pow((newLevel-1)/0.1,2);
-            const newXpProgress = newXP - Math.pow((newLevel-1)/0.1,2);
-            const newPct = newXpNeeded > 0 ? Math.min(100, Math.max(0,(newXpProgress/newXpNeeded)*100)) : 100;
-            const solveSeconds = (solveTime/1000).toFixed(1);
-
-            // ── Win embed ──
-            let bonusLines = '';
-            if (rewards.speedLabel) bonusLines += `${rewards.speedLabel}\n`;
-            if (rewards.streakLabel) bonusLines += `${rewards.streakLabel}\n`;
-
-            const winCard = card(0x2ecc71, [
-                { text: `## ${ui.em('trophy', '🏆')} Code Cracked!` },
-                { rule: true },
-                { text: `▸ **Correct** · \`${targetWord}\`\n▸ **Time** · ${solveSeconds}s\n▸ **Streak** · ${newStreak} wins\n${bonusLines}▸ **XP** · +${rewards.xp}\n▸ **Credits** · +${rewards.credits}` },
-                { rule: true },
-                { text: `${ui.em('progress', '📊')} **Progress** · \`${ui.progressBar(Math.round(newPct), 100, 15)}\` ${newPct.toFixed(1)}%\n└ ${Math.ceil(newXpNeeded - newXpProgress).toLocaleString()} XP to next level\n\n${finalRank.emoji} **Rank** · ${finalRank.title[lang]} · Lv.${newLevel}\n${ui.em('coins', '💎')} **Credits** · ${((winnerData?.credits || 0) + rewards.credits).toLocaleString()} ${ui.em('coins', '🪙')}\n${ui.em('gameController', '🎮')} **Tier** · ${tier.emoji} ${tierKey.toUpperCase()}` },
-            ]);
-
-            await message.channel.send(winCard);
-
-            // ── Level up ──
-            if (newLevel > oldLevel) {
-                const lvlCard = card(parseInt(finalRank.color.slice(1), 16), [
-                    { text: `## ${ui.em('party', '🎉')} Level Up!` },
-                    { rule: true },
-                    { text: `▸ **Agent** · ${m.author.username.substring(0, 20)}\n▸ **New Level** · Lv.${newLevel}\n▸ **New Rank** · ${finalRank.emoji} ${finalRank.title[lang]}` },
-                ]);
-                await message.channel.send(lvlCard);
-            }
-
-            // ── Duelist role ──
-            if (message.guild) {
-                try {
-                    const settings = client.getServerSettings?.(message.guild.id);
-                    const roleId = settings?.duelistRoleId || (message.guild.id === process.env.GUILD_ID ? process.env.DUELIST_ROLE_ID : null);
-                    if (roleId) {
-                        const member = await message.guild.members.fetch(m.author.id).catch(()=>null);
-                        if (member) {
-                            const role = message.guild.roles.cache.get(roleId);
-                            if (role && !member.roles.cache.has(roleId)) await require('../lib/reward-roles').give(member, roleId, 'WRG champion', 'WRG');
-                        }
-                    }
-                } catch(e) {}
-            }
-        });
-
-        collector.on('end', (_, reason) => {
-            activeGames.delete(message.channel.id);
-            clearTimeout(hintTimer);
-            if (!winnerDeclared && reason !== 'winner') {
-                resetStreak(message.author.id, guildId);
-                progress.award(client, db, { userId: message.author.id, guildId, username: message.author.username, played: 1, won: 0 });
-                progress.recordRun(db, { game: 'wrg', userId: message.author.id, guildId, username: message.author.username, points: 0, won: false, streak: 0, correct: 0, tier: tierKey, tierOrder: Object.keys(TIERS) });
-                const failCard = card(0xe74c3c, [
-                    { text: `## ${ui.em('timeout', '⏰')} Time Up` },
-                    { rule: true },
-                    { text: `▸ **Word was** · \`${targetWord}\`\n▸ **Scrambled** · \`${scrambled}\`\n\n*Tip: Try \`.wrg rookie\` to warm up.*` },
-                ]);
-                message.channel.send(failCard).then(m => {
-                    if (m) setTimeout(() => m.delete().catch(()=>{}), 8000);
-                }).catch(()=>{});
-            }
-        });
-
-        console.log(`[WRG v3] ${message.author.tag} | Tier: ${tierKey} | Cat: ${categoryKey} | Word: ${targetWord} | Streak: ${streakCount}`);
-
-    } catch(err) {
-        console.error('[WRG v3] Fatal:', err.message);
-        activeGames.delete(message.channel?.id);
-        message.reply(card(0xED4245, [{ text: `## ${ui.em('error', '❌')} Oops!\nSomething went wrong in the game. Give it another try!` }])).catch(() => {});
     }
+
+    if (g.phase === 'won') {
+        const r = g.result;
+        const lines = [`${icon('bolt', where)} ${T(lang, 'time', { secs: (r.ms / 1000).toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US', { maximumFractionDigits: 1 }) })}${r.speedMult > 1 ? ` · ${T(lang, 'speed', { x: r.speedMult })}` : ''}`];
+        if (r.streak >= 2) lines.push(`${icon('flame', where)} ${T(lang, 'streak', { n: r.streak })}${r.streakMult > 1 ? ` · ×${r.streakMult}` : ''}`);
+        const paid = r.paid.capped && !r.paid.xp && !r.paid.credits
+            ? T(lang, 'capped')
+            : `**${T(lang, 'paid', { xp: fmt(r.paid.xp, lang), credits: fmt(r.paid.credits, lang) })}**${r.paid.capped ? ` · ${T(lang, 'cappedPart')}` : ''}`;
+        const after = [`${icon('coin', where)} ${paid}`];
+        if (r.levelUp) after.push(`${icon('ch_levelup', where)} ${T(lang, 'levelUp', { n: r.level })}`);
+        after.push(`-# ${levelLine(lang, r.xp, r.level)}`);
+        return card(COLOR.won, [
+            { text: `${head}\n## ${icon('trophy', where)} ${T(lang, 'found', { user: `<@${r.winnerId}>`, word: `\`${g.word}\`` })}` },
+            { text: lines.join('\n') },
+            { rule: true },
+            { text: after.join('\n') },
+            { row: again },
+        ]);
+    }
+
+    return card(COLOR.lost, [
+        { text: `${head}\n## ${icon('clock', where)} ${T(lang, 'timeUp')}` },
+        { text: T(lang, 'wordWas', { word: g.word, scrambled: g.scrambled }) },
+        { row: again },
+    ]);
 }
 
-// ═══════════════════════════════════════════════════════
-//  MODULE EXPORT
-// ═══════════════════════════════════════════════════════
+// ── A game ───────────────────────────────────────────────────────────────
+const activeGames = new Map();   // channel → game
+
+// send(payload) posts the card and returns the message (a channel message, or the slash command's reply)
+async function startGame(client, { channel, guild, user, lang, tierKey, catKey, send }) {
+    const db = client.db;
+    if (activeGames.has(channel.id)) return { busy: true };
+    const tier = TIERS[tierKey] || TIERS.rookie;
+    const cat = CATEGORIES[catKey] || CATEGORIES[DEFAULT_CATEGORY];
+    const wordLang = lang === 'fr' ? 'fr' : 'en';
+    const list = cat.words[wordLang]?.[tierKey] || cat.words.en[tierKey] || cat.words.en.rookie;
+    const word = sanitize(list[Math.floor(Math.random() * list.length)]);
+    const gid = guild?.id || 'DM';
+    const g = {
+        channel, tier, tierKey: TIERS[tierKey] ? tierKey : 'rookie', catKey: CATEGORIES[catKey] ? catKey : DEFAULT_CATEGORY,
+        word, scrambled: shuffle(word), starterId: user.id, starterStreak: getStreak(db, user.id, gid),
+        startedAt: Date.now(), endsAt: Date.now() + tier.timeLimit, phase: 'live', hint: false,
+    };
+    activeGames.set(channel.id, g);
+    let msg;
+    try { msg = await send(render(g, lang)); } catch (e) { activeGames.delete(channel.id); throw e; }
+    const edit = (payload) => msg?.edit?.(payload).catch(() => {});
+
+    const hintTimer = setTimeout(() => { if (g.phase === 'live') { g.hint = true; edit(render(g, lang)); } }, tier.timeLimit / 2);
+    const collector = channel.createMessageCollector({ filter: (m) => !m.author.bot && sanitize(m.content) === word, time: tier.timeLimit, max: 1 });
+
+    collector.on('collect', async (m) => {
+        g.phase = 'won';
+        clearTimeout(hintTimer);
+        const ms = Date.now() - g.startedAt;
+        const streak = getStreak(db, m.author.id, gid) + 1;
+        setStreak(db, m.author.id, gid, streak);
+        if (m.author.id !== g.starterId) setStreak(db, g.starterId, gid, 0);   // the starter's own game, won by someone else
+        const rw = calcRewards(tier, word.length, ms, streak);
+        const paid = progress.award(client, db, { userId: m.author.id, guildId: gid, username: m.author.username, credits: rw.credits, xp: rw.xp, played: 1, won: 1 });
+        progress.recordRun(db, { game: 'wrg', userId: m.author.id, guildId: gid, username: m.author.username, points: paid.credits + paid.xp, won: true, streak, correct: 1, tier: g.tierKey, tierOrder: TIER_KEYS });
+        const after = client.getUserData?.(m.author.id, gid) || {};
+        const level = paid.newLevel || after.level || progress.levelFromXp(after.xp);
+        if (paid.leveledUp && guild) {
+            const member = await guild.members.fetch(m.author.id).catch(() => null);
+            if (member) require('../lib/reward-roles').syncLevelRoles(member, level, db).catch(() => {});
+        }
+        g.result = { winnerId: m.author.id, ms, streak, speedMult: rw.speedMult, streakMult: rw.streakMult, paid, level, levelUp: !!paid.leveledUp, xp: Number(after.xp || 0) };
+        activeGames.delete(channel.id);
+        await edit(render(g, lang));
+    });
+
+    collector.on('end', async (got) => {
+        clearTimeout(hintTimer);
+        if (got.size) return;
+        g.phase = 'lost';
+        activeGames.delete(channel.id);
+        setStreak(db, g.starterId, gid, 0);
+        progress.award(client, db, { userId: g.starterId, guildId: gid, username: user.username, played: 1, won: 0 });
+        progress.recordRun(db, { game: 'wrg', userId: g.starterId, guildId: gid, username: user.username, points: 0, won: false, streak: 0, correct: 0, tier: g.tierKey, tierOrder: TIER_KEYS });
+        await edit(render(g, lang));
+    });
+
+    console.log(`[WRG] ${user.username} | ${g.tierKey} | ${g.catKey} | ${word}`);
+    return { ok: true };
+}
+
+const langOf = (client, src) => {
+    const l = require('../lib/pick-lang').pickLang(client, src.guildId || src.guild?.id, src.user ? src : null, src.user?.id || src.author?.id) || 'en';
+    return ['en', 'fr', 'zh', 'ar'].includes(l) ? l : 'en';
+};
+
+// Play again (anyone)
+async function handleComponent(ix, client) {
+    const [, act, tierKey, catKey] = ix.customId.split(':');
+    if (act !== 'again') return;
+    const lang = langOf(client, ix);
+    if (activeGames.has(ix.channelId)) return ix.reply({ content: `${icon('clock', ix)} ${T(lang, 'busy')}`, flags: MessageFlags.Ephemeral });
+    await ix.deferUpdate();
+    const r = await startGame(client, { channel: ix.channel, guild: ix.guild, user: ix.user, lang, tierKey, catKey, send: (p) => ix.channel.send(p) });
+    if (r.busy) return ix.followUp({ content: `${icon('clock', ix)} ${T(lang, 'busy')}`, flags: MessageFlags.Ephemeral }).catch(() => {});
+}
+
 module.exports = {
     name: 'wrg',
-    aliases: ['wordguess','guess','scramble','devine','mot','word','wrd'],
-    description: '🎮 Word battle: 5 tiers, speed bonus, streak multiplier!',
+    aliases: ['wordguess', 'guess', 'scramble', 'devine', 'mot', 'word', 'wrd'],
+    description: '🎮 Word battle: unscramble the word before time runs out',
     category: 'GAMING',
-    usage: '.wrg [rookie|agent|elite|commander|architect]',
+    usage: '.wrg [rookie|agent|elite|commander|architect] [category]',
     cooldown: 3000,
-    examples: ['.wrg','.wrg rookie','.wrg elite','.wrg architect'],
+    examples: ['.wrg', '.wrg rookie', '.wrg elite science', '.wrg architect'],
+    handleComponent,
+    _calcRewards: calcRewards,   // for the tests
 
     data: new SlashCommandBuilder()
         .setName('wrg')
         .setDescription('🎮 Word battle: 5 tiers, 9 categories, speed bonus!')
-        .addStringOption(opt => opt
-            .setName('tier')
-            .setDescription('Combat tier / Niveau de combat')
-            .setRequired(false)
+        .addStringOption((opt) => opt.setName('tier').setDescription('Difficulty').setRequired(false)
             .addChoices(
-                { name: '⚪ Rookie  — Easy words, low stakes',         value: 'rookie'     },
-                { name: '🔵 Agent  — Everyday objects & places',       value: 'agent'      },
-                { name: '🟠 Elite  — Technical & cyber terms',         value: 'elite'      },
-                { name: '🔴 Commander — Advanced vocabulary',          value: 'commander'  },
-                { name: '👑 Architect — LEGENDARY difficulty',         value: 'architect'  }
+                { name: 'Rookie — easy words', value: 'rookie' },
+                { name: 'Agent — everyday words', value: 'agent' },
+                { name: 'Elite — technical words', value: 'elite' },
+                { name: 'Commander — advanced words', value: 'commander' },
+                { name: 'Architect — the hardest', value: 'architect' },
             ))
-        .addStringOption(opt => opt
-            .setName('category')
-            .setDescription('Word category / Catégorie de mots')
-            .setRequired(false)
+        .addStringOption((opt) => opt.setName('category').setDescription('Word category').setRequired(false)
             .addChoices(
-                { name: '💻 Technology — Computers & code',            value: 'tech'       },
-                { name: '🔬 Science — Elements, planets, biology',     value: 'science'    },
-                { name: '🏛️ History — Events, empires, figures',       value: 'history'    },
-                { name: '🦁 Animals — Species & habitats',             value: 'animals'    },
-                { name: '🎵 Music — Artists, songs, albums',           value: 'music'      },
-                { name: '⚽ Sports — Teams & tournaments',             value: 'sports'     },
-                { name: '🍕 Food & Cuisine — Dishes & ingredients',    value: 'food'       },
-                { name: '🎬 Movies & TV — Films & characters',         value: 'movies'     },
-                { name: '🌍 Geography — Countries & capitals',         value: 'geography'  }
+                { name: 'Technology', value: 'tech' }, { name: 'Science', value: 'science' }, { name: 'History', value: 'history' },
+                { name: 'Animals', value: 'animals' }, { name: 'Music', value: 'music' }, { name: 'Sports', value: 'sports' },
+                { name: 'Food', value: 'food' }, { name: 'Movies and TV', value: 'movies' }, { name: 'Geography', value: 'geography' },
             )),
 
-    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
-        await runGame(client, message, args, db, lang);
+    run: async (client, message, args, _db, _ss, _used, lang) => {
+        lang = ['en', 'fr', 'zh', 'ar'].includes(lang) ? lang : langOf(client, message);
+        let tierKey = 'rookie', catKey = DEFAULT_CATEGORY;
+        for (const a of args) { tierKey = findKey(TIER_ALIASES, a) || tierKey; catKey = findKey(CATEGORY_ALIASES, a) || catKey; }
+        try {
+            const r = await startGame(client, { channel: message.channel, guild: message.guild, user: message.author, lang, tierKey, catKey, send: (p) => message.channel.send(p) });
+            if (r.busy) {
+                const note = await message.channel.send(`${icon('clock', message)} ${T(lang, 'busy')}`).catch(() => null);
+                if (note) setTimeout(() => note.delete().catch(() => {}), 5000);
+            }
+        } catch (e) { console.error('[WRG]', e.message); }
     },
 
     execute: async (interaction, client) => {
-        const tier = interaction.options.getString('tier') || 'rookie';
-        const category = interaction.options.getString('category') || 'tech';
-        await interaction.deferReply({ flags: 64 });
-        const fakeMessage = {
-            author: interaction.user,
-            guild: interaction.guild,
-            channel: interaction.channel,
-            reply: async (opts) => interaction.editReply(opts),
-            react: () => Promise.resolve()
-        };
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        await runGame(client, fakeMessage, [tier, category], client.db, lang);
-    }
+        const lang = langOf(client, interaction);
+        const tierKey = interaction.options.getString('tier') || 'rookie';
+        const catKey = interaction.options.getString('category') || DEFAULT_CATEGORY;
+        if (activeGames.has(interaction.channelId)) return interaction.reply({ content: `${icon('clock', interaction)} ${T(lang, 'busy')}`, flags: MessageFlags.Ephemeral });
+        // the game card is the command's own reply: no "thinking…" left behind
+        await startGame(client, { channel: interaction.channel, guild: interaction.guild, user: interaction.user, lang, tierKey, catKey,
+            send: async (p) => { await interaction.reply(p); return interaction.fetchReply(); } });
+    },
 };

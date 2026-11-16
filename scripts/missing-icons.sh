@@ -81,6 +81,7 @@ make ic_shield_check shield-check "#23A55A"
 make ic_user_check user-check "#23A55A"
 make ic_user_x user-x "$RED"
 make ic_brain brain "#D4537E"
+make ic_puzzle puzzle "#378ADD"
 # Roulette: black and green pockets, and the Double button
 make rouletteBlack poker-chip "#9C9C9C"
 make rouletteGreen poker-chip "#23A55A"

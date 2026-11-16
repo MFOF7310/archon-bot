@@ -3327,6 +3327,12 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
         });
     }
+    if (interaction.isButton() && interaction.customId.startsWith('wrg:')) {
+        return require('./plugins/wrg').handleComponent(interaction, client).catch(e => {
+            console.error(`[WRG] button guild=${interaction.guildId}:`, e.stack || e.message);
+            if (!interaction.replied && !interaction.deferred) interaction.reply({ content: require('./lib/i18n').t('genericError', 'en'), flags: 64 }).catch(() => {});
+        });
+    }
     if (interaction.isButton() && interaction.customId.startsWith('lyd:')) {
         return require('./plugins/lydia').handleComponent(interaction, client).catch(e => {
             console.error(`[LYDIA] button guild=${interaction.guildId}:`, e.stack || e.message);
