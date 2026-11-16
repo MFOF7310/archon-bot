@@ -6,7 +6,8 @@ cd "$(dirname "$0")/.." || exit 1
 M="python3 /root/icon-tmp/make_icon.py"
 AMBER="#F0B232"; RED="#E74C3C"
 
-missing() { node -e "process.exit(require('./config/emojis')['$1'] ? 1 : 0)"; }
+# missing = no key, or a key that still holds a plain emoji instead of one of ARCHON's own (<:name:id>)
+missing() { node -e "process.exit(/^<a?:\\w+:\\d+>$/.test(require('./config/emojis')['$1'] || '') ? 1 : 0)"; }
 make() { if missing "$1"; then $M "$@" || echo "   (skipped $1)"; sleep 1; else echo "·  $1 already there"; fi; }
 
 make ic_warn alert-triangle "$AMBER"
@@ -81,8 +82,8 @@ make ic_user_check user-check "#23A55A"
 make ic_user_x user-x "$RED"
 make ic_brain brain "#D4537E"
 # Roulette: black and green pockets, and the Double button
-make rouletteBlack circle-filled "#4E5058"
-make rouletteGreen circle-filled "#23A55A"
+make rouletteBlack poker-chip "#9C9C9C"
+make rouletteGreen poker-chip "#23A55A"
 make rouletteDouble chevrons-up
 
 # Every new icon goes to its category in config/emojis.js
