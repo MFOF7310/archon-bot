@@ -42,7 +42,7 @@ const T = {
   notVotedTitle: "You haven't voted yet", notVotedBody: 'Vote on Top.gg, then press **{claim}** again.',
   alreadyTitle: 'Already claimed', alreadyBody: 'The reward for this vote is already yours. Next vote {when}.',
   checkFail: "I can't check your vote right now. Try again in a moment.", processFail: "Your vote couldn't be saved. Try again later.",
-  statsTitle: 'Vote stats', votesMonth: '{votes} · {month} this month', credits: '{n} earned',
+  statsTitle: 'Vote stats', votesMonth: '{votes} · {month} this month', here: 'On this server', allServers: 'All servers: {votes} · {month} this month', monthNote: 'The monthly count goes back to 0 on the 1st (UTC), like on Top.gg.', credits: '{n} earned',
   rank: 'Rank **#{n}** on this server', unranked: 'Not ranked yet',
   topTitle: 'Top voters', topEmpty: 'Nobody has voted here yet.',
   waitTitle: 'Your next vote opens {when}', waitLeft: 'Time left: **{left}**', waitAt: 'You can vote again on {full}.',
@@ -71,7 +71,7 @@ const T = {
   notVotedTitle: "Tu n'as pas encore voté", notVotedBody: 'Vote sur Top.gg, puis appuie de nouveau sur **{claim}**.',
   alreadyTitle: 'Déjà récupérée', alreadyBody: 'La récompense de ce vote est déjà à toi. Prochain vote {when}.',
   checkFail: "Je n'arrive pas à vérifier ton vote pour l'instant. Réessaie dans un moment.", processFail: "Ton vote n'a pas pu être enregistré. Réessaie plus tard.",
-  statsTitle: 'Statistiques de vote', votesMonth: '{votes} · {month} ce mois-ci', credits: '{n} gagnés',
+  statsTitle: 'Statistiques de vote', votesMonth: '{votes} · {month} ce mois-ci', here: 'Sur ce serveur', allServers: 'Tous serveurs : {votes} · {month} ce mois-ci', monthNote: 'Le compteur du mois repart à 0 le 1er (UTC), comme sur Top.gg.', credits: '{n} gagnés',
   rank: 'Rang **#{n}** sur ce serveur', unranked: 'Pas encore classé',
   topTitle: 'Meilleurs votants', topEmpty: "Personne n'a encore voté ici.",
   waitTitle: 'Ton prochain vote ouvre {when}', waitLeft: 'Temps restant : **{left}**', waitAt: 'Tu pourras voter de nouveau : {full}.',
@@ -100,7 +100,7 @@ const T = {
   notVotedTitle: '你还没有投票', notVotedBody: '先去 Top.gg 投票，然后再点**{claim}**。',
   alreadyTitle: '已经领取过了', alreadyBody: '这次投票的奖励已经到账。下次投票：{when}。',
   checkFail: '暂时无法检查你的投票，请稍后再试。', processFail: '投票没能保存，请稍后再试。',
-  statsTitle: '投票统计', votesMonth: '{votes} · 本月 {month} 次', credits: '已获得 {n}',
+  statsTitle: '投票统计', votesMonth: '{votes} · 本月 {month} 次', here: '本服务器', allServers: '所有服务器：{votes} · 本月 {month} 次', monthNote: '本月计数在每月 1 日（UTC）清零，与 Top.gg 相同。', credits: '已获得 {n}',
   rank: '本服务器排名 **#{n}**', unranked: '暂未上榜',
   topTitle: '投票排行榜', topEmpty: '这里还没有人投票。',
   waitTitle: '下次投票：{when}', waitLeft: '剩余时间：**{left}**', waitAt: '可再次投票的时间：{full}。',
@@ -129,7 +129,7 @@ const T = {
   notVotedTitle: 'لم تصوّت بعد', notVotedBody: 'صوّت على Top.gg، ثم اضغط **{claim}** مرة أخرى.',
   alreadyTitle: 'تم الاستلام مسبقًا', alreadyBody: 'مكافأة هذا التصويت وصلتك بالفعل. التصويت التالي {when}.',
   checkFail: 'لا أستطيع التحقق من تصويتك الآن. حاول بعد قليل.', processFail: 'تعذّر حفظ تصويتك. حاول لاحقًا.',
-  statsTitle: 'إحصائيات التصويت', votesMonth: '{votes} · {month} هذا الشهر', credits: '{n} مكتسب',
+  statsTitle: 'إحصائيات التصويت', votesMonth: '{votes} · {month} هذا الشهر', here: 'على هذا الخادم', allServers: 'كل الخوادم: {votes} · {month} هذا الشهر', monthNote: 'يعود عدّاد الشهر إلى 0 في اليوم الأول (UTC)، كما في Top.gg.', credits: '{n} مكتسب',
   rank: 'الترتيب **#{n}** في هذا السيرفر', unranked: 'غير مصنف بعد',
   topTitle: 'أكثر المصوّتين', topEmpty: 'لم يصوّت أحد هنا بعد.',
   waitTitle: 'تصويتك التالي {when}', waitLeft: 'الوقت المتبقي: **{left}**', waitAt: 'يمكنك التصويت مجددًا: {full}.',
@@ -351,11 +351,13 @@ function statsCard(s, rank, lang, where, who, guildName) {
     const alive = s.current_streak > 0 && voteSync.streakAlive(s.last_vote_date);
     const lines = [];
     if (s.current_streak > 0) lines.push(`${I('streak')} ${fill(alive ? t.streak : t.streakEnded, { days: bold(amount(s.current_streak, 'day', lang)), best: bold(amount(Math.max(s.best_streak || 0, s.current_streak), 'day', lang)) })}`);
-    lines.push(`${I('votes')} ${fill(t.votesMonth, { votes: bold(amount(s.total_votes, 'vote', lang)), month: bold(num(s.votes_this_month, lang)) })}`);
+    lines.push(`${I('votes')} ${s.all ? `${t.here} · ` : ''}${fill(t.votesMonth, { votes: bold(amount(s.total_votes, 'vote', lang)), month: bold(num(s.votes_this_month, lang)) })}`);
+    if (s.all) lines.push(`${I('world')} ${fill(t.allServers, { votes: bold(amount(s.all.votes, 'vote', lang)), month: bold(num(s.all.month, lang)) })}`);
     lines.push(`${I('coins')} ${fill(t.credits, { n: bold(amount(s.total_rewards, 'credit', lang)) })}`);
     lines.push(`${I('trophy')} ${rank >= 0 ? fill(t.rank, { n: rank + 1 }) : t.unranked}`);
     const head = `### ${t.statsTitle}\n-# ${who.name}${guildName ? ` · ${esc(guildName)}` : ''}`;
-    return card(COLOR.gold, [who.avatar ? { thumbnail: [head, who.avatar] } : { text: head }, { rule: true }, { text: lines.join('\n') }]);
+    return card(COLOR.gold, [who.avatar ? { thumbnail: [head, who.avatar] } : { text: head }, { rule: true }, { text: lines.join('\n') },
+        { text: `-# ${t.monthNote}` }]);
 }
 
 // The leaderboard as text (the image is the canvas below; this is its stand-in and the answer of the slash portal button)

@@ -183,6 +183,16 @@ function getStats(db, userId, guildId) {
     // The streak and the date it counts from are the person's, whatever the server
     const p = personStreak(db, userId);
     s = { ...s, current_streak: p.current_streak, best_streak: p.best_streak, last_vote_date: Math.max(p.last_vote_date || 0, s.last_vote_date || 0) };
+    // Voted on more than one server: the totals for all of them too (this month = claims since the 1st, UTC)
+    try {
+        const all = db.prepare('SELECT COUNT(*) AS servers, SUM(total_votes) AS votes FROM user_votes WHERE user_id = ?').get(userId);
+        if (all.servers > 1) {
+            const d0 = new Date();
+            const since = Math.floor(Date.UTC(d0.getUTCFullYear(), d0.getUTCMonth(), 1) / 1000);
+            const month = db.prepare('SELECT COUNT(*) AS n FROM vote_claims WHERE user_id = ? AND claim_date >= ?').get(userId, since).n;
+            s.all = { votes: all.votes || 0, month };
+        }
+    } catch { /* this server's numbers only */ }
     // Year and month together: November 2027 is not "the same month" as November 2026
     const now = Math.floor(Date.now() / 1000), d = new Date(), month = d.getUTCFullYear() * 12 + d.getUTCMonth();
     const lm = s.last_month_reset ? new Date(s.last_month_reset * 1000) : null;
