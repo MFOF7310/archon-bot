@@ -141,7 +141,8 @@ ${lines.join('\n')}
 ${autoBlock}};
 `;
     fs.writeFileSync(REGISTRY_PATH, header);
-    
+    try { require('../scripts/emojis-tidy').tidy(REGISTRY_PATH); } catch { /* left as written */ }   // back into categories
+
     return { remap: remapList, add: addList };
 }
 
@@ -222,6 +223,7 @@ module.exports = {
                     reg = reg.replace(/};\s*$/, line + '};');
                 }
                 fs.writeFileSync(REGISTRY_PATH, reg, 'utf-8');
+                try { require('../scripts/emojis-tidy').tidy(REGISTRY_PATH); } catch { /* left as written */ }
                 
                 const msg = isOverwrite 
                     ? `🔄 **${name}** (ID: ${emoji.id}) a été **écrasé** avec succès dans le registre !`

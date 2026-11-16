@@ -143,3 +143,6 @@ force-register-livestream.js
 register-livestream.js
 config/emojis.js
 tools/upload-emoji.js
+
+# backups left by scripts/emojis-tidy.js
+config/*.bak

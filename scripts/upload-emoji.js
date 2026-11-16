@@ -33,6 +33,7 @@ async function call(method, url, body) {
     const existing = new RegExp(`\\b${name}:\\s*'[^']+',`);
     text = existing.test(text) ? text.replace(existing, line) : text.replace(/\};\s*$/, `    ${line}\n};\n`);
     fs.writeFileSync(config, text);
+    try { require('./emojis-tidy').tidy(config); } catch (e) { console.log('   (not tidied: ' + e.message + ')'); }   // into its category
     console.log(`✅ ${name} uploaded (ID ${made.id}) and written to config/emojis.js`);
     console.log('   Now run: pm2 restart Architect-CG223');
 })().catch((e) => { console.log('❌ ' + e.message); process.exit(1); });

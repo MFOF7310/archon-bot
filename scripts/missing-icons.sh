@@ -80,4 +80,11 @@ make ic_shield_check shield-check "#23A55A"
 make ic_user_check user-check "#23A55A"
 make ic_user_x user-x "$RED"
 make ic_brain brain "#D4537E"
+# Roulette: black and green pockets, and the Double button
+make rouletteBlack circle-filled "#4E5058"
+make rouletteGreen circle-filled "#23A55A"
+make rouletteDouble chevrons-up
+
+# Every new icon goes to its category in config/emojis.js
+node scripts/emojis-tidy.js
 echo "Done. Now run: pm2 restart Architect-CG223"

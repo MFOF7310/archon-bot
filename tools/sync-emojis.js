@@ -64,6 +64,7 @@ ${lines.join('\n')}
 `;
 
     fs.writeFileSync(REGISTRY_PATH, header);
+    try { require('../scripts/emojis-tidy').tidy(REGISTRY_PATH); } catch { /* left as written */ }
     console.log(`\n📊 Résultat:`);
     console.log(`  🔧 Remappés  : ${remapped}`);
     console.log(`  ✅ Inchangés : ${unchanged}`);
