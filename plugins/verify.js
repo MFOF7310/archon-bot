@@ -184,6 +184,12 @@ async function letIn(client, db, guild, member, event, vars = {}) {
     const { vRole, uRole } = rolesOf(guild, settingsOf(db, guild.id));
     const err = await giveAccess(member, vRole, uRole, event === 'passed_manual' ? `Verified by hand (${vars.mod || '?'})` : 'Passed verification');
     if (err) {
+        // The right code was given: the member must not be kicked for ARCHON's own problem. The kick timer stops,
+        // and the code stays valid so they can type it again once a moderator fixes the roles.
+        const p = pending.get(`${member.id}:${guild.id}`);
+        if (p?.timer) clearTimeout(p.timer);
+        pending.delete(`${member.id}:${guild.id}`);
+        try { _deadlines(db); db.prepare('UPDATE verify_pending SET kick_at = 0 WHERE guild_id = ? AND user_id = ?').run(guild.id, member.id); } catch { /* the timer is already stopped */ }
         await logVerify(guild, db, 'roles_failed', member.id, { error: err });
         return err;
     }
