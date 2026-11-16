@@ -645,6 +645,7 @@ async function createRoles(guild, db, lang, set = 'level') {
         db.prepare(`UPDATE server_settings SET ${col} = ? WHERE guild_id = ?`).run(role.id, guild.id);
         linked++;
     }
+    if (made + linked > 0) require('../lib/reward-roles').backfillSoon(guild.client, guild.id);   // members who already earned them
     return { made, reused: linked - made };   // new roles, and existing ones with the same name that were reused
 }
 
@@ -998,6 +999,7 @@ module.exports = {
             try {
                 db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(ix.guild.id);
                 db.prepare(`UPDATE server_settings SET ${col} = ? WHERE guild_id = ?`).run(role?.id || null, ix.guild.id);
+                if (role) require('../lib/reward-roles').backfillSoon(ix.client, ix.guild.id);   // members already past that level get it now
                 saved = (db.prepare(`SELECT ${col} AS v FROM server_settings WHERE guild_id = ?`).get(ix.guild.id)?.v || null) === (role?.id || null);
             } catch (e) { console.error('[LEVELING] setrole:', e.message); }
             if (!saved) return ix.reply({ content: L('setroleFailed', lang), flags: 1 << 6 });

@@ -103,5 +103,8 @@
   "give_why_above": "Le rôle est au niveau d'ARCHON ou au-dessus : monte le rôle {bot} au-dessus dans Paramètres du serveur → Rôles.",
   "give_why_other": "Discord a refusé : {error}",
   "give_for": "Récompense : {reason}",
-  "give_once": "signalé une fois toutes les 6 heures pour ce rôle"
+  "give_once": "signalé une fois toutes les 6 heures pour ce rôle",
+  "backfill_title": "Rôles de récompense donnés aux membres qui les avaient déjà mérités :",
+  "backfill_one": "1 membre",
+  "backfill_many": "{n} membres"
 }

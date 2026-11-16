@@ -103,5 +103,8 @@
   "give_why_above": "该角色与 ARCHON 同级或更高：请在服务器设置 → 角色中把 {bot} 角色拖到它上面。",
   "give_why_other": "Discord 拒绝了：{error}",
   "give_for": "奖励：{reason}",
-  "give_once": "同一角色每 6 小时只提示一次"
+  "give_once": "同一角色每 6 小时只提示一次",
+  "backfill_title": "已向早已达成条件的成员授予奖励角色：",
+  "backfill_one": "1 名成员",
+  "backfill_many": "{n} 名成员"
 }
