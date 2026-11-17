@@ -1928,6 +1928,8 @@ client.once(Events.ClientReady, async () => {
     try { require('./plugins/afk.js').resume(client); } catch (e) { console.error('[AFK] resume:', e.message); }
     // Re-arm the "verify in time or be kicked" deadlines that were running when the bot stopped
     Promise.resolve(require('./plugins/verify.js').resumeKickTimers?.(client, db)).catch((e) => console.error('[VERIFY] resume failed:', e.message));
+    // Members who joined while ARCHON was offline get their captcha (after the deadlines above are back)
+    setTimeout(() => { Promise.resolve(require('./plugins/verify.js').catchUpMissedJoins?.(client, db)).catch((e) => console.error('[VERIFY] catch-up failed:', e.message)); }, 30000);
     // Raid mode: pick up a raid that was active when the bot stopped
     Promise.resolve(require('./plugins/automod.js').resumeRaids?.(client, db)).catch((e) => console.error('[RAID] resume failed:', e.message));
     // AutoMod: one summary a day for each server owner (21:00 Bamako time)

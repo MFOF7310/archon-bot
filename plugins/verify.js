@@ -469,6 +469,42 @@ module.exports = {
         console.log(`[VERIFY] resumed ${rows.length} kick deadline(s): ${rearmed} re-armed, ${graced} overdue, ${dropped} dropped`);
     },
 
+    // ARCHON notes every minute that it is online. At startup, members who joined during the gap never got the
+    // join event: those with no verified role, no waiting role and no code on file get the normal captcha now.
+    // At most CATCHUP_MAX per server (never a wave of DMs), one every 1.5 s; skipped on the first start (no gap known).
+    catchUpMissedJoins: async (client, db) => {
+        const CATCHUP_MAX = 25;
+        try { db.prepare('CREATE TABLE IF NOT EXISTS bot_meta (key TEXT PRIMARY KEY, value TEXT)').run(); } catch { return; }
+        const seen = () => { try { db.prepare("INSERT OR REPLACE INTO bot_meta (key, value) VALUES ('verify_last_seen', ?)").run(String(Date.now())); } catch { /* next minute */ } };
+        let last = 0;
+        try { last = Number(db.prepare("SELECT value FROM bot_meta WHERE key = 'verify_last_seen'").get()?.value || 0); } catch { last = 0; }
+        seen();
+        setInterval(seen, 60 * 1000).unref?.();
+        if (!last) return console.log('[VERIFY] catch-up: first start, nothing to compare with');
+        const since = last - 60 * 1000;   // one heartbeat of margin
+        let done = 0;
+        for (const guild of client.guilds.cache.values()) {
+            let s;
+            try { s = settingsOf(db, guild.id); } catch { continue; }
+            if (!s.verify_enabled || !isPremium(db, guild.id)) continue;
+            const { vRole, uRole } = rolesOf(guild, s);
+            if (!vRole && !uRole) continue;
+            const members = await guild.members.fetch().catch(() => null);
+            if (!members) continue;
+            let filed = new Set();
+            try { filed = new Set(db.prepare('SELECT user_id FROM verify_pending WHERE guild_id = ?').all(guild.id).map((r) => r.user_id)); } catch { /* none on file */ }
+            const missed = [...members.values()].filter((m) => !m.user.bot && (m.joinedTimestamp || 0) > since
+                && !(vRole && m.roles.cache.has(vRole.id)) && !(uRole && m.roles.cache.has(uRole.id)) && !filed.has(m.id))
+                .sort((a, b) => a.joinedTimestamp - b.joinedTimestamp).slice(0, CATCHUP_MAX);
+            for (const m of missed) {
+                await module.exports.onMemberJoin(m, client, db).catch((e) => console.error(`[VERIFY] catch-up ${guild.id}/${m.id}:`, e.message));
+                done++;
+                await new Promise((r) => setTimeout(r, 1500));
+            }
+        }
+        console.log(`[VERIFY] catch-up: ${done} member(s) who joined while offline got their captcha`);
+    },
+
     onMemberJoin: async (member, client, db) => {
         const gid = member.guild.id;
         _vdb = db;
@@ -499,12 +535,13 @@ module.exports = {
         const kickMins = s.verify_kick_days || 0;
         const kickAt = kickMins > 0 ? now + kickMins * 60000 : 0;
         const pl = await panelLink(member.guild, db, lang);
+        // Saved before the DM goes out: a restart right after sending must not leave a code the bot doesn't know
+        saveDeadline(db, gid, member.id, kickAt, code);
         let sent = await member.send(captchaCard(member.guild, lang, { code, kickAt, panelId: pl?.id })).then(() => true).catch(() => false);
         // DMs closed and no panel: the system channel, with a ping (the code is checked in DM only)
         if (!sent && !pl && member.guild.systemChannel) {
             sent = await member.guild.systemChannel.send(captchaCard(member.guild, lang, { code, kickAt, mention: member.id })).then(() => true).catch(() => false);
         }
-        saveDeadline(db, gid, member.id, kickAt, code);
         if (kickAt) armKick(client, db, gid, member.id, kickAt - now);
         else pending.set(`${member.id}:${gid}`, { timer: null });
     },
