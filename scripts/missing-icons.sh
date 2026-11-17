@@ -87,6 +87,16 @@ make rouletteBlack poker-chip "#9C9C9C"
 make rouletteGreen poker-chip "#23A55A"
 make rouletteDouble chevrons-up
 
+# /global: wallet, leaderboard podium, network card, transfer confirmation
+make ic_building building-community
+make ic_server server
+make ic_crown crown "$AMBER"
+make ic_medal medal "#B4B2A9"
+make ic_medal_2 medal-2 "#D85A30"
+make ic_send send
+make ic_check check
+make ic_x x
+
 # Every new icon goes to its category in config/emojis.js
 node scripts/emojis-tidy.js
 echo "Done. Now run: pm2 restart Architect-CG223"

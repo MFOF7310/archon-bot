@@ -1,90 +1,40 @@
-const { EmbedBuilder, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-const EMOJIS = require('../config/emojis');
+'use strict';
+// /global — the network economy: one wallet that follows a member across every ARCHON server.
+// balance · daily · leaderboard · network · transfer, all as gold V2 cards (lib/games/v2), icons from lib/ui/icons.js,
+// words from lang/<locale>/global.json.
+// A transfer always goes through a confirmation card, and the money moves inside one SQLite transaction
+// (debit only if the balance covers it, then credit, then the log line), so a crash can't lose credits half-way.
+// Bots, yourself and amounts under MIN_SEND are refused. /global daily stays separate from /claim on purpose:
+// /claim pays this server's credits, /global daily pays network credits.
+// Buttons, the member picker and the amount box use global:… ids routed from index.js, so they survive a restart.
+const {
+    ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, MessageFlags,
+    UserSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
+} = require('discord.js');
+const v2 = require('../lib/games/v2');
+const { t: i18n } = require('../lib/i18n');
+const { pickLang } = require('../lib/pick-lang');
+const { icon } = require('../lib/ui/icons');
 
-// ================= BILINGUAL =================
-const T = {
-    en: {
-        title: '🌐 Global Economy',
-        yourBalance: '💰 Your Balance',
-        server: 'This Server',
-        global: 'Global Network',
-        total: 'Total',
-        dailyClaimed: '🎉 Daily Bonus Claimed!',
-        dailyCooldown: '⏰ You already grabbed today\'s bonus! Come back',
-        streak: 'Streak',
-        transferSent: '💸 Credits Sent!',
-        transferReceived: '💰 You Just Got Paid!',
-        transferError: em('ic_off', em('ic_off', '❌')) + ' Transfer Failed — something went wrong',
-        leaderboard: '🏆 Global Leaderboard',
-        network: '🌐 ARCHITECT Network',
-        servers: 'Servers',
-        users: 'Users',
-        totalEconomy: 'Total Economy',
-        richestUser: 'Richest Member',
-        avgLevel: 'Avg Level',
-        itemBought: em('ic_ok', '✅') + ' Purchased',
-        inventory: '🎒 Global Inventory',
-        emptyInventory: '📭 Empty',
-        shop: '🏪 Global Shop',
-        footer: 'ARCHON CG-223 • Cross-Server Economy',
-        noFunds: em('ic_off', em('ic_off', '❌')) + ' Not enough credits — check your balance with `/global balance`',
-        invalidAmount: em('ic_off', em('ic_off', '❌')) + ' Invalid amount',
-        selfTransfer: '😅 You can\'t send credits to yourself!',
-        tax: 'Network Tax (5%)',
-        networkBonus: '🌐 Network Bonus',
-        levelSync: em('ic_ok', '✅') + ' Level synced to global network',
-        firstTimeWelcome: '🎉 Welcome to the ARCHON Global Economy! You\'ve been gifted **500** starter credits — claim your daily bonus to start stacking!'
-    },
-    fr: {
-        title: '🌐 Économie Globale',
-        yourBalance: '💰 Ton Solde',
-        server: 'Ce Serveur',
-        global: 'Réseau Global',
-        total: 'Total',
-        dailyClaimed: '🎉 Bonus Quotidien Réclamé !',
-        dailyCooldown: '⏰ Bonus déjà réclamé aujourd\'hui ! Prochain dans',
-        streak: 'Série',
-        transferSent: '💸 Crédits Envoyés !',
-        transferReceived: '💰 Tu Viens de Recevoir des Crédits !',
-        transferError: em('ic_off', em('ic_off', '❌')) + ' Transfert Échoué',
-        leaderboard: '🏆 Classement Global',
-        network: '🌐 Réseau ARCHITECT',
-        servers: 'Serveurs',
-        users: 'Utilisateurs',
-        totalEconomy: 'Économie Totale',
-        richestUser: 'Membre le Plus Riche',
-        avgLevel: 'Niveau Moyen',
-        itemBought: em('ic_ok', '✅') + ' Acheté',
-        inventory: '🎒 Inventaire Global',
-        emptyInventory: '📭 Vide',
-        shop: '🏪 Boutique Globale',
-        footer: 'ARCHON CG-223 • Économie Inter-Serveurs',
-        noFunds: em('ic_off', em('ic_off', '❌')) + ' Pas assez de crédits — vérifie ton solde avec `/global balance`',
-        invalidAmount: em('ic_off', em('ic_off', '❌')) + ' Montant invalide',
-        selfTransfer: '😅 Tu ne peux pas t\'envoyer des crédits à toi-même !',
-        tax: 'Taxe Réseau (5%)',
-        networkBonus: '🌐 Bonus Réseau',
-        levelSync: em('ic_ok', '✅') + ' Niveau synchronisé au réseau global',
-        firstTimeWelcome: '🎉 Bienvenue dans l\'Économie Globale ! Tu as reçu **500** crédits de départ.'
-    }
-};
+const GOLD = 0xE6A817;
+const GREY = 0x4E5058;
+const DAY = 86400;          // seconds: global_credits stores unix seconds
+const FEE = 5;              // network fee, in percent
+const MIN_SEND = 10;        // below this the fee would round to nothing
+const PAGE = 10;
+const PAGES = 3;            // the leaderboard shows the top 30
+const TIERS = [7, 30, 100]; // streak days where the daily base goes up (calculateDailyReward)
 
-// ================= DAILY REWARDS =================
-function calculateDailyReward(streak) {
-    let base = 250;
-    if (streak >= 100) base = 1000;
-    else if (streak >= 30) base = 700;
-    else if (streak >= 7) base = 500;
+const tr = (lang) => (k, v) => i18n('global.' + k, lang, v);
+const fmt = (n) => Number(n || 0).toLocaleString('en-US').replace(/,/g, ' ');
+const ts = (sec, style = 'R') => `<t:${Math.floor(sec)}:${style}>`;
+const nowSec = () => Math.floor(Date.now() / 1000);
+const clean = (s) => String(s || '').replace(/[_*~`|\\<>#[\]]/g, '\\$&').slice(0, 32);
 
-    const bonusPercent = Math.min(Math.floor(streak / 7) * 5, 50); // +5% per week, max 50%
-    const total = Math.floor(base * (1 + bonusPercent / 100));
-    const bonus = total - base;
-    return { base, bonus, total, streak };
-}
-
-// ================= DB SETUP =================
+// ═══════════════════════════════ DATABASE ═══════════════════════════════
+const ready = new WeakSet();
 function setupDB(db) {
+    if (ready.has(db)) return;
     db.prepare(`CREATE TABLE IF NOT EXISTS global_credits (
         user_id TEXT PRIMARY KEY,
         username TEXT,
@@ -96,7 +46,6 @@ function setupDB(db) {
         best_streak INTEGER DEFAULT 0,
         updated_at INTEGER DEFAULT 0
     )`).run();
-
     db.prepare(`CREATE TABLE IF NOT EXISTS global_transactions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         from_user TEXT,
@@ -107,7 +56,6 @@ function setupDB(db) {
         guild_name TEXT,
         timestamp INTEGER DEFAULT (strftime('%s', 'now'))
     )`).run();
-
     db.prepare(`CREATE TABLE IF NOT EXISTS global_inventory (
         user_id TEXT,
         item_key TEXT,
@@ -116,7 +64,6 @@ function setupDB(db) {
         purchased_at INTEGER DEFAULT (strftime('%s', 'now')),
         PRIMARY KEY (user_id, item_key)
     )`).run();
-
     db.prepare(`CREATE TABLE IF NOT EXISTS global_leaderboard (
         user_id TEXT PRIMARY KEY,
         username TEXT,
@@ -126,7 +73,6 @@ function setupDB(db) {
         servers_count INTEGER DEFAULT 0,
         updated_at INTEGER DEFAULT (strftime('%s', 'now'))
     )`).run();
-
     db.prepare(`CREATE TABLE IF NOT EXISTS global_server_stats (
         guild_id TEXT PRIMARY KEY,
         guild_name TEXT,
@@ -136,523 +82,384 @@ function setupDB(db) {
         joined_at INTEGER DEFAULT (strftime('%s', 'now')),
         last_active INTEGER DEFAULT (strftime('%s', 'now'))
     )`).run();
+    ready.add(db);
 }
 
-// ================= GET/SET CREDITS =================
 function getGlobalCredits(db, userId) {
     return db.prepare('SELECT * FROM global_credits WHERE user_id = ?').get(userId) || {
-        user_id: userId, username: 'Unknown', total_credits: 0, earned_all_time: 0,
-        spent_all_time: 0, last_daily: 0, daily_streak: 0, best_streak: 0
+        user_id: userId, username: null, total_credits: 0, earned_all_time: 0,
+        spent_all_time: 0, last_daily: 0, daily_streak: 0, best_streak: 0,
     };
 }
 
+// Used by index.js on level-up (+50) and by the daily bonus
 function addGlobalCredits(db, userId, username, amount, type = 'earn', guildId, guildName) {
-    const now = Math.floor(Date.now() / 1000);
+    const now = nowSec();
     db.prepare(`INSERT INTO global_credits (user_id, username, total_credits, earned_all_time, updated_at)
         VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
         total_credits = total_credits + excluded.total_credits,
         earned_all_time = earned_all_time + excluded.earned_all_time,
-        username = excluded.username,
-        updated_at = excluded.updated_at`).run(userId, username, amount, amount, now);
-
+        username = COALESCE(excluded.username, username),
+        updated_at = excluded.updated_at`).run(userId, username || null, amount, amount, now);
     if (type) {
         db.prepare('INSERT INTO global_transactions (from_user, to_user, amount, type, guild_id, guild_name, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-            type === 'daily' || type === 'levelup' ? 'system' : userId,
-            userId, amount, type, guildId || '0', guildName || 'Global', now
-        );
+            type === 'daily' || type === 'levelup' ? 'system' : userId, userId, amount, type, guildId || '0', guildName || 'Global', now);
     }
 }
 
+// One statement: it only takes the credits if they are there (no read-then-write gap)
 function deductGlobalCredits(db, userId, amount) {
-    const row = db.prepare('SELECT total_credits FROM global_credits WHERE user_id = ?').get(userId);
-    if (!row || row.total_credits < amount) return false;
-    db.prepare('UPDATE global_credits SET total_credits = total_credits - ?, spent_all_time = spent_all_time + ? WHERE user_id = ?').run(amount, amount, userId);
-    return true;
+    const r = db.prepare('UPDATE global_credits SET total_credits = total_credits - ?, spent_all_time = spent_all_time + ?, updated_at = ? WHERE user_id = ? AND total_credits >= ?')
+        .run(amount, amount, nowSec(), userId, amount);
+    return r.changes > 0;
 }
 
-// ================= DAILY CLAIM =================
+// ─── daily ───
+function calculateDailyReward(streak) {
+    let base = 250;
+    if (streak >= 100) base = 1000;
+    else if (streak >= 30) base = 700;
+    else if (streak >= 7) base = 500;
+    const bonusPercent = Math.min(Math.floor(streak / 7) * 5, 50); // +5% per full week, 50% at most
+    const total = Math.floor(base * (1 + bonusPercent / 100));
+    return { base, bonus: total - base, total, streak };
+}
+
 function claimDaily(db, userId, username) {
-    const now = Math.floor(Date.now() / 1000);
-    const row = getGlobalCredits(db, userId);
-
-    // Check cooldown (24h)
-    if (row.last_daily && (now - row.last_daily) < 86400) {
-        const nextClaim = row.last_daily + 86400;
-        return { success: false, nextClaim, streak: row.daily_streak };
-    }
-
-    // Calculate streak
-    let newStreak = 1;
-    if (row.last_daily && (now - row.last_daily) < 172800) {
-        newStreak = (row.daily_streak || 0) + 1;
-    }
-    const best = Math.max(newStreak, row.best_streak || 0);
-
-    const reward = calculateDailyReward(newStreak);
-    addGlobalCredits(db, userId, username, reward.total, 'daily');
-
-    db.prepare('UPDATE global_credits SET last_daily = ?, daily_streak = ?, best_streak = ? WHERE user_id = ?').run(now, newStreak, best, userId);
-
-    return { success: true, ...reward, nextClaim: now + 86400 };
+    return db.transaction(() => {
+        const now = nowSec();
+        const row = getGlobalCredits(db, userId);
+        const last = Number(row.last_daily || 0);
+        if (last && now - last < DAY) {
+            return { success: false, nextClaim: last + DAY, streak: Number(row.daily_streak || 0), lastDaily: last };
+        }
+        // the next day keeps the streak, more than 48 h starts over
+        const streak = last && now - last < 2 * DAY ? Number(row.daily_streak || 0) + 1 : 1;
+        const best = Math.max(streak, Number(row.best_streak || 0));
+        const reward = calculateDailyReward(streak);
+        addGlobalCredits(db, userId, username, reward.total, 'daily');
+        db.prepare('UPDATE global_credits SET last_daily = ?, daily_streak = ?, best_streak = ? WHERE user_id = ?').run(now, streak, best, userId);
+        return { success: true, ...reward, best, nextClaim: now + DAY, lastDaily: now, balance: Number(row.total_credits || 0) + reward.total };
+    })();
 }
 
-// ================= SYNC LEVEL-UP TO GLOBAL =================
+// ─── transfer ───
+function feeOf(amount) { return Math.max(1, Math.ceil(amount * FEE / 100)); }
+
+function transferGlobal(db, fromUser, toUser, amount, names = {}) {
+    amount = Math.floor(Number(amount));
+    if (!Number.isSafeInteger(amount) || amount < MIN_SEND) return { success: false, error: 'AMOUNT' };
+    if (String(fromUser) === String(toUser)) return { success: false, error: 'SELF' };
+    const tax = feeOf(amount);
+    const net = amount - tax;
+    return db.transaction(() => {
+        const now = nowSec();
+        const debit = db.prepare(`UPDATE global_credits SET total_credits = total_credits - ?, spent_all_time = spent_all_time + ?,
+            username = COALESCE(?, username), updated_at = ? WHERE user_id = ? AND total_credits >= ?`)
+            .run(amount, amount, names.from || null, now, fromUser, amount);
+        if (!debit.changes) return { success: false, error: 'NO_FUNDS' };
+        db.prepare(`INSERT INTO global_credits (user_id, username, total_credits, earned_all_time, updated_at)
+            VALUES (?, ?, ?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET
+            total_credits = total_credits + excluded.total_credits,
+            earned_all_time = earned_all_time + excluded.earned_all_time,
+            username = COALESCE(excluded.username, username),
+            updated_at = excluded.updated_at`).run(toUser, names.to || null, net, net, now);
+        db.prepare('INSERT INTO global_transactions (from_user, to_user, amount, type, guild_id, guild_name, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)')
+            .run(fromUser, toUser, amount, 'transfer', names.guildId || 'global', names.guildName || 'Cross-Server', now);
+        const balance = db.prepare('SELECT total_credits FROM global_credits WHERE user_id = ?').get(fromUser)?.total_credits || 0;
+        return { success: true, amount: net, gross: amount, tax, balance };
+    })();
+}
+
+// ─── sync from the rest of the bot ───
 function syncLevelUp(db, userId, username, level, xp) {
-    const row = db.prepare('SELECT * FROM global_leaderboard WHERE user_id = ?').get(userId);
-    if (row) {
-        db.prepare(`UPDATE global_leaderboard SET
-            username = ?,
-            total_xp = total_xp + ?,
-            highest_level = MAX(highest_level, ?),
-            updated_at = strftime('%s', 'now')
-            WHERE user_id = ?`).run(username, xp, level, userId);
-    } else {
-        db.prepare(`INSERT INTO global_leaderboard (user_id, username, total_xp, highest_level, updated_at)
-            VALUES (?, ?, ?, ?, strftime('%s', 'now'))`).run(userId, username, xp, level);
-    }
+    // xp is the member's running total on one server: keep the highest seen, never add it up again on every level
+    db.prepare(`INSERT INTO global_leaderboard (user_id, username, total_xp, highest_level, updated_at)
+        VALUES (?, ?, ?, ?, strftime('%s', 'now'))
+        ON CONFLICT(user_id) DO UPDATE SET
+        username = excluded.username,
+        total_xp = MAX(total_xp, excluded.total_xp),
+        highest_level = MAX(highest_level, excluded.highest_level),
+        updated_at = excluded.updated_at`).run(userId, username, Number(xp || 0), Number(level || 0));
 }
 
-// ================= SYNC SERVER STATS =================
 function syncServerStats(db, guildId, guildName, memberCount, totalCredits) {
+    if (!guildId) return;
+    // callers pass 0 credits when they don't know them: that used to wipe the server's figure
     db.prepare(`INSERT INTO global_server_stats (guild_id, guild_name, total_members, total_credits, last_active)
         VALUES (?, ?, ?, ?, strftime('%s', 'now'))
         ON CONFLICT(guild_id) DO UPDATE SET
         guild_name = excluded.guild_name,
         total_members = excluded.total_members,
-        total_credits = excluded.total_credits,
-        last_active = strftime('%s', 'now')`).run(guildId, guildName, memberCount, totalCredits);
+        total_credits = CASE WHEN excluded.total_credits > 0 THEN excluded.total_credits ELSE total_credits END,
+        last_active = excluded.last_active`).run(guildId, guildName, memberCount || 0, totalCredits || 0);
 }
 
-// ================= CROSS-SERVER TRANSFER =================
-function transferGlobal(db, fromUser, toUser, amount) {
-    const row = db.prepare('SELECT total_credits FROM global_credits WHERE user_id = ?').get(fromUser);
-    if (!row || row.total_credits < amount) return { success: false, error: 'NO_FUNDS' };
-
-    const tax = Math.floor(amount * 0.05); // 5% network tax
-    const net = amount - tax;
-
-    db.prepare('UPDATE global_credits SET total_credits = total_credits - ? WHERE user_id = ?').run(amount, fromUser);
-    db.prepare(`INSERT INTO global_credits (user_id, total_credits, earned_all_time)
-        VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET
-        total_credits = total_credits + excluded.total_credits,
-        earned_all_time = earned_all_time + excluded.earned_all_time`).run(toUser, net, net);
-
-    const now = Math.floor(Date.now() / 1000);
-    db.prepare('INSERT INTO global_transactions (from_user, to_user, amount, type, guild_id, guild_name, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-        fromUser, toUser, net, 'transfer', 'global', 'Cross-Server', now
-    );
-
-    return { success: true, amount: net, tax };
-}
-
-// ================= GLOBAL LEADERBOARD (FIXED) =================
-function getGlobalLeaderboard(db, limit = 10) {
-    return db.prepare(`SELECT 
-        gc.user_id,
-        gc.username,
-        gc.total_credits,
-        COALESCE(lb.highest_level, 0) as highest_level
-        FROM global_credits gc
-        LEFT JOIN global_leaderboard lb ON gc.user_id = lb.user_id
+// ─── reading ───
+function getGlobalLeaderboard(db, limit = 10, offset = 0) {
+    return db.prepare(`SELECT gc.user_id, gc.username, gc.total_credits, COALESCE(lb.highest_level, 0) AS highest_level
+        FROM global_credits gc LEFT JOIN global_leaderboard lb ON gc.user_id = lb.user_id
         WHERE gc.total_credits > 0
         ORDER BY gc.total_credits DESC, highest_level DESC
-        LIMIT ?`).all(limit);
+        LIMIT ? OFFSET ?`).all(limit, offset);
 }
 
-// ================= NETWORK STATS =================
-function getNetworkStats(db) {
-    const servers = db.prepare('SELECT COUNT(*) as count FROM global_server_stats').get();
-    const users = db.prepare('SELECT COUNT(*) as count FROM global_credits WHERE total_credits > 0').get();
-    const economy = db.prepare('SELECT SUM(total_credits) as total FROM global_credits').get();
-    const richest = db.prepare(`SELECT gc.user_id, gc.username, gc.total_credits
-        FROM global_credits gc ORDER BY gc.total_credits DESC LIMIT 1`).get();
-    const avgLevel = db.prepare('SELECT AVG(highest_level) as avg FROM global_leaderboard').get();
+function rankOf(db, userId) {
+    const me = db.prepare('SELECT total_credits FROM global_credits WHERE user_id = ?').get(userId);
+    if (!me || me.total_credits <= 0) return null;
+    const above = db.prepare('SELECT COUNT(*) AS n FROM global_credits WHERE total_credits > ?').get(me.total_credits).n;
+    return { rank: above + 1, credits: me.total_credits };
+}
+
+// Live figures from Discord's cache (the stats table keeps servers ARCHON has left)
+function getNetworkStats(db, client) {
+    const guilds = client ? [...client.guilds.cache.values()] : [];
+    const biggest = guilds.sort((a, b) => (b.memberCount || 0) - (a.memberCount || 0))[0];
     return {
-        servers: servers?.count || 0,
-        users: users?.count || 0,
-        economy: economy?.total || 0,
-        richest,
-        avgLevel: Math.round(avgLevel?.avg || 0)
+        servers: guilds.length || db.prepare('SELECT COUNT(*) AS n FROM global_server_stats').get().n,
+        members: guilds.reduce((s, g) => s + (g.memberCount || 0), 0),
+        wallets: db.prepare('SELECT COUNT(*) AS n FROM global_credits WHERE total_credits > 0').get().n,
+        economy: db.prepare('SELECT COALESCE(SUM(total_credits), 0) AS n FROM global_credits').get().n,
+        avgLevel: Math.round(db.prepare('SELECT AVG(highest_level) AS n FROM global_leaderboard').get().n || 0),
+        biggest: biggest?.name || null,
     };
 }
 
-// ================= BUILD EMBEDS =================
-function buildBalanceEmbed(db, userId, username, avatar, serverBalance, client, t) {
-    const global = getGlobalCredits(db, userId);
-    const total = (serverBalance || 0) + global.total_credits;
-    const serverPercentage = total > 0 ? Math.round(((serverBalance || 0) / total) * 100) : 0;
-    const globalPercentage = total > 0 ? Math.round((global.total_credits / total) * 100) : 0;
-    
-    const embed = new EmbedBuilder()
-        .setColor('#2ecc71')
-        .setAuthor({ 
-            name: `💰 ${username}'s Portfolio`, 
-            iconURL: avatar,
-            url: 'https://discord.gg/archon-cg223'
-        })
-        .setDescription(
-            '```ansi\n' +
-            '\x1b[1;32m╔════ GLOBAL ECONOMY DASHBOARD ════╗\x1b[0m\n' +
-            '```'
-        )
-        .addFields(
-            { 
-                name: '💎 Total Wealth', 
-                value: '```ansi\n' +
-                    `\x1b[1;33m    ${total.toLocaleString().padStart(12, ' ')} credits\x1b[0m\n` +
-                    '```',
-                inline: false 
-            },
-            { 
-                name: `📍 ${t.server}`, 
-                value: '```ansi\n' +
-                    `\x1b[1;37m  ${(serverBalance || 0).toLocaleString().padStart(10, ' ')} credits\x1b[0m\n` +
-                    `\x1b[0;37m  ${createProgressBar(serverPercentage)} ${serverPercentage}%\x1b[0m\n` +
-                    '```',
-                inline: true 
-            },
-            { 
-                name: `🌐 ${t.global}`, 
-                value: '```ansi\n' +
-                    `\x1b[1;36m  ${global.total_credits.toLocaleString().padStart(10, ' ')} credits\x1b[0m\n` +
-                    `\x1b[0;37m  ${createProgressBar(globalPercentage)} ${globalPercentage}%\x1b[0m\n` +
-                    '```',
-                inline: true 
-            }
-        );
-
-    // Daily reset countdown
-    if (global.last_daily) {
-        const nextDaily = global.last_daily + 86400;
-        embed.addFields({ 
-            name: '⏰ Daily Bonus', 
-            value: `> Next claim <t:${nextDaily}:R>`,
-            inline: true 
-        });
-    }
-
-    // Streak info with enhanced display
-    if (global.daily_streak > 0) {
-        const nextMilestone = getNextStreakMilestone(global.daily_streak);
-        embed.addFields({ 
-            name: '🔥 Daily Streak', 
-            value: [
-                '```ansi',
-                `\x1b[1;33m  ${global.daily_streak} days active\x1b[0m`,
-                `\x1b[0;37m  🏆 Best: ${global.best_streak || global.daily_streak} days\x1b[0m`,
-                nextMilestone ? `\x1b[0;32m  🎯 Next: ${nextMilestone} days\x1b[0m` : '\x1b[0;33m  👑 MAX Bonus!\x1b[0m',
-                '```'
-            ].join('\n'),
-            inline: false 
-        });
-    }
-
-    // Financial stats
-    if (global.earned_all_time > 0 || global.spent_all_time > 0) {
-        const netWorth = global.earned_all_time - global.spent_all_time;
-        const netEmoji = netWorth >= 0 ? '📈' : '📉';
-        embed.addFields({ 
-            name: '📊 Financial History', 
-            value: [
-                `> 📥 Earned: **${global.earned_all_time.toLocaleString()}**`,
-                `> 📤 Spent: **${global.spent_all_time.toLocaleString()}**`,
-                `> ${netEmoji} Net: **${netWorth.toLocaleString()}** credits`
-            ].join('\n'),
-            inline: false 
-        });
-    }
-
-    embed.setFooter({ 
-        text: `${t.footer} • Portfolio Overview`, 
-        iconURL: client.user?.displayAvatarURL() 
-    })
-    .setTimestamp();
-
-    return embed;
+function serverBalance(db, userId, guildId) {
+    try { return db.prepare('SELECT credits FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId)?.credits || 0; } catch { return 0; }
 }
 
-// Helper function for streak milestones
-function getNextStreakMilestone(currentStreak) {
-    const milestones = [7, 30, 100, 365];
-    for (const milestone of milestones) {
-        if (currentStreak < milestone) return milestone;
+// ═══════════════════════════════ CARDS ═══════════════════════════════
+const btn = (id, label, kind, where, style = ButtonStyle.Secondary) => {
+    const b = new ButtonBuilder().setCustomId(id).setStyle(style);
+    if (label) b.setLabel(label);
+    const e = icon(kind, where);
+    if (e) b.setEmoji(e);
+    return b;
+};
+
+function balanceCard(t, { user, name, gid, db, where }) {
+    const g = getGlobalCredits(db, user.id);
+    const server = serverBalance(db, user.id, gid);
+    const now = nowSec();
+    const last = Number(g.last_daily || 0);
+    const alive = last && now - last < 2 * DAY && g.daily_streak > 0;
+    const lines = [`${icon('building', where)} ${t('balServer', { n: fmt(server) })} · ${icon('world', where)} ${t('balNetwork', { n: fmt(g.total_credits) })}`];
+    if (alive) lines.push(`${icon('flame', where)} ${t('balStreak', { n: g.daily_streak, best: Math.max(g.best_streak || 0, g.daily_streak) })}`);
+    lines.push(`-# ${icon('clock', where)} ${last && now - last < DAY ? t('balNext', { when: ts(last + DAY) }) : t('balReady')}`);
+    return v2.card(GOLD, [
+        { thumbnail: [`## ${icon('coin', where)} ${t('balTitle', { n: fmt(server + Number(g.total_credits || 0)) })}\n-# ${t('balSub', { name: clean(name) })}`, user.displayAvatarURL({ extension: 'png', size: 128 })] },
+        { rule: true },
+        { text: lines.join('\n') },
+        { row: new ActionRowBuilder().addComponents(
+            btn(`global:daily:${user.id}`, t('btnDaily'), 'gift', where, ButtonStyle.Primary),
+            btn(`global:lb:${user.id}:0`, t('btnBoard'), 'trophy', where),
+            btn(`global:send:${user.id}`, t('btnSend'), 'send', where),
+        ) },
+    ]);
+}
+
+function strip(streak, where) {
+    const filled = streak <= 0 ? 0 : ((streak - 1) % 7) + 1;
+    return Array.from({ length: 7 }, (_, i) => icon(i < filled ? 'dot_on' : 'dot_off', where)).join(' ');
+}
+
+function dailyCard(t, r, where) {
+    const next = TIERS.find((d) => r.streak < d);
+    const streakLine = `${icon('flame', where)} ${t('dailyStreak', { n: r.streak })} · ${next ? t('dailyNextTier', { n: next }) : t('dailyMax')}`;
+    return v2.card(GOLD, [
+        { text: `## ${icon('gift', where)} ${t('dailyTitle', { n: fmt(r.total) })}\n-# ${t('dailySub', { base: fmt(r.base), bonus: fmt(r.bonus), balance: fmt(r.balance) })}` },
+        { rule: true },
+        { text: `${streakLine}\n${strip(r.streak, where)}` },
+        { text: `-# ${t('dailyNext', { when: ts(r.nextClaim), deadline: ts(r.lastDaily + 2 * DAY, 't') })}\n-# ${t('dailyAlso')}` },
+    ]);
+}
+
+function waitCard(t, r, where) {
+    const alive = r.streak > 0 && nowSec() < r.lastDaily + 2 * DAY;
+    return v2.card(GREY, [
+        { text: `### ${icon('clock', where)} ${t('waitTitle', { when: ts(r.nextClaim) })}` },
+        { text: `-# ${alive ? t('waitSub', { n: r.streak, deadline: ts(r.lastDaily + 2 * DAY, 'f') }) : t('waitSubNone')}\n-# ${t('dailyAlso')}` },
+    ]);
+}
+
+function boardCard(t, { db, client, uid, page, where }) {
+    // a few extra rows so the bots we skip don't leave the page short
+    const all = getGlobalLeaderboard(db, PAGE * PAGES + 10, 0).filter((r) => !client.users.cache.get(r.user_id)?.bot).slice(0, PAGE * PAGES);
+    if (!all.length) {
+        return v2.card(GREY, [{ text: `### ${icon('trophy', where)} ${t('lbTitle')}\n-# ${t('lbEmpty')}` }]);
     }
+    const total = Math.ceil(all.length / PAGE);
+    page = Math.min(Math.max(0, Number(page) || 0), total - 1);
+    const nameOf = (r) => clean(client.users.cache.get(r.user_id)?.globalName || client.users.cache.get(r.user_id)?.username || r.username || '—');
+    const podium = ['crown', 'medal', 'medal2'];
+    const rows = all.slice(page * PAGE, page * PAGE + PAGE).map((r, i) => {
+        const pos = page * PAGE + i;
+        const lead = pos < 3 ? icon(podium[pos], where) : `**${pos + 1}.**`;
+        const me = r.user_id === uid ? ` ${icon('star', where)}` : '';
+        return `${lead} ${pos < 3 ? `**${nameOf(r)}**` : nameOf(r)} · ${fmt(r.total_credits)} · ${t('lbLevel', { n: r.highest_level || 0 })}${me}`;
+    });
+    const mine = rankOf(db, uid);
+    const items = [
+        { text: `## ${icon('trophy', where)} ${t('lbTitle')}\n-# ${t('lbSub')}` },
+        { rule: true },
+        { text: rows.join('\n') },
+        { rule: true },
+        { text: `-# ${mine ? t('lbYou', { rank: mine.rank, n: fmt(mine.credits) }) : t('lbYouNone')}` },
+    ];
+    if (total > 1) {
+        items.push({ row: new ActionRowBuilder().addComponents(
+            btn(`global:lb:${uid}:${page - 1}`, null, 'page_prev', where).setDisabled(page === 0),
+            new ButtonBuilder().setCustomId(`global:noop:${uid}`).setLabel(t('lbPage', { p: page + 1, total })).setStyle(ButtonStyle.Secondary).setDisabled(true),
+            btn(`global:lb:${uid}:${page + 1}`, null, 'page_next', where).setDisabled(page >= total - 1),
+        ) });
+    }
+    return v2.card(GOLD, items);
+}
+
+function networkCard(t, { db, client, where }) {
+    const s = getNetworkStats(db, client);
+    const items = [
+        { text: `## ${icon('world', where)} ${t('netTitle')}` },
+        { rule: true },
+        { text: [
+            `${icon('server', where)} ${t('netServers', { n: fmt(s.servers) })} · ${icon('users', where)} ${t('netMembers', { n: fmt(s.members) })}`,
+            `${icon('coin', where)} ${t('netCredits', { n: fmt(s.economy), w: fmt(s.wallets) })} · ${icon('ch_levelup', where)} ${t('netLevel', { n: s.avgLevel })}`,
+        ].join('\n') },
+    ];
+    if (s.biggest) items.push({ rule: true }, { text: `-# ${t('netBiggest', { name: clean(s.biggest) })}` });
+    return v2.card(GOLD, items);
+}
+
+function pickCard(t, where) {
+    return v2.card(GOLD, [
+        { text: `### ${icon('send', where)} ${t('pickTitle')}\n-# ${t('pickSub', { fee: FEE, min: MIN_SEND })}` },
+        { row: new ActionRowBuilder().addComponents(new UserSelectMenuBuilder().setCustomId('global:pick').setPlaceholder(t('pickPlaceholder')).setMinValues(1).setMaxValues(1)) },
+    ]);
+}
+
+function amountModal(t, toId, toName) {
+    return new ModalBuilder().setCustomId(`global:amt:${toId}`).setTitle(t('modalTitle', { name: toName }).slice(0, 45))
+        .addComponents(new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('amount')
+            .setLabel(t('modalLabel').slice(0, 45)).setPlaceholder('500').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(12)));
+}
+
+function confirmCard(t, { uid, toId, toName, amount, balance, where }) {
+    const tax = feeOf(amount);
+    return v2.card(GOLD, [
+        { text: `### ${icon('send', where)} ${t('confirmTitle', { n: fmt(amount), name: clean(toName) })}` },
+        { rule: true },
+        { text: `${t('confirmFee', { fee: FEE, tax: fmt(tax), net: fmt(amount - tax) })}\n-# ${t('confirmAfter', { n: fmt(balance - amount) })}` },
+        { row: new ActionRowBuilder().addComponents(
+            btn(`global:ok:${uid}:${toId}:${amount}`, t('btnConfirm'), 'check', where, ButtonStyle.Success),
+            btn(`global:no:${uid}`, t('btnCancel'), 'x', where),
+        ) },
+    ]);
+}
+
+// ═══════════════════════════════ ACTIONS ═══════════════════════════════
+const plain = (where, kind, text) => `${icon(kind, where)} ${text}`;
+
+// Checks a transfer before showing the confirmation card: returns an error line, or null when it can go ahead
+function checkSend(t, db, uid, to, amount, where) {
+    if (!to) return plain(where, 'no', t('errUser'));
+    if (to.bot) return plain(where, 'no', t('errBot'));
+    if (to.id === uid) return plain(where, 'no', t('errSelf'));
+    if (!Number.isSafeInteger(amount) || amount < 1) return plain(where, 'no', t('errAmount'));
+    if (amount < MIN_SEND) return plain(where, 'no', t('errMin', { n: MIN_SEND }));
+    const have = Number(getGlobalCredits(db, uid).total_credits || 0);
+    if (have < amount) return plain(where, 'no', t('errFunds', { n: fmt(have) }));
     return null;
 }
 
-// Progress bar helper
-function createProgressBar(percentage, length = 10) {
-    const filled = Math.round(percentage / (100 / length));
-    const empty = length - filled;
-    return '▰'.repeat(Math.max(0, filled)) + '▱'.repeat(Math.max(0, empty));
+const parseAmount = (s) => (/^\s*\d[\d\s]*$/.test(String(s || '')) ? parseInt(String(s).replace(/\s/g, ''), 10) : NaN);
+const displayName = (guild, user) => guild?.members?.cache.get(user.id)?.displayName || user.globalName || user.username;
+
+async function notifyReceiver(client, to, from, r, guild) {
+    try {
+        const lang = pickLang(client, null, null, to.id);
+        const t = tr(lang);
+        await to.send(v2.card(GOLD, [
+            { text: `### ${icon('coin')} ${t('dmTitle', { name: clean(from), n: fmt(r.amount) })}\n-# ${t('dmSub', { server: clean(guild?.name || 'ARCHON') })}` },
+        ]));
+    } catch { /* DMs closed: the sender still sees it went through */ }
 }
 
-// Achievement badges
-function getAchievementBadge(rank, credits, level) {
-    const badges = [];
-    if (rank === 1) badges.push('👑');
-    if (credits >= 100000) badges.push('💎');
-    if (level >= 50) badges.push('⭐');
-    if (credits >= 10000) badges.push('🏅');
-    return badges.length > 0 ? ' ' + badges.join('') : '';
-}
+const handled = new Set(); // confirmation cards already used (two quick taps must not send twice)
 
-function buildNetworkEmbed(db, client, t) {
-    const stats = getNetworkStats(db);
-    
-    // Calculate additional metrics
-    const avgCreditsPerUser = stats.users > 0 ? Math.round(stats.economy / stats.users) : 0;
-    const avgCreditsPerServer = stats.servers > 0 ? Math.round(stats.economy / stats.servers) : 0;
-    const economyHealth = getEconomyHealth(stats.economy, stats.users, stats.servers);
-    
-    // Get top servers
-    const topServers = db.prepare(`
-        SELECT guild_name, total_members, total_credits 
-        FROM global_server_stats 
-        ORDER BY total_credits DESC 
-        LIMIT 3
-    `).all();
-    
-    const embed = new EmbedBuilder()
-        .setColor('#9b59b6')
-        .setAuthor({ 
-            name: '🌐 ARCHITECT Global Network', 
-            iconURL: client.user?.displayAvatarURL(),
-            url: 'https://discord.gg/archon-cg223'
-        })
-        .setDescription(
-            '```ansi\n' +
-            '\x1b[1;35m╔══════════════════════════════════════╗\x1b[0m\n' +
-            '\x1b[1;35m║\x1b[0m  \x1b[1;33m🇲🇱  CG-223 GLOBAL ECONOMIC GRID  🇲🇱\x1b[0m  \x1b[1;35m║\x1b[0m\n' +
-            '\x1b[1;35m║\x1b[0m  \x1b[0;36mBridging Bamako to the World Grid\x1b[0m    \x1b[1;35m║\x1b[0m\n' +
-            '\x1b[1;35m╚══════════════════════════════════════╝\x1b[0m\n' +
-            '```'
-        )
-        .addFields(
-            { 
-                name: '🌍 • NETWORK INFRASTRUCTURE', 
-                value: [
-                    '```ansi',
-                    '\x1b[1;37m┌─────────────────────────────────┐\x1b[0m',
-                    `\x1b[1;37m│\x1b[0m 🖥️  \x1b[1;33mActive Servers\x1b[0m    \x1b[1;37m${String(stats.servers).padStart(6, ' ')}\x1b[0m  \x1b[1;37m│\x1b[0m`,
-                    `\x1b[1;37m│\x1b[0m 👥 \x1b[1;33mTotal Users\x1b[0m       \x1b[1;37m${String(stats.users).padStart(6, ' ')}\x1b[0m  \x1b[1;37m│\x1b[0m`,
-                    `\x1b[1;37m│\x1b[0m 💎 \x1b[1;33mNetwork Value\x1b[0m     \x1b[1;37m${stats.economy.toLocaleString().padStart(6, ' ')}\x1b[0m  \x1b[1;37m│\x1b[0m`,
-                    '\x1b[1;37m└─────────────────────────────────┘\x1b[0m',
-                    '```'
-                ].join('\n'),
-                inline: false 
-            },
-            { 
-                name: '📊 • ECONOMIC INDICATORS', 
-                value: [
-                    '```ansi',
-                    '\x1b[1;37m┌─────────────────────────────────┐\x1b[0m',
-                    `\x1b[1;37m│\x1b[0m 💰 \x1b[1;36mAvg per User\x1b[0m     \x1b[1;37m${avgCreditsPerUser.toLocaleString().padStart(6, ' ')}\x1b[0m  \x1b[1;37m│\x1b[0m`,
-                    `\x1b[1;37m│\x1b[0m 🏦 \x1b[1;36mAvg per Server\x1b[0m   \x1b[1;37m${avgCreditsPerServer.toLocaleString().padStart(6, ' ')}\x1b[0m  \x1b[1;37m│\x1b[0m`,
-                    `\x1b[1;37m│\x1b[0m 📈 \x1b[1;36mAvg Level\x1b[0m        \x1b[1;37m${String(stats.avgLevel).padStart(6, ' ')}\x1b[0m  \x1b[1;37m│\x1b[0m`,
-                    '\x1b[1;37m└─────────────────────────────────┘\x1b[0m',
-                    '```'
-                ].join('\n'),
-                inline: false 
-            },
-            { 
-                name: `${economyHealth.emoji} • ECONOMY STATUS: ${economyHealth.status.toUpperCase()}`, 
-                value: economyHealth.description,
-                inline: false 
-            }
-        );
-    
-    // Top servers section
-    if (topServers && topServers.length > 0) {
-        let topServersText = '```ansi\n\x1b[1;37m┌─────────────────────────────────┐\x1b[0m\n';
-        topServers.forEach((server, index) => {
-            const icons = ['🥇', '🥈', '🥉'];
-            const name = (server.guild_name || 'Unknown').substring(0, 20).padEnd(20, ' ');
-            topServersText += `\x1b[1;37m│\x1b[0m ${icons[index]} \x1b[1;33m${name}\x1b[0m \x1b[1;37m│\x1b[0m\n`;
-        });
-        topServersText += '\x1b[1;37m└─────────────────────────────────┘\x1b[0m\n```';
-        
-        embed.addFields({ 
-            name: '🏆 • TOP NETWORK SERVERS', 
-            value: topServersText,
-            inline: false 
-        });
+async function handleComponent(interaction, client) {
+    const db = client.db;
+    setupDB(db);
+    const [, what, a, b, c] = interaction.customId.split(':');
+    const lang = pickLang(client, interaction.guildId, interaction, interaction.user.id);
+    const t = tr(lang);
+    const uid = interaction.user.id;
+    const priv = (content) => ({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+    const v2priv = (card) => ({ ...card, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+
+    // the member picker and the amount box are already private to whoever opened them
+    if (what === 'pick') {
+        const to = interaction.users.first();
+        const err = !to ? t('errUser') : to.bot ? t('errBot') : to.id === uid ? t('errSelf') : null;
+        if (err) return interaction.reply(priv(plain(interaction, 'no', err)));
+        return interaction.showModal(amountModal(t, to.id, displayName(interaction.guild, to)));
     }
-    
-    // Wealth Elite section
-    if (stats.richest) {
-        embed.addFields({ 
-            name: '👑 • WEALTH ELITE', 
-            value: [
-                '```ansi',
-                '\x1b[1;37m┌─────────────────────────────────┐\x1b[0m',
-                `\x1b[1;37m│\x1b[0m                                     \x1b[1;37m│\x1b[0m`,
-                `\x1b[1;37m│\x1b[0m   \x1b[1;33m👑 ${stats.richest.username.padEnd(22, ' ')}\x1b[0m\x1b[1;37m│\x1b[0m`,
-                `\x1b[1;37m│\x1b[0m   \x1b[0;36m💎 ${stats.richest.total_credits.toLocaleString().padEnd(20, ' ')} credits\x1b[0m\x1b[1;37m│\x1b[0m`,
-                `\x1b[1;37m│\x1b[0m   \x1b[0;33m🌟 Network's Wealthiest Member\x1b[0m     \x1b[1;37m│\x1b[0m`,
-                `\x1b[1;37m│\x1b[0m                                     \x1b[1;37m│\x1b[0m`,
-                '\x1b[1;37m└─────────────────────────────────┘\x1b[0m',
-                '```'
-            ].join('\n'),
-            inline: false 
-        });
-    }
-    
-    embed.setFooter({ 
-        text: `${t.footer} • v${client.version || '3.0'} • Real-time Network Metrics`, 
-        iconURL: client.user?.displayAvatarURL() 
-    })
-    .setTimestamp();
-    
-    return embed;
-}
-
-// Economy health calculator - ADD THIS HELPER
-function getEconomyHealth(totalCredits, totalUsers, totalServers) {
-    const avgPerUser = totalUsers > 0 ? totalCredits / totalUsers : 0;
-    
-    if (avgPerUser > 10000) return { 
-        emoji: '🟢', 
-        status: 'Thriving',
-        description: [
-            '```ansi',
-            '\x1b[1;37m┌─────────────────────────────────┐\x1b[0m',
-            '\x1b[1;37m│\x1b[0m  \x1b[1;32m● Economy is flourishing\x1b[0m          \x1b[1;37m│\x1b[0m',
-            '\x1b[1;37m│\x1b[0m  \x1b[0;32mHigh liquidity & strong growth\x1b[0m   \x1b[1;37m│\x1b[0m',
-            '\x1b[1;37m└─────────────────────────────────┘\x1b[0m',
-            '```'
-        ].join('\n')
-    };
-    if (avgPerUser > 5000) return { 
-        emoji: '🟡', 
-        status: 'Growing',
-        description: [
-            '```ansi',
-            '\x1b[1;37m┌─────────────────────────────────┐\x1b[0m',
-            '\x1b[1;37m│\x1b[0m  \x1b[1;33m● Steady economic expansion\x1b[0m       \x1b[1;37m│\x1b[0m',
-            '\x1b[1;37m│\x1b[0m  \x1b[0;33mConsistent user activity\x1b[0m          \x1b[1;37m│\x1b[0m',
-            '\x1b[1;37m└─────────────────────────────────┘\x1b[0m',
-            '```'
-        ].join('\n')
-    };
-    if (avgPerUser > 1000) return { 
-        emoji: '🟠', 
-        status: 'Developing',
-        description: [
-            '```ansi',
-            '\x1b[1;37m┌─────────────────────────────────┐\x1b[0m',
-            '\x1b[1;37m│\x1b[0m  \x1b[1;38;5;208m● Building economic foundation\x1b[0m     \x1b[1;37m│\x1b[0m',
-            '\x1b[1;37m│\x1b[0m  \x1b[0;38;5;208mMore activity needed for growth\x1b[0m   \x1b[1;37m│\x1b[0m',
-            '\x1b[1;37m└─────────────────────────────────┘\x1b[0m',
-            '```'
-        ].join('\n')
-    };
-    return { 
-        emoji: '🔴', 
-        status: 'Emerging',
-        description: [
-            '```ansi',
-            '\x1b[1;37m┌─────────────────────────────────┐\x1b[0m',
-            '\x1b[1;37m│\x1b[0m  \x1b[1;31m● Early stage development\x1b[0m         \x1b[1;37m│\x1b[0m',
-            '\x1b[1;37m│\x1b[0m  \x1b[0;31mEncourage users to earn & trade\x1b[0m  \x1b[1;37m│\x1b[0m',
-            '\x1b[1;37m└─────────────────────────────────┘\x1b[0m',
-            '```'
-        ].join('\n')
-    };
-}
-
-function buildLeaderboardEmbed(db, client, t) {
-    const rows = getGlobalLeaderboard(db, 10);
-    
-    if (!rows || rows.length === 0) {
-        return new EmbedBuilder()
-            .setColor('#1a1a2e')
-            .setTitle('🏆 ' + t.leaderboard)
-            .setDescription(
-                '```ansi\n' +
-                '\x1b[1;33m🌐 THE GLOBAL ECONOMY AWAITS\x1b[0m\n' +
-                '\x1b[1;37mBe the first pioneer to make history!\x1b[0m\n' +
-                '```\n' +
-                '💡 **Quick Start:**\n' +
-                '• `/global daily` — Claim daily rewards\n' +
-                '• **Chat & Level Up** — Earn through activity\n' +
-                '• **Trade** — Exchange with members\n\n' +
-                '🚀 *Your name could be here!*'
-            )
-            .setFooter({ text: t.footer, iconURL: client.user?.displayAvatarURL() })
-            .setTimestamp();
+    if (what === 'amt') {
+        const to = await client.users.fetch(a).catch(() => null);
+        const amount = parseAmount(interaction.fields.getTextInputValue('amount'));
+        const err = checkSend(t, db, uid, to, amount, interaction);
+        if (err) return interaction.reply(priv(err));
+        const balance = Number(getGlobalCredits(db, uid).total_credits || 0);
+        return interaction.reply(v2priv(confirmCard(t, { uid, toId: to.id, toName: displayName(interaction.guild, to), amount, balance, where: interaction })));
     }
 
-    const fields = [];
-    
-    // Championship Podium
-    let podiumText = '';
-    for (let i = 0; i < Math.min(3, rows.length); i++) {
-        const row = rows[i];
-        const medals = ['🥇', '🥈', '🥉'];
-        const badges = getAchievementBadge(i + 1, row.total_credits, row.highest_level);
-        
-        podiumText += 
-            `${medals[i]} **${escapeFormatting(row.username || 'Unknown')}**${badges}\n` +
-            `> 💰 **${(row.total_credits || 0).toLocaleString()}** credits • Lv.**${row.highest_level || 0}**\n`;
+    if (a && a !== uid) return interaction.reply(priv(plain(interaction, 'no', t('notYours'))));
+
+    if (what === 'daily') {
+        const r = claimDaily(db, uid, interaction.user.username);
+        if (!r.success) return interaction.reply(v2priv(waitCard(t, r, interaction)));
+        return interaction.reply({ ...dailyCard(t, r, interaction), flags: MessageFlags.IsComponentsV2 });
     }
-    fields.push({ name: '🏅 Championship Podium', value: podiumText, inline: false });
-    
-    // Rankings 4-10
-    if (rows.length > 3) {
-        let rankingText = '';
-        for (let i = 3; i < rows.length; i++) {
-            const row = rows[i];
-            const position = String(i + 1).padStart(2, '0');
-            
-            rankingText += 
-                `\`#${position}\` **${escapeFormatting(row.username || 'Unknown')}**\n` +
-                `> 💰 **${(row.total_credits || 0).toLocaleString()}** • Lv.**${row.highest_level || 0}**\n`;
-        }
-        fields.push({ name: '📈 Global Rankings', value: rankingText, inline: false });
+    if (what === 'lb') {
+        const card = boardCard(t, { db, client, uid, page: b, where: interaction });
+        // from the wallet card: a new private board; from the board itself: turn the page
+        if (interaction.message?.components?.some((row) => JSON.stringify(row.toJSON()).includes('"global:noop:'))) return interaction.update(card);
+        return interaction.reply(v2priv(card));
     }
-    
-    // Analytics
-    const totalCredits = rows.reduce((sum, r) => sum + (r.total_credits || 0), 0);
-    const avgLevel = Math.round(rows.reduce((sum, r) => sum + (r.highest_level || 0), 0) / rows.length);
-    const avgCredits = Math.round(totalCredits / rows.length);
-    
-    fields.push({
-        name: '📊 Top 10 Analytics',
-        value: [
-            `> 💎 **Combined Wealth:** ${totalCredits.toLocaleString()}`,
-            `> 📈 **Avg Level:** ${avgLevel}`,
-            `> 💰 **Avg Credits:** ${avgCredits.toLocaleString()}`,
-            `> 👥 **Participants:** ${rows.length}`
-        ].join('\n'),
-        inline: false
-    });
-    
-    return new EmbedBuilder()
-        .setColor('#ffd700')
-        .setTitle('🏆 ' + t.leaderboard)
-        .setDescription('*The biggest earners across the entire ARCHON network — where do you rank?*')
-        .addFields(fields)
-        .setFooter({ 
-            text: `${t.footer} • Rankings update in real-time`, 
-            iconURL: client.user?.displayAvatarURL() 
-        })
-        .setTimestamp();
+    if (what === 'send') return interaction.reply(v2priv(pickCard(t, interaction)));
+    if (what === 'no') {
+        return interaction.update(v2.card(GREY, [{ text: `-# ${icon('x', interaction)} ${t('cancelled')}` }]));
+    }
+    if (what === 'ok') {
+        const key = interaction.message?.id || interaction.id;
+        if (handled.has(key)) return interaction.reply(priv(plain(interaction, 'no', t('errGone'))));
+        handled.add(key);
+        setTimeout(() => handled.delete(key), 15 * 60 * 1000).unref?.();
+        const to = await client.users.fetch(b).catch(() => null);
+        const amount = parseInt(c, 10);
+        const err = checkSend(t, db, uid, to, amount, interaction);
+        if (err) { handled.delete(key); return interaction.reply(priv(err)); }
+        const toName = displayName(interaction.guild, to);
+        const r = transferGlobal(db, uid, to.id, amount, { from: interaction.user.username, to: to.username, guildId: interaction.guildId, guildName: interaction.guild?.name });
+        if (!r.success) { handled.delete(key); return interaction.reply(priv(plain(interaction, 'no', t('errFunds', { n: fmt(getGlobalCredits(db, uid).total_credits) })))); }
+        await interaction.update(v2.card(GOLD, [
+            { text: `### ${icon('check', interaction)} ${t('sentTitle', { n: fmt(r.amount), name: clean(toName) })}\n-# ${t('sentSub', { tax: fmt(r.tax), balance: fmt(r.balance) })}` },
+        ]));
+        notifyReceiver(client, to, displayName(interaction.guild, interaction.user), r, interaction.guild);
+        return;
+    }
+    if (what === 'noop') return interaction.deferUpdate().catch(() => {});
 }
 
-// Helper function to escape markdown formatting
-function escapeFormatting(text) {
-    return text.replace(/[_*~`|\\<>]/g, '\\$&');
-}
-
-// ================= MODULE =================
+// ═══════════════════════════════ COMMAND ═══════════════════════════════
 module.exports = {
     name: 'global',
     aliases: ['network', 'cross', 'globale'],
     description: '🌐 Cross-server economy — credits work across all servers',
     category: 'ECONOMY',
     cooldown: 3000,
+    usage: '.global [balance|daily|leaderboard|network|transfer @member amount]',
 
     data: new SlashCommandBuilder().setName('global').setDescription('🌐 Cross-server economy')
         .addSubcommand(s => s.setName('balance').setDescription('💰 View your global balance'))
@@ -663,148 +470,84 @@ module.exports = {
             .addUserOption(o => o.setName('user').setDescription('Recipient').setRequired(true))
             .addIntegerOption(o => o.setName('amount').setDescription('Amount to send').setRequired(true).setMinValue(1))),
 
-    // ================= PREFIX =================
-    run: async (client, message, args, db, ss, used, lang) => {
-        // The language was used here without being defined, so this command always failed ("lang is not defined")
-        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
-    const guildId = message.guild?.id ?? 'DM';
-        setupDB(db);
-        
-        // SYNC SERVER STATS
-        syncServerStats(db, message.guild.id, message.guild.name, message.guild.memberCount, 0);
+    // ─── prefix: .global <sub> ───
+    run: async (client, message, args, db, serverSettings) => {
+        if (!message.guild) return;
+        const lang = pickLang(client, message.guild.id, null, message.author.id);
+        const t = tr(lang);
+        const where = message;
+        const send = (p) => message.reply({ ...p, allowedMentions: { parse: [] } }).catch(() => null);
+        try {
+            setupDB(db);
+            syncServerStats(db, message.guild.id, message.guild.name, message.guild.memberCount, 0);
+            const uid = message.author.id;
+            const sub = (args[0] || 'balance').toLowerCase();
 
-        const t = T[lang] || T.en;
-        const uid = message.author.id;
-        const gid = message.guild.id;
-        const sub = args[0]?.toLowerCase();
-
-        // --- BALANCE ---
-        if (!sub || sub === 'balance' || sub === 'bal') {
-            const serverBal = getServerBalance(db, uid, gid);
-            const embed = buildBalanceEmbed(db, uid, message.author.username, message.author.displayAvatarURL(), serverBal, client, t);
-            return message.reply({ embeds: [embed] }).catch(() => {});
-        }
-
-        // --- DAILY ---
-        if (sub === 'daily' || sub === 'claim') {
-            const result = claimDaily(db, uid, message.author.username);
-            if (!result.success) {
-                return message.reply({ embeds: [new EmbedBuilder().setColor('#e67e22').setDescription(`${t.dailyCooldown} <t:${result.nextClaim}:R>`)] }).catch(() => {});
+            if (sub === 'daily') {
+                const r = claimDaily(db, uid, message.author.username);
+                const sent = await send(r.success ? dailyCard(t, r, where) : waitCard(t, r, where));
+                if (!r.success && sent) setTimeout(() => sent.delete().catch(() => {}), 15000);
+                return;
             }
-            const embed = new EmbedBuilder().setColor('#2ecc71').setTitle(t.dailyClaimed)
-                .setDescription(`**+${result.total.toLocaleString()}** credits (${result.base} base + ${result.bonus} bonus)\n🔥 ${t.streak}: **${result.streak}** days`)
-                .addFields({ name: t.dailyCooldown, value: `<t:${result.nextClaim}:R>`, inline: false })
-                .setFooter({ text: t.footer }).setTimestamp();
-            return message.reply({ embeds: [embed] }).catch(() => {});
+            if (['transfer', 'send', 'give'].includes(sub)) {
+                const id = String(args[1] || '').replace(/[<@!>]/g, '');
+                const to = /^\d{15,25}$/.test(id) ? await client.users.fetch(id).catch(() => null) : null;
+                const amount = parseAmount(args[2]);
+                const err = !to ? plain(where, 'no', t('errUserPrefix', { prefix: serverSettings?.prefix || '.' })) : checkSend(t, db, uid, to, amount, where);
+                if (err) return send({ content: err });
+                const balance = Number(getGlobalCredits(db, uid).total_credits || 0);
+                return send(confirmCard(t, { uid, toId: to.id, toName: displayName(message.guild, to), amount, balance, where }));
+            }
+            if (['leaderboard', 'lb', 'top'].includes(sub)) return send(boardCard(t, { db, client, uid, page: 0, where }));
+            if (['network', 'stats'].includes(sub)) return send(networkCard(t, { db, client, where }));
+            return send(balanceCard(t, { user: message.author, name: message.member?.displayName || message.author.username, gid: message.guild.id, db, where }));
+        } catch (e) {
+            console.error('[GLOBAL]', e.message);
+            return send({ content: plain(where, 'no', t('error')) });
         }
-
-        // --- TRANSFER ---
-        if (sub === 'transfer' || sub === 'send') {
-            const target = args[1]?.replace(/[<@!>]/g, '');
-            const amount = parseInt(args[2]);
-            if (!target) return message.reply('Mention a user: `.global transfer @user 1000`').catch(() => {});
-            if (!amount || amount < 1) return message.reply(t.invalidAmount).catch(() => {});
-            if (target === uid) return message.reply(t.selfTransfer).catch(() => {});
-            const result = transferGlobal(db, uid, target, amount);
-            if (!result.success) return message.reply(t.noFunds).catch(() => {});
-            const embed = new EmbedBuilder().setColor('#2ecc71').setTitle(t.transferSent)
-                .setDescription(`**${result.amount.toLocaleString()}** credits to <@${target}>\n${t.tax}: ${result.tax}`)
-                .setFooter({ text: t.footer }).setTimestamp();
-            message.reply({ embeds: [embed] }).catch(() => {});
-            // Notify recipient
-            client.users.fetch(target).then(u => {
-                u.send({ embeds: [new EmbedBuilder().setColor('#2ecc71').setTitle(t.transferReceived).setDescription(`**+${result.amount.toLocaleString()}** credits from ${message.author.username}\nUse \`.global balance\` to check`).setFooter({ text: t.footer })] }).catch(() => {});
-            }).catch(() => {});
-            return;
-        }
-
-        // --- LEADERBOARD ---
-        if (sub === 'lb' || sub === 'top' || sub === 'leaderboard') {
-            const embed = buildLeaderboardEmbed(db, client, t);
-            return message.reply({ embeds: [embed] }).catch(() => {});
-        }
-
-        // --- NETWORK ---
-        if (sub === 'network' || sub === 'stats') {
-            const embed = buildNetworkEmbed(db, client, t);
-            return message.reply({ embeds: [embed] }).catch(() => {});
-        }
-
-        // Default: balance
-        const serverBal = getServerBalance(db, uid, gid);
-        const embed = buildBalanceEmbed(db, uid, message.author.username, message.author.displayAvatarURL(), serverBal, client, t);
-        return message.reply({ embeds: [embed] }).catch(() => {});
     },
 
-    // ================= SLASH =================
+    // ─── slash ───
     execute: async (interaction, client) => {
-        setupDB(client.db);
-        
-        // SYNC SERVER STATS
-        syncServerStats(client.db, interaction.guildId, interaction.guild.name, interaction.guild.memberCount, 0);
-        
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        const t = T[lang] || T.en;
+        const db = client.db;
+        const lang = pickLang(client, interaction.guildId, interaction, interaction.user.id);
+        const t = tr(lang);
+        const where = interaction;
         const uid = interaction.user.id;
-        const gid = interaction.guildId;
-        const sub = interaction.options.getSubcommand();
+        const v2pub = (card) => ({ ...card, flags: MessageFlags.IsComponentsV2 });
+        const v2priv = (card) => ({ ...card, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
+        try {
+            setupDB(db);
+            if (interaction.guild) syncServerStats(db, interaction.guildId, interaction.guild.name, interaction.guild.memberCount, 0);
+            const sub = interaction.options.getSubcommand();
 
-        // --- BALANCE ---
-        if (sub === 'balance') {
-            await interaction.deferReply();
-            const serverBal = getServerBalance(client.db, uid, gid);
-            const embed = buildBalanceEmbed(client.db, uid, interaction.user.username, interaction.user.displayAvatarURL(), serverBal, client, t);
-            return interaction.editReply({ embeds: [embed] });
-        }
-
-        // --- DAILY ---
-        if (sub === 'daily') {
-            await interaction.deferReply();
-            const result = claimDaily(client.db, uid, interaction.user.username);
-            if (!result.success) {
-                return interaction.editReply({ embeds: [new EmbedBuilder().setColor('#e67e22').setDescription(`${t.dailyCooldown} <t:${result.nextClaim}:R>`)] });
+            if (sub === 'balance') {
+                return interaction.reply(v2pub(balanceCard(t, { user: interaction.user, name: interaction.member?.displayName || interaction.user.globalName || interaction.user.username, gid: interaction.guildId, db, where })));
             }
-            const embed = new EmbedBuilder().setColor('#2ecc71').setTitle(t.dailyClaimed)
-                .setDescription(`${EMOJIS.coins} **+${result.total.toLocaleString()}** credits landed in your account!\n> ${result.base} base + ${result.bonus} streak bonus\n\n🔥 ${t.streak}: **${result.streak}** days${result.streak >= 7 ? ' — you\'re on fire!' : ' — keep it going!'}`)
-                .addFields({ name: '⏰ Next bonus', value: `<t:${result.nextClaim}:R>`, inline: false })
-                .setFooter({ text: t.footer }).setTimestamp();
-            return interaction.editReply({ embeds: [embed] });
-        }
-
-        // --- TRANSFER ---
-        if (sub === 'transfer') {
-            await interaction.deferReply({ flags: 64 });
-            const target = interaction.options.getUser('user');
-            const amount = interaction.options.getInteger('amount');
-            if (!target || !amount || amount < 1) return interaction.editReply(t.invalidAmount);
-            if (target.id === uid) return interaction.editReply(t.selfTransfer);
-            const result = transferGlobal(client.db, uid, target.id, amount);
-            if (!result.success) return interaction.editReply(t.noFunds);
-            const embed = new EmbedBuilder().setColor('#2ecc71').setTitle(t.transferSent)
-                .setDescription(`${EMOJIS.coins} **${result.amount.toLocaleString()}** credits sent to **${target.username}** 🤝\n> Network fee: ${result.tax} credits (5%)`)
-                .setFooter({ text: t.footer }).setTimestamp();
-            interaction.editReply({ embeds: [embed] });
-            // DM recipient
-            target.send({ embeds: [new EmbedBuilder().setColor('#2ecc71').setTitle(t.transferReceived).setDescription(`${EMOJIS.coins} **${interaction.user.username}** just sent you **+${result.amount.toLocaleString()}** credits! 🎉\n\nCheck your wallet with \`/global balance\`.`).setFooter({ text: t.footer })] }).catch(() => {});
-            return;
-        }
-
-        // --- LEADERBOARD ---
-        if (sub === 'leaderboard') {
-            await interaction.deferReply();
-            const embed = buildLeaderboardEmbed(client.db, client, t);
-            return interaction.editReply({ embeds: [embed] });
-        }
-
-        // --- NETWORK ---
-        if (sub === 'network') {
-            await interaction.deferReply();
-            const embed = buildNetworkEmbed(client.db, client, t);
-            return interaction.editReply({ embeds: [embed] });
+            if (sub === 'daily') {
+                const r = claimDaily(db, uid, interaction.user.username);
+                return interaction.reply(r.success ? v2pub(dailyCard(t, r, where)) : v2priv(waitCard(t, r, where)));
+            }
+            if (sub === 'transfer') {
+                const to = interaction.options.getUser('user');
+                const amount = interaction.options.getInteger('amount');
+                const err = checkSend(t, db, uid, to, amount, where);
+                if (err) return interaction.reply({ content: err, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+                const balance = Number(getGlobalCredits(db, uid).total_credits || 0);
+                return interaction.reply(v2priv(confirmCard(t, { uid, toId: to.id, toName: displayName(interaction.guild, to), amount, balance, where })));
+            }
+            if (sub === 'leaderboard') return interaction.reply(v2pub(boardCard(t, { db, client, uid, page: 0, where })));
+            if (sub === 'network') return interaction.reply(v2pub(networkCard(t, { db, client, where })));
+        } catch (e) {
+            console.error('[GLOBAL]', e.message);
+            const p = { content: plain(where, 'no', t('error')), flags: MessageFlags.Ephemeral };
+            return (interaction.replied || interaction.deferred ? interaction.followUp(p) : interaction.reply(p)).catch(() => {});
         }
     },
 
-    // ================= ENGINE EXPORTS =================
+    handleComponent,
+
+    // ─── used by index.js and other plugins ───
     setupDB,
     syncLevelUp,
     syncServerStats,
@@ -815,13 +558,5 @@ module.exports = {
     transferGlobal,
     getNetworkStats,
     getGlobalLeaderboard,
-    calculateDailyReward
+    calculateDailyReward,
 };
-
-// ================= SERVER BALANCE HELPER =================
-function getServerBalance(db, userId, guildId) {
-    try {
-        const row = db.prepare('SELECT credits FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
-        return row?.credits || 0;
-    } catch { return 0; }
-}

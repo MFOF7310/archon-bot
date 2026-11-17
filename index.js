@@ -3408,6 +3408,10 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith('ghost:')) {
         return require('./plugins/ghostclean.js').handleComponent(interaction, client).catch(e => console.error('[GHOSTCLEAN] component:', e.message));
     }
+    // /global: wallet buttons, member picker, amount box, transfer confirmation, leaderboard pages
+    if ((interaction.isButton() || interaction.isUserSelectMenu() || interaction.isModalSubmit()) && interaction.customId.startsWith('global:')) {
+        return require('./plugins/cross-economy.js').handleComponent(interaction, client).catch(e => console.error('[GLOBAL] component:', e.message));
+    }
     if (interaction.isButton() && interaction.customId.startsWith('claim:')) {
         return require('./plugins/claim.js').handleComponent(interaction, client).catch(e => console.error('[CLAIM] button:', e.message));
     }
