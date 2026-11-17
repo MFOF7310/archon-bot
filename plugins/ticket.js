@@ -105,7 +105,9 @@ const CATS = [
     { emoji:'💰', label:'Billing', value:'billing', desc:'Payments & shop issues' },
 ];
 
-const getCats = (s) => s?.ticketCategoriesConfig?.length ? s.ticketCategoriesConfig : CATS;
+// "icon:ic_bug" (picked on the dashboard) becomes the icon's current emoji here, for the panel, the ticket card and the logs
+const getCats = (s) => (s?.ticketCategoriesConfig?.length ? s.ticketCategoriesConfig : CATS)
+    .map((c) => ({ ...c, emoji: require('../lib/ticket-icons').resolve(c.emoji) }));
 const isStaff = (m, s) => m && (m.guild?.ownerId === m.id || m.permissions?.has(PermissionFlagsBits.ManageMessages) || (s?.ticketStaffRole && m.roles?.cache?.has(s.ticketStaffRole)));
 const countUserTix = (gid, uid) => { let c=0; for(const[,t]of active)if(t.guildId===gid&&t.creatorId===uid)c++; return c; };
 

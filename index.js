@@ -5667,6 +5667,7 @@ apiApp.get('/api/ticket-config/:guildId', requireAdmin, async (req, res) => {
                 return f;
             })(),
             catLimits: { free: TICKET_CAT_LIMIT_FREE, premium: TICKET_CAT_LIMIT_PREMIUM },
+            icons: require('./lib/ticket-icons').list(),   // the dashboard's icon picker
         });
     } catch (e) { console.error(`[TICKET-API] get guild=${req.params.guildId}:`, e.message); res.status(500).json({ error: 'internal' }); }
 });

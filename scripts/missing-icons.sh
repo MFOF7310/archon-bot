@@ -109,6 +109,14 @@ make ic_join gift
 make ic_on toggle-right "#23A55A"
 make ic_info info-circle "#378ADD"
 
+# Ticket category icons (dashboard picker, lib/ticket-icons.js)
+make ic_lifebuoy lifebuoy
+make ic_bug bug
+make ic_card credit-card
+make ic_flag flag
+make ic_help help-circle
+make ic_handshake heart-handshake
+
 # Every new icon goes to its category in config/emojis.js
 node scripts/emojis-tidy.js
 echo "Done. Now run: pm2 restart Architect-CG223"
