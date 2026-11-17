@@ -68,7 +68,8 @@ async function get(url) {
     fs.writeFileSync(file + '.fixbak', text);
     let done = 0;
     for (const [key, value] of repairs) {
-        const re = new RegExp(`(^|[\\s{,'"])(${key}['"]?\\s*:\\s*)'[^']*'`, 'm');
+        // the value may be written with ' or " or `
+        const re = new RegExp(`(^|[\\s{,'"])(${key}['"]?\\s*:\\s*)(['"\`])[^'"\`]*\\3`, 'm');
         if (re.test(text)) { text = text.replace(re, `$1$2'${value}'`); done++; } else console.log(`   ✗ couldn't find the line of ${key}`);
     }
     fs.writeFileSync(file, text);
