@@ -6,6 +6,7 @@
 //     Keys with no live emoji of that name are left alone. The old file is kept as config/emojis.js.fixbak.
 // Lists:
 //   broken   a key whose ID no longer exists on Discord (the emoji was deleted or replaced): it shows as text
+//   server copy  a key on the main server's old copy of an emoji the app now has (index.js used to put those back)
 //   renamed  a key pointing at a live emoji whose Discord name is different from the one written in the key
 //   shared   two keys pointing at the same emoji (fine on purpose, listed so you can tell)
 //   unused   app emojis on Discord that no key in config/emojis.js points at (they only take a slot)
@@ -29,17 +30,26 @@ async function get(url) {
     const E = require(path.join(__dirname, '..', 'config', 'emojis.js'));
     const app = await get('/applications/@me');
     const live = (await get(`/applications/${app.id}/emojis`)).items || [];
+    // the main server's emojis work too, but an app emoji with the same name is the newer one
+    let server = [];
+    if (process.env.GUILD_ID) server = await get(`/guilds/${process.env.GUILD_ID}/emojis`).catch(() => []);
+    const serverById = new Map(server.map((e) => [e.id, e]));
     const byId = new Map(live.map((e) => [e.id, e]));
     const byName = new Map(live.map((e) => [e.name, e]));
     const repairs = [];   // [key, new value]
     const tag = (e) => `<${e.animated ? 'a' : ''}:${e.name}:${e.id}>`;
 
-    const broken = [], renamed = [], used = new Map();
+    const broken = [], renamed = [], oldCopy = [], used = new Map();
     for (const [key, value] of Object.entries(E)) {
         const m = /^<a?:(\w+):(\d+)>$/.exec(typeof value === 'string' ? value : '');
         if (!m) continue;   // a plain emoji fallback, nothing to check on Discord
         const [, name, id] = m;
         const e = byId.get(id);
+        if (!e && serverById.has(id)) {
+            const same = byName.get(serverById.get(id).name);
+            if (same) { oldCopy.push(`${key} → server copy, app emoji ${same.id}`); repairs.push([key, tag(same)]); used.set(same.id, [...(used.get(same.id) || []), key]); }
+            continue;   // a server emoji with no app twin: it works, nothing to do
+        }
         if (!e) {
             const same = byName.get(name);
             broken.push(`${key} → ${name}:${id}${same ? `  (live: ${same.id})` : '  (no live emoji of that name)'}`);
@@ -59,6 +69,7 @@ async function get(url) {
     console.log(FIX ? '🔧 Mode: repair' : 'ℹ️  Mode: check only (to repair: node scripts/emoji-check.js fix)');
     console.log(`config/emojis.js: ${Object.keys(E).length} keys · Discord: ${live.length} app emojis`);
     show('broken', broken, 'redo them with make_icon.py or scripts/upload-emoji.js');
+    show('server copy', oldCopy, 'points at the old copy on the main server while the app has a newer one');
     show('renamed', renamed, 'works, but the key and the Discord name differ');
     show('shared', shared, 'fine if on purpose');
     show('unused', unused, 'they only take a slot; delete with scripts/delete-emoji.js only after grep shows no code uses them');

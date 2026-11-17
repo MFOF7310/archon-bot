@@ -1995,7 +1995,13 @@ client.once(Events.ClientReady, async () => {
         const mainGuild = client.guilds.cache.get(process.env.GUILD_ID)
             || await client.guilds.fetch(process.env.GUILD_ID).catch((err) => { console.error('[EMOJIS] fetch failed:', err.message); return null; });
         if (mainGuild) {
-            const guildEmojis = await mainGuild.emojis.fetch();
+            // ARCHON's own app emojis win over the main server's: the server still holds older copies with the
+            // same names (error, lock, globe…), and this step used to put those back at every start-up
+            const fetched = await mainGuild.emojis.fetch();
+            let appNames = null;   // stays null if Discord doesn't give the list: then nothing is rewritten this time
+            try { appNames = new Set([...(await client.application.emojis.fetch()).values()].map((e) => e.name)); }
+            catch (err) { console.error('[EMOJIS] app emoji list:', err.message); }
+            const guildEmojis = appNames ? new Map([...fetched].filter(([, e]) => !appNames.has(e.name))) : new Map();
             const emojiPath = require('path').join(__dirname, 'config/emojis.js');
             let emojiFile = require('fs').readFileSync(emojiPath, 'utf8');
             let updated = 0;
