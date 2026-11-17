@@ -1238,6 +1238,11 @@ async function ensureConnection(q) {
                 try { await q.guild.members.me?.voice.setSuppressed(false); console.log('[MUSIC] Stage speaker ✅'); } catch(e) {}
             }, 1500);
         }
+        conn.on('error', (err) => {
+            console.error('[MUSIC] Voice connection error:', err.message);
+            destroyQueue(q.guild.id);
+        });
+
         conn.on(VoiceConnectionStatus.Disconnected, async () => {
             try {
                 await Promise.race([
@@ -1253,6 +1258,12 @@ async function ensureConnection(q) {
     if (!q.player) {
         const player = createAudioPlayer();
         q.player = player;
+        
+        player.on('error', (err) => {
+            console.error('[MUSIC] Audio player error:', err.message);
+            destroyQueue(q.guild.id);
+        });
+
         conn.subscribe(player);
         player.on(AudioPlayerStatus.Idle, () => {
             if (q.destroyed) return;
