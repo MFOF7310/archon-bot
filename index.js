@@ -3688,7 +3688,11 @@ function recordArrival(guild) {
     ensureArrivals();
     const click = db.prepare('SELECT id, src FROM invite_clicks WHERE used = 0 AND at > ? ORDER BY at DESC LIMIT 1').get(Date.now() - 30 * 60 * 1000);
     if (click) db.prepare('UPDATE invite_clicks SET used = 1 WHERE id = ?').run(click.id);
-    db.prepare('INSERT OR REPLACE INTO guild_arrivals (guild_id, name, icon, members, joined_at, src) VALUES (?, ?, ?, ?, ?, ?)')
+    // One row per server: adding the same server again updates it. A re-add with no fresh click keeps the source
+    // it already had (it used to be wiped to "unknown")
+    db.prepare(`INSERT INTO guild_arrivals (guild_id, name, icon, members, joined_at, src) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(guild_id) DO UPDATE SET name = excluded.name, icon = excluded.icon, members = excluded.members,
+        joined_at = excluded.joined_at, src = COALESCE(excluded.src, guild_arrivals.src)`)
         .run(guild.id, guild.name || null, guild.iconURL?.({ size: 64 }) || null, guild.memberCount || 0, Date.now(), click?.src || null);
     console.log(`[ARRIVAL] ${guild.name} (${guild.id}) from ${click?.src || 'unknown source'}`);
 }
