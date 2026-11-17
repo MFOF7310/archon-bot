@@ -97,6 +97,18 @@ make ic_send send
 make ic_check check
 make ic_x x
 
+# Asked for by lib/ui/icons.js but never made by this script (the verify keyboard showed as ⌨️)
+make ic_enter keyboard
+make ic_general message-circle
+make ic_skip player-skip-forward
+make ic_chart chart-bar
+make ic_online circle-dot "#23A55A"
+make ic_offline circle-dot "$RED"
+make ic_bot robot
+make ic_join gift
+make ic_on toggle-right "#23A55A"
+make ic_info info-circle "#378ADD"
+
 # Every new icon goes to its category in config/emojis.js
 node scripts/emojis-tidy.js
 echo "Done. Now run: pm2 restart Architect-CG223"
