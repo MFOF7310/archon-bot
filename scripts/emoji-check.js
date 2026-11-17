@@ -13,7 +13,8 @@
 require('dotenv').config({ path: require('path').join(__dirname, '..', '.env') });
 const path = require('path');
 const fs = require('fs');
-const FIX = process.argv.includes('--fix');
+// --fix, —fix (a phone keyboard turns -- into a long dash), -f or plain fix all work
+const FIX = process.argv.slice(2).some((a) => /^(?:-{1,2}|[\u2013\u2014])?f(?:ix)?$/i.test(a.trim()));
 
 const token = process.env.DISCORD_TOKEN;
 if (!token) { console.log('DISCORD_TOKEN is missing from .env'); process.exit(1); }
@@ -55,6 +56,7 @@ async function get(url) {
         console.log(`\n${list.length ? '•' : '✓'} ${title}: ${list.length}${list.length && note ? `  (${note})` : ''}`);
         for (const line of list) console.log('   ' + line);
     };
+    console.log(FIX ? '🔧 Mode: repair' : 'ℹ️  Mode: check only (to repair: node scripts/emoji-check.js fix)');
     console.log(`config/emojis.js: ${Object.keys(E).length} keys · Discord: ${live.length} app emojis`);
     show('broken', broken, 'redo them with make_icon.py or scripts/upload-emoji.js');
     show('renamed', renamed, 'works, but the key and the Discord name differ');
@@ -62,7 +64,7 @@ async function get(url) {
     show('unused', unused, 'they only take a slot; delete with scripts/delete-emoji.js only after grep shows no code uses them');
 
     if (!repairs.length) return;
-    if (!FIX) return console.log(`\n${repairs.length} key(s) can be repaired: node scripts/emoji-check.js --fix`);
+    if (!FIX) return console.log(`\n${repairs.length} key(s) can be repaired: node scripts/emoji-check.js fix`);
     const file = path.join(__dirname, '..', 'config', 'emojis.js');
     let text = fs.readFileSync(file, 'utf8');
     fs.writeFileSync(file + '.fixbak', text);
