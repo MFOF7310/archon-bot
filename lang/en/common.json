@@ -17,7 +17,7 @@
   "loading": "One sec...",
   "premium_feature": "Premium Feature",
   "page": "{page} / {total}",
-  "moduleDisabled": "**{module}** features aren't enabled on this server. An admin can turn them on from the [dashboard](https://bamako-steel-dev.xyz).",
+  "moduleDisabled": "**{module}** features aren't enabled on this server. An admin can turn them on from the [dashboard](https://archon223.com).",
   "modules": {
     "economy": "Economy",
     "leveling": "Leveling",

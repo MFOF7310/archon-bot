@@ -13,7 +13,7 @@ const { icon } = require('../lib/ui/icons');
 const BotStats = require('./bot-stats.js');
 
 const SUPPORT_URL = 'https://discord.gg/NFSMFJajp9';
-const DASHBOARD_URL = 'https://bamako-steel-dev.xyz';
+const DASHBOARD_URL = 'https://archon223.com';
 const GITHUB_URL = 'https://github.com/MFOF7310';
 // /bot socials: one list of links (the old socials.js wrote them twice)
 const SOCIALS = {

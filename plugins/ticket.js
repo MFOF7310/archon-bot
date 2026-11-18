@@ -363,7 +363,7 @@ function cfgCard(s, g, c, lang='en') {
 const AC_STEPS = [0, 12, 24, 48, 72, 168];
 const LIM_STEPS = [1, 2, 3, 5, 10];
 const canConfigure = (m) => require('../lib/access').can(m, 'settings').ok;   // Manage Server
-const DASHBOARD = 'https://bamako-steel-dev.xyz';
+const DASHBOARD = 'https://archon223.com';
 
 function liveConfig(client, g, lang = 'en') {
     const L = (k, v) => t('ticket.' + k, lang, v || {});

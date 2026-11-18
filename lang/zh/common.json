@@ -17,7 +17,7 @@
   "loading": "请稍候...",
   "premium_feature": "Premium 功能",
   "page": "{page} / {total}",
-  "moduleDisabled": "本服务器未启用 **{module}** 功能。管理员可在[控制面板](https://bamako-steel-dev.xyz)中开启。",
+  "moduleDisabled": "本服务器未启用 **{module}** 功能。管理员可在[控制面板](https://archon223.com)中开启。",
   "modules": {
     "economy": "经济",
     "leveling": "等级",

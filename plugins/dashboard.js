@@ -16,7 +16,7 @@ const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } cat
 const safeName = (s) => String(s || '').replace(/[*_~`|>\\]/g, '').slice(0, 80);
 
 // The website address: DASHBOARD_URL in .env if set, otherwise the current domain. A move to another domain is one line.
-const siteBase = () => (process.env.DASHBOARD_URL || 'https://bamako-steel-dev.xyz').replace(/\/+$/, '');
+const siteBase = () => (process.env.DASHBOARD_URL || 'https://archon223.com').replace(/\/+$/, '');
 const guildUrl = (guildId) => (/^\d{15,25}$/.test(String(guildId || '')) ? `${siteBase()}/dashboard/${guildId}` : siteBase());
 
 // This server's numbers. Any query that fails is left out of the card instead of breaking it.

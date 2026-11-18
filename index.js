@@ -2438,7 +2438,7 @@ setInterval(async () => {
                 else if (hoursSinceReady < 12) _ready = _S('ready_overdue', { h: hoursSinceReady });
                 else _ready = _S('ready_late', { h: hoursSinceReady });
 
-                const _profileUrl = `https://bamako-steel-dev.xyz/user/${user.id}?guild=${guild?.id || ''}`;
+                const _profileUrl = `https://archon223.com/user/${user.id}?guild=${guild?.id || ''}`;
 
                 // Warm description by urgency
                 const _warm = hoursSinceReady < 3
@@ -2645,7 +2645,7 @@ async function sendBootDM() {
         `${tg?.configured ? `${dot(tgOn)} Telegram   ` : ''}${dot(!failed.length)} ${client.commands.size} plugins loaded\n` +
         `-# ${client.guilds.cache.size} servers · ${client._slashCount || 0} slash commands`));
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Dashboard').setURL('https://bamako-steel-dev.xyz').setEmoji(em('globe', '🌐'))));
+        new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Dashboard').setURL('https://archon223.com').setEmoji(em('globe', '🌐'))));
 
     const payload = { components: [c], flags: MessageFlags.IsComponentsV2 };
     let sent = null;
@@ -2958,7 +2958,7 @@ if (message.content && message.content.length > 4000) {
                     { name: `${em('ic_shield', '🛡️')} Circuit Breaker`, value: health.circuitBreaker, inline: true },
                     { name: '💀 Dead Letters', value: String(health.deadLetters), inline: true }
                 )
-                .setFooter({ text: '🦅 ARCHON CG-223 • Database Health • bamako-steel-dev.xyz' })
+                .setFooter({ text: '🦅 ARCHON CG-223 • Database Health • archon223.com' })
                 .setTimestamp();
             
             return message.reply({ embeds: [embed] });
@@ -4149,7 +4149,7 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
                         await owner.send({ embeds: [new EmbedBuilder()
                             .setColor(0xff3311)
                             .setTitle('Premium Cancelled')
-                            .setDescription(`ARCHON Premium for **${guild.name}** has been cancelled.\n\nRejoin anytime at bamako-steel-dev.xyz/premium`)
+                            .setDescription(`ARCHON Premium for **${guild.name}** has been cancelled.\n\nRejoin anytime at archon223.com/premium`)
                             .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                         ]});
                     }
@@ -4179,7 +4179,7 @@ apiApp.post('/api/webhooks/dodo', async (req, res) => {
                                 .setColor(0xffaa00)
                                 .setTitle(`${em('ic_warn', '⚠️')} Payment Failed — Grace Period Active`)
                                 .setDescription(`A payment for **${guild.name}** failed.\n\nYou have **${GRACE_DAYS} days** to update your payment method before premium is removed.`)
-                                .addFields({ name: `${em('ic_link', '🔗')} Update payment`, value: 'bamako-steel-dev.xyz/premium', inline: true })
+                                .addFields({ name: `${em('ic_link', '🔗')} Update payment`, value: 'archon223.com/premium', inline: true })
                                 .setFooter({ text: 'ARCHON CG-223 • BAMAKO_223 🇲🇱' })
                             ]});
                         }
@@ -6237,7 +6237,7 @@ const STATUS_MESSAGES = [
     { name: 'clan wars ⚔️', type: 5 },
     { name: 'Best Bot — Mali 🇲🇱', type: 5 },
     // CUSTOM (type 4 — raw text, no verb prefix)
-    { name: '🌍 bamako-steel-dev.xyz', type: 4 },
+    { name: '🌍 archon223.com', type: 4 },
     { name: '🎯 CODM clan bot | /scrim', type: 4 },
     { name: '🎵 530+ tracks | /music', type: 4 },
     { name: '⚔️ Bamako Steel 🇲🇱', type: 4 },

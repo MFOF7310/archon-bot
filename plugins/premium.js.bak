@@ -72,7 +72,7 @@ module.exports = {
             if (!premium) {
                 embed.addFields({ name: pt('featuresLabel', lang), value: pt('featuresList', lang), inline: false });
                 const row2 = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setLabel(pt('btnSubscribe', lang)).setStyle(ButtonStyle.Link).setURL('https://bamako-steel-dev.xyz/premium'),
+                    new ButtonBuilder().setLabel(pt('btnSubscribe', lang)).setStyle(ButtonStyle.Link).setURL('https://archon223.com/premium'),
                     new ButtonBuilder().setCustomId('premium_activate').setLabel(pt('btnHaveCode', lang)).setStyle(ButtonStyle.Secondary)
                 );
                 return interaction.reply({ embeds: [embed], components: [row2], flags: 64 });

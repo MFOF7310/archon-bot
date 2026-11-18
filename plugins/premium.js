@@ -83,12 +83,12 @@ module.exports = {
 
             if (!premium) {
                 card.addActionRowComponents(new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setLabel(pt('btnSubscribe', lang)).setStyle(ButtonStyle.Link).setURL('https://bamako-steel-dev.xyz/premium').setEmoji(iconObj('ic_credit', null, '💎')),
+                    new ButtonBuilder().setLabel(pt('btnSubscribe', lang)).setStyle(ButtonStyle.Link).setURL('https://archon223.com/premium').setEmoji(iconObj('ic_credit', null, '💎')),
                     new ButtonBuilder().setCustomId('premium_activate').setLabel(pt('btnActivate', lang)).setStyle(ButtonStyle.Secondary).setEmoji(iconObj('ic_key', null, '🔑'))
                 ));
             } else {
                 card.addActionRowComponents(new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setLabel(pt('btnManage', lang)).setStyle(ButtonStyle.Link).setURL('https://bamako-steel-dev.xyz/premium').setEmoji(iconObj('ic_settings', null, '⚙️'))
+                    new ButtonBuilder().setLabel(pt('btnManage', lang)).setStyle(ButtonStyle.Link).setURL('https://archon223.com/premium').setEmoji(iconObj('ic_settings', null, '⚙️'))
                 ));
             }
             return interaction.reply({ components: [card], flags: MessageFlags.IsComponentsV2 | 64 });

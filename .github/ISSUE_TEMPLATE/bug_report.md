@@ -13,7 +13,7 @@ A clear and concise description of what went wrong.
 - [ ] Discord (prefix command)
 - [ ] Discord (slash command)
 - [ ] Telegram
-- [ ] Dashboard (bamako-steel-dev.xyz)
+- [ ] Dashboard (archon223.com)
 
 ## 🔧 Command / Feature
 Command used (e.g. `.rank`, `/music`, `.profile`):

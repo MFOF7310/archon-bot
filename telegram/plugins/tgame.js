@@ -25,14 +25,14 @@ module.exports = {
             game_short_name: 'archontrivia',
             reply_markup: {
                 inline_keyboard: [[
-                    { text: '🎮 Play Trivia!', url: 'https://bamako-steel-dev.xyz/games/trivia.html' }
+                    { text: '🎮 Play Trivia!', url: 'https://archon223.com/games/trivia.html' }
                 ]]
             }
         });
 
         if (!result.ok) {
             const T = require('../lang/play').tr(ctx);
-            return ctx.replyHTML(T('web_game'), { extra: { reply_markup: { inline_keyboard: [[{ text: T('b_play'), url: 'https://bamako-steel-dev.xyz/games/trivia.html' }]] } } });
+            return ctx.replyHTML(T('web_game'), { extra: { reply_markup: { inline_keyboard: [[{ text: T('b_play'), url: 'https://archon223.com/games/trivia.html' }]] } } });
         }
     }
 };

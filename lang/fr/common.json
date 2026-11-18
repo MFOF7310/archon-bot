@@ -17,7 +17,7 @@
   "loading": "Un instant...",
   "premium_feature": "Fonctionnalite Premium",
   "page": "{page} / {total}",
-  "moduleDisabled": "Les fonctions **{module}** ne sont pas activées sur ce serveur. Un admin peut les activer depuis le [tableau de bord](https://bamako-steel-dev.xyz).",
+  "moduleDisabled": "Les fonctions **{module}** ne sont pas activées sur ce serveur. Un admin peut les activer depuis le [tableau de bord](https://archon223.com).",
   "modules": {
     "economy": "Économie",
     "leveling": "Niveaux",

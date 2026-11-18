@@ -16,7 +16,7 @@ module.exports = {
                 extra: {
                     reply_markup: {
                         inline_keyboard: [[
-                            { text: '🚀 Open Dashboard', web_app: { url: 'https://bamako-steel-dev.xyz' } }
+                            { text: '🚀 Open Dashboard', web_app: { url: 'https://archon223.com' } }
                         ]]
                     }
                 }

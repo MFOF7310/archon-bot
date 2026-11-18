@@ -94,7 +94,7 @@ async function handleCallback(update, bridge, client) {
     const cbq = update.callback_query;
     // Handle game callbacks (no data, just game_short_name)
     if (!cbq?.data && cbq?.game_short_name) {
-        await answerCBQ(bridge, cbq.id, '', false, 'https://bamako-steel-dev.xyz/games/trivia.html');
+        await answerCBQ(bridge, cbq.id, '', false, 'https://archon223.com/games/trivia.html');
         return;
     }
     // Cooldown — 1.2s per user per button
@@ -170,7 +170,7 @@ async function handleCallback(update, bridge, client) {
 
     // tgame play button — game callback
     if (cbq.game_short_name === 'archontrivia' || data === 'tgame_play') {
-        await answerCBQ(bridge, cbq.id, '', false, 'https://bamako-steel-dev.xyz/games/trivia.html');
+        await answerCBQ(bridge, cbq.id, '', false, 'https://archon223.com/games/trivia.html');
         return;
     }
 
@@ -450,7 +450,7 @@ async function handleCallback(update, bridge, client) {
         }
         case 'about': {
             const txt = `<b>${M(lang, 'about_t')}</b>\n${M(lang, 'about_d')}\n\n<i>${M(lang, 'about_up', { uptime: formatUptime(process.uptime()), version: bot_version })}</i>`;
-            await editMsg(bridge, chatId, msgId, txt, subMarkup([[{ text: '🔗 GitHub', url: 'https://github.com/MFOF7310' }, { text: '🌐 bamako-steel-dev.xyz', url: 'https://bamako-steel-dev.xyz' }]], lang));
+            await editMsg(bridge, chatId, msgId, txt, subMarkup([[{ text: '🔗 GitHub', url: 'https://github.com/MFOF7310' }, { text: '🌐 archon223.com', url: 'https://archon223.com' }]], lang));
             break;
         }
     }

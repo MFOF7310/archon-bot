@@ -168,7 +168,7 @@ const DEFAULT_DOMAIN_WHITELIST = new Set([
     'pastebin.com', 'www.pastebin.com', 'wikipedia.org', 'www.wikipedia.org',
     'en.wikipedia.org', 'spotify.com', 'www.spotify.com', 'open.spotify.com',
     'steamcommunity.com', 'store.steampowered.com',
-    'bamako-steel-dev.xyz', 'www.bamako-steel-dev.xyz',
+    'archon223.com', 'www.archon223.com',
 ]);
 
 function extractDomain(url) {
@@ -2090,7 +2090,7 @@ async function sendDigests(client, db, onlyGuilds = null) {
             { text: topRules },
             { text: `-# ${t('digestTop', { list: topUsers })}` },
             { row: new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
-                .setLabel(t('digestBtn')).setURL(`https://bamako-steel-dev.xyz/dashboard/${gid}`)) },
+                .setLabel(t('digestBtn')).setURL(`https://archon223.com/dashboard/${gid}`)) },
             { text: `-# ${E.eagle || '🦅'} ARCHON CG-223` },
         ];
         await owner.send({ ..._v2.card(0x5865F2, items), allowedMentions: { parse: [] } }).catch(() => {});

@@ -72,7 +72,7 @@ module.exports = {
                 `<code>/pfilter &lt;keyword&gt; &lt;response&gt;</code> — Private chats\n` +
                 `<code>/stop &lt;keyword&gt;</code> — Remove filter\n` +
                 `<code>/filters</code> — List all\n\n` +
-                `💡 Example:\n<code>/filter website Check bamako-steel-dev.xyz!</code>\n\n` +
+                `💡 Example:\n<code>/filter website Check archon223.com!</code>\n\n` +
                 ``
             );
         }
