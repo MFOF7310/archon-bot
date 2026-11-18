@@ -7,7 +7,7 @@ function parseJSONSafe(str, fallback = {}) {
 
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, Events, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, REST, Routes, MessageFlags } = require('discord.js');
+const { Client, Collection, Events, Options, Partials, GatewayIntentBits, EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, REST, Routes, MessageFlags } = require('discord.js');
 const em = (k, fb) => { try { return require('./config/emojis')[k] || fb; } catch { return fb; } };
 const { t } = require('./lib/i18n');
 
@@ -119,7 +119,12 @@ const client = new Client({
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.GuildVoiceStates
     ],
-    partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember]
+    partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember],
+    // Messages are the only cache that grows with activity (by default up to 200 per channel, kept forever), and
+    // nothing in ARCHON reads old messages (no messageDelete/messageUpdate logs, no messages.cache): keep a few
+    // recent ones per channel and drop any older than 15 minutes. Members, roles and channels keep the defaults.
+    makeCache: Options.cacheWithLimits({ ...Options.DefaultMakeCacheSettings, MessageManager: 25 }),
+    sweepers: { ...Options.DefaultSweeperSettings, messages: { interval: 300, lifetime: 900 } },
 });
 
 // ================= SECURE EVENT LISTENER DEDUPLICATION (FIX #15) =================
