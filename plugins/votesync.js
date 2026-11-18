@@ -229,7 +229,15 @@ async function topggBotStats() {
         const data = { month: Number(res.data?.monthlyPoints ?? 0), total: Number(res.data?.points ?? 0) };
         _botStats = { at: Date.now(), data };
         return data;
-    } catch (e) { return null; }
+    } catch (e) {
+        // say why, at most once every 10 minutes (it used to fail in silence): 401 = token refused, 403 = blocked
+        // (often Cloudflare refusing the server's IP), 404 = bot id not listed, 429 = too many requests
+        if (Date.now() - (_botStats.loggedAt || 0) > 10 * 60 * 1000) {
+            _botStats.loggedAt = Date.now();
+            console.warn(`[TOPGG] reading ARCHON's numbers failed: ${e.response ? `HTTP ${e.response.status} ${JSON.stringify(e.response.data || '').slice(0, 150)}` : e.message}`);
+        }
+        return null;
+    }
 }
 
 // ================= CALCULATE REWARD =================
