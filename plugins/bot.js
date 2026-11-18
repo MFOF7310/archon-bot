@@ -68,8 +68,10 @@ function actBtn(label, id, emKey, fb) {
 
 // ─── Ping ───
 async function measure(client, db) {
+    // a light round trip to Discord's API (GET /gateway, a few bytes). It used to time client.application.fetch(),
+    // which downloads the whole app profile and often takes 300 to 600 ms on Discord's side alone
     const t0 = performance.now();
-    try { await client.application.fetch(); } catch (e) { /* still report the time */ }
+    try { await client.rest.get(require('discord.js').Routes.gateway()); } catch (e) { /* still report the time */ }
     const rest = Math.round(performance.now() - t0);
     const api = client.ws?.ping > 0 ? Math.round(client.ws.ping) : null; // -1 until the first heartbeat after a restart
     let database = null;
