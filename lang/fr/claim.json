@@ -24,5 +24,7 @@
   "notYours": "Ces boutons sont à quelqu'un d'autre. Utilise /claim pour ton propre bonus.",
   "profileLevel": "Niveau {n}",
   "profileBody": "XP **{xp}** · crédits **{credits}**\nSérie **{streak}** jours · record **{best}**\n**{total}** bonus du jour récupérés",
-  "error": "Ton bonus n'est pas passé. Réessaie dans un instant."
+  "error": "Ton bonus n'est pas passé. Réessaie dans un instant.",
+  "btnGoChannel": "Récupérer dans #{channel}",
+  "btnGoServer": "Ouvrir le serveur"
 }

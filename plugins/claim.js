@@ -72,8 +72,19 @@ async function deliver(client, db, id) {
     const card = v2.card(GOLD, [
         { text: `### ${em('notification', '🔔')} ${t('dmTitle', { server: guild.name })}` },
         { text: `-# ${streak > 1 ? t('dmSub', { n: streak }) : t('dmSubNone')}` },
-        { row: new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`claim:off:${row.guild_id}`).setLabel(t('btnStop')).setEmoji(icon('bellOff')).setStyle(ButtonStyle.Secondary)) },
+        { row: (() => {
+            const r = new ActionRowBuilder();
+            // one tap to the right channel: the server's daily channel if it has one (claims only work there),
+            // else the channel where /claim was used, else the server
+            const settings = client.getServerSettings?.(row.guild_id) || {};
+            const chId = [settings.dailyChannel, row.channel_id].find((id) => id && guild.channels.cache.has(String(id)));
+            const ch = chId ? guild.channels.cache.get(String(chId)) : null;
+            r.addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link)
+                .setURL(`https://discord.com/channels/${row.guild_id}${ch ? `/${ch.id}` : ''}`)
+                .setLabel((ch ? t('btnGoChannel', { channel: ch.name }) : t('btnGoServer')).slice(0, 80)).setEmoji(icon('gift')));
+            r.addComponents(new ButtonBuilder().setCustomId(`claim:off:${row.guild_id}`).setLabel(t('btnStop')).setEmoji(icon('bellOff')).setStyle(ButtonStyle.Secondary));
+            return r;
+        })() },
     ]);
     const u = await client.users.fetch(row.user_id).catch(() => null);
     await u?.send(card).catch(() => {});   // closed DMs: nothing else, no public mention
