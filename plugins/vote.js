@@ -181,11 +181,13 @@ function nextVoteOf(db, uid, gid) {
     return { stats: s, last, nextVote: last + COOLDOWN };
 }
 
-// The last 7 days, oldest first: 🟩 voted, ⬛ missed, ⬜ today and still open
+// The last 7 days, oldest first: 🟩 voted, ⬛ missed, ⬜ today and still open.
+// Counted per person across every server, like the streak: a vote credited in another server used to show as a
+// missed day here while the streak (rightly) kept going.
 function weekStrip(db, uid, gid) {
     const today = Math.floor(Date.now() / 86400000);
     let days = new Set();
-    try { days = new Set(db.prepare('SELECT DISTINCT claim_date / 86400 AS d FROM vote_claims WHERE user_id = ? AND guild_id = ? AND claim_date >= ?').all(uid, gid, (today - 6) * 86400).map((r) => Math.floor(r.d))); } catch {}
+    try { days = new Set(db.prepare('SELECT DISTINCT claim_date / 86400 AS d FROM vote_claims WHERE user_id = ? AND claim_date >= ?').all(uid, (today - 6) * 86400).map((r) => Math.floor(r.d))); } catch {}
     let out = '';
     for (let d = today - 6; d <= today; d++) out += days.has(d) ? '🟩' : d === today ? '⬜' : '⬛';
     return out;
