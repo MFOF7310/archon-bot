@@ -393,6 +393,32 @@ async function sendPublicLog(client, user, result, lang, guildName) {
     await ch.send({ content: `${icon('votes', ch)} ${fill(t.log, { user: user.username, n: num(result.total, 'en'), days: dayWord(result.streak, 'en'), guild: guildName || '?' })}${result.weekend ? ' · weekend x2' : ''}`, allowedMentions: { parse: [] } }).catch(() => {});
 }
 
+// A small gold card in the vote channel the server picked (/channels → Votes or the dashboard): who voted, their
+// streak, this server's count and a Vote button for everyone else. Nothing when no channel is set or ARCHON can't post
+// there. Only the server the vote came from gets it, so a member in five servers never triggers five cards.
+async function postServerCard(client, guildId, user, result, votes) {
+    const guild = guildId ? client.guilds.cache.get(String(guildId)) : null;
+    if (!guild) return;
+    const db = client.db;
+    let chId = null;
+    try { chId = db.prepare('SELECT vote_channel FROM server_settings WHERE guild_id = ?').get(guild.id)?.vote_channel || null; } catch { return; }
+    const ch = chId ? guild.channels.cache.get(String(chId)) : null;
+    if (!ch?.isTextBased?.()) return;
+    const canPost = require('../lib/canPost');
+    if (!canPost.diagnose(guild, ch, guild.members.me, canPost.neededFor('default')).ok) return;
+    let lang = 'en';
+    try { lang = require('../lib/pick-lang').pickLang(client, guild.id, null) || 'en'; } catch { /* English */ }
+    const tv = (k, v) => require('../lib/i18n').t(`votechannel.${k}`, lang, v || {});
+    const member = await guild.members.fetch(user.id).catch(() => null);
+    const name = String(member?.displayName || user.globalName || user.username).replace(/[*_`~|\\<>#[\]]/g, '').slice(0, 40);
+    const sub = tv('sub', { n: result.streak || 1, votes: num(votes || 1, lang), credits: num(result.total || 0, lang) }) + (result.weekend ? ` · ${tv('weekend')}` : '');
+    const v2 = require('../lib/games/v2');
+    await ch.send(v2.card(0xE6A817, [
+        { thumbnail: [`### ${icon('votes', ch)} ${tv('title', { name })}\n-# ${sub}`, user.displayAvatarURL({ extension: 'png', size: 128 })] },
+        { row: new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(voteUrl(client, guild.id)).setLabel(tv('btn')).setEmoji(icon('star', ch))) },
+    ]));
+}
+
 // ================= PROCESS VOTE (Main Entry Point) =================
 const MAIN_GUILD = process.env.GUILD_ID;
 let _homeReady = false;
@@ -481,6 +507,9 @@ async function _processVote(userId, guildId, client, opts = {}) {
     // 8. Owner's log line
     await sendPublicLog(client, user, result, lang, guildName);
 
+    // 9. The server's own vote channel (/channels → Votes), if it chose one
+    await postServerCard(client, guildId, user, result, newTotalVotes).catch((e) => console.log(`[VOTESYNC] vote channel card: ${e.message}`));
+
     console.log(`[VOTESYNC] ${user.username} | +${result.total}${result.weekend ? ' (weekend)' : ''} | streak ${result.streak} | ${guildName || guildId} | DM ${dmSent ? 'sent' : 'failed'}`);
     return { success: true, ...result, nextVote, lang, dmSent, total_votes: newTotalVotes, total_rewards: newTotalRewards };
 }
@@ -492,6 +521,7 @@ module.exports = {
     category: 'SYSTEM',
     hidden: true,
     processVote,
+    postServerCard,
     resolveHomeGuild,
     checkTopGGVote,
     setupDB,

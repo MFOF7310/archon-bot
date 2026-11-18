@@ -69,5 +69,7 @@
   "summary_important": "{n} of {total} important channels set · optional ones can stay empty",
   "optional": "optional",
   "recommended": "recommended",
-  "optional_daily": "Empty: /claim works in every channel. Set: /claim only works there."
+  "optional_daily": "Empty: /claim works in every channel. Set: /claim only works there.",
+  "label_votes": "Votes",
+  "hint_votes": "A small card when a member votes for ARCHON on Top.gg, with a button so others can vote too."
 }

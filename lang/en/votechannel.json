@@ -1,0 +1,6 @@
+{
+  "title": "{name} voted for ARCHON",
+  "sub": "{n}-day streak · {votes} votes on this server · +{credits} credits",
+  "weekend": "weekend x2",
+  "btn": "Vote too"
+}

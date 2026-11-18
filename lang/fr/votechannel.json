@@ -1,0 +1,6 @@
+{
+  "title": "{name} a voté pour ARCHON",
+  "sub": "Série de {n} jours · {votes} votes sur ce serveur · +{credits} crédits",
+  "weekend": "week-end x2",
+  "btn": "Voter aussi"
+}

@@ -69,5 +69,7 @@
   "summary_important": "已设置 {n}/{total} 个重要频道 · 可选频道可以留空",
   "optional": "可选",
   "recommended": "建议设置",
-  "optional_daily": "留空：/claim 在所有频道都可用。设置后：/claim 只能在该频道使用。"
+  "optional_daily": "留空：/claim 在所有频道都可用。设置后：/claim 只能在该频道使用。",
+  "label_votes": "投票",
+  "hint_votes": "成员在 Top.gg 为 ARCHON 投票时发送一张小卡片，并附带按钮方便其他人也去投票。"
 }

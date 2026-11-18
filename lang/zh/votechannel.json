@@ -1,0 +1,6 @@
+{
+  "title": "{name} 为 ARCHON 投了票",
+  "sub": "连续 {n} 天 · 本服务器 {votes} 票 · +{credits} 积分",
+  "weekend": "周末双倍",
+  "btn": "我也投票"
+}

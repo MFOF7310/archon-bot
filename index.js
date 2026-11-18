@@ -720,6 +720,7 @@ try {
         { name: 'welcome_enabled', type: 'INTEGER DEFAULT 1' },
         { name: 'goodbye_enabled', type: 'INTEGER DEFAULT 1' },
         { name: 'levelup_channel', type: 'TEXT' },
+        { name: 'vote_channel', type: 'TEXT' },   // public card when a member votes (/channels, dashboard)
         // roles given at levels 5 to 25 (/leveling setrole): these columns were missing, so level rewards never worked
         { name: 'level_5_role', type: 'TEXT' },
         { name: 'level_10_role', type: 'TEXT' },
@@ -5317,6 +5318,7 @@ const GENERAL_FIELDS = {
     logChannel: 'log_channel',
     rulesChannel: 'rules_channel',
     updatesChannel: 'updates_channel',
+    voteChannel: 'vote_channel',
 };
 const isTextChan = c => c && (c.type === 0 || c.type === 5);
 function canBotSend(guild, channel) {

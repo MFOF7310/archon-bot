@@ -31,11 +31,12 @@ const SLOTS = [
     { key: 'daily', col: 'daily_channel', group: 'activity', need: null, level: 'optional' },
     { key: 'levelup', col: 'levelup_channel', group: 'activity', need: 'levelup-milestone', level: 'recommended' },
     { key: 'updates', col: 'updates_channel', group: 'activity', need: null, level: 'optional' },
+    { key: 'votes', col: 'vote_channel', group: 'activity', need: null, level: 'optional' },
 ];
 const BY_KEY = Object.fromEntries(SLOTS.map((s) => [s.key, s]));
 const GROUPS = ['core', 'moderation', 'activity'];
 // older names people may type with .channels set / remove
-const ALIASES = { mod: 'modlog', 'mod-log': 'modlog', modlogs: 'modlog', logs: 'log', tickets: 'ticket', transcript: 'ticket', level: 'levelup', levels: 'levelup', chat: 'general', bye: 'goodbye', update: 'updates' };
+const ALIASES = { mod: 'modlog', 'mod-log': 'modlog', modlogs: 'modlog', logs: 'log', tickets: 'ticket', transcript: 'ticket', level: 'levelup', levels: 'levelup', chat: 'general', bye: 'goodbye', update: 'updates', vote: 'votes', topgg: 'votes' };
 const slotOf = (type) => { const k = String(type || '').toLowerCase().trim(); return BY_KEY[k] ? k : ALIASES[k] || null; };
 
 const needed = (slot) => (slot.need === 'see' ? [canPost.PERMS.view] : canPost.neededFor(slot.need || 'default'));
