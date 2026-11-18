@@ -117,6 +117,9 @@ make ic_flag flag
 make ic_help help-circle
 make ic_handshake heart-handshake
 
+# Setup reminder: a step not done yet
+make ic_circle_dashed circle-dashed "#949BA4"
+
 # Every new icon goes to its category in config/emojis.js
 node scripts/emojis-tidy.js
 echo "Done. Now run: pm2 restart Architect-CG223"

@@ -1,0 +1,12 @@
+{
+  "title": "{server} 快要准备好了",
+  "sub": "你昨天添加了 ARCHON。只需几分钟，它就能为你的成员服务。",
+  "progress": "已完成 **{done}/{total}** 项基本设置",
+  "moreLeft": "控制面板上还有 {n} 个可选步骤。",
+  "hint": "最快的方法：在服务器中运行 /setup，回答四个简单问题。",
+  "btnDashboard": "在控制面板完成",
+  "btnServer": "打开服务器",
+  "btnOff": "不再提醒我",
+  "offDone": "好的，不再发送 {server} 的设置提醒。",
+  "notYours": "此提醒属于添加 ARCHON 的人。"
+}

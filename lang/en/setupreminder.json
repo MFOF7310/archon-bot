@@ -1,0 +1,12 @@
+{
+  "title": "{server} is almost ready",
+  "sub": "You added ARCHON yesterday. A few minutes and it works for your members.",
+  "progress": "**{done} of {total}** essentials done",
+  "moreLeft": "{n} more optional step(s) on the dashboard.",
+  "hint": "Fastest way: run /setup in the server, four quick questions.",
+  "btnDashboard": "Finish on the dashboard",
+  "btnServer": "Open the server",
+  "btnOff": "Don't remind me",
+  "offDone": "Got it, no more setup reminders for {server}.",
+  "notYours": "This reminder belongs to the person who added ARCHON."
+}

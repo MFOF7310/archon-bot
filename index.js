@@ -1928,6 +1928,8 @@ client.once(Events.ClientReady, async () => {
     try { require('./plugins/afk.js').resume(client); } catch (e) { console.error('[AFK] resume:', e.message); }
     // Re-arm the "verify in time or be kicked" deadlines that were running when the bot stopped
     Promise.resolve(require('./plugins/verify.js').resumeKickTimers?.(client, db)).catch((e) => console.error('[VERIFY] resume failed:', e.message));
+    // One setup reminder per new server, 24 h after it added ARCHON, if its core setup is still not done
+    try { require('./lib/setup-reminder').start(client); } catch (e) { console.error('[SETUP-REMINDER] start:', e.message); }
     // Members who joined while ARCHON was offline get their captcha (after the deadlines above are back)
     setTimeout(() => { Promise.resolve(require('./plugins/verify.js').catchUpMissedJoins?.(client, db)).catch((e) => console.error('[VERIFY] catch-up failed:', e.message)); }, 30000);
     // Raid mode: pick up a raid that was active when the bot stopped
@@ -3419,6 +3421,9 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     // /global: wallet buttons, member picker, amount box, transfer confirmation, leaderboard pages
     if ((interaction.isButton() || interaction.isUserSelectMenu() || interaction.isModalSubmit()) && interaction.customId.startsWith('global:')) {
         return require('./plugins/cross-economy.js').handleComponent(interaction, client).catch(e => console.error('[GLOBAL] component:', e.message));
+    }
+    if (interaction.isButton() && interaction.customId.startsWith('setuprem:')) {
+        return require('./lib/setup-reminder').handleComponent(interaction, client).catch(e => console.error('[SETUP-REMINDER] button:', e.message));
     }
     if (interaction.isButton() && interaction.customId.startsWith('claim:')) {
         return require('./plugins/claim.js').handleComponent(interaction, client).catch(e => console.error('[CLAIM] button:', e.message));
