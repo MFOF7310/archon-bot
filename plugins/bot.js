@@ -85,7 +85,8 @@ const DOT = { ok: () => em('ic_status_ok', '🟢'), warn: () => em('ic_status_wa
 async function pingCard(client, lang, db) {
     const _ = tr(lang);
     const m = await measure(client, db);
-    const tiers = [tierOf(m.rest, 300, 700), tierOf(m.api, 120, 300), tierOf(m.database, 30, 80)];
+    // gateway heartbeat: 100-150 ms is normal from a European server (Discord's gateway is far away), so 200 / 400
+    const tiers = [tierOf(m.rest, 300, 700), tierOf(m.api, 200, 400), tierOf(m.database, 30, 80)];
     const state = ['bad', 'warn', 'ok'].find(x => tiers.includes(x)) || 'ok';
     const val = (ms) => ms == null ? '—' : `${ms} ms`;
     return v2.card(COLOR[state], [
@@ -125,7 +126,7 @@ async function statsCard(client, lang, db, guildId) {
         games = g?.g || 0; wins = g?.w || 0; credits = g?.c || 0;
     } catch (e) { /* columns missing on an old database: show zeros */ }
 
-    const state = (!dbOk || !aiOk || (api && api > 300) || lag > 100) ? 'bad' : ((api && api > 120) || lag > 50) ? 'warn' : 'ok';
+    const state = (!dbOk || !aiOk || (api && api > 400) || lag > 100) ? 'bad' : ((api && api > 200) || lag > 50) ? 'warn' : 'ok';
     const on = (ok) => ok ? em('ic_online', em('online', '🟢')) : em('ic_offline', em('offline', '🔴'));
     const n = (x) => Number(x).toLocaleString();
 
