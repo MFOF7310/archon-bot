@@ -224,10 +224,21 @@ async function topggBotStats() {
     if (!token) return null;
     if (Date.now() - _botStats.at < 5 * 60 * 1000 && _botStats.data) return _botStats.data;
     const botId = global.client?.user?.id || process.env.CLIENT_ID || '1472707869257367676';
+    // v1 first (GET /api/v1/projects/@me: votes = the current count Top.gg ranks with, votes_total = all-time),
+    // then the legacy v0 route, which now answers 404 for many bots. v1 wants "Bearer <token>", v0 the bare token.
+    const bare = String(token).replace(/^Bearer\s+/i, '');
     try {
-        const res = await axios.get(`https://top.gg/api/bots/${botId}`, { headers: { Authorization: token }, timeout: 5000 });
-        const data = { month: Number(res.data?.monthlyPoints ?? 0), total: Number(res.data?.points ?? 0) };
-        _botStats = { at: Date.now(), data };
+        let data;
+        try {
+            const res = await axios.get('https://top.gg/api/v1/projects/@me', { headers: { Authorization: `Bearer ${bare}` }, timeout: 5000 });
+            data = { month: Number(res.data?.votes ?? 0), total: Number(res.data?.votes_total ?? 0) };
+        } catch (v1) {
+            try {
+                const res = await axios.get(`https://top.gg/api/bots/${botId}`, { headers: { Authorization: bare }, timeout: 5000 });
+                data = { month: Number(res.data?.monthlyPoints ?? 0), total: Number(res.data?.points ?? 0) };
+            } catch { throw v1; }   // report the v1 error: that's the route that should work
+        }
+        _botStats = { ...(_botStats || {}), at: Date.now(), data };
         return data;
     } catch (e) {
         // say why, at most once every 10 minutes (it used to fail in silence): 401 = token refused, 403 = blocked
