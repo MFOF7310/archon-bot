@@ -541,19 +541,30 @@ async function sendNotification(client, db, guildId, username, data, type) {
 const VIDEO_CHECK_MS = 5 * 60 * 1000;
 const MAX_VIDEO_AGE_S = 48 * 3600;
 const lastVideoCheck = new Map();
+// A TikTok video id carries its posting time (its top 32 bits are Unix seconds)
+const idTime = (id) => { try { return Number(BigInt(String(id)) >> 32n); } catch { return null; } };
+async function ytdlpJson(args, timeout) {
+    const { stdout } = await execFileAsync('yt-dlp', ['--skip-download', '--no-warnings', '--ignore-errors', ...args], { timeout, maxBuffer: 40 * 1024 * 1024 })
+        .catch((e) => ({ stdout: e.stdout || '' }));   // --ignore-errors: the good lines still come back
+    return String(stdout).split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((j) => j && j.id);
+}
 async function fetchLatestVideo(username) {
     try {
-        const { stdout } = await execFileAsync('yt-dlp', ['--skip-download', '--no-warnings', '--ignore-errors', '--playlist-items', '1:4',
-            '--dump-json', `https://www.tiktok.com/@${username}`], { timeout: 45000, maxBuffer: 40 * 1024 * 1024 });
-        const items = String(stdout).split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((j) => j && j.id);
-        if (!items.length) return null;
-        const v = items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))[0];
-        return {
-            id: String(v.id), desc: v.description || v.title || '', cover: v.thumbnail || null,
-            playCount: v.view_count || 0, likeCount: v.like_count || 0, commentCount: v.comment_count || 0, shareCount: v.repost_count || 0,
-            createTime: v.timestamp || null, duration: v.duration || null,
-            url: v.webpage_url || `https://www.tiktok.com/@${username}/video/${v.id}`,
-        };
+        // 1. The profile's list only (no video page: those need yt-dlp's browser impersonation, often missing).
+        //    The newest is the highest id, which also skips a pinned video.
+        const list = await ytdlpJson(['--flat-playlist', '--playlist-items', '1:6', '--dump-json', `https://www.tiktok.com/@${username}`], 30000);
+        if (!list.length) return null;
+        const top = list.map((v) => String(v.id)).filter((id) => /^\d{15,25}$/.test(id))
+            .sort((x, y) => (BigInt(y) > BigInt(x) ? 1 : -1))[0];
+        if (!top) return null;
+        const base = { id: top, desc: '', cover: null, playCount: 0, likeCount: 0, commentCount: 0, shareCount: 0,
+            createTime: idTime(top), duration: null, url: `https://www.tiktok.com/@${username}/video/${top}` };
+        // 2. That one video's details, when yt-dlp can open it (caption, cover, views); without them the card is shorter
+        const [v] = await ytdlpJson(['--dump-json', base.url], 20000);
+        if (v) Object.assign(base, { desc: v.description || v.title || '', cover: v.thumbnail || null, playCount: v.view_count || 0,
+            likeCount: v.like_count || 0, commentCount: v.comment_count || 0, shareCount: v.repost_count || 0,
+            createTime: v.timestamp || base.createTime, duration: v.duration || null });
+        return base;
     } catch { return null; }
 }
 
