@@ -52,5 +52,18 @@
   "wisdom": "Sagesse",
   "summonAgain": "Invoquer un autre",
   "slappedOnceHere": "{user} a reçu 1 gifle ici.",
-  "slappedHere": "{user} a reçu {n} gifles ici."
+  "slappedHere": "{user} a reçu {n} gifles ici.",
+  "img_dog": "Chiens",
+  "img_cat": "Chats",
+  "img_car": "Voitures",
+  "img_nature": "Nature",
+  "img_architecture": "Architecture",
+  "img_food": "Cuisine",
+  "img_space": "Espace",
+  "img_cyberpunk": "Cyberpunk",
+  "img_random": "Au hasard",
+  "img_by": "{who} sur {site}",
+  "img_view": "Voir la photo",
+  "img_noKey": "Les photos « {cat} » viennent d'Unsplash, et ce bot n'a pas encore de clé Unsplash. Essaie chiens, chats ou espace.",
+  "what_image": "une photo"
 }

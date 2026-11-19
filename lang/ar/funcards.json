@@ -52,5 +52,18 @@
   "wisdom": "الحكمة",
   "summonAgain": "استدعِ آخر",
   "slappedOnceHere": "تلقى {user} صفعة واحدة هنا.",
-  "slappedHere": "تلقى {user} {n} صفعات هنا."
+  "slappedHere": "تلقى {user} {n} صفعات هنا.",
+  "img_dog": "كلاب",
+  "img_cat": "قطط",
+  "img_car": "سيارات",
+  "img_nature": "طبيعة",
+  "img_architecture": "عمارة",
+  "img_food": "طعام",
+  "img_space": "فضاء",
+  "img_cyberpunk": "سايبربانك",
+  "img_random": "عشوائي",
+  "img_by": "{who} على {site}",
+  "img_view": "عرض الصورة",
+  "img_noKey": "صور «{cat}» تأتي من Unsplash، وهذا البوت لا يملك مفتاح Unsplash بعد. جرّب الكلاب أو القطط أو الفضاء.",
+  "what_image": "صورة"
 }

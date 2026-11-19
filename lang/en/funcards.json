@@ -52,5 +52,18 @@
   "wisdom": "Wisdom",
   "summonAgain": "Summon another",
   "slappedOnceHere": "{user} has been slapped once here.",
-  "slappedHere": "{user} has been slapped {n} times here."
+  "slappedHere": "{user} has been slapped {n} times here.",
+  "img_dog": "Dogs",
+  "img_cat": "Cats",
+  "img_car": "Cars",
+  "img_nature": "Nature",
+  "img_architecture": "Architecture",
+  "img_food": "Food",
+  "img_space": "Space",
+  "img_cyberpunk": "Cyberpunk",
+  "img_random": "Random",
+  "img_by": "{who} on {site}",
+  "img_view": "View the photo",
+  "img_noKey": "{cat} photos come from Unsplash, and this bot has no Unsplash key yet. Try dogs, cats or space.",
+  "what_image": "a photo"
 }

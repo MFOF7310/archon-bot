@@ -52,5 +52,18 @@
   "wisdom": "智慧",
   "summonAgain": "再召唤一个",
   "slappedOnceHere": "{user} 在这里挨了 1 巴掌。",
-  "slappedHere": "{user} 在这里挨了 {n} 巴掌。"
+  "slappedHere": "{user} 在这里挨了 {n} 巴掌。",
+  "img_dog": "狗狗",
+  "img_cat": "猫咪",
+  "img_car": "汽车",
+  "img_nature": "自然",
+  "img_architecture": "建筑",
+  "img_food": "美食",
+  "img_space": "太空",
+  "img_cyberpunk": "赛博朋克",
+  "img_random": "随机",
+  "img_by": "{who} 摄于 {site}",
+  "img_view": "查看照片",
+  "img_noKey": "“{cat}”照片来自 Unsplash，但这个机器人还没有 Unsplash 密钥。试试狗狗、猫咪或太空。",
+  "what_image": "照片"
 }

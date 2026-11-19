@@ -1,539 +1,147 @@
-const { EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-const https = require('https');
+// ═══════════════════════════════════════════════════════════════════════════
+// /image <category> — a photo by theme, as a fun-pack card (lib/fun): the same look and buttons as /car or /anime
+//   dog (Dog CEO) · cat (TheCatAPI) · space (NASA picture of the day) · car, nature, architecture, food, cyberpunk
+//   (Unsplash, needs UNSPLASH_ACCESS_KEY) · random (only among the themes that can answer)
+// Unsplash's rules: the photographer is credited with a link, and each photo shown is reported to their download
+// endpoint. NASA: NASA_API_KEY when set (DEMO_KEY allows ~30 calls an hour); a day whose picture is a video is skipped.
+// "Another one" never expires (fun:again:image:<uid>:<category>); someone else pressing it gets their own, privately.
+// Texts: lang/<l>/funcards.json (img_*).
+// ═══════════════════════════════════════════════════════════════════════════
+const { SlashCommandBuilder } = require('discord.js');
+const fun = require('../lib/fun');
 
-// ================= BILINGUAL =================
-const T = {
-    en: {
-        loading: (category) => `📸 Fetching an ultra HD ${category} image...`,
-        error: em('ic_off', em('ic_off', '❌')) + ' Failed to fetch image. Try again!',
-        noApiKey: (cat) => `${em('ic_warn', '⚠️')} \`${cat}\` images require an Unsplash API key. Set \`UNSPLASH_ACCESS_KEY\` in your .env file.`,
-        footer: (cat, total) => `Architect CG-223 • ${cat} • #${total.toLocaleString()} served`,
-        categories: {
-            dog: '🐕 Dogs',
-            cat: '🐈 Cats',
-            car: '🚗 Cars',
-            nature: '🌿 Nature',
-            architecture: '🏛️ Architecture',
-            food: '🍕 Food',
-            space: '🚀 Space',
-            cyberpunk: '🌃 Cyberpunk',
-        },
-        breed: 'Breed',
-        photographer: '📷 Photographer',
-        resolution: '📐 Resolution',
-        source: '🔗 Source',
-        unsplash: 'Unsplash',
-        random: '🔀 Random',
-        next: '🔁 Next',
-        stats: '📊 Stats',
-        dogApi: 'Dog CEO',
-        catApi: 'TheCatAPI',
-        nasa: 'NASA APOD',
-    },
-    fr: {
-        loading: (category) => `📸 Récupération d'une image ${category} ultra HD...`,
-        error: em('ic_off', em('ic_off', '❌')) + ' Échec de récupération de l\'image. Réessayez!',
-        noApiKey: (cat) => `${em('ic_warn', '⚠️')} Les images \`${cat}\` nécessitent une clé API Unsplash. Définissez \`UNSPLASH_ACCESS_KEY\` dans votre .env.`,
-        footer: (cat, total) => `Architect CG-223 • ${cat} • #${total.toLocaleString()} servies`,
-        categories: {
-            dog: '🐕 Chiens',
-            cat: '🐈 Chats',
-            car: '🚗 Voitures',
-            nature: '🌿 Nature',
-            architecture: '🏛️ Architecture',
-            food: '🍕 Nourriture',
-            space: '🚀 Espace',
-            cyberpunk: '🌃 Cyberpunk',
-        },
-        breed: 'Race',
-        photographer: '📷 Photographe',
-        resolution: '📐 Résolution',
-        source: '🔗 Source',
-        unsplash: 'Unsplash',
-        random: '🔀 Aléatoire',
-        next: '🔁 Suivant',
-        stats: '📊 Stats',
-        dogApi: 'Dog CEO',
-        catApi: 'TheCatAPI',
-        nasa: 'NASA APOD',
-    }
+const UNSPLASH = {   // category → search, card colour
+    car: ['luxury sports car', 0xE24B4A],
+    nature: ['nature landscape mountains forest ocean', 0x1D9E75],
+    architecture: ['modern architecture skyline building', 0x378ADD],
+    food: ['gourmet food dish', 0xEF9F27],
+    cyberpunk: ['cyberpunk neon city night', 0x7F77DD],
 };
+const COLORS = { dog: 0xE67E22, cat: 0x9B59B6, space: 0x2C3E50 };
+const ICON = { dog: '🐕', cat: '🐈', car: '🚗', nature: '🌿', architecture: '🏛️', food: '🍽️', space: '🚀', cyberpunk: '🌃', random: '🔀' };
+const ALL = ['dog', 'cat', 'car', 'nature', 'architecture', 'food', 'space', 'cyberpunk'];
+const UTM = 'utm_source=archon_cg223&utm_medium=referral';
+const key = () => process.env.UNSPLASH_ACCESS_KEY || '';
+const available = () => ALL.filter((c) => !UNSPLASH[c] || key());
 
-// ================= API HELPERS =================
-function fetchJSON(url) {
-    return new Promise((resolve, reject) => {
-        https.get(url, { timeout: 10000 }, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
-        }).on('error', reject).on('timeout', () => reject(new Error('Timeout')));
-    });
+// Unsplash search results, kept 30 minutes per category (one call gives 30 photos)
+const pools = new Map();
+async function unsplashPool(cat) {
+    const hit = pools.get(cat);
+    if (hit && Date.now() - hit.at < 30 * 60 * 1000) return hit.list;
+    const page = 1 + Math.floor(Math.random() * 5);   // not always the same 30
+    const d = await fun.getJSON(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(UNSPLASH[cat][0])}&per_page=30&page=${page}&orientation=landscape&content_filter=high`,
+        { headers: { Authorization: `Client-ID ${key()}`, 'Accept-Version': 'v1' } });
+    const list = (d?.results || []).filter((p) => p?.urls?.regular);
+    if (list.length) pools.set(cat, { list, at: Date.now() });
+    return list;
 }
 
-function fetchUnsplash(query, accessKey) {
-    return new Promise((resolve, reject) => {
-        if (!accessKey) return reject(new Error('No API key'));
-        const url = `https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=30&orientation=landscape&content_filter=high&client_id=${accessKey}`;
-        https.get(url, { timeout: 10000 }, (res) => {
-            let data = '';
-            res.on('data', chunk => data += chunk);
-            res.on('end', () => { try { resolve(JSON.parse(data)); } catch (e) { reject(e); } });
-        }).on('error', reject);
-    });
+// The same photo never twice in a row for a person and a category
+const lastShown = new Map();
+function pickNew(list, idOf, who) {
+    const last = lastShown.get(who);
+    const fresh = list.filter((x) => idOf(x) !== last);
+    const one = fun.pick(fresh.length ? fresh : list);
+    lastShown.set(who, idOf(one));
+    if (lastShown.size > 2000) lastShown.clear();
+    return one;
 }
 
-// ================= RAM CACHE for images =================
-const imageCache = new Map();
-const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
-
-function getCached(key) {
-    const entry = imageCache.get(key);
-    if (!entry) return null;
-    if (Date.now() - entry.time > CACHE_TTL) { imageCache.delete(key); return null; }
-    return entry.data;
-}
-function setCache(key, data) { imageCache.set(key, { data, time: Date.now() }); }
-
-// ================= IMAGE FETCHERS =================
-const fetchers = {
-    // DOGS — free API, no key needed
+// Each source gives { image, caption, credit (markdown), link: [url, label] }
+const SOURCES = {
     async dog() {
-        const data = await fetchJSON('https://dog.ceo/api/breeds/image/random');
-        if (data.status !== 'success') throw new Error('Dog API failed');
-
-        // Try to extract breed from URL
-        const breedMatch = data.message.match(/breeds\/([^/]+)/);
-        const breed = breedMatch ? breedMatch[1].replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : 'Mixed Breed';
-
-        return {
-            url: data.message,
-            title: `🐕 ${breed}`,
-            subtitle: breed,
-            source: 'dogApi',
-            color: '#e67e22',
-            meta: { breed }
-        };
+        const d = await fun.getJSON('https://dog.ceo/api/breeds/image/random');
+        if (d?.status !== 'success') return null;
+        const breed = (String(d.message).match(/breeds\/([^/]+)/) || [])[1];
+        const name = breed ? breed.split('-').reverse().join(' ').replace(/\b\w/g, (c) => c.toUpperCase()) : null;
+        return { image: d.message, caption: name, credit: '[Dog CEO](https://dog.ceo)' };
     },
-
-    // CATS — free API, optional key
     async cat() {
-        const data = await fetchJSON('https://api.thecatapi.com/v1/images/search?has_breeds=1&order=RANDOM&limit=1');
-        if (!data || !data[0]) throw new Error('Cat API failed');
-
-        const cat = data[0];
-        const breed = cat.breeds?.[0];
-
-        return {
-            url: cat.url,
-            title: breed ? `🐈 ${breed.name}` : '🐈 Cat',
-            subtitle: breed ? `${breed.name} — ${breed.temperament || 'Mysterious'}` : 'A wonderful cat',
-            source: 'catApi',
-            color: '#9b59b6',
-            meta: {
-                breed: breed?.name || 'Unknown',
-                origin: breed?.origin || 'Unknown',
-                temperament: breed?.temperament || '',
-                lifeSpan: breed?.life_span || '',
-                description: breed?.description || '',
-            }
-        };
+        const d = await fun.getJSON('https://api.thecatapi.com/v1/images/search?has_breeds=1&limit=1');
+        const c = d?.[0];
+        if (!c?.url) return null;
+        const b = c.breeds?.[0];
+        return { image: c.url, caption: b ? `${b.name}${b.origin ? ` · ${b.origin}` : ''}${b.temperament ? ` · ${b.temperament.split(',').slice(0, 3).join(',')}` : ''}` : null, credit: '[TheCatAPI](https://thecatapi.com)' };
     },
-
-    // CARS — Unsplash (requires key)
-    async car(accessKey) {
-        const cacheKey = 'unsplash_car';
-        let results = getCached(cacheKey);
-        if (!results) {
-            const data = await fetchUnsplash('luxury car sports automotive', accessKey);
-            results = data.results;
-            if (results && results.length > 0) setCache(cacheKey, results);
-        }
-        if (!results || results.length === 0) throw new Error('No car images');
-        const img = results[Math.floor(Math.random() * results.length)];
-
-        return {
-            url: img.urls.regular,
-            title: '🚗 Automotive Excellence',
-            subtitle: img.alt_description || 'High-performance vehicle',
-            source: 'unsplash',
-            color: '#e74c3c',
-            meta: {
-                photographer: img.user?.name || 'Unknown',
-                photographerLink: img.user?.links?.html || '',
-                width: img.width,
-                height: img.height,
-                unsplashUrl: img.links?.html || '',
-            }
-        };
-    },
-
-    // NATURE — Unsplash
-    async nature(accessKey) {
-        const cacheKey = 'unsplash_nature';
-        let results = getCached(cacheKey);
-        if (!results) {
-            const data = await fetchUnsplash('stunning nature landscape mountains forest ocean', accessKey);
-            results = data.results;
-            if (results && results.length > 0) setCache(cacheKey, results);
-        }
-        if (!results || results.length === 0) throw new Error('No nature images');
-        const img = results[Math.floor(Math.random() * results.length)];
-
-        return {
-            url: img.urls.regular,
-            title: '🌿 Natural Wonder',
-            subtitle: img.alt_description || 'Breathtaking landscape',
-            source: 'unsplash',
-            color: '#27ae60',
-            meta: {
-                photographer: img.user?.name || 'Unknown',
-                photographerLink: img.user?.links?.html || '',
-                width: img.width,
-                height: img.height,
-                unsplashUrl: img.links?.html || '',
-            }
-        };
-    },
-
-    // ARCHITECTURE — Unsplash
-    async architecture(accessKey) {
-        const cacheKey = 'unsplash_architecture';
-        let results = getCached(cacheKey);
-        if (!results) {
-            const data = await fetchUnsplash('architecture building cityscape skyline modern', accessKey);
-            results = data.results;
-            if (results && results.length > 0) setCache(cacheKey, results);
-        }
-        if (!results || results.length === 0) throw new Error('No architecture images');
-        const img = results[Math.floor(Math.random() * results.length)];
-
-        return {
-            url: img.urls.regular,
-            title: '🏛️ Architectural Marvel',
-            subtitle: img.alt_description || 'Stunning architecture',
-            source: 'unsplash',
-            color: '#3498db',
-            meta: {
-                photographer: img.user?.name || 'Unknown',
-                photographerLink: img.user?.links?.html || '',
-                width: img.width,
-                height: img.height,
-                unsplashUrl: img.links?.html || '',
-            }
-        };
-    },
-
-    // FOOD — Unsplash
-    async food(accessKey) {
-        const cacheKey = 'unsplash_food';
-        let results = getCached(cacheKey);
-        if (!results) {
-            const data = await fetchUnsplash('gourmet food cuisine delicious restaurant', accessKey);
-            results = data.results;
-            if (results && results.length > 0) setCache(cacheKey, results);
-        }
-        if (!results || results.length === 0) throw new Error('No food images');
-        const img = results[Math.floor(Math.random() * results.length)];
-
-        return {
-            url: img.urls.regular,
-            title: '🍕 Culinary Art',
-            subtitle: img.alt_description || 'Delicious cuisine',
-            source: 'unsplash',
-            color: '#f39c12',
-            meta: {
-                photographer: img.user?.name || 'Unknown',
-                photographerLink: img.user?.links?.html || '',
-                width: img.width,
-                height: img.height,
-                unsplashUrl: img.links?.html || '',
-            }
-        };
-    },
-
-    // SPACE — NASA APOD (free, no key)
     async space() {
-        const data = await fetchJSON('https://api.nasa.gov/planetary/apod?api_key=DEMO_KEY&count=1');
-        if (!data || !data[0]) throw new Error('NASA API failed');
-        const apod = data[0];
-        if (apod.media_type !== 'image') throw new Error('Not an image');
-
-        return {
-            url: apod.url,
-            title: `🚀 ${apod.title}`,
-            subtitle: apod.explanation?.substring(0, 200) || 'Cosmic wonder',
-            source: 'nasa',
-            color: '#2c3e50',
-            meta: {
-                date: apod.date,
-                copyright: apod.copyright || 'NASA',
-            }
-        };
+        const apiKey = process.env.NASA_API_KEY || 'DEMO_KEY';
+        const d = await fun.getJSON(`https://api.nasa.gov/planetary/apod?api_key=${apiKey}&count=5&thumbs=true`, { timeout: 10000 });
+        const pics = (Array.isArray(d) ? d : []).filter((a) => a.media_type === 'image' && a.url);
+        if (!pics.length) return null;
+        const a = fun.pick(pics);
+        return { image: a.url, caption: `${a.title}${a.date ? ` · ${a.date}` : ''}`, credit: `${a.copyright ? `${fun.safe(a.copyright.replace(/\n/g, ' '), 60)} · ` : ''}[NASA APOD](https://apod.nasa.gov/apod/ap${String(a.date || '').slice(2).replace(/-/g, '')}.html)` };
     },
-
-    // CYBERPUNK — Unsplash
-    async cyberpunk(accessKey) {
-        const cacheKey = 'unsplash_cyberpunk';
-        let results = getCached(cacheKey);
-        if (!results) {
-            const data = await fetchUnsplash('cyberpunk neon city night futuristic', accessKey);
-            results = data.results;
-            if (results && results.length > 0) setCache(cacheKey, results);
-        }
-        if (!results || results.length === 0) throw new Error('No cyberpunk images');
-        const img = results[Math.floor(Math.random() * results.length)];
-
-        return {
-            url: img.urls.regular,
-            title: '🌃 Cyberpunk Vision',
-            subtitle: img.alt_description || 'Neon-drenched metropolis',
-            source: 'unsplash',
-            color: '#9b59b6',
-            meta: {
-                photographer: img.user?.name || 'Unknown',
-                photographerLink: img.user?.links?.html || '',
-                width: img.width,
-                height: img.height,
-                unsplashUrl: img.links?.html || '',
-            }
-        };
-    },
-
-    // RANDOM — picks random category
-    async random(accessKey) {
-        const categories = ['dog', 'cat', 'car', 'nature', 'architecture', 'food', 'space', 'cyberpunk'];
-        const pick = categories[Math.floor(Math.random() * categories.length)];
-        return this[pick](accessKey);
-    }
 };
-
-// ================= STATS TRACKING =================
-let totalServed = 0;
-try {
-    const statsPath = require('path').join(__dirname, '..', 'data', '.image_stats.json');
-    if (require('fs').existsSync(statsPath)) {
-        totalServed = JSON.parse(require('fs').readFileSync(statsPath, 'utf8')).total || 0;
-    }
-} catch (e) {}
-
-function saveStats() {
-    try {
-        const fs = require('fs');
-        const path = require('path');
-        const dir = path.join(__dirname, '..', 'data');
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(path.join(dir, '.image_stats.json'), JSON.stringify({ total: totalServed, lastUpdate: Date.now() }));
-    } catch (e) {}
+async function unsplash(cat, who) {
+    const list = await unsplashPool(cat);
+    if (!list.length) return null;
+    const p = pickNew(list, (x) => x.id, `${who}:${cat}`);
+    // Unsplash asks for each shown photo to be reported (it counts as a download for the photographer)
+    if (p.links?.download_location) fun.getJSON(`${p.links.download_location}${p.links.download_location.includes('?') ? '&' : '?'}client_id=${key()}`).catch(() => {});
+    const who2 = p.user?.name ? `[${fun.safe(p.user.name, 60)}](${p.user.links?.html || 'https://unsplash.com'}?${UTM})` : null;
+    return {
+        image: p.urls.regular,
+        caption: p.alt_description ? fun.safe(p.alt_description.charAt(0).toUpperCase() + p.alt_description.slice(1), 140) : null,
+        credit: who2,
+        unsplash: true,
+        size: p.width && p.height ? `${p.width}×${p.height}` : null,
+        link: p.links?.html ? `${p.links.html}?${UTM}` : null,
+    };
 }
 
-// ================= EMBED BUILDER =================
-function buildImageEmbed(imageData, lang, version, guildName) {
-    const txt = T[lang];
-    const meta = imageData.meta;
-    const embed = new EmbedBuilder()
-        .setColor(imageData.color)
-        .setTitle(imageData.title)
-        .setDescription(`> *${imageData.subtitle}*`)
-        .setImage(imageData.url)
-        .setTimestamp();
-
-    // Source attribution
-    if (imageData.source === 'unsplash') {
-        const fields = [
-            { name: txt.photographer, value: meta.photographer || 'Unknown', inline: true },
-        ];
-        if (meta.width && meta.height) {
-            fields.push({ name: txt.resolution, value: `${meta.width}×${meta.height}`, inline: true });
-        }
-        embed.addFields(fields);
-        embed.setFooter({ text: `${txt.unsplash} • ${guildName} • v${version}` });
-    } else if (imageData.source === 'dogApi') {
-        embed.addFields({ name: txt.breed, value: meta.breed || 'Mixed', inline: true });
-        embed.setFooter({ text: `${txt.dogApi} • ${guildName} • v${version}` });
-    } else if (imageData.source === 'catApi') {
-        const fields = [{ name: txt.breed, value: meta.breed || 'Unknown', inline: true }];
-        if (meta.origin) fields.push({ name: 'Origin', value: meta.origin, inline: true });
-        if (meta.temperament) fields.push({ name: 'Temperament', value: meta.temperament, inline: false });
-        embed.addFields(fields);
-        embed.setFooter({ text: `${txt.catApi} • ${guildName} • v${version}` });
-    } else if (imageData.source === 'nasa') {
-        embed.addFields(
-            { name: 'Date', value: meta.date || 'Unknown', inline: true },
-            { name: 'Credit', value: meta.copyright || 'NASA', inline: true }
-        );
-        embed.setFooter({ text: `${txt.nasa} • ${guildName} • v${version}` });
+async function funMake(client, { guild, user, lang, arg }) {
+    const asked = ALL.includes(arg) || arg === 'random' ? arg : 'random';
+    const can = available();
+    if (UNSPLASH[asked] && !key()) {
+        return fun.textCard(guild, lang, { color: 0x888780, body: fun.F('img_noKey', lang, { cat: fun.F(`img_${asked}`, lang) }) });
     }
+    const cat = asked === 'random' ? fun.pick(can) : asked;
+    let r = null;
+    try { r = UNSPLASH[cat] ? await unsplash(cat, user.id) : await SOURCES[cat](); }
+    catch (e) { console.log(`[IMAGE] ${cat}: ${String(e.response?.status || e.message).slice(0, 80)}`); }
+    if (!r) return fun.failCard(lang, 'image');
 
-    return embed;
+    const lines = [];
+    if (r.caption) lines.push(fun.safe(r.caption, 160));
+    if (r.unsplash) lines.push(`📷 ${fun.F('img_by', lang, { who: r.credit || 'Unsplash', site: `[Unsplash](https://unsplash.com/?${UTM})` })}${r.size ? ` · ${r.size}` : ''}`);
+    else if (r.credit) lines.push(fun.F('source', lang, { source: r.credit }));
+    return fun.imageCard(guild, lang, {
+        color: UNSPLASH[cat]?.[1] || COLORS[cat] || 0xE6A817,
+        title: `${ICON[cat]} ${fun.F(`img_${cat}`, lang)}`,
+        image: r.image,
+        lines,
+        again: ['image', user.id, asked],   // "Another one" stays on the theme asked (random stays random)
+        link: r.link ? [r.link, fun.F('img_view', lang)] : null,
+    });
 }
 
-// ================= MAIN MODULE =================
 module.exports = {
     name: 'image',
     userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
-    aliases: ['img', 'pic', 'photo', 'image', 'images'],
-    description: '📸 Fetch ultra HD SFW images — dogs, cats, cars, nature, architecture, food, space, cyberpunk.',
+    aliases: ['img', 'pic', 'photo', 'images'],
+    description: 'A photo by theme: dogs, cats, cars, nature, architecture, food, space, cyberpunk',
     category: 'UTILITY',
     cooldown: 3000,
     usage: '.image <category>',
-    examples: ['.image dog', '.image cat', '.image car', '.img random', '.pic nature'],
+    examples: ['.image dog', '.image space', '.img random'],
+    funMake,
 
     data: new SlashCommandBuilder()
         .setName('image')
-        .setDescription('📸 Fetch ultra HD SFW images')
-        .setDescriptionLocalizations({ fr: '📸 Récupérer des images SFW ultra HD' })
-        .addStringOption(opt => opt
-            .setName('category')
-            .setDescription('What kind of image?')
-            .setDescriptionLocalizations({ fr: 'Quel type d\'image ?' })
-            .setRequired(true)
-            .addChoices(
-                { name: '🔀 Random', value: 'random' },
-                { name: '🐕 Dog', value: 'dog' },
-                { name: '🐈 Cat', value: 'cat' },
-                { name: '🚗 Car', value: 'car' },
-                { name: '🌿 Nature', value: 'nature' },
-                { name: '🏛️ Architecture', value: 'architecture' },
-                { name: '🍕 Food', value: 'food' },
-                { name: '🚀 Space', value: 'space' },
-                { name: '🌃 Cyberpunk', value: 'cyberpunk' }
-            )),
+        .setDescription('A photo by theme')
+        .setDescriptionLocalizations({ fr: 'Une photo selon un thème' })
+        .addStringOption((o) => o.setName('category').setDescription('Which theme?').setDescriptionLocalizations({ fr: 'Quel thème ?' }).setRequired(true)
+            .addChoices(...['random', ...ALL].map((c) => ({ name: `${ICON[c]} ${c.charAt(0).toUpperCase() + c.slice(1)}`, value: c })))),
 
-    // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
-        const txt = T[lang];
-        const category = (args[0] || 'random').toLowerCase();
-        const accessKey = process.env.UNSPLASH_ACCESS_KEY;
-        const version = client.version || '2.0';
-        const guildName = message.guild?.name || 'DM';
-
-        // Validate category
-        const validCategories = ['dog', 'cat', 'car', 'nature', 'architecture', 'food', 'space', 'cyberpunk', 'random'];
-        if (!validCategories.includes(category)) {
-            return message.reply(
-                lang === 'fr'
-                    ? `${em('ic_off', '❌')} Catégorie invalide. Choisissez: ${validCategories.map(c => `\`${c}\``).join(', ')}`
-                    : `${em('ic_off', '❌')} Invalid category. Choose: ${validCategories.map(c => `\`${c}\``).join(', ')}`
-            ).catch(() => {});
-        }
-
-        // Check if Unsplash key needed but missing
-        const needsKey = ['car', 'nature', 'architecture', 'food', 'cyberpunk'];
-        if (needsKey.includes(category) && !accessKey) {
-            return message.reply(txt.noApiKey(category)).catch(() => {});
-        }
-
-        const loadingMsg = await message.reply(txt.loading(txt.categories[category] || category)).catch(() => null);
-
-        try {
-            const imageData = await fetchers[category](accessKey);
-            totalServed++;
-            saveStats();
-
-            const embed = buildImageEmbed(imageData, lang, version, guildName);
-
-            // Add "Next" button
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`image_next_${category}_${message.author.id}`)
-                    .setLabel(txt.next)
-                    .setStyle(ButtonStyle.Primary)
-                    .setEmoji('🔁')
-            );
-
-            const msg = await loadingMsg?.edit({ content: null, embeds: [embed], components: [row] }).catch(() => {
-                return message.channel.send({ embeds: [embed], components: [row] }).catch(() => {});
-            });
-
-            // Button collector for "Next"
-            if (msg && msg.createMessageComponentCollector) {
-                const collector = msg.createMessageComponentCollector({ time: 120000 });
-                collector.on('collect', async (i) => {
-                    if (!i.customId.endsWith(`_${message.author.id}`)) {
-                        return i.reply({ content: txt.en.accessDenied || em('ic_off', em('ic_off', '❌')) + ' Only the author can use this.', flags: 64 }).catch(() => {});
-                    }
-                    if (i.customId.startsWith('image_next')) {
-                        await i.deferUpdate().catch(() => {});
-                        try {
-                            const newImage = await fetchers[category](accessKey);
-                            totalServed++;
-                            saveStats();
-                            const newEmbed = buildImageEmbed(newImage, lang, version, guildName);
-                            await i.editReply({ embeds: [newEmbed] }).catch(() => {});
-                        } catch (e) {
-                            await i.followUp({ content: txt.error, flags: 64 }).catch(() => {});
-                        }
-                    }
-                });
-            }
-
-        } catch (err) {
-            console.error(`[IMAGE] ${category}:`, err.message);
-            loadingMsg?.edit(txt.error).catch(() => {});
-        }
+    run: async (client, message, args) => {
+        const lang = fun.langOf(client, message.guild?.id, message, message.author.id);
+        const arg = String(args[0] || 'random').toLowerCase();
+        return message.reply(await funMake(client, { guild: message.guild, user: message.author, lang, arg })).catch(() => {});
     },
-
-    // ================= SLASH COMMAND =================
-    execute: async (interaction, client) => {
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        const txt = T[lang];
-        const category = interaction.options.getString('category') || 'random';
-        const accessKey = process.env.UNSPLASH_ACCESS_KEY;
-        const version = client.version || '2.0';
-        const guildName = interaction.guild?.name || 'DM';
-
-        // Check if Unsplash key needed but missing
-        const needsKey = ['car', 'nature', 'architecture', 'food', 'cyberpunk'];
-        if (needsKey.includes(category) && !accessKey) {
-            return interaction.reply({ content: txt.noApiKey(category), flags: 64 });
-        }
-
-        await interaction.deferReply();
-
-        try {
-            const imageData = await fetchers[category](accessKey);
-            totalServed++;
-            saveStats();
-
-            const embed = buildImageEmbed(imageData, lang, version, guildName);
-
-            // Add "Next" button
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`image_slash_next_${category}_${interaction.user.id}`)
-                    .setLabel(txt.next)
-                    .setStyle(ButtonStyle.Primary)
-                    .setEmoji('🔁')
-            );
-
-            await interaction.editReply({ embeds: [embed], components: [row] });
-
-            // Button collector
-            const msg = await interaction.fetchReply();
-            const collector = msg.createMessageComponentCollector({ time: 120000 });
-            collector.on('collect', async (i) => {
-                if (!i.customId.endsWith(`_${interaction.user.id}`)) {
-                    return i.reply({ content: txt.en?.accessDenied || em('ic_off', em('ic_off', '❌')) + ' Only the author can use this.', flags: 64 }).catch(() => {});
-                }
-                if (i.customId.startsWith('image_slash_next')) {
-                    await i.deferUpdate().catch(() => {});
-                    try {
-                        const newImage = await fetchers[category](accessKey);
-                        totalServed++;
-                        saveStats();
-                        const newEmbed = buildImageEmbed(newImage, lang, version, guildName);
-                        await i.editReply({ embeds: [newEmbed] }).catch(() => {});
-                    } catch (e) {
-                        await i.followUp({ content: txt.error, flags: 64 }).catch(() => {});
-                    }
-                }
-            });
-
-        } catch (err) {
-            console.error(`[IMAGE SLASH] ${category}:`, err.message);
-            interaction.editReply(txt.error).catch(() => {});
-        }
-    }
+    execute: async (ix, client) => {
+        const lang = fun.langOf(client, ix.guildId, ix, ix.user.id);
+        await ix.deferReply();
+        return ix.editReply(await funMake(client, { guild: ix.guild, user: ix.user, lang, arg: ix.options.getString('category') || 'random' }));
+    },
 };
