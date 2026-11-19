@@ -17,8 +17,8 @@
   "trFailed": "لم تنجح الترجمة. حاول مرة أخرى بعد قليل.",
   "modalTitle": "تعديل القواعد",
   "modalName": "العنوان",
-  "modalRules": "القواعد، قاعدة في كل سطر",
-  "modalPlaceholder": "الاحترام: لا كراهية ولا تحرش ولا إساءة",
+  "modalRules": "قاعدة في كل سطر · :ic_shield: = أيقونة",
+  "modalPlaceholder": "الاحترام: :ic_shield: لا كراهية ولا إساءة",
   "savedPanel": "حُفظت القواعد. تم تحديث اللوحة في {channel}.",
   "savedNoPanel": "حُفظت القواعد. انشرها عبر /rules panel.",
   "needText": "اكتب القواعد أولًا عبر /rules edit.",
@@ -49,5 +49,6 @@
   "lang_zh": "الصينية",
   "lang_ar": "العربية",
   "lang_bm": "البامبارا",
-  "iconsHint": "الأيقونات: اكتب الرمز في /rules edit، مثل `الاحترام: :ic_shield: لا كراهية`. هذه تناسب القواعد:"
+  "iconsHint": "الأيقونات: اكتب الرمز في /rules edit، مثل `الاحترام: :ic_shield: لا كراهية`. هذه تناسب القواعد:",
+  "iconsTip": "نصيحة: أضف أيقونات بكتابة رمزها، مثل :ic_shield:. يعرض /rules settings الأيقونات المناسبة للقواعد."
 }
