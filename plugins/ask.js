@@ -59,12 +59,16 @@ function facts(client) {
     ].filter(Boolean).join('\n');
 }
 
-function system(lang, client) {
+function system(lang, client, user) {
     return 'You are Archon, the assistant of ARCHON CG-223, a Discord bot made in Bamako, Mali. '
         + `Answer in ${LANGS[lang]} unless the person clearly writes in another language; then use theirs. `
         + 'Be direct, warm and accurate. Keep it short: under 1500 characters, Discord markdown, no headings over ###. '
         + 'Never write @everyone or @here. If you are not sure of a fact, say so instead of guessing. '
-        + 'Links: write them bare (no markdown around them).\n\n' + facts(client);
+        + 'Links: write them bare (no markdown around them).\n\n' + facts(client)
+        // who is asking: their display name (and username), so Archon can answer "what's my name" or greet them.
+        // Nothing else about them is sent.
+        + (user ? `\n\nTHE PERSON ASKING: ${String(user.globalName || user.username).replace(/[\n\r`]/g, ' ').slice(0, 40)}`
+            + `${user.globalName && user.globalName !== user.username ? ` (username: ${user.username})` : ''}. Use their name naturally, not in every sentence.` : '');
 }
 
 // The answer card: what was asked (a line), the answer, who asked and what's left today
@@ -98,7 +102,7 @@ async function answer(interaction, client, { question, imageUrl = null, quoted =
     let res = null;
     try {
         const { generateAIResponse } = require('../lib/lydia/models');
-        res = await generateAIResponse(system(lang, client), prompt, [], imageUrl, undefined, null);
+        res = await generateAIResponse(system(lang, client, interaction.user), prompt, [], imageUrl, undefined, null);
     } catch (e) {
         console.error('[ASK]', e.message);
     }
