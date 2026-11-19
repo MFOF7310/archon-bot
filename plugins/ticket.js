@@ -248,7 +248,8 @@ function panelCard(s, gn, lang='en', actionRow = null, client = null) {
     const ticketEmoji = resolveEmoji('ticket', client) || '🎫';
     const items = [
         { text: `## ${ticketEmoji} ${t('ticket.panel_title', lang)}` },
-        { text: `**${gn}** · ${t('ticket.panel_status', lang)}` },
+        // the status dot is ARCHON's own "online" icon (the 🟢 in the translations is the fallback)
+        { text: `**${gn}** · ${require('../lib/ui/icons').icon('online')} ${String(t('ticket.panel_status', lang)).replace(/^🟢\s*/, '')}` },
         { rule: true },
         { text: t('ticket.panel_how_it_works', lang) },
         { rule: true },
