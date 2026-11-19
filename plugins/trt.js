@@ -8,6 +8,7 @@ function resolveCode(input) { return LANG_CODES[input.toLowerCase()] || input.to
 
 module.exports = {
     name: 'translate', aliases: ['tr', 'translation', 'translator'],
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     description: '🌐 Translate text between 12 languages instantly.',
     category: 'UTILITY', cooldown: 3000, usage: '.translate <text> [from] [to]', examples: ['.translate hello fr', '.translate bonjour en fr'],
     data: new SlashCommandBuilder().setName('translate').setDescription('🌐 Translate text').addStringOption(o => o.setName('text').setDescription('Text to translate').setRequired(true)).addStringOption(o => o.setName('from').setDescription('Source language').setRequired(false).addChoices({name:'Auto',value:'auto'},{name:'English',value:'en'},{name:'French',value:'fr'},{name:'Spanish',value:'es'},{name:'German',value:'de'},{name:'Japanese',value:'ja'})).addStringOption(o => o.setName('to').setDescription('Target language').setRequired(false).addChoices({name:'English',value:'en'},{name:'French',value:'fr'},{name:'Spanish',value:'es'},{name:'German',value:'de'},{name:'Japanese',value:'ja'},{name:'Russian',value:'ru'},{name:'Korean',value:'ko'},{name:'Chinese',value:'zh'})),

@@ -2,6 +2,7 @@ const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
     name: 'avatar',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['av', 'pfp'],
     description: '🖼️ Display your or another user\'s avatar in high quality.',
     category: 'UTILITY',

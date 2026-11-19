@@ -6,6 +6,7 @@ const { resolveEmoji } = require('../lib/emoji-resolver');
 
 module.exports = {
     name: 'lyrics',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['lyric', 'paroles', 'lrc'],
     description: '📝 Get lyrics for the current or any song',
     category: 'MUSIC',

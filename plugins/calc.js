@@ -30,6 +30,7 @@ const MAX_HISTORY = 5;
 
 module.exports = {
     name: 'calc', aliases: ['calculate', 'math', 'calculator', 'c'],
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     description: '🧮 Safe calculator with scientific functions and history.',
     category: 'UTILITY', cooldown: 2000, usage: '.calc <expression>', examples: ['.calc 2+2', '.calc sin(45)', '.calc sqrt(144)'],
     data: new SlashCommandBuilder().setName('calc').setDescription('🧮 Calculator').addStringOption(o => o.setName('expression').setDescription('Math expression').setRequired(true)),

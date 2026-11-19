@@ -28,6 +28,7 @@ function funMake(client, { guild, user, lang, arg, priv }) {
 
 module.exports = {
     name: 'roll',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['dice'],
     description: 'Roll dice: 1d6, 2d6, 1d20, 3d8+2',
     category: 'FUN',

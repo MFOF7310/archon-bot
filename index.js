@@ -3106,7 +3106,7 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         // Server-only commands used in DMs (an old Discord client can still offer them): a plain answer, not a crash
         const restrictedCommands = ['profile', 'daily', 'shop', 'credits', 'balance', 'rank', 'leaderboard'];
         const restrictedCategories = ['ECONOMY', 'MODERATION', 'PROFILE', 'GAMING', 'ADMIN', 'MUSIC'];
-        if (!interaction.guild && (restrictedCommands.includes(command.name) || restrictedCategories.includes(String(command.category || '').toUpperCase()) || command.data?.default_member_permissions)) {
+        if (!interaction.guild && command.userApp !== true && (restrictedCommands.includes(command.name) || restrictedCategories.includes(String(command.category || '').toUpperCase()) || command.data?.default_member_permissions)) {
             const lang = interaction.locale?.startsWith('fr') ? 'fr' : 'en';
             return interaction.reply({
                 content: `**${t('index.restricted_title', lang)}**\n${t('index.restricted_desc', lang)}\n${t('index.restricted_action', lang, { command: command.name, botname: client.user.username })}`,

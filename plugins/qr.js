@@ -8,6 +8,7 @@ const T = {
 
 module.exports = {
     name: 'qr', aliases: ['qrcode', 'barcode', 'scan'],
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     description: '📱 Generate QR codes from any text or URL instantly.',
     category: 'UTILITY', cooldown: 3000, usage: '.qr <text>', examples: ['.qr https://discord.com', '.qr Hello World!', '/qr text:Hello'],
     data: new SlashCommandBuilder().setName('qr').setDescription('📱 Generate a QR code').addStringOption(o => o.setName('text').setDescription('Text or URL to encode').setRequired(true)).addStringOption(o => o.setName('color').setDescription('QR colour: a name or #hex (default: black)').setRequired(false).setAutocomplete(true)).addIntegerOption(o => o.setName('size').setDescription('Size in pixels (100-1000, default: 500)').setRequired(false)),

@@ -14,6 +14,7 @@ function funMake(client, { guild, user, lang, priv }) {
 
 module.exports = {
     name: 'coinflip',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['coin', 'flip'],
     description: 'Flip a coin',
     category: 'FUN',

@@ -116,6 +116,7 @@ function buildIntelligenceCard(entry, t, word, timestamp) {
 
 module.exports = {
     name: 'define',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     description: '📖 Intelligence dictionary lookup — English definitions with trilingual UI',
     category: 'UTILITY',
     data: new SlashCommandBuilder()

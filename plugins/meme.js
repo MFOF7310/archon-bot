@@ -37,6 +37,7 @@ async function funMake(client, { guild, user, lang, priv }) {
 
 module.exports = {
     name: 'meme',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['memes', 'funny', 'lol'],
     description: 'A safe-for-work meme',
     category: 'FUN',

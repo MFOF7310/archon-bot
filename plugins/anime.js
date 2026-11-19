@@ -171,6 +171,7 @@ async function funMake(client, { guild, user, lang, arg, priv }) {
 
 module.exports = {
     name: 'anime',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['animechar', 'character', 'summon'],
     description: 'Summon an anime character card',
     category: 'FUN',
