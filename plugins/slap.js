@@ -27,7 +27,7 @@ function count(db, gid, uid) {
 function slapCard(client, guild, lang, from, to, back) {
     const n = count(client.db, guild?.id, to.id);
     const line = fun.pick(LINES[lang] || LINES.en).replace('{from}', `<@${from.id}>`).replace('{to}', `<@${to.id}>`);
-    const items = [{ text: `-# ${icon('hand', guild)} ${fun.F(back ? 'slapBack' : 'slap', lang)}\n### ${line}\n-# ${fun.F(n === 1 ? 'slappedOnce' : 'slapped', lang, { user: `<@${to.id}>`, n })}` }];
+    const items = [{ text: `-# ${icon('hand', guild)} ${fun.F(back ? 'slapBack' : 'slap', lang)}\n### ${line}\n-# ${fun.F(guild ? (n === 1 ? 'slappedOnce' : 'slapped') : (n === 1 ? 'slappedOnceHere' : 'slappedHere'), lang, { user: `<@${to.id}>`, n })}` }];
     if (!back) items.push({ row: new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`fun:slapback:${from.id}:${to.id}`).setLabel(fun.F('btnSlapBack', lang)).setStyle(ButtonStyle.Danger).setEmoji(icon('hand', guild))) });
     const payload = card(back ? 0xEF9F27 : 0xE24B4A, items);
     payload.allowedMentions = { users: [to.id] };   // the one slapped is told

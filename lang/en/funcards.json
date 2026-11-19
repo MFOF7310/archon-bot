@@ -50,5 +50,7 @@
   "power": "Power",
   "speed": "Speed",
   "wisdom": "Wisdom",
-  "summonAgain": "Summon another"
+  "summonAgain": "Summon another",
+  "slappedOnceHere": "{user} has been slapped once here.",
+  "slappedHere": "{user} has been slapped {n} times here."
 }

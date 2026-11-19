@@ -50,5 +50,7 @@
   "power": "القوة",
   "speed": "السرعة",
   "wisdom": "الحكمة",
-  "summonAgain": "استدعِ آخر"
+  "summonAgain": "استدعِ آخر",
+  "slappedOnceHere": "تلقى {user} صفعة واحدة هنا.",
+  "slappedHere": "تلقى {user} {n} صفعات هنا."
 }

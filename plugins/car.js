@@ -8,7 +8,7 @@ const CARS = [
     ['1503376780353-7e6692767b70', 'Porsche'], ['1552519507-da3b142c6e3d', 'Ford GT'], ['1580273916550-e323be2ae537', 'Lamborghini'],
     ['1549317661-bd32c8ce0db2', 'Ferrari'], ['1568605117036-5fe5e7fa0ac7', 'Audi R8'], ['1614200187524-dc4b892acf16', 'McLaren'],
     ['1533473359331-0135ef1b58bf', 'Mercedes-AMG'], ['1542362567-b07e54358753', 'BMW M4'], ['1603584173870-7e0443fc6b6c', 'Bugatti'],
-    ['1621135802920-133df287f89c', 'Nissan GT-R'], ['1572197505605-d0fd6b0af82b', 'Chevrolet Corvette'], ['1511919884226-fd3cad34687c', 'Ford Mustang (classic)'],
+    ['1621135802920-133df287f89c', 'Lamborghini Aventador'], ['1572197505605-d0fd6b0af82b', 'Chevrolet Corvette'], ['1511919884226-fd3cad34687c', 'Ford Mustang (classic)'],
     ['1567808291548-fc3ee04dbcf0', 'Tesla'], ['1580274455191-1c62238fa333', 'Porsche 911'], ['1605559424843-9e4c228bf1c2', 'Lexus LC'],
     ['1568402105612-6a82a9d7a5f9', 'Jaguar'], ['1581540222194-0def2dda95b8', 'Aston Martin'], ['1627462450295-ff5ab21339c2', 'Dodge Challenger'],
     ['1573213083431-ef52c6fea96a', 'Rolls-Royce'], ['1602584383687-1c2dae162c4a', 'Koenigsegg'],

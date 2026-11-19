@@ -50,5 +50,7 @@
   "power": "Puissance",
   "speed": "Vitesse",
   "wisdom": "Sagesse",
-  "summonAgain": "Invoquer un autre"
+  "summonAgain": "Invoquer un autre",
+  "slappedOnceHere": "{user} a reçu 1 gifle ici.",
+  "slappedHere": "{user} a reçu {n} gifles ici."
 }

@@ -50,5 +50,7 @@
   "power": "力量",
   "speed": "速度",
   "wisdom": "智慧",
-  "summonAgain": "再召唤一个"
+  "summonAgain": "再召唤一个",
+  "slappedOnceHere": "{user} 在这里挨了 1 巴掌。",
+  "slappedHere": "{user} 在这里挨了 {n} 巴掌。"
 }
