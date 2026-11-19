@@ -4,5 +4,6 @@
   "unreachable": "This page didn't answer. Check the link or try again later.",
   "open": "Open",
   "redirected": "redirected",
-  "fileType": "A file ({type}), not a web page"
+  "fileType": "A file ({type}), not a web page",
+  "refused": "This site refuses automatic previews (it protects itself from bots). Open it directly."
 }

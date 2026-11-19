@@ -108,7 +108,8 @@ function parse(html, base) {
 
 async function card(lang, link, where) {
     const raw = String(link || '').trim();
-    const r = /^https?:\/\//i.test(raw) ? await fetchPage(raw).catch((e) => ({ error: 'unreachable', why: e.message })) : { error: 'invalid' };
+    // a site that answers 401/403/429/503 is up but refuses robots (Cloudflare and the like): say so, not "didn't answer"
+    const r = /^https?:\/\//i.test(raw) ? await fetchPage(raw).catch((e) => ({ error: /HTTP (401|403|429|503)/.test(e.message) ? 'refused' : 'unreachable', why: e.message })) : { error: 'invalid' };
     if (r.error) {
         if (r.why) console.log(`[URL] ${raw.slice(0, 80)}: ${r.why}`);
         return v2.card(0x888780, [{ text: `${icon('warn', where)} ${T(lang, r.error)}` }]);

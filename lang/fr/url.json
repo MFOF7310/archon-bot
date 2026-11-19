@@ -4,5 +4,6 @@
   "unreachable": "Cette page n'a pas répondu. Vérifie le lien ou réessaie plus tard.",
   "open": "Ouvrir",
   "redirected": "redirigé",
-  "fileType": "Un fichier ({type}), pas une page web"
+  "fileType": "Un fichier ({type}), pas une page web",
+  "refused": "Ce site refuse les aperçus automatiques (il se protège des robots). Ouvre-le directement."
 }
