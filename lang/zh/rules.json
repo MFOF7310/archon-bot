@@ -17,8 +17,8 @@
   "trFailed": "翻译没有成功，请稍后再试。",
   "modalTitle": "编辑规则",
   "modalName": "标题",
-  "modalRules": "规则，每行一条",
-  "modalPlaceholder": "尊重：禁止仇恨、骚扰和恶意言行",
+  "modalRules": "规则，每行一条 · :ic_shield: = 图标",
+  "modalPlaceholder": "尊重：:ic_shield: 禁止仇恨和恶意言行",
   "savedPanel": "规则已保存。{channel} 中的面板已更新。",
   "savedNoPanel": "规则已保存。用 /rules panel 发布。",
   "needText": "请先用 /rules edit 编写规则。",
@@ -49,5 +49,6 @@
   "lang_zh": "中文",
   "lang_ar": "阿拉伯语",
   "lang_bm": "班巴拉语",
-  "iconsHint": "图标：在 /rules edit 中写入代码，例如 `尊重：:ic_shield: 禁止仇恨`。以下图标很适合规则："
+  "iconsHint": "图标：在 /rules edit 中写入代码，例如 `尊重：:ic_shield: 禁止仇恨`。以下图标很适合规则：",
+  "iconsTip": "提示：写入图标代码即可添加图标，例如 :ic_shield:。/rules settings 列出了适合规则的图标。"
 }

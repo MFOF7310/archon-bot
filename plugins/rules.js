@@ -256,7 +256,9 @@ async function handleComponent(interaction, client) {
         save(db, guild.id, { rules_text: text || null, title });
         await interaction.deferReply({ flags: EPH });
         const r = await refreshPanel(client, guild).catch(() => null);
-        return interaction.editReply({ content: `${icon('ok', interaction)} ${r?.edited ? tr('savedPanel', { channel: `<#${r.ch.id}>` }) : tr('savedNoPanel')}` });
+        // no icon used yet: one line saying they can (shown only then, so it never nags)
+        const tip = /:[A-Za-z0-9_]{2,32}:|<a?:\w+:\d+>/.test(text) ? '' : `\n-# ${tr('iconsTip')}`;
+        return interaction.editReply({ content: `${icon('ok', interaction)} ${r?.edited ? tr('savedPanel', { channel: `<#${r.ch.id}>` }) : tr('savedNoPanel')}${tip}` });
     }
     if (id === 'rules:role') {
         const roleId = interaction.values?.[0] || null;

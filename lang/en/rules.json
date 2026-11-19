@@ -17,8 +17,8 @@
   "trFailed": "The translation didn't come through. Try again in a moment.",
   "modalTitle": "Edit the rules",
   "modalName": "Title",
-  "modalRules": "Rules, one per line",
-  "modalPlaceholder": "Respect: no hate, harassment or toxicity",
+  "modalRules": "Rules, one per line · :ic_shield: = icon",
+  "modalPlaceholder": "Respect: :ic_shield: no hate or toxicity",
   "savedPanel": "Rules saved. The panel in {channel} is updated.",
   "savedNoPanel": "Rules saved. Post them with /rules panel.",
   "needText": "Write the rules first with /rules edit.",
@@ -49,5 +49,6 @@
   "lang_zh": "Chinese",
   "lang_ar": "Arabic",
   "lang_bm": "Bambara",
-  "iconsHint": "Icons: write the code in /rules edit, for example `Respect: :ic_shield: no hate`. These ones fit rules well:"
+  "iconsHint": "Icons: write the code in /rules edit, for example `Respect: :ic_shield: no hate`. These ones fit rules well:",
+  "iconsTip": "Tip: add icons by writing their code, like :ic_shield:. /rules settings lists the ones that fit rules."
 }

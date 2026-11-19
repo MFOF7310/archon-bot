@@ -17,8 +17,8 @@
   "trFailed": "La traduction n'est pas passée. Réessaie dans un moment.",
   "modalTitle": "Modifier les règles",
   "modalName": "Titre",
-  "modalRules": "Règles, une par ligne",
-  "modalPlaceholder": "Respect : pas de haine, de harcèlement ni de toxicité",
+  "modalRules": "Règles, une par ligne · :ic_shield: = icône",
+  "modalPlaceholder": "Respect : :ic_shield: pas de haine ni de toxicité",
   "savedPanel": "Règles enregistrées. Le panneau dans {channel} est mis à jour.",
   "savedNoPanel": "Règles enregistrées. Publie-les avec /rules panel.",
   "needText": "Écris d'abord les règles avec /rules edit.",
@@ -49,5 +49,6 @@
   "lang_zh": "chinois",
   "lang_ar": "arabe",
   "lang_bm": "bambara",
-  "iconsHint": "Icônes : écris le code dans /rules edit, par exemple `Respect : :ic_shield: pas de haine`. Celles-ci vont bien avec des règles :"
+  "iconsHint": "Icônes : écris le code dans /rules edit, par exemple `Respect : :ic_shield: pas de haine`. Celles-ci vont bien avec des règles :",
+  "iconsTip": "Astuce : ajoute des icônes en écrivant leur code, comme :ic_shield:. /rules settings liste celles qui vont bien avec des règles."
 }
