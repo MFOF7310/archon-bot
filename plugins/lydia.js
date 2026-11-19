@@ -223,7 +223,9 @@ async function handleLydiaMessage(message, client, database) {
 
     const serverPrefix = client.getServerSettings?.(message.guild.id)?.prefix || process.env.PREFIX || '.';
 
-    const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang, client.commands?.size || 0, message.content, client.commands, !!(message.guild?.id && isPremium(database, message.guild.id)), client.moduleStats);
+    const systemPrompt = buildSystemPrompt(botName, userName, message.guild, isOwner, theme, serverPrefix, lang, client.commands?.size || 0, message.content, client.commands, !!(message.guild?.id && isPremium(database, message.guild.id)),
+      // the same totals as the restart card (plugins loaded, slash commands), so Archon never quotes a different number
+      client.moduleStats ? { ...client.moduleStats, total: client.commands?.size || client.moduleStats.total, slash: client._slashCount || client.moduleStats.slash } : null);
 
     let fullSystem = memories.length > 0
       ? `${systemPrompt}\n\n[Your memories about this user]:\n${memories.map(m => `\u2022 ${m.memory_key}: ${m.memory_value}`).join('\n')}`
