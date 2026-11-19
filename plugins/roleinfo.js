@@ -1,107 +1,16 @@
-const { EmbedBuilder, PermissionsBitField } = require('discord.js');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-
+// .roleinfo <role> — a role's members, position, colour, settings and key permissions (lib/info-cards.js)
+const info = require('../lib/info-cards');
 module.exports = {
-    name: 'roleinfo',
-    aliases: ['ri', 'infosrole'],
-    description: 'ℹ️ Display information about a role.',
-    category: 'UTILITY',
-    cooldown: 3000,
-    usage: '.roleinfo <@role/roleID/role name>',
-    examples: ['.roleinfo @Admin', '.roleinfo Member'],
-
-    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
-        
-        const t = {
-            en: {
-                title: 'ℹ️ ROLE INFORMATION',
-                name: 'Name',
-                id: 'ID',
-                color: 'Color',
-                position: 'Position',
-                members: 'Members',
-                hoisted: 'Displayed Separately',
-                mentionable: 'Mentionable',
-                managed: 'Managed by Integration',
-                created: 'Created',
-                permissions: '🔐 KEY PERMISSIONS',
-                none: 'None',
-                noRole: '❌ Role not found. Please mention a role, provide an ID, or specify a name.',
-                footer: 'ARCHON CG-223 • Role info'
-            },
-            fr: {
-                title: 'ℹ️ INFORMATIONS DU RÔLE',
-                name: 'Nom',
-                id: 'ID',
-                color: 'Couleur',
-                position: 'Position',
-                members: 'Membres',
-                hoisted: 'Affiché séparément',
-                mentionable: 'Mentionnable',
-                managed: 'Géré par intégration',
-                created: 'Créé',
-                permissions: '🔐 PERMISSIONS CLÉS',
-                none: 'Aucune',
-                noRole: '❌ Rôle introuvable. Mentionnez un rôle, fournissez un ID ou spécifiez un nom.',
-                footer: 'ARCHON CG-223 • Infos du rôle'
-            }
-        }[lang];
-
-        const roleInput = args.join(' ');
-        if (!roleInput) {
-            return message.reply({ content: t.noRole, flags: 64 }).catch(() => {});
-        }
-
-        // Find role by mention, ID, or name
-        let role = message.mentions.roles.first() || 
-                   message.guild.roles.cache.get(roleInput) ||
-                   message.guild.roles.cache.find(r => r.name.toLowerCase().includes(roleInput.toLowerCase()));
-
-        if (!role) {
-            return message.reply({ content: t.noRole, flags: 64 }).catch(() => {});
-        }
-
-        // Get key permissions
-        const keyPerms = [
-            { name: 'Administrator', flag: PermissionsBitField.Flags.Administrator },
-            { name: 'Manage Server', flag: PermissionsBitField.Flags.ManageGuild },
-            { name: 'Manage Roles', flag: PermissionsBitField.Flags.ManageRoles },
-            { name: 'Manage Channels', flag: PermissionsBitField.Flags.ManageChannels },
-            { name: 'Kick Members', flag: PermissionsBitField.Flags.KickMembers },
-            { name: 'Ban Members', flag: PermissionsBitField.Flags.BanMembers },
-            { name: 'Manage Messages', flag: PermissionsBitField.Flags.ManageMessages },
-            { name: 'Mention Everyone', flag: PermissionsBitField.Flags.MentionEveryone }
-        ];
-
-        const activePerms = keyPerms.filter(p => role.permissions.has(p.flag)).map(p => p.name);
-        const permDisplay = activePerms.length > 0 ? activePerms.map(p => `• ${p}`).join('\n') : t.none;
-
-        const embed = new EmbedBuilder()
-            .setColor(role.color || '#95a5a6')
-            .setAuthor({ name: t.title, iconURL: message.guild.iconURL({ dynamic: true }) })
-            .setTitle(`${role.name}`)
-            .setDescription(
-                `\`\`\`yaml\n` +
-                `${t.name}: ${role.name}\n` +
-                `${t.id}: ${role.id}\n` +
-                `${t.color}: ${role.hexColor}\n` +
-                `${t.position}: ${role.position} / ${message.guild.roles.cache.size}\n` +
-                `${t.members}: ${role.members.size}\n` +
-                `${t.hoisted}: ${role.hoist ? em('ic_ok', '✅') : '❌'}\n` +
-                `${t.mentionable}: ${role.mentionable ? em('ic_ok', '✅') : '❌'}\n` +
-                `${t.managed}: ${role.managed ? em('ic_ok', '✅') : '❌'}\n` +
-                `${t.created}: ${role.createdAt.toLocaleDateString()}\n` +
-                `\`\`\``
-            )
-            .addFields({
-                name: t.permissions,
-                value: `\`\`\`yaml\n${permDisplay}\`\`\``,
-                inline: false
-            })
-            .setFooter({ text: t.footer })
-            .setTimestamp();
-
-        await message.reply({ embeds: [embed] }).catch(() => {});
-    }
+    name: 'roleinfo', aliases: ['ri', 'infosrole', 'role-info'],
+    description: 'Details of a role', category: 'UTILITY', cooldown: 3000,
+    usage: '.roleinfo <@role | ID | name>', examples: ['.roleinfo @Moderator', '.roleinfo Verified'],
+    run: async (client, message, args) => {
+        if (!message.guild) return;
+        const lang = info.langOf(client, message.guild.id, message, message.author.id);
+        const q = args.join(' ').trim().toLowerCase();
+        const roles = message.guild.roles.cache;
+        const role = message.mentions.roles.first() || roles.get(args[0]) || roles.find((r) => r.name.toLowerCase() === q) || (q ? roles.find((r) => r.name.toLowerCase().includes(q)) : null);
+        if (!role) return message.reply(info.T(lang, 'noRole')).catch(() => {});
+        return message.reply(await info.roleInfo(message.guild, role, lang, message)).catch(() => {});
+    },
 };
