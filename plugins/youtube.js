@@ -11,6 +11,7 @@ const CACHE_TTL = 300000;
 
 module.exports = {
     name: 'youtube',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['yt', 'video', 'ytsearch', 'ytinfo'],
     description: '🎬 Search YouTube or get detailed video information',
     category: 'UTILITY',

@@ -52,6 +52,7 @@ async function slapBack(ix, client, parts, lang) {
 
 module.exports = {
     name: 'slap',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['smack', 'hit'],
     description: 'Slap someone (playfully)',
     category: 'FUN',

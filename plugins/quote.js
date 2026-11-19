@@ -185,6 +185,7 @@ function buildQuoteEmbed(quote, category, lang, version, guildName) {
 // ================= MAIN MODULE =================
 module.exports = {
     name: 'quote',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['quotes', 'citation', 'citations', 'q', 'wisdom', 'motivation', 'inspire'],
     description: '📜 Curated SFW inspirational quotes — motivation, wisdom, success, leadership, creativity, resilience, humor.',
     category: 'UTILITY',

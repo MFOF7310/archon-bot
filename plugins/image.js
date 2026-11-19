@@ -371,6 +371,7 @@ function buildImageEmbed(imageData, lang, version, guildName) {
 // ================= MAIN MODULE =================
 module.exports = {
     name: 'image',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['img', 'pic', 'photo', 'image', 'images'],
     description: '📸 Fetch ultra HD SFW images — dogs, cats, cars, nature, architecture, food, space, cyberpunk.',
     category: 'UTILITY',

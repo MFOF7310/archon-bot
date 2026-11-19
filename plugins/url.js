@@ -162,6 +162,7 @@ function extractLinkTag(html, rel) {
 // ================= MODULE =================
 module.exports = {
     name: 'url',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['link', 'preview', 'website', 'site', 'urlpreview'],
     description: '🔗 Fetch rich preview of any URL — title, description, image, metadata.',
     category: 'UTILITY',

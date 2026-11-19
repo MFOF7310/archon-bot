@@ -29,6 +29,7 @@ async function funMake(client, { guild, user, lang, arg, priv }) {
 
 module.exports = {
     name: 'car',
+    userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['cars', 'voiture', 'auto', 'vehicle', 'automobile'],
     description: 'A random car picture',
     category: 'FUN',
