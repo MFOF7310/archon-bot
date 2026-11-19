@@ -3428,6 +3428,10 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if ((interaction.isButton() || interaction.isUserSelectMenu() || interaction.isModalSubmit()) && interaction.customId.startsWith('global:')) {
         return require('./plugins/cross-economy.js').handleComponent(interaction, client).catch(e => console.error('[GLOBAL] component:', e.message));
     }
+    // /rules: accept, translate, settings menus, the edit box (and the accept button of panels posted before the redesign)
+    if ((interaction.isButton() || interaction.isAnySelectMenu() || interaction.isModalSubmit()) && (interaction.customId.startsWith('rules:') || interaction.customId.startsWith('rules_accept_'))) {
+        return require('./plugins/rules.js').handleComponent(interaction, client).catch(e => console.error('[RULES] component:', e.message));
+    }
     if (interaction.isButton() && interaction.customId.startsWith('setuprem:')) {
         return require('./lib/setup-reminder').handleComponent(interaction, client).catch(e => console.error('[SETUP-REMINDER] button:', e.message));
     }

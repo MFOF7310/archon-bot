@@ -120,6 +120,17 @@ make ic_handshake heart-handshake
 # Setup reminder: a step not done yet
 make ic_circle_dashed circle-dashed "#949BA4"
 
+# /rules: gold numbered circles for the rules
+make ic_num_1 circle-number-1 "$AMBER"
+make ic_num_2 circle-number-2 "$AMBER"
+make ic_num_3 circle-number-3 "$AMBER"
+make ic_num_4 circle-number-4 "$AMBER"
+make ic_num_5 circle-number-5 "$AMBER"
+make ic_num_6 circle-number-6 "$AMBER"
+make ic_num_7 circle-number-7 "$AMBER"
+make ic_num_8 circle-number-8 "$AMBER"
+make ic_num_9 circle-number-9 "$AMBER"
+
 # Every new icon goes to its category in config/emojis.js
 node scripts/emojis-tidy.js
 echo "Done. Now run: pm2 restart Architect-CG223"

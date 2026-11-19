@@ -1,355 +1,329 @@
-const { SlashCommandBuilder, PermissionFlagsBits, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+'use strict';
+// /rules — the server's rules as one gold card.
+//   show      the card, privately, for whoever asks (accept and translate buttons included)
+//   panel     posts the card in the rules channel (/channels), or updates the one already there
+//   edit      a multi-line box (up to 4000 characters), filled with the current rules or what #rules already says
+//   settings  a private card: role given on accept, card colour, who accepted
+// One rule per line; "Name: details" puts the name in bold; a line starting with # is a section heading.
+// Rules are numbered with ARCHON's number icons (ic_num_1…9), then plain numbers.
+// Saving updates the posted panel in place. "Read in my language" has Archon AI translate the rules privately;
+// each language is translated once per version of the rules and kept.
+// Buttons, menus and the box use rules:… ids routed from index.js; old panels (rules_accept_<id>) still work.
+// Words: lang/<locale>/rules.json.
+const crypto = require('crypto');
+const {
+    SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, PermissionFlagsBits,
+    ModalBuilder, TextInputBuilder, TextInputStyle, RoleSelectMenuBuilder, StringSelectMenuBuilder,
+} = require('discord.js');
+const v2 = require('../lib/games/v2');
 const { icon } = require('../lib/ui/icons');
 const { t } = require('../lib/i18n');
-const ui = require('../lib/games/ui');
-const v2 = require('../lib/games/v2');
-const E = require('../config/emojis');
-const em = (k, fb) => E[k] || fb;
+const { pickLang } = require('../lib/pick-lang');
 
-const OKL = ['en', 'fr', 'bm', 'zh', 'ar'];
-const GOLD = 0xffd700;
+const GOLD = 0xE6A817;
+const GREY = 0x4E5058;
+const V2 = MessageFlags.IsComponentsV2;
+const EPH = MessageFlags.Ephemeral;
+const COLORS = { gold: '#E6A817', blue: '#378ADD', green: '#23A55A', red: '#E74C3C', purple: '#7F77DD', teal: '#1D9E75', orange: '#D85A30', grey: '#4E5058' };
+const LANG_NAME = { en: 'English', fr: 'French', zh: 'Simplified Chinese', ar: 'Arabic', bm: 'Bambara' };
 
-let _ready = false;
-function ensureTable(db) {
-    if (_ready) return;
-    db.prepare(`CREATE TABLE IF NOT EXISTS server_rules (
-        guild_id TEXT PRIMARY KEY,
-        rules_text TEXT,
-        updated_at INTEGER
-    )`).run();
-    const cols = db.prepare('PRAGMA table_info(server_rules)').all().map(c => c.name);
-    if (!cols.includes('color')) db.prepare('ALTER TABLE server_rules ADD COLUMN color TEXT').run();
-    if (!cols.includes('title')) db.prepare('ALTER TABLE server_rules ADD COLUMN title TEXT').run();
-    if (!cols.includes('welcome_on')) db.prepare('ALTER TABLE server_rules ADD COLUMN welcome_on INTEGER DEFAULT 1').run();
-    if (!cols.includes('accept_role_id')) db.prepare('ALTER TABLE server_rules ADD COLUMN accept_role_id TEXT').run();
-    db.prepare(`CREATE TABLE IF NOT EXISTS rules_acceptance (
-        guild_id TEXT NOT NULL,
-        user_id TEXT NOT NULL,
-        accepted_at INTEGER NOT NULL,
-        PRIMARY KEY (guild_id, user_id)
-    )`).run();
-    _ready = true;
+const L = (lang) => (k, v) => t(`rules.${k}`, lang, v || {});
+const langOf = (client, gid, ix, uid) => pickLang(client, gid, ix || null, uid) || 'en';
+const isAdmin = (member) => !!member?.permissions?.has(PermissionFlagsBits.ManageGuild);
+const colorOf = (row) => { const n = parseInt(String(row.color || '').replace('#', ''), 16); return Number.isFinite(n) ? n : GOLD; };
+
+// ─── storage ───
+let ready = false;
+function ensure(db) {
+    if (ready) return;
+    db.prepare('CREATE TABLE IF NOT EXISTS server_rules (guild_id TEXT PRIMARY KEY, rules_text TEXT, updated_at INTEGER)').run();
+    const cols = db.prepare('PRAGMA table_info(server_rules)').all().map((c) => c.name);
+    for (const [c, type] of [['color', 'TEXT'], ['title', 'TEXT'], ['welcome_on', 'INTEGER DEFAULT 1'], ['accept_role_id', 'TEXT'], ['panel_channel_id', 'TEXT'], ['panel_message_id', 'TEXT']]) {
+        if (!cols.includes(c)) db.prepare(`ALTER TABLE server_rules ADD COLUMN ${c} ${type}`).run();
+    }
+    db.prepare('CREATE TABLE IF NOT EXISTS rules_acceptance (guild_id TEXT NOT NULL, user_id TEXT NOT NULL, accepted_at INTEGER NOT NULL, PRIMARY KEY (guild_id, user_id))').run();
+    db.prepare('CREATE TABLE IF NOT EXISTS rules_translations (guild_id TEXT NOT NULL, lang TEXT NOT NULL, hash TEXT NOT NULL, text TEXT NOT NULL, PRIMARY KEY (guild_id, lang))').run();
+    ready = true;
 }
-
-function saveStyle(db, gid, patch) {
-    ensureTable(db);
+function getRow(db, gid) { ensure(db); return db.prepare('SELECT * FROM server_rules WHERE guild_id = ?').get(gid) || {}; }
+function save(db, gid, patch) {
+    ensure(db);
     const keys = Object.keys(patch);
-    db.prepare(`INSERT INTO server_rules (guild_id, ${keys.join(', ')}, updated_at)
-        VALUES (?, ${keys.map(() => '?').join(', ')}, ?)
-        ON CONFLICT(guild_id) DO UPDATE SET ${keys.map(k => k + ' = excluded.' + k).join(', ')}, updated_at = excluded.updated_at`)
-        .run(gid, ...keys.map(k => patch[k]), Math.floor(Date.now() / 1000));
+    db.prepare(`INSERT INTO server_rules (guild_id, ${keys.join(', ')}, updated_at) VALUES (?, ${keys.map(() => '?').join(', ')}, ?)
+        ON CONFLICT(guild_id) DO UPDATE SET ${keys.map((k) => `${k} = excluded.${k}`).join(', ')}, updated_at = excluded.updated_at`)
+        .run(gid, ...keys.map((k) => patch[k]), Math.floor(Date.now() / 1000));
+    if ('rules_text' in patch) { try { require('../lib/rules-text').forget(gid); } catch { /* Archon AI reads it later */ } }
+}
+const acceptedCount = (db, gid) => { try { return db.prepare('SELECT COUNT(*) AS n FROM rules_acceptance WHERE guild_id = ?').get(gid).n; } catch { return 0; } };
+const hasAccepted = (db, gid, uid) => { try { return !!db.prepare('SELECT 1 FROM rules_acceptance WHERE guild_id = ? AND user_id = ?').get(gid, uid); } catch { return false; } };
+
+function rulesChannel(client, guild) {
+    const s = client.getServerSettings?.(guild.id) || {};
+    const id = s.rulesChannel || s.rules_channel || (guild.id === process.env.GUILD_ID ? process.env.RULES_CHANNEL_ID : null) || guild.rulesChannelId;
+    return id ? guild.channels.cache.get(String(id)) || null : null;
 }
 
-function getRow(db, gid) {
-    ensureTable(db);
-    return db.prepare('SELECT * FROM server_rules WHERE guild_id = ?').get(gid) || {};
+// ─── the text ───
+// "Name: details" → **Name** · details; "# Heading" → a heading; other lines keep their markdown. Numbers 1–9 use the icons.
+function format(text, where) {
+    let n = 0;
+    return String(text || '').split('\n').map((raw) => raw.trim()).filter(Boolean).map((line) => {
+        if (/^#{1,3}\s/.test(line)) return `\n### ${line.replace(/^#{1,3}\s+/, '')}`;
+        if (/^-#\s/.test(line)) return line;
+        n += 1;
+        const body = line.replace(/^(\d+[.)]|[-*•])\s+/, '');
+        const m = /^([^:*_`<>]{2,40}):\s+(.+)$/.exec(body);
+        const text2 = m ? `**${m[1].trim()}** · ${m[2]}` : body;
+        const num = n <= 9 ? icon(`num_${n}`, where) : `**${n}.**`;
+        return `${num} ${text2}`;
+    }).join('\n').trim();
 }
 
-// Archon AI caches the rules for 10 minutes: a change here is read at once
-const forgetRules = (gid) => { try { require('../lib/rules-text').forget(gid); } catch { /* not loaded */ } };
-function saveRulesText(db, gid, text) { saveStyle(db, gid, { rules_text: text }); forgetRules(gid); }
-function clearRulesText(db, gid) { saveStyle(db, gid, { rules_text: null }); forgetRules(gid); }
-
-function getRulesChannelId(client, gid) {
-    const s = client.getServerSettings?.(gid) || {};
-    if (s.rulesChannel) return s.rulesChannel;
-    if (gid === process.env.GUILD_ID && process.env.RULES_CHANNEL_ID) return process.env.RULES_CHANNEL_ID;
-    return null;
-}
-
-function setRulesChannel(client, db, gid, channelId) {
-    if (client.updateServerSetting) {
-        client.updateServerSetting(gid, 'rules_channel', channelId);
-        client.settings?.delete(gid);
-        return;
+function card(client, guild, row, lang, { where, text, viewer, translatedTo } = {}) {
+    const tr = L(lang);
+    const body = text ?? row.rules_text;
+    const title = row.title || tr('title');
+    if (!body || !String(body).trim()) {
+        return v2.card(GREY, [
+            { text: `### ${icon('ch_rules', where)} ${title}\n${tr('notConfigured')}` },
+            { text: `-# ${tr('editHint')}` },
+        ]);
     }
-    try {
-        const r = db.prepare('UPDATE server_settings SET rules_channel = ? WHERE guild_id = ?').run(channelId, gid);
-        if (r.changes === 0) db.prepare('INSERT INTO server_settings (guild_id, rules_channel) VALUES (?, ?)').run(gid, channelId);
-        client.settings?.delete(gid);
-    } catch (e) { console.error('[RULES] channel write failed:', e.message); }
-}
-
-function fmtRules(text) {
-    return String(text || '').split('\n').map(l => l.trim()).filter(Boolean).join('\n');
-}
-
-function acceptRow(gid, lang) {
-    const L = (k) => t('rules.' + k, lang);
-    return new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setCustomId(`rules_accept_${gid}`)
-            .setLabel(L('btnAccept') || 'Accept')
-            .setEmoji(icon('ok'))
-            .setStyle(ButtonStyle.Success)
-    );
-}
-
-function buildCard(client, guild, rulesText, lang, custom, style, accepted) {
-    const text = fmtRules(rulesText);
-    const L = (k, v) => t('rules.' + k, lang, v);
-    const title = style.title || L('title');
-    const items = [];
-
-    if (style.welcome_on !== 0) {
-        items.push({ text: `*${em('rules', '📜')} ARCHON CG-223 · Server Rules*` });
-        items.push({ text: L('welcomeLine', { server: guild.name }) });
-    } else {
-        items.push({ text: `*${em('rules', '📜')} ARCHON CG-223 · Server Rules*` });
-    }
-    items.push({ text: `## ${title}` });
+    const head = `## ${icon('gavel', where)} ${title}\n-# ${translatedTo ? tr('translatedNote', { language: translatedTo }) : tr('sub')}`;
+    const items = [
+        guild.iconURL() ? { thumbnail: [head, guild.iconURL({ extension: 'png', size: 128 })] } : { text: head },
+        { rule: true },
+        { text: format(body, where) },
+    ];
+    if (translatedTo) return v2.card(colorOf(row), items);
     items.push({ rule: true });
-    if (!custom || !text) {
-        items.push({ text: `${em('ic_warn', '⚠️')} ${L('notConfigured')}` });
-        items.push({ text: `-# ${L('notConfiguredHint')}` });
-        items.push({ text: `-# ${guild.name} · ARCHON CG-223 · BAMAKO_223 🇲🇱` });
-        return v2.card(0x95a5a6, items);
+    const foot = [];
+    if (row.accept_role_id) foot.push(`${icon('users', where)} ${tr('acceptedCount', { n: acceptedCount(client.db, guild.id) })}`);
+    if (row.updated_at) foot.push(tr('updated', { when: `<t:${row.updated_at}:R>` }));
+    if (foot.length) items.push({ text: `-# ${foot.join(' · ')}` });
+    const buttons = new ActionRowBuilder();
+    if (row.accept_role_id) {
+        const done = viewer && hasAccepted(client.db, guild.id, viewer);
+        buttons.addComponents(new ButtonBuilder().setCustomId('rules:accept').setStyle(done ? ButtonStyle.Secondary : ButtonStyle.Success)
+            .setLabel(done ? tr('btnAccepted') : tr('btnAccept')).setEmoji(icon('check', where)).setDisabled(!!done));
     }
-    items.push({ text });
-    items.push({ rule: true });
-
-    if (accepted) {
-        items.push({ text: `${em('ic_ok', '✅')} ${L('alreadyAccepted')}` });
-    } else {
-        items.push({ text: `-# ${L('acceptNote')}` });
-        const row = acceptRow(guild.id, lang);
-        if (row) items.push({ row });
-    }
-    items.push({ text: `-# ${guild.name} · ARCHON CG-223 · BAMAKO_223 🇲🇱` });
-
-    return v2.card(parseInt(String(style.color || '#ffd700').replace('#',''), 16), items);
+    buttons.addComponents(new ButtonBuilder().setCustomId('rules:tr').setStyle(ButtonStyle.Secondary).setLabel(tr('btnTranslate')).setEmoji(icon('language', where)));
+    items.push({ row: buttons });
+    return v2.card(colorOf(row), items);
 }
 
-async function sendRules(client, guild, channel, lang) {
+// The posted panel: edited in place when it still exists
+async function refreshPanel(client, guild, { post = false } = {}) {
+    const db = client.db;
+    const row = getRow(db, guild.id);
+    const lang = langOf(client, guild.id, null, null);
+    let ch = row.panel_channel_id ? guild.channels.cache.get(String(row.panel_channel_id)) : null;
+    let msg = ch && row.panel_message_id ? await ch.messages.fetch(String(row.panel_message_id)).catch(() => null) : null;
+    if (msg) { await msg.edit({ ...card(client, guild, row, lang, { where: ch }), flags: V2, allowedMentions: { parse: [] } }); return { ch, edited: true }; }
+    if (!post) return null;
+    ch = rulesChannel(client, guild);
+    if (!ch?.isTextBased?.()) return { missing: true };
+    msg = await ch.send({ ...card(client, guild, row, lang, { where: ch }), allowedMentions: { parse: [] } });
+    save(db, guild.id, { panel_channel_id: ch.id, panel_message_id: msg.id });
+    return { ch, edited: false };
+}
+
+// accepted-count on the panel: refreshed at most once a minute, not on every click
+const pending = new Map();
+function refreshSoon(client, guild) {
+    if (pending.has(guild.id)) return;
+    pending.set(guild.id, setTimeout(() => { pending.delete(guild.id); refreshPanel(client, guild).catch(() => {}); }, 60 * 1000));
+}
+
+// ─── private screens ───
+function editModal(tr, title, text) {
+    const name = new TextInputBuilder().setCustomId('title').setLabel(tr('modalName').slice(0, 45))
+        .setStyle(TextInputStyle.Short).setMaxLength(100).setRequired(false);
+    const body = new TextInputBuilder().setCustomId('text').setLabel(tr('modalRules').slice(0, 45))
+        .setStyle(TextInputStyle.Paragraph).setMaxLength(4000).setRequired(true).setPlaceholder(tr('modalPlaceholder').slice(0, 100));
+    // a pre-filled value can't be empty, so only set it when there is one
+    if (title) name.setValue(String(title).slice(0, 100));
+    if (text) body.setValue(String(text).slice(0, 4000));
+    return new ModalBuilder().setCustomId('rules:save').setTitle(tr('modalTitle').slice(0, 45))
+        .addComponents(new ActionRowBuilder().addComponents(name), new ActionRowBuilder().addComponents(body));
+}
+
+function settingsCard(client, guild, lang, where) {
+    const tr = L(lang);
     const row = getRow(client.db, guild.id);
-    const rulesText = row.rules_text;
-    const style = { color: row.color, title: row.title, welcome_on: row.welcome_on };
-    const card = buildCard(client, guild, rulesText, lang, !!row.rules_text, style, false);
-    await channel.send({ ...card, allowedMentions: { parse: [] } });
-    return 1;
+    const role = row.accept_role_id ? guild.roles.cache.get(String(row.accept_role_id)) : null;
+    const colorName = Object.entries(COLORS).find(([, h]) => h.toLowerCase() === String(row.color || COLORS.gold).toLowerCase())?.[0] || 'gold';
+    const lines = [
+        role ? tr('settingsRole', { role: `<@&${role.id}>` }) : tr('settingsNoRole'),
+        tr('settingsColor', { color: tr(`color_${colorName}`) }),
+        tr('acceptedCount', { n: acceptedCount(client.db, guild.id) }),
+    ];
+    return v2.card(colorOf(row), [
+        { text: `### ${icon('tool', where)} ${tr('settingsTitle')}\n${lines.join('\n')}` },
+        { row: new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('rules:role').setPlaceholder(tr('pickRole')).setMinValues(0).setMaxValues(1)) },
+        { row: new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('rules:color').setPlaceholder(tr('pickColor'))
+            .addOptions(Object.keys(COLORS).map((k) => ({ label: tr(`color_${k}`), value: k, default: k === colorName })))) },
+        { row: new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('rules:who').setStyle(ButtonStyle.Secondary).setLabel(tr('btnWho')).setEmoji(icon('users', where)),
+            new ButtonBuilder().setCustomId('rules:norole').setStyle(ButtonStyle.Secondary).setLabel(tr('btnNoRole')).setEmoji(icon('x', where)).setDisabled(!role),
+        ) },
+    ]);
 }
 
-function initRulesAccept(client) {
-    // Handler GLOBAL idempotent — survit aux restarts pm2
-    if (client._rulesAcceptHandlerReady) return;
-    client._rulesAcceptHandlerReady = true;
-
-    client.on('interactionCreate', async (i) => {
-        if (typeof i.isButton !== 'function' || !i.isButton()) return;
-        if (!i.customId || !i.customId.startsWith('rules_accept_')) return;
-        const gid = i.guildId;
-        if (!gid) return;
-
-        try {
-            await i.deferReply({ flags: 64 });
-            const db = client.db;
-            ensureTable(db);
-            const already = db.prepare('SELECT 1 FROM rules_acceptance WHERE guild_id = ? AND user_id = ?').get(gid, i.user.id);
-            if (already) {
-                const _lang0 = OKL.includes(client.getServerSettings?.(gid)?.language) ? client.getServerSettings(gid).language : 'en';
-                return i.editReply({ content: t('rules.alreadyAccepted', _lang0, { user: `<@${i.user.id}>` }) }).catch(() => {});
-            }
-            const row = getRow(db, gid);
-            const lang = OKL.includes(client.getServerSettings?.(gid)?.language) ? client.getServerSettings(gid).language : 'en';
-            if (!row.accept_role_id) {
-                return i.editReply({ content: t('rules.needAcceptRole', lang) }).catch(() => {});
-            }
-            const member = await i.guild.members.fetch(i.user.id).catch(() => null);
-            const role = i.guild.roles.cache.get(row.accept_role_id);
-            if (!member || !role) {
-                return i.editReply({ content: t('rules.acceptFailed', lang) }).catch(() => {});
-            }
-            await member.roles.add(role, 'Accepted server rules').catch(() => {});
-            db.prepare('INSERT OR IGNORE INTO rules_acceptance (guild_id, user_id, accepted_at) VALUES (?, ?, ?)')
-                .run(gid, i.user.id, Math.floor(Date.now() / 1000));
-            return i.editReply({ content: t('rules.acceptSuccess', lang, { user: `<@${i.user.id}>` }) }).catch(() => {});
-        } catch (e) {
-            console.error('[RULES ACCEPT]', e.message);
-            if (i.deferred || i.replied) await i.editReply({ content: em('ic_off', em('ic_off', '❌')) + ' Error' }).catch(() => {});
-            else await i.reply({ content: em('ic_off', em('ic_off', '❌')) + ' Error', flags: 64 }).catch(() => {});
-        }
-    });
+// ─── translation (Archon AI), kept per language and version ───
+const trBusy = new Map();
+async function translated(client, gid, text, lang) {
+    const db = client.db;
+    const hash = crypto.createHash('sha1').update(String(text)).digest('hex').slice(0, 16);
+    const hit = db.prepare('SELECT text FROM rules_translations WHERE guild_id = ? AND lang = ? AND hash = ?').get(gid, lang, hash);
+    if (hit) return hit.text;
+    const { generateAIResponse } = require('../lib/lydia/models');
+    const system = `Translate these Discord server rules into ${LANG_NAME[lang] || 'English'}. Keep one rule per line, the same order, `
+        + 'the "Name: details" shape, headings starting with #, and every <#…>, <@&…>, <@…> and <:…:…> exactly as they are. '
+        + 'Output only the translated rules, nothing before or after.';
+    const res = await generateAIResponse(system, String(text), [], null, undefined, gid);
+    const out = String(res?.content || '').trim();
+    if (!out) return null;
+    db.prepare('INSERT OR REPLACE INTO rules_translations (guild_id, lang, hash, text) VALUES (?, ?, ?, ?)').run(gid, lang, hash, out);
+    return out;
 }
 
-// Backward compat: appelé depuis le chemin prefix
-function attachAcceptCollector(_msg, client, _gid) {
-    initRulesAccept(client);
+// ─── buttons, menus, the box ───
+async function accept(interaction, client) {
+    const db = client.db;
+    const guild = interaction.guild;
+    const tr = L(langOf(client, guild.id, interaction, interaction.user.id));
+    const row = getRow(db, guild.id);
+    if (hasAccepted(db, guild.id, interaction.user.id)) return interaction.reply({ content: tr('alreadyAccepted'), flags: EPH });
+    const role = row.accept_role_id ? guild.roles.cache.get(String(row.accept_role_id)) : null;
+    if (role) {
+        if (!role.editable) return interaction.reply({ content: tr('roleTooHigh'), flags: EPH });
+        const member = await guild.members.fetch(interaction.user.id).catch(() => null);
+        const ok = member ? await member.roles.add(role, 'Accepted the server rules').then(() => true).catch(() => false) : false;
+        if (!ok) return interaction.reply({ content: tr('acceptFailed'), flags: EPH });
+    }
+    db.prepare('INSERT OR IGNORE INTO rules_acceptance (guild_id, user_id, accepted_at) VALUES (?, ?, ?)').run(guild.id, interaction.user.id, Math.floor(Date.now() / 1000));
+    refreshSoon(client, guild);
+    return interaction.reply({ content: `${icon('ok', interaction)} ${tr('acceptDone')}`, flags: EPH, allowedMentions: { parse: [] } });
 }
 
+async function handleComponent(interaction, client) {
+    const db = client.db;
+    const guild = interaction.guild;
+    if (!guild) return;
+    ensure(db);
+    const lang = langOf(client, guild.id, interaction, interaction.user.id);
+    const tr = L(lang);
+    const id = interaction.customId;
+    if (id.startsWith('rules_accept_') || id === 'rules:accept') return accept(interaction, client);
+
+    if (id === 'rules:tr') {
+        const row = getRow(db, guild.id);
+        let text = row.rules_text;
+        if (!text) return interaction.reply({ content: tr('notConfigured'), flags: EPH });
+        const key = `${guild.id}:${interaction.user.id}`;
+        if (Date.now() - (trBusy.get(key) || 0) < 15000) return interaction.reply({ content: tr('trWait'), flags: EPH });
+        trBusy.set(key, Date.now());
+        await interaction.deferReply({ flags: EPH });
+        const out = await translated(client, guild.id, text, lang).catch((e) => { console.error('[RULES] translate:', e.message); return null; });
+        if (!out) return interaction.editReply({ content: tr('trFailed') });
+        return interaction.editReply({ ...card(client, guild, row, lang, { where: interaction, text: out, translatedTo: tr(`lang_${lang}`) }), flags: V2 });
+    }
+
+    if (!isAdmin(interaction.member)) return interaction.reply({ content: tr('needManageGuild'), flags: EPH });
+
+    if (id === 'rules:save') {
+        const text = interaction.fields.getTextInputValue('text').trim();
+        const title = interaction.fields.getTextInputValue('title').trim() || null;
+        save(db, guild.id, { rules_text: text || null, title });
+        await interaction.deferReply({ flags: EPH });
+        const r = await refreshPanel(client, guild).catch(() => null);
+        return interaction.editReply({ content: `${icon('ok', interaction)} ${r?.edited ? tr('savedPanel', { channel: `<#${r.ch.id}>` }) : tr('savedNoPanel')}` });
+    }
+    if (id === 'rules:role') {
+        const roleId = interaction.values?.[0] || null;
+        const role = roleId ? guild.roles.cache.get(roleId) : null;
+        if (role && (!role.editable || role.managed || role.id === guild.id)) return interaction.reply({ content: tr('roleTooHigh'), flags: EPH });
+        save(db, guild.id, { accept_role_id: role ? role.id : null });
+        refreshPanel(client, guild).catch(() => {});
+        return interaction.update({ ...settingsCard(client, guild, lang, interaction), flags: V2 });
+    }
+    if (id === 'rules:norole') {
+        save(db, guild.id, { accept_role_id: null });
+        refreshPanel(client, guild).catch(() => {});
+        return interaction.update({ ...settingsCard(client, guild, lang, interaction), flags: V2 });
+    }
+    if (id === 'rules:color') {
+        save(db, guild.id, { color: COLORS[interaction.values?.[0]] || COLORS.gold });
+        refreshPanel(client, guild).catch(() => {});
+        return interaction.update({ ...settingsCard(client, guild, lang, interaction), flags: V2 });
+    }
+    if (id === 'rules:who') {
+        const rows = db.prepare('SELECT user_id, accepted_at FROM rules_acceptance WHERE guild_id = ? ORDER BY accepted_at DESC LIMIT 30').all(guild.id);
+        if (!rows.length) return interaction.reply({ content: tr('acceptedEmpty'), flags: EPH });
+        const list = rows.map((r, i) => `${i + 1}. <@${r.user_id}> · <t:${r.accepted_at}:R>`).join('\n');
+        return interaction.reply({ content: `**${tr('acceptedTitle', { n: acceptedCount(db, guild.id) })}**\n${list}`, flags: EPH, allowedMentions: { parse: [] } });
+    }
+}
+
+// ─── command ───
 module.exports = {
     name: 'rules',
-    init: initRulesAccept,
     aliases: ['regles', 'règles', 'qawanin'],
-    description: '📜 Display server rules (customizable per server)',
+    description: '📜 The server rules: show, post, edit',
     category: 'SYSTEM',
-    usage: '/rules | /rules set <text> | /rules channel #ch | /rules panel',
-    cooldown: 3000,
+    usage: '/rules show | panel | edit | settings',
+    data: new SlashCommandBuilder().setName('rules').setDescription('📜 The server rules')
+        .addSubcommand((s) => s.setName('show').setDescription('Show the rules (only you see them)'))
+        .addSubcommand((s) => s.setName('panel').setDescription('Post or update the rules in the rules channel (admin)'))
+        .addSubcommand((s) => s.setName('edit').setDescription('Write or change the rules (admin)'))
+        .addSubcommand((s) => s.setName('settings').setDescription('Accept role, colour, who accepted (admin)')),
 
-    data: new SlashCommandBuilder()
-        .setName('rules').setDescription('📜 Display the server rules')
-        .addSubcommand(s => s.setName('show').setDescription('Show rules here'))
-        .addSubcommand(s => s.setName('panel').setDescription('Publish rules to the stored rules channel'))
-        .addSubcommand(s => s.setName('set').setDescription('Set custom rules (admin)')
-            .addStringOption(o => o.setName('text').setDescription('Full rules text, one rule per line').setRequired(true)))
-        .addSubcommand(s => s.setName('reset').setDescription('Reset to default rules (admin)'))
-        .addSubcommand(s => s.setName('channel').setDescription('Set the rules channel (admin)')
-            .addChannelOption(o => o.setName('channel').setDescription('Rules channel').setRequired(true)))
-        .addSubcommand(s => s.setName('setcolor').setDescription('Set embed accent color (admin)')
-            .addStringOption(o => o.setName('color').setDescription('A colour name or #hex').setRequired(true).setAutocomplete(true)))
-        .addSubcommand(s => s.setName('settitle').setDescription('Set embed title (admin)')
-            .addStringOption(o => o.setName('title').setDescription('Custom title').setRequired(true)))
-        .addSubcommand(s => s.setName('welcome').setDescription('Toggle welcome line (admin)')
-            .addBooleanOption(o => o.setName('enabled').setDescription('true = show').setRequired(true)))
-        .addSubcommand(s => s.setName('acceptrole').setDescription('Role given when a member accepts (admin)')
-            .addRoleOption(o => o.setName('role').setDescription('Leave empty to clear').setRequired(false)))
-        .addSubcommand(s => s.setName('accepted').setDescription('List members who accepted (admin)'))
-        .addSubcommand(s => s.setName('resetchannel').setDescription('Clear the rules channel (admin)')),
-
-    // colour names in the member's language, or the hex they typed (lib/colors)
-    autocomplete: async (interaction, client) => {
-        const lang = require('../lib/pick-lang').pickLang(client, interaction.guildId, interaction, interaction.user.id);
-        const q = (() => { try { return interaction.options.getFocused(); } catch { return ''; } })();
-        return interaction.respond(require('../lib/colors').suggest(q, ['en', 'fr', 'zh', 'ar'].includes(lang) ? lang : 'en')).catch(() => {});
-    },
     execute: async (interaction, client) => {
         const db = client.db;
-        const gid = interaction.guild.id;
-        ensureTable(db);
-        const lang = OKL.includes(client.getServerSettings?.(gid)?.language) ? client.getServerSettings(gid).language : 'en';
-        const L = (k, v) => t('rules.' + k, lang, v);
+        const guild = interaction.guild;
+        ensure(db);
+        const lang = langOf(client, guild.id, interaction, interaction.user.id);
+        const tr = L(lang);
         const sub = interaction.options.getSubcommand();
-        const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.ManageGuild);
 
         if (sub === 'show') {
-            await interaction.deferReply({ flags: 64 }).catch(() => {});
-            const row = getRow(db, gid);
-            const rulesText = row.rules_text;
-            const style = { color: row.color, title: row.title, welcome_on: row.welcome_on };
-            const already = db.prepare('SELECT 1 FROM rules_acceptance WHERE guild_id = ? AND user_id = ?').get(gid, interaction.user.id);
-            await interaction.channel.send({ ...buildCard(client, interaction.guild, rulesText, lang, !!row.rules_text, style, !!already), allowedMentions: { parse: [] } });
-            return interaction.editReply({ content: '📜' }).catch(() => {});
+            return interaction.reply({ ...card(client, guild, getRow(db, guild.id), lang, { where: interaction, viewer: interaction.user.id }), flags: V2 | EPH });
         }
+        if (!isAdmin(interaction.member)) return interaction.reply({ content: tr('needManageGuild'), flags: EPH });
 
-        if (!isAdmin) return interaction.reply({ content: L('needManageGuild'), flags: 64 });
-
+        if (sub === 'edit') {
+            const row = getRow(db, guild.id);
+            let text = row.rules_text;
+            // nothing saved yet: start from what the rules channel already says
+            if (!text) { try { text = (await require('../lib/rules-text').get(client, guild))?.text || ''; } catch { text = ''; } }
+            return interaction.showModal(editModal(tr, row.title, text));
+        }
+        if (sub === 'settings') return interaction.reply({ ...settingsCard(client, guild, lang, interaction), flags: V2 | EPH });
         if (sub === 'panel') {
-            const chId = getRulesChannelId(client, gid);
-            if (!chId) return interaction.reply({ content: L('channelMissing'), flags: 64 });
-            const ch = interaction.guild.channels.cache.get(chId) || await interaction.guild.channels.fetch(chId).catch(() => null);
-            if (!ch) return interaction.reply({ content: L('channelMissing'), flags: 64 });
-            await sendRules(client, interaction.guild, ch, lang);
-            return interaction.reply({ content: L('panelPosted', { channel: ch.toString() }), flags: 64 });
-        }
-
-        if (sub === 'set') {
-            const text = interaction.options.getString('text', true);
-            saveRulesText(db, gid, text);
-            return interaction.reply({ content: L('setSuccess', { extra: '' }), flags: 64 });
-        }
-
-        if (sub === 'reset') {
-            const row = getRow(db, gid);
-            if (!row.rules_text) return interaction.reply({ content: L('resetNoCustom'), flags: 64 });
-            clearRulesText(db, gid);
-            return interaction.reply({ content: L('resetSuccess'), flags: 64 });
-        }
-
-        if (sub === 'channel') {
-            const ch = interaction.options.getChannel('channel', true);
-            setRulesChannel(client, db, gid, ch.id);
-            return interaction.reply({ content: L('channelSet', { channel: ch.toString() }), flags: 64 });
-        }
-
-        if (sub === 'setcolor') {
-            const hex = require('../lib/colors').resolve(interaction.options.getString('color', true));   // a name in en/fr/zh/ar, or a hex
-            if (!hex) return interaction.reply({ content: L('invalidColor'), flags: 64 });
-            saveStyle(db, gid, { color: hex });
-            return interaction.reply({ content: L('setColorSuccess', { color: hex }), flags: 64 });
-        }
-
-        if (sub === 'settitle') {
-            const title = interaction.options.getString('title', true).slice(0, 200);
-            saveStyle(db, gid, { title });
-            return interaction.reply({ content: L('setTitleSuccess', { title }), flags: 64 });
-        }
-
-        if (sub === 'welcome') {
-            const on = interaction.options.getBoolean('enabled', true) ? 1 : 0;
-            saveStyle(db, gid, { welcome_on: on });
-            return interaction.reply({ content: on ? L('welcomeOn') : L('welcomeOff'), flags: 64 });
-        }
-
-        if (sub === 'acceptrole') {
-            const role = interaction.options.getRole('role');
-            if (!role) {
-                saveStyle(db, gid, { accept_role_id: null });
-                return interaction.reply({ content: L('acceptRoleCleared'), flags: 64 });
-            }
-            saveStyle(db, gid, { accept_role_id: role.id });
-            return interaction.reply({ content: L('acceptRoleSet', { role: role.toString() }), flags: 64 });
-        }
-
-        if (sub === 'accepted') {
-            const rows = db.prepare('SELECT user_id, accepted_at FROM rules_acceptance WHERE guild_id = ? ORDER BY accepted_at DESC LIMIT 50').all(gid);
-            if (!rows.length) return interaction.reply({ content: L('acceptedEmpty'), flags: 64 });
-            const list = rows.map((r, i) => `${i + 1}. <@${r.user_id}> — <t:${r.accepted_at}:R>`).join('\n');
-            return interaction.reply({ content: `**${L('acceptedTitle', { n: rows.length })}**\n${list}`, flags: 64 });
-        }
-
-        if (sub === 'resetchannel') {
-            setRulesChannel(client, db, gid, null);
-            return interaction.reply({ content: L('channelCleared'), flags: 64 });
+            if (!getRow(db, guild.id).rules_text) return interaction.reply({ content: tr('needText'), flags: EPH });
+            await interaction.deferReply({ flags: EPH });
+            const r = await refreshPanel(client, guild, { post: true }).catch((e) => { console.error('[RULES] panel:', e.message); return null; });
+            if (!r || r.missing) return interaction.editReply({ content: tr('channelMissing') });
+            return interaction.editReply({ content: `${icon('ok', interaction)} ${r.edited ? tr('panelUpdated', { channel: `<#${r.ch.id}>` }) : tr('panelPosted', { channel: `<#${r.ch.id}>` })}` });
         }
     },
 
-    run: async (client, message, args, db, ss) => {
-        const gid = message.guild?.id;
-        if (!gid) return;
-        ensureTable(db);
-        const lang = OKL.includes(ss?.language) ? ss.language : 'en';
-        const L = (k, v) => t('rules.' + k, lang, v);
-        const sub = (args[0] || '').toLowerCase();
-        const isAdmin = message.member.permissions.has(PermissionFlagsBits.ManageGuild);
-
-        if (sub === 'set' || sub === 'reset' || sub === 'panel' || sub === 'channel' || sub === 'acceptrole') {
-            if (!isAdmin) return message.reply(L('needManageGuild')).catch(() => {});
-            if (sub === 'set') {
-                const text = args.slice(1).join(' ');
-                if (!text) return message.reply(L('setSuccess', { extra: '' })).catch(() => {});
-                saveRulesText(db, gid, text);
-                return message.reply(L('setSuccess', { extra: '' })).catch(() => {});
-            }
-            if (sub === 'reset') {
-                clearRulesText(db, gid);
-                return message.reply(L('resetSuccess')).catch(() => {});
-            }
-            if (sub === 'channel') {
-                const ch = message.mentions.channels.first();
-                if (!ch) return message.reply(L('channelMissing')).catch(() => {});
-                setRulesChannel(client, db, gid, ch.id);
-                return message.reply(L('channelSet', { channel: ch.toString() })).catch(() => {});
-            }
-            if (sub === 'panel') {
-                const chId = getRulesChannelId(client, gid);
-                if (!chId) return message.reply(L('channelMissing')).catch(() => {});
-                const ch = message.guild.channels.cache.get(chId) || await message.guild.channels.fetch(chId).catch(() => null);
-                if (!ch) return message.reply(L('channelMissing')).catch(() => {});
-                await sendRules(client, message.guild, ch, lang);
-                return message.reply(L('panelPosted', { channel: ch.toString() })).catch(() => {});
-            }
-            if (sub === 'acceptrole') {
-                const role = message.mentions.roles.first();
-                if (!role) { saveStyle(db, gid, { accept_role_id: null }); return message.reply(L('acceptRoleCleared')).catch(() => {}); }
-                saveStyle(db, gid, { accept_role_id: role.id });
-                return message.reply(L('acceptRoleSet', { role: role.toString() })).catch(() => {});
-            }
+    // .rules shows the card in the channel; .rules panel posts or updates the panel
+    run: async (client, message, args) => {
+        const guild = message.guild;
+        if (!guild) return;
+        ensure(client.db);
+        const lang = langOf(client, guild.id, null, message.author.id);
+        const tr = L(lang);
+        if ((args[0] || '').toLowerCase() === 'panel') {
+            if (!isAdmin(message.member)) return message.reply(tr('needManageGuild')).catch(() => {});
+            const r = await refreshPanel(client, guild, { post: true }).catch(() => null);
+            return message.reply(!r || r.missing ? tr('channelMissing') : (r.edited ? tr('panelUpdated', { channel: `<#${r.ch.id}>` }) : tr('panelPosted', { channel: `<#${r.ch.id}>` }))).catch(() => {});
         }
-
-        const row = getRow(db, gid);
-        const rulesText = row.rules_text || L('defaultRules');
-        const style = { color: row.color, title: row.title, welcome_on: row.welcome_on };
-        const already = db.prepare('SELECT 1 FROM rules_acceptance WHERE guild_id = ? AND user_id = ?').get(gid, message.author.id);
-        const sent = await message.channel.send({ ...buildCard(client, message.guild, rulesText, lang, !!row.rules_text, style, !!already), allowedMentions: { parse: [] } }).catch(() => null);
-        if (sent) attachAcceptCollector(sent, client, gid);
+        return message.channel.send({ ...card(client, guild, getRow(client.db, guild.id), lang, { where: message }), allowedMentions: { parse: [] } }).catch(() => {});
     },
+
+    handleComponent,
+    refreshPanel,
 };
