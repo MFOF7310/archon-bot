@@ -301,8 +301,8 @@ function aliveCard(client, lang, db, guildName) {
     const wsPing = Math.round(client.ws?.ping ?? 0);
     const wsDot = wsPing < 150 ? em('ic_status_ok', '🟢') : wsPing < 300 ? em('ic_status_warn', '🟡') : em('ic_status_bad', '🔴');
     
-    const statusEmojis = { online: em('ic_status_ok', '🟢'), idle: em('ic_status_warn', '🟡'), dnd: em('ic_status_bad', '🔴'), offline: '⚫' };
-    const botStatus = statusEmojis[client.presence?.status] || em('ic_status_ok', '🟢');
+    const statusEmojis = { online: em('online', em('ic_status_ok', '🟢')), idle: em('ic_status_warn', '🟡'), dnd: em('ic_status_bad', '🔴'), offline: em('offline', '⚫') };
+    const botStatus = statusEmojis[client.presence?.status] || em('online', em('ic_status_ok', '🟢'));
 
     let servers = client.guilds.cache.size;
     try { servers = db.prepare("SELECT COUNT(DISTINCT guild_id) AS c FROM users WHERE guild_id NOT IN ('DM','telegram')").get().c || servers; } catch {}

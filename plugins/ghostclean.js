@@ -61,8 +61,8 @@ const btn = (id, label, style, emoji) => {
 };
 const emojiOf = (k, fb) => {
     const v = em(k, fb);
-    const m = /^<a?:(\w+):(\d+)>$/.exec(v);
-    return m ? { id: m[2], name: m[1] } : fb;
+    const m = /^<(a?):(\w+):(\d+)>$/.exec(v);
+    return m ? { id: m[3], name: m[2], animated: m[1] === 'a' } : fb;   // animated: the online icon moves on the button too
 };
 
 // ── Main card: the list ──
@@ -74,7 +74,7 @@ function listCard(client, lang, days) {
             { text: head },
             { text: `${em('ic_ok', '✅')} ${T(lang, 'clear', { days, total: fmt(total, lang) })}` },
             { row: new ActionRowBuilder().addComponents(
-                btn(`ghost:active:${days}`, T(lang, 'showActive'), ButtonStyle.Secondary, emojiOf('ic_online', '🟢')),
+                btn(`ghost:active:${days}`, T(lang, 'showActive'), ButtonStyle.Secondary, emojiOf('online', '🟢')),
                 btn(`ghost:list:${days}`, T(lang, 'refresh'), ButtonStyle.Secondary, emojiOf('ic_refresh', '🔄'))) },
         ]);
     }
@@ -101,7 +101,7 @@ function listCard(client, lang, days) {
         { row: new ActionRowBuilder().addComponents(menu) },
         { row: new ActionRowBuilder().addComponents(
             btn(`ghost:all:${days}`, T(lang, 'leaveAll', { n: ghosts.length }), ButtonStyle.Danger),
-            btn(`ghost:active:${days}`, T(lang, 'showActive'), ButtonStyle.Secondary, emojiOf('ic_online', '🟢')),
+            btn(`ghost:active:${days}`, T(lang, 'showActive'), ButtonStyle.Secondary, emojiOf('online', '🟢')),
             btn(`ghost:list:${days}`, T(lang, 'refresh'), ButtonStyle.Secondary, emojiOf('ic_refresh', '🔄')),
         ) },
         { text: `-# ${T(lang, 'note')}` },
@@ -115,7 +115,7 @@ function activeCard(client, lang, days) {
         `\`${String(i + 1).padStart(2, ' ')}\` **${s.name.slice(0, 40)}** · ${T(lang, 'activeLine', { members: fmt(s.members, lang), quiet: s.quiet })}`);
     if (active.length > 25) lines.push(`-# ${T(lang, 'more', { n: active.length - 25 })}`);
     return v2.card(GREEN, [
-        { text: `-# ARCHON · ${T(lang, 'owner')}\n## ${em('ic_online', '🟢')} ${T(lang, 'activeTitle')}` },
+        { text: `-# ARCHON · ${T(lang, 'owner')}\n## ${em('online', '🟢')} ${T(lang, 'activeTitle')}` },
         { text: T(lang, 'activeSummary', { n: active.length, total: fmt(total, lang), days }) },
         { rule: true },
         { text: lines.join('\n') || T(lang, 'noActive') },
