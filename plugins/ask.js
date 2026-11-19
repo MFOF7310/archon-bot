@@ -62,7 +62,7 @@ function answerCard(lang, { asked, answer, who, left, owner }) {
     ]);
 }
 
-async function answer(interaction, client, { question, imageUrl = null, quoted = null, priv = false }) {
+async function answer(interaction, client, { question, imageUrl = null, quoted = null, priv = false, by = null }) {
     const lang = langOf(interaction);
     const uid = interaction.user.id;
     const owner = uid === process.env.OWNER_ID;
@@ -74,7 +74,7 @@ async function answer(interaction, client, { question, imageUrl = null, quoted =
     await interaction.deferReply(priv ? { flags: MessageFlags.Ephemeral } : {}).catch(() => {});
 
     const prompt = quoted
-        ? `Someone picked this message and asked you about it. Explain it, answer it or react to it helpfully.\n\nThe message:\n"""${quoted}"""`
+        ? `Someone picked this message and asked you about it. Explain it, answer it or react to it helpfully.${by ? `\nIt was written by ${by}.` : ''}\n\nThe message:\n"""${quoted}"""`
         : question;
     let res = null;
     try {
@@ -122,7 +122,10 @@ module.exports = {
         const textPart = String(m?.content || '').trim().slice(0, 1500);
         const img = [...(m?.attachments?.values?.() || [])].find((a) => /^image\//.test(a.contentType || ''))?.url || null;
         if (!textPart && !img) return interaction.reply({ content: `${icon('warn')} ${T(lang, 'empty')}`, flags: MessageFlags.Ephemeral }).catch(() => {});
-        return answer(interaction, client, { quoted: textPart || '(a picture)', imageUrl: img });
+        // who wrote it (and whether it's a bot) is the one piece of context that changes the answer: "Verified" from a
+        // verification bot means something else than from a friend. Still nothing else from the chat.
+        const by = m?.author ? `${m.author.globalName || m.author.username}${m.author.bot ? ' (a bot or app)' : ''}` : null;
+        return answer(interaction, client, { quoted: textPart || '(a picture)', imageUrl: img, by });
     },
 
     // ".ask" in a server is still the 8-ball
