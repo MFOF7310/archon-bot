@@ -774,13 +774,19 @@ function startPolling(bridge, client) {
         try {
             const allowedUpdates = encodeURIComponent(JSON.stringify(["message","edited_message","callback_query","chat_member","my_chat_member"]));
             const url = `https://api.telegram.org/bot${token}/getUpdates?offset=${lastId+1}&limit=100&timeout=30&allowed_updates=${allowedUpdates}`;
-            https.get(url, { timeout: 40000 }, (res) => {
+            // Exactly one next poll per request: a timeout used to start a new poll while the old request was still
+            // open, and its later error started another, so pollers piled up after network trouble.
+            let done = false;
+            const next = (ms) => { if (done) return; done = true; setTimeout(poll, ms); };
+            const req = https.get(url, { timeout: 40000, family: 4 }, (res) => {
                 let body = '';
                 res.on('data', c => body += c);
                 res.on('end', async () => {
                     errs = 0;
                     try {
                         const json = JSON.parse(body);
+                        // Telegram said no (wrong token, another copy of the bot polling…): say why instead of failing silently
+                        if (!json.ok) { console.warn(`${yellow}[TG]${reset} Telegram refused: ${json.error_code} ${json.description}`); return next(json.error_code === 409 ? 10000 : 5000); }
                         if (json.ok && json.result?.length > 0) {
                             for (const u of json.result) {
                                 lastId = Math.max(lastId, u.update_id);
@@ -793,9 +799,12 @@ function startPolling(bridge, client) {
                             }
                         }
                     } catch {}
-                    setTimeout(poll, 500);
+                    next(500);
                 });
-            }).on('error', (err) => { errs++; console.warn(`${yellow}[TG]${reset} err ${errs}: ${err.message}`); setTimeout(poll, Math.min(30000, 2000*errs)); }).on('timeout', () => setTimeout(poll, 1000));
+                res.on('error', () => next(2000));
+            });
+            req.on('error', (err) => { if (done) return; errs++; if (errs === 1 || errs % 10 === 0) console.warn(`${yellow}[TG]${reset} Telegram unreachable (${err.message}), retrying${errs > 1 ? ` · ${errs} tries` : ''}`); next(Math.min(30000, 2000 * errs)); });
+            req.on('timeout', () => { req.destroy(new Error('no answer in 40 s')); });
         } catch { errs++; if (errs >= 10) { errs = 0; setTimeout(poll, 60000); return; } setTimeout(poll, 3000); }
     };
 
