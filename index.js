@@ -5269,7 +5269,7 @@ apiApp.get('/api/vote-stats/:guildId', requireAdmin, async (req, res) => {
             name: (client.users.cache.get(r.user_id) || await client.users.fetch(r.user_id).catch(() => null))?.username || 'Unknown',
             votes: r.total_votes
         })));
-        res.json({ voteUrl: `https://top.gg/bot/${client.user.id}/vote`, total: agg.total, voters: agg.voters, top: topNamed });
+        res.json({ voteUrl: `https://top.gg/bot/${client.user.id}/vote?guild=${gid}`, total: agg.total, voters: agg.voters, top: topNamed });
     } catch (e) {
         console.error(`[VOTE-API] guild=${req.params.guildId}:`, e.message);
         res.status(500).json({ error: 'internal' });
