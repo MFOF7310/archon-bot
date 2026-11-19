@@ -59,5 +59,11 @@
   "set_priority": "يُفحص كل دقيقتين.",
   "set_live_now": "{name} يبث الآن.",
   "set_latest": "آخر فيديو: [افتح على يوتيوب]({url})",
-  "set_hint": "غيّر التنبيهات هنا أو في أي وقت بـ {mention}."
+  "set_hint": "غيّر التنبيهات هنا أو في أي وقت بـ {mention}.",
+  "detail_started": "بدأ {when}",
+  "detail_viewers": "{n} يشاهدون الآن",
+  "detail_published": "نُشر {when}",
+  "detail_views": "{n} مشاهدة",
+  "card_short_title": "{icon} مقطع Short جديد من {name}",
+  "btn_watch_short": "شاهد الـShort"
 }

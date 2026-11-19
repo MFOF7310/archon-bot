@@ -59,5 +59,11 @@
   "set_priority": "每 2 分钟检查一次。",
   "set_live_now": "{name} 现在正在直播。",
   "set_latest": "最新视频：[在 YouTube 打开]({url})",
-  "set_hint": "在这里切换提醒，或随时用 {mention} 修改。"
+  "set_hint": "在这里切换提醒，或随时用 {mention} 修改。",
+  "detail_started": "开始于 {when}",
+  "detail_viewers": "{n} 人正在观看",
+  "detail_published": "发布于 {when}",
+  "detail_views": "{n} 次观看",
+  "card_short_title": "{icon} {name} 发布了新 Short",
+  "btn_watch_short": "观看 Short"
 }

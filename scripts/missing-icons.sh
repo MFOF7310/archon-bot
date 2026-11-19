@@ -130,6 +130,7 @@ make ic_num_6 circle-number-6 "$AMBER"
 make ic_num_7 circle-number-7 "$AMBER"
 make ic_num_8 circle-number-8 "$AMBER"
 make ic_num_9 circle-number-9 "$AMBER"
+make ic_eye eye
 
 # Every new icon goes to its category in config/emojis.js
 node scripts/emojis-tidy.js

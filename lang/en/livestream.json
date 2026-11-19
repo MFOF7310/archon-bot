@@ -59,5 +59,11 @@
   "set_priority": "Checked every 2 minutes.",
   "set_live_now": "{name} is live right now.",
   "set_latest": "Latest video: [open on YouTube]({url})",
-  "set_hint": "Switch alerts here or anytime from {mention}."
+  "set_hint": "Switch alerts here or anytime from {mention}.",
+  "detail_started": "Started {when}",
+  "detail_viewers": "{n} watching",
+  "detail_published": "Posted {when}",
+  "detail_views": "{n} views",
+  "card_short_title": "{icon} New Short from {name}",
+  "btn_watch_short": "Watch the Short"
 }

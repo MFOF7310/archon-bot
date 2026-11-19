@@ -59,5 +59,11 @@
   "set_priority": "Vérifié toutes les 2 minutes.",
   "set_live_now": "{name} est en live en ce moment.",
   "set_latest": "Dernière vidéo : [ouvrir sur YouTube]({url})",
-  "set_hint": "Change les alertes ici ou à tout moment avec {mention}."
+  "set_hint": "Change les alertes ici ou à tout moment avec {mention}.",
+  "detail_started": "A commencé {when}",
+  "detail_viewers": "{n} spectateurs",
+  "detail_published": "Publiée {when}",
+  "detail_views": "{n} vues",
+  "card_short_title": "{icon} Nouveau Short de {name}",
+  "btn_watch_short": "Voir le Short"
 }

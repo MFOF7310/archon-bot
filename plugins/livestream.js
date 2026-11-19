@@ -12,23 +12,16 @@ const mentions = require('../lib/mentions');
 const EMOJIS = require('../config/emojis');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 
-// App emojis work on buttons too (tested Nov 2026). This helper only looks up server emojis by name.
-// Look up by name across all guilds the bot is in, fall back to Unicode if missing.
-function emBtn(name, fallback, client) {
-    const found = client?.emojis?.cache?.find(e => e.name === name);
-    if (found) return `<${found.animated ? 'a' : ''}:${found.name}:${found.id}>`;
-    if (fallback) {
-        console.warn(`[LIVESTREAM] Server emoji "${name}" not found — using fallback "${fallback}". Add it in Server Settings → Emoji to restore the custom icon.`);
-    }
-    return fallback || '';
-}
 const axios = require('axios');
 const { execFile } = require('child_process');
 const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
-async function ytdlpRun(args) {
-    return await execFileAsync('yt-dlp', ['--extractor-args', 'youtubetab:skip=authcheck', ...args]);
-}
+const isChannelId = (s) => /^UC[\w-]{22}$/.test(String(s || ''));
+// What the admin typed becomes the stored @handle, unless it was a UC… ID (then there is no handle:
+// "@UC…/live" is not a page and used to make every live check fail over to the slow fallback)
+const handleOf = (input) => { const h = String(input || '').replace(/^@/, '').trim(); return h && !isChannelId(h) ? h : null; };
+// A channel being checked: the 2-minute and 5-minute cycles can overlap, and both used to post the same live alert
+const busy = new Set();
 
 
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
@@ -85,6 +78,8 @@ function initDatabase(db) {
     try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN notify_live INTEGER DEFAULT 1`); } catch {}
     try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN notify_uploads INTEGER DEFAULT 1`); } catch {}
     try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN seen_videos TEXT DEFAULT '[]'`); } catch {}
+    // the stream already announced: a stream that drops for a few minutes and comes back is not announced twice
+    try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN live_video_id TEXT DEFAULT NULL`); } catch {}
     try { db.exec(`CREATE INDEX IF NOT EXISTS idx_youtube_guild ON youtube_notifications(guild_id)`); } catch {}
     try { db.exec(`ALTER TABLE tiktok_notifications ADD COLUMN priority INTEGER DEFAULT 0`); } catch {}
 }
@@ -171,25 +166,27 @@ async function fetchLiveStatus(channelId, handle) {
         ? `https://www.youtube.com/@${cleanHandle}/live`
         : `https://www.youtube.com/channel/${channelId}/live`;
     try {
-        const { stdout, stderr } = await execFileAsync('yt-dlp', [
+        // One JSON answer: the title can't shift the other fields any more (the old one-value-per-line output
+        // broke on a title or description with a line break), and it carries the details shown on the card
+        const { stdout } = await execFileAsync('yt-dlp', [
             '--skip-download', '--no-warnings', '--no-playlist',
-            '--cookies', COOKIE_FILE,
-            '--print', 'is_live', '--print', 'title', '--print', 'thumbnail', '--print', 'id',
-            watchUrl,
-        ], { timeout: YTDLP_TIMEOUT_MS });
-        const lines = String(stdout).trim().split('\n');
-        const flag = (lines[0] || '').trim().toLowerCase();
-        if (flag === 'true' || flag === 'is_live') {
+            '--cookies', COOKIE_FILE, '--dump-json', watchUrl,
+        ], { timeout: YTDLP_TIMEOUT_MS, maxBuffer: 20 * 1024 * 1024 });
+        const j = JSON.parse(String(stdout).trim().split('\n')[0] || '{}');
+        if (j.is_live === true || j.live_status === 'is_live') {
             return {
                 isLive: true,
-                title: (lines[1] || 'Live stream').trim(),
-                thumbnail: (lines[2] || '').trim() || null,
-                videoId: (lines[3] || '').trim() || null,
-                url: cleanHandle ? `https://youtube.com/@${cleanHandle}/live` : `https://youtube.com/channel/${channelId}/live`,
+                title: j.title || 'Live stream',
+                thumbnail: j.thumbnail || null,
+                videoId: j.id || null,
+                // the stream itself, so the button still opens it once the channel's /live page moves on
+                url: j.id ? `https://youtube.com/watch?v=${j.id}` : watchUrl,
+                viewers: Number.isFinite(j.concurrent_view_count) ? j.concurrent_view_count : null,
+                startedAt: j.release_timestamp || j.timestamp || null,
+                author: j.channel || j.uploader || null,
+                description: j.description || '',
             };
         }
-        // yt-dlp returned OK and said is_live=false → offline
-        console.log(`[YOUTUBE] ${channelId} is_live=${flag}`);
         return { isLive: false };
     } catch (e) {
         const msg = String(e.message || '') + String(e.stderr || '');
@@ -215,7 +212,7 @@ async function fetchLiveFallback(channelId) {
         ], { timeout: YTDLP_TIMEOUT_MS });
         const status = String(stdout).trim();
         if (status === 'is_live') {
-            return { isLive: true, title: up.title, thumbnail: up.thumbnail, url: up.url, videoId: up.id };
+            return { isLive: true, title: up.title, thumbnail: up.thumbnail, url: up.url, videoId: up.id, author: up.author, description: up.description || '' };
         }
         return { isLive: false };
     } catch {
@@ -227,6 +224,7 @@ async function fetchLiveFallback(channelId) {
 // YouTube's RSS feeds often answer 404/500 for hours. Each failure used to print a line per channel every few
 // minutes; now one line when a channel's feed breaks and one when it comes back.
 const _feedDown = new Map();   // channelId -> since (ms)
+const unxml = (s) => String(s).replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 function parseFeed(xml, channelId) {
     const first = String(xml).split('<entry>')[1];
     if (!first) return null;
@@ -236,7 +234,12 @@ function parseFeed(xml, channelId) {
     const published = (first.match(/<published>([^<]+)<\/published>/) || [])[1];
     const author = (first.match(/<name>([^<]+)<\/name>/) || [])[1];
     const thumb = (first.match(/<media:thumbnail url="([^"]+)"/) || [])[1];
-    return { id, title: title || 'Untitled', published, author: author || channelId, thumbnail: thumb, url: `https://youtube.com/watch?v=${id}` };
+    const link = (first.match(/<link rel="alternate" href="([^"]+)"/) || [])[1] || '';
+    const views = Number((first.match(/<media:statistics views="(\d+)"/) || [])[1]);
+    const description = unxml((first.match(/<media:description>([\s\S]*?)<\/media:description>/) || [])[1] || '');
+    const isShort = /\/shorts\//.test(link);
+    return { id, title: unxml(title || '') || 'Untitled', published, author: unxml(author || '') || channelId, thumbnail: thumb, isShort,
+        views: Number.isFinite(views) ? views : null, description, url: isShort ? `https://youtube.com/shorts/${id}` : `https://youtube.com/watch?v=${id}` };
 }
 async function fetchLatestUpload(channelId) {
     const headers = { 'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36' };
@@ -264,7 +267,35 @@ async function fetchLatestUpload(channelId) {
     return null;
 }
 
+// A new video in the feed, looked at once before it is announced: a scheduled live or a premiere shows up in the
+// feed before it starts (it used to be posted as a "new video", then again as a live), and this gives the length.
+async function probeVideo(id) {
+    try {
+        const { stdout } = await execFileAsync('yt-dlp', ['--skip-download', '--no-warnings', '--no-playlist', '--cookies', COOKIE_FILE,
+            '--dump-json', `https://www.youtube.com/watch?v=${id}`], { timeout: YTDLP_TIMEOUT_MS, maxBuffer: 20 * 1024 * 1024 });
+        const j = JSON.parse(String(stdout).trim().split('\n')[0] || '{}');
+        return { liveStatus: j.live_status || null, duration: j.duration || null, views: Number.isFinite(j.view_count) ? j.view_count : null,
+            description: j.description || '', uploadedAt: j.timestamp || null };
+    } catch (e) {
+        const msg = String(e.message || '') + String(e.stderr || '');
+        if (/will begin|premiere|upcoming|live event/i.test(msg)) return { liveStatus: 'is_upcoming' };
+        return null;   // can't tell: announce it with what the feed gave
+    }
+}
+
 // ─── Cards ───
+// A few words from the description: no links, no mentions, two lines at most
+function snippet(text, max = 180) {
+    const lines = String(text || '').replace(/https?:\/\/\S+/g, '').replace(/@/g, '@\u200b').replace(/[*_~`|>#]/g, '')
+        .split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 2).join(' · ');
+    return lines.length > max ? lines.slice(0, max).replace(/\s+\S*$/, '') + '…' : lines;
+}
+const fmtNum = (n, lang) => Number(n).toLocaleString({ fr: 'fr-FR', zh: 'zh-CN', ar: 'ar' }[lang] || 'en-US');
+function fmtDuration(sec) {
+    sec = Math.round(sec || 0); if (!sec) return null;
+    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+    return h ? `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}` : `${m}:${String(s).padStart(2, '0')}`;
+}
 const rule = () => new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small);
 
 function buildLiveEmbed(channelId, live, handle, client, lang = 'en', pingText = null) {
@@ -281,7 +312,11 @@ function buildLiveEmbed(channelId, live, handle, client, lang = 'en', pingText =
     if (live.thumbnail) c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(live.thumbnail)));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${header}`));
     c.addSeparatorComponents(rule());
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${title}**\n${body}`));
+    const facts = [];
+    if (!isPreview && live.startedAt) facts.push(`${em('clock', '🕒')} ${t('livestream.detail_started', lang, { when: `<t:${live.startedAt}:R>` })}`);
+    if (!isPreview && live.viewers != null) facts.push(`${em('ic_users', '👥')} ${t('livestream.detail_viewers', lang, { n: fmtNum(live.viewers, lang) })}`);
+    const about = isPreview ? '' : snippet(live.description);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${title}**\n${facts.length ? facts.join('  ·  ') : body}${about ? `\n-# ${about}` : ''}`));
     c.addSeparatorComponents(rule());
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
         new ButtonBuilder().setLabel(t('livestream.btn_watch_live', lang)).setStyle(ButtonStyle.Link).setURL(watchUrl).setEmoji(iconObj('ic_live', null, '🔴')),
@@ -294,12 +329,21 @@ function buildVideoEmbed(upload, handle, client, lang = 'en') {
     const name = handle ? '@' + handle : (upload.author || 'YouTube');
     const c = new ContainerBuilder().setAccentColor(0xFF0000);
     if (upload.thumbnail) c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(upload.thumbnail)));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t('livestream.card_video_title', lang, { icon: EMOJIS.ic_youtube || '✨', name })}`));
+    const short = !!upload.isShort;
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${t(short ? 'livestream.card_short_title' : 'livestream.card_video_title', lang, { icon: EMOJIS.ic_youtube || '✨', name })}`));
     c.addSeparatorComponents(rule());
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${upload.title || 'Untitled'}**\n${t('livestream.card_video_body', lang, { name })}`));
+    const facts = [];
+    const when = upload.uploadedAt || (upload.published ? Math.floor(Date.parse(upload.published) / 1000) : null);
+    if (when) facts.push(`${em('clock', '🕒')} ${t('livestream.detail_published', lang, { when: `<t:${when}:R>` })}`);
+    const len = fmtDuration(upload.duration);
+    if (len) facts.push(`${em('ic_video', '🎬')} ${len}`);
+    if (upload.views) facts.push(`${em('ic_eye', '👀')} ${t('livestream.detail_views', lang, { n: fmtNum(upload.views, lang) })}`);
+    const about = snippet(upload.description);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${upload.title || 'Untitled'}**\n${facts.length ? facts.join('  ·  ') : t('livestream.card_video_body', lang, { name })}${about ? `\n-# ${about}` : ''}`));
     c.addSeparatorComponents(rule());
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel(t('livestream.btn_watch_video', lang)).setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji(iconObj('ic_video', null, '🎬'))
+        new ButtonBuilder().setLabel(t(short ? 'livestream.btn_watch_short' : 'livestream.btn_watch_video', lang)).setStyle(ButtonStyle.Link).setURL(upload.url).setEmoji(iconObj('ic_video', null, '🎬')),
+        new ButtonBuilder().setLabel(t('livestream.btn_channel', lang)).setStyle(ButtonStyle.Link).setURL(handle ? `https://youtube.com/@${handle}` : `https://youtube.com/channel/${upload.channelId || ''}`).setEmoji(iconObj('ic_youtube', null, '📺'))
     ));
     return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } } };
 }
@@ -390,17 +434,24 @@ async function runCycle(client, db, priorityOnly) {
 
         for (const [, tracks] of byChannel) {
             const chId = tracks[0].youtube_channel_id; // YouTube IDs are case-sensitive
-            const handle = tracks[0]?.youtube_handle || null;
+            const handle = handleOf(tracks[0]?.youtube_handle);
+            if (busy.has(chId)) continue;   // the other cycle is on it
+            busy.add(chId);
+            try {
 
             const live = await fetchLiveStatus(chId, handle);
             if (live.isLive) {
                 offlineCounters.delete(chId);
                 if (live.videoId) { liveVideoIds.set(chId, live.videoId); markSeen(db, chId, [live.videoId]); }
+                const setLive = (gid) => db.prepare('UPDATE youtube_notifications SET is_live = 1, live_video_id = COALESCE(?, live_video_id) WHERE guild_id = ? AND youtube_channel_id = ?').run(live.videoId || null, gid, chId);
                 for (const t of tracks) {
-                    if (t.is_live !== 1 && t.notify_live === 0) { db.prepare('UPDATE youtube_notifications SET is_live = 1 WHERE guild_id = ? AND youtube_channel_id = ?').run(t.guild_id, chId); continue; }
-                    if (t.is_live !== 1 && canNotifyLive(t.guild_id, chId)) {
+                    if (t.is_live === 1) continue;
+                    // alerts off, or this very stream was already announced (it dropped and came back): no new post
+                    if (t.notify_live === 0 || (live.videoId && t.live_video_id === live.videoId)) { setLive(t.guild_id); continue; }
+                    if (canNotifyLive(t.guild_id, chId)) {
                         const sent = await sendNotification(client, db, t.guild_id, chId, handle, live, 'live');
-                        if (sent.ok) db.prepare('UPDATE youtube_notifications SET is_live = 1 WHERE guild_id = ? AND youtube_channel_id = ?').run(t.guild_id, chId);
+                        console.log(`[YOUTUBE] live ${live.videoId || '?'} on ${handle || chId} -> ${t.guild_id}: ${sent.ok ? 'sent' : 'failed (' + sent.reason + ')'}`);
+                        if (sent.ok) setLive(t.guild_id);
                     }
                 }
             } else {
@@ -416,14 +467,26 @@ async function runCycle(client, db, priorityOnly) {
             if (!priorityOnly) {
                 const up = await fetchLatestUpload(chId);
                 if (up) {
+                    up.channelId = chId;
                     const fresh = db.prepare('SELECT guild_id, seen_videos FROM youtube_notifications WHERE youtube_channel_id = ?').all(chId);
                     const seenBy = new Map(fresh.map(r => [r.guild_id, seenOf(r)]));
                     const age = up.published ? Date.now() - Date.parse(up.published) : 0;
                     const tooOld = Number.isFinite(age) && age > MAX_VIDEO_AGE_MS;
+                    let probed;   // looked up once, for the first server that needs it
                     for (const t of tracks) {
                         const seen = seenBy.get(t.guild_id) || [];
                         if (t.last_video_id && seen.length && t.last_video_id !== up.id && !seen.includes(up.id) && !tooOld
-                            && t.notify_uploads !== 0 && up.id !== liveVideoIds.get(chId)) {
+                            && t.notify_uploads !== 0 && up.id !== liveVideoIds.get(chId) && up.id !== t.live_video_id) {
+                            if (probed === undefined) {
+                                probed = await probeVideo(up.id);
+                                if (probed) Object.assign(up, { duration: probed.duration, views: probed.views ?? up.views,
+                                    description: probed.description || up.description, uploadedAt: probed.uploadedAt });
+                            }
+                            // a live (scheduled, running or just ended) or a premiere: the live alert covers it
+                            if (probed && /^(is_upcoming|is_live|post_live|was_live)$/.test(probed.liveStatus || '')) {
+                                console.log(`[YOUTUBE] ${up.id} on ${handle || chId} is a live (${probed.liveStatus}), not posted as a video`);
+                                continue;
+                            }
                             const sent = await sendNotification(client, db, t.guild_id, chId, handle, up, 'video'); console.log(`[YOUTUBE] new video ${up.id} on ${handle || chId} -> ${t.guild_id}: ${sent.ok ? 'sent' : 'failed (' + sent.reason + ')'}`);
                         }
                         db.prepare('UPDATE youtube_notifications SET last_video_id = ? WHERE guild_id = ? AND youtube_channel_id = ?').run(up.id, t.guild_id, chId);
@@ -433,11 +496,23 @@ async function runCycle(client, db, priorityOnly) {
                 }
             }
 
+            } finally { busy.delete(chId); }
             await new Promise(r => setTimeout(r, 1500 + Math.random() * 2000));
         }
     } catch (e) {
         console.error('[YOUTUBE] cycle:', e.message);
     }
+}
+
+// A @handle already on this server's list needs no YouTube lookup (remove and test used to fail when YouTube was slow)
+async function trackedOrResolve(db, guildId, input) {
+    const clean = String(input || '').replace(/^@/, '').trim();
+    if (isChannelId(clean)) return { id: clean, reason: 'ok' };
+    try {
+        const row = db.prepare('SELECT youtube_channel_id FROM youtube_notifications WHERE guild_id = ? AND youtube_handle = ? COLLATE NOCASE').get(guildId, clean);
+        if (row) return { id: row.youtube_channel_id, reason: 'ok' };
+    } catch {}
+    return resolveHandle(clean);
 }
 
 // ─── List ───
@@ -467,7 +542,7 @@ function buildListEmbed(tracks, guild, client, lang = 'en') {
     }
     tracks.slice(0, MAX_TOGGLE_ROWS).forEach((row, i) => {
         const prio = row.priority === 1 ? ' ⚡' : '';
-        const tag = row.youtube_handle ? '@' + row.youtube_handle : row.youtube_channel_id;
+        const tag = handleOf(row.youtube_handle) ? '@' + handleOf(row.youtube_handle) : row.youtube_channel_id;
         c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${i + 1}. ${tag}**${prio}  ·  ${statusText(row, client, lang)}\n↳ <#${row.target_channel_id}>`));
         c.addActionRowComponents(new ActionRowBuilder().addComponents(toggleButton('live', row, lang), toggleButton('up', row, lang)));
     });
@@ -480,7 +555,7 @@ function buildListEmbed(tracks, guild, client, lang = 'en') {
 
 // Confirmation card after /livestream set, with the same two switches
 function buildSetCard(row, client, lang = 'en') {
-    const name = row.youtube_handle ? '@' + row.youtube_handle : row.youtube_channel_id;
+    const name = handleOf(row.youtube_handle) ? '@' + handleOf(row.youtube_handle) : row.youtube_channel_id;
     const lines = [t('livestream.set_where', lang, { channel: `<#${row.target_channel_id}>` })];
     if (row.priority === 1) lines.push(`-# ${t('livestream.set_priority', lang)}`);
     if (row.is_live === 1) lines.push(`${em('ic_live', '🔴')} ${t('livestream.set_live_now', lang, { name })}`);
@@ -565,11 +640,11 @@ module.exports = {
             const { id: channelId, reason: _resolveReason } = await resolveHandle(input);
             if (!channelId) return statusMsg.edit(resolveErrMsg(client, message.guild.id, _resolveReason, input));
 
-            const handle = input.replace(/^@/, '').trim();
+            const handle = handleOf(input);
 
             const existing = db.prepare('SELECT target_channel_id, priority FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(guildId, channelId);
             if (existing && existing.target_channel_id === channel.id && existing.priority === (priority ? 1 : 0)) {
-                return statusMsg.edit(t('livestream.already_tracked', livLang(client, guildId, message), { handle: '@' + handle, channel: channel.id }));
+                return statusMsg.edit(t('livestream.already_tracked', livLang(client, guildId, message), { handle: handle ? '@' + handle : channelId, channel: channel.id }));
             }
 
             
@@ -598,7 +673,7 @@ module.exports = {
 
         if (action === 'remove') {
             const input = String(args[1] || '').replace(/^@/, '').trim();
-            const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
+            const { id: channelId, reason: _resolveReason } = await trackedOrResolve(db, guildId, input);
             if (!channelId) return message.reply(resolveErrMsg(client, message.guild.id, _resolveReason, input));
             let res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').run(guildId, channelId);
             if (res.changes === 0) {
@@ -610,20 +685,20 @@ module.exports = {
 
         if (action === 'test') {
             const input = String(args[1] || '').replace(/^@/, '').trim();
-            const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
+            const { id: channelId, reason: _resolveReason } = await trackedOrResolve(db, guildId, input);
             if (!channelId) return message.reply(resolveErrMsg(client, message.guild.id, _resolveReason, input));
             const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').get(guildId, channelId);
             if (!track) return message.reply(t('livestream.cmd_not_tracked_hint', livLang(client, guildId, message), { handle: input, mention: mentions(client, 'livestream', 'set') }));
-            const live = await fetchLiveStatus(channelId, track.youtube_handle);
+            const live = await fetchLiveStatus(channelId, handleOf(track.youtube_handle));
             const isRealLive = !!live.isLive;
             const payload = isRealLive
                 ? live
                 : { isLive: true, _test: true, title: 'Layout preview', thumbnail: null, url: `https://youtube.com/channel/${channelId}/live` };
-            const sent = await sendNotification(client, db, guildId, channelId, track.youtube_handle, payload, 'system_test');
+            const sent = await sendNotification(client, db, guildId, channelId, handleOf(track.youtube_handle), payload, 'system_test');
             if (!sent.ok) {
             const _lang = livLang(client, guildId, message);
             const _key = 'livestream.errors.' + (sent.reason || 'unknown');
-            const _msg = t(_key, _lang, { channel: `<#${channelId}>`, detail: sent.detail || '' });
+            const _msg = t(_key, _lang, { channel: `<#${track.target_channel_id}>`, detail: sent.detail || '' });
             return message.reply(_msg && _msg !== _key ? _msg : t('livestream.errors.unknown', _lang, { detail: sent.detail || 'no detail' }));
         }
             return message.reply(isRealLive
@@ -642,10 +717,10 @@ module.exports = {
         initDatabase(client.db);
         const rows = client.db.prepare('SELECT youtube_channel_id, youtube_handle FROM youtube_notifications WHERE guild_id = ?').all(guildId);
         // exclude the subcommand's own context if needed (remove/test both want the full list)
-        const items = rows.map(r => ({
-            name: r.youtube_handle ? `@${r.youtube_handle} (${r.youtube_channel_id.slice(0, 8)}…)` : r.youtube_channel_id,
-            value: r.youtube_handle ? `@${r.youtube_handle}` : r.youtube_channel_id,
-        }));
+        const items = rows.map(r => { const h = handleOf(r.youtube_handle); return {
+            name: h ? `@${h} (${r.youtube_channel_id.slice(0, 8)}…)` : r.youtube_channel_id,
+            value: h ? `@${h}` : r.youtube_channel_id,
+        }; }).filter(i => !focused || i.name.toLowerCase().includes(focused.toLowerCase().replace(/^@/, '')));
         return require('../lib/autocomplete').reply(interaction, items);
     },
 
@@ -669,9 +744,7 @@ module.exports = {
             const priority = interaction.options.getBoolean('priority') || false;
             const { id: channelId, reason: _resolveReason } = await resolveHandle(input);
             if (!channelId) return interaction.editReply(resolveErrMsg(interaction.client, interaction.guildId, _resolveReason, input));
-            const handle = input.replace(/^@/, '').trim();
-            
-            
+            const handle = handleOf(input);
 
             const live = await fetchLiveStatus(channelId, handle);
             const up = await fetchLatestUpload(channelId);
@@ -698,7 +771,7 @@ module.exports = {
 
         if (sub === 'remove') {
             const input = interaction.options.getString('channel').replace(/^@/, '').trim();
-            const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
+            const { id: channelId, reason: _resolveReason } = await trackedOrResolve(db, guildId, input);
             if (!channelId) return interaction.reply({ content: t('livestream.cmd_invalid', livLang(interaction.client, interaction.guildId, interaction)), flags: 64 });
             let res = db.prepare('DELETE FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').run(guildId, channelId);
             if (res.changes === 0) {
@@ -712,20 +785,20 @@ module.exports = {
         if (sub === 'test') {
             await interaction.deferReply({ flags: 64 });
             const input = interaction.options.getString('channel').replace(/^@/, '').trim();
-            const { id: channelId, reason: _resolveReason } = /^UC[\w-]{22}$/.test(input) ? { id: input, reason: 'ok' } : await resolveHandle(input);
+            const { id: channelId, reason: _resolveReason } = await trackedOrResolve(db, guildId, input);
             if (!channelId) return interaction.editReply(resolveErrMsg(interaction.client, interaction.guildId, _resolveReason, input));
             const track = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').get(guildId, channelId);
             if (!track) return interaction.editReply(t('livestream.cmd_not_tracked_hint', livLang(interaction.client, interaction.guildId, interaction), { handle: input, mention: mentions(client, 'livestream', 'set') }));
-            const live = await fetchLiveStatus(channelId, track.youtube_handle);
+            const live = await fetchLiveStatus(channelId, handleOf(track.youtube_handle));
             const isRealLive = !!live.isLive;
             const payload = isRealLive
                 ? live
                 : { isLive: true, _test: true, title: 'Layout preview', thumbnail: null, url: `https://youtube.com/channel/${channelId}/live` };
-            const sent = await sendNotification(client, db, guildId, channelId, track.youtube_handle, payload, 'system_test');
+            const sent = await sendNotification(client, db, guildId, channelId, handleOf(track.youtube_handle), payload, 'system_test');
             if (!sent.ok) {
             const _lang = livLang(interaction.client, interaction.guildId, interaction);
             const _key = 'livestream.errors.' + (sent.reason || 'unknown');
-            const _msg = t(_key, _lang, { channel: `<#${channelId}>`, detail: sent.detail || '' });
+            const _msg = t(_key, _lang, { channel: `<#${track.target_channel_id}>`, detail: sent.detail || '' });
             return interaction.editReply(_msg && _msg !== _key ? _msg : t('livestream.errors.unknown', _lang, { detail: sent.detail || 'no detail' }));
         }
             return interaction.editReply(isRealLive
