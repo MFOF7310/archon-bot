@@ -57,7 +57,9 @@ function getOnce(target) {
         const lib = target.url.protocol === 'https:' ? https : http;
         const req = lib.get(target.url, {
             timeout: 10000,
-            lookup: (host, opts, cb) => cb(null, target.address, target.family),
+            // Node asks with { all: true } (it tries several addresses since v20): the answer must then be a list.
+            // Answering one address made every request fail ("Invalid IP address: undefined").
+            lookup: (host, opts, cb) => (opts && opts.all ? cb(null, [{ address: target.address, family: target.family }]) : cb(null, target.address, target.family)),
             headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ARCHON-CG223 link preview; +https://archon223.com)', Accept: 'text/html,application/xhtml+xml', 'Accept-Encoding': 'identity' },
         }, (res) => {
             if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) { res.resume(); return resolve({ redirect: new URL(res.headers.location, target.url).toString() }); }
@@ -122,6 +124,7 @@ async function card(lang, link, where) {
 
 module.exports = {
     name: 'url',
+    _getOnce: (t) => getOnce(t),
     userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['link', 'preview', 'website', 'site', 'urlpreview'],
     description: 'A preview of a web page: title, description, picture',
