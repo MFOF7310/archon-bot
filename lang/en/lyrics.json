@@ -1,0 +1,9 @@
+{
+  "eyebrow": "Lyrics",
+  "page": "Page {n} of {total}",
+  "back": "Back",
+  "next": "Next",
+  "noQuery": "No song is playing here. Give a song name: {cmd}",
+  "notFound": "I couldn't find lyrics for **{query}**. Try the artist's name too.",
+  "gone": "These lyrics aren't available any more. Search again with /lyrics."
+}

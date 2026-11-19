@@ -65,5 +65,14 @@
   "img_by": "{who} على {site}",
   "img_view": "عرض الصورة",
   "img_noKey": "صور «{cat}» تأتي من Unsplash، وهذا البوت لا يملك مفتاح Unsplash بعد. جرّب الكلاب أو القطط أو الفضاء.",
-  "what_image": "صورة"
+  "what_image": "صورة",
+  "qt_motivation": "تحفيز",
+  "qt_wisdom": "حكمة",
+  "qt_success": "نجاح",
+  "qt_leadership": "قيادة",
+  "qt_creativity": "إبداع",
+  "qt_resilience": "صمود",
+  "qt_humor": "فكاهة",
+  "qt_attributed": "يُنسب إلى {who}",
+  "qt_unknown": "مؤلف مجهول"
 }

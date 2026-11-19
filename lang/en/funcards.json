@@ -65,5 +65,14 @@
   "img_by": "{who} on {site}",
   "img_view": "View the photo",
   "img_noKey": "{cat} photos come from Unsplash, and this bot has no Unsplash key yet. Try dogs, cats or space.",
-  "what_image": "a photo"
+  "what_image": "a photo",
+  "qt_motivation": "Motivation",
+  "qt_wisdom": "Wisdom",
+  "qt_success": "Success",
+  "qt_leadership": "Leadership",
+  "qt_creativity": "Creativity",
+  "qt_resilience": "Resilience",
+  "qt_humor": "Humor",
+  "qt_attributed": "attributed to {who}",
+  "qt_unknown": "Unknown author"
 }

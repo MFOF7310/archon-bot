@@ -1,0 +1,9 @@
+{
+  "eyebrow": "Paroles",
+  "page": "Page {n} sur {total}",
+  "back": "Retour",
+  "next": "Suivant",
+  "noQuery": "Aucune chanson ne joue ici. Donne un titre : {cmd}",
+  "notFound": "Je n'ai pas trouvé de paroles pour **{query}**. Essaie avec le nom de l'artiste.",
+  "gone": "Ces paroles ne sont plus disponibles. Relance /lyrics."
+}

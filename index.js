@@ -3645,6 +3645,10 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
 
     // ================= MEME BUTTONS =================
     // The fun pack (lib/fun): Another / Share / Slap back. Buttons from before the rebuild just say they expired.
+    // /lyrics pages (lyr:<id>:<page>:<uid>): never expire, lyrics fetched again by id
+    if (interaction.isButton() && interaction.customId?.startsWith('lyr:')) {
+        return require('./plugins/lyrics.js').handleComponent(interaction, client).catch((e) => console.error('[LYRICS] button:', e.message));
+    }
     if (interaction.isButton() && interaction.customId?.startsWith('fun:')) {
         return require('./lib/fun').handleComponent(interaction, client).catch((e) => console.error('[FUN] button:', e.message));
     }

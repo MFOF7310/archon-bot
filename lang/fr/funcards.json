@@ -65,5 +65,14 @@
   "img_by": "{who} sur {site}",
   "img_view": "Voir la photo",
   "img_noKey": "Les photos « {cat} » viennent d'Unsplash, et ce bot n'a pas encore de clé Unsplash. Essaie chiens, chats ou espace.",
-  "what_image": "une photo"
+  "what_image": "une photo",
+  "qt_motivation": "Motivation",
+  "qt_wisdom": "Sagesse",
+  "qt_success": "Réussite",
+  "qt_leadership": "Leadership",
+  "qt_creativity": "Créativité",
+  "qt_resilience": "Résilience",
+  "qt_humor": "Humour",
+  "qt_attributed": "attribué à {who}",
+  "qt_unknown": "Auteur inconnu"
 }

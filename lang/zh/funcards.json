@@ -65,5 +65,14 @@
   "img_by": "{who} 摄于 {site}",
   "img_view": "查看照片",
   "img_noKey": "“{cat}”照片来自 Unsplash，但这个机器人还没有 Unsplash 密钥。试试狗狗、猫咪或太空。",
-  "what_image": "照片"
+  "what_image": "照片",
+  "qt_motivation": "激励",
+  "qt_wisdom": "智慧",
+  "qt_success": "成功",
+  "qt_leadership": "领导力",
+  "qt_creativity": "创造力",
+  "qt_resilience": "坚韧",
+  "qt_humor": "幽默",
+  "qt_attributed": "据称出自 {who}",
+  "qt_unknown": "佚名"
 }
