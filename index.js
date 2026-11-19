@@ -3600,6 +3600,10 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
 
     // ================= MEME BUTTONS =================
     // The fun pack (lib/fun): Another / Share / Slap back. Buttons from before the rebuild just say they expired.
+    // pin archive cards: Unpin (pin:unpin:<channel>:<message>, and the old cards' unpin_<message>)
+    if (interaction.isButton() && (interaction.customId?.startsWith('pin:unpin:') || interaction.customId?.startsWith('unpin_'))) {
+        return require('./plugins/pin.js').handleComponent(interaction, client).catch((e) => console.error('[PIN] button:', e.message));
+    }
     // /autoreply list: remove menu and clear buttons (ar:<action>:<uid>)
     if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId?.startsWith('ar:')) {
         return require('./plugins/autoreply.js').handleComponent(interaction, client).catch((e) => console.error('[AUTOREPLY] component:', e.message));

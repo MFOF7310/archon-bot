@@ -135,6 +135,7 @@ make ic_calc calculator
 make ic_qr qrcode
 make ic_define vocabulary
 make ic_search search
+make ic_pin pin
 
 # Every new icon goes to its category in config/emojis.js
 node scripts/emojis-tidy.js
