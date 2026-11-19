@@ -3600,6 +3600,10 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
 
     // ================= MEME BUTTONS =================
     // The fun pack (lib/fun): Another / Share / Slap back. Buttons from before the rebuild just say they expired.
+    // /autoreply list: remove menu and clear buttons (ar:<action>:<uid>)
+    if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId?.startsWith('ar:')) {
+        return require('./plugins/autoreply.js').handleComponent(interaction, client).catch((e) => console.error('[AUTOREPLY] component:', e.message));
+    }
     // /use panel, item menu and badge buttons (use:<action>:<uid>[:<item>]): never expire
     if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId?.startsWith('use:')) {
         return require('./plugins/use.js').handleComponent(interaction, client).catch((e) => console.error('[USE] component:', e.message));

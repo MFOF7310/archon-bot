@@ -1,0 +1,20 @@
+{
+  "title": "自动回复",
+  "empty": "还没有自动回复。用 /autoreply add 添加。",
+  "everywhere": "所有频道",
+  "fired": "{n} 次",
+  "more": "还有 {n} 条（删除一些后可见）",
+  "removePick": "删除一条回复…",
+  "clearAll": "全部删除",
+  "notYours": "只有打开此列表的管理员可以使用。",
+  "clearAsk": "删除本服务器全部 {n} 条自动回复？",
+  "clearYes": "删除 {n} 条",
+  "cancel": "取消",
+  "cleared": "已删除 {n} 条自动回复。",
+  "serverOnly": "自动回复只能在服务器中使用。",
+  "adminOnly": "需要“管理消息”权限。",
+  "added": "**{k}** 现在会在{where}自动回复。",
+  "preview": "效果如下：",
+  "removed": "已删除 **{k}** 的回复。",
+  "notFound": "没有 **{k}** 的回复。"
+}

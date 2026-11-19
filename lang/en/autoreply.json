@@ -1,0 +1,20 @@
+{
+  "title": "Auto-replies",
+  "empty": "No auto-reply yet. Add one with /autoreply add.",
+  "everywhere": "all channels",
+  "fired": "{n} times",
+  "more": "+{n} more (remove some to see them)",
+  "removePick": "Remove a reply…",
+  "clearAll": "Clear all",
+  "notYours": "Only the admin who opened this list can use it.",
+  "clearAsk": "Delete all {n} auto-replies of this server?",
+  "clearYes": "Delete {n}",
+  "cancel": "Cancel",
+  "cleared": "{n} auto-replies deleted.",
+  "serverOnly": "Auto-replies work in a server only.",
+  "adminOnly": "You need the Manage Messages permission for this.",
+  "added": "**{k}** now gets an answer in {where}.",
+  "preview": "This is how it will look:",
+  "removed": "Reply to **{k}** removed.",
+  "notFound": "No reply for **{k}**."
+}

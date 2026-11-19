@@ -1,0 +1,20 @@
+{
+  "title": "Réponses automatiques",
+  "empty": "Aucune réponse automatique. Ajoute-en une avec /autoreply add.",
+  "everywhere": "tous les salons",
+  "fired": "{n} fois",
+  "more": "+{n} autres (supprime-en pour les voir)",
+  "removePick": "Supprimer une réponse…",
+  "clearAll": "Tout supprimer",
+  "notYours": "Seul l'admin qui a ouvert cette liste peut l'utiliser.",
+  "clearAsk": "Supprimer les {n} réponses automatiques de ce serveur ?",
+  "clearYes": "Supprimer {n}",
+  "cancel": "Annuler",
+  "cleared": "{n} réponses automatiques supprimées.",
+  "serverOnly": "Les réponses automatiques marchent seulement sur un serveur.",
+  "adminOnly": "Il faut la permission Gérer les messages.",
+  "added": "**{k}** reçoit maintenant une réponse dans {where}.",
+  "preview": "Voici à quoi elle ressemblera :",
+  "removed": "Réponse à **{k}** supprimée.",
+  "notFound": "Aucune réponse pour **{k}**."
+}
