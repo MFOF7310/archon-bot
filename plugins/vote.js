@@ -508,32 +508,9 @@ module.exports = {
 
         // ---- PORTAL (default) ----
         const status = await getRealtimeStatus(client, uid, gid, db);
-        const sent = await message.reply(portalCard(client, who, status, lang, message, message.guild.name, false, gid)).catch(() => null);
-        if (!sent) return;
-
-        const collector = sent.createMessageComponentCollector({ time: 120000 });
-        collector.on('collect', async i => {
-            if (i.customId.endsWith('_slash')) return;   // reminders: the global button handler answers
-            if (i.user.id !== uid) return i.reply({ content: t.notYours, flags: MessageFlags.Ephemeral }).catch(() => {});
-            await i.deferUpdate().catch(() => {});
-
-            if (i.customId === 'vote_check_status') {
-                return i.followUp(eph(waitCard(client, nextVoteOf(db, uid, gid).nextVote, lang, i))).catch(() => {});
-            }
-            if (i.customId === 'vote_claim') {
-                const result = await voteSync.processVote(uid, gid, client);
-                await i.followUp(eph(claimReply(client, result, lang, i, who))).catch(() => {});
-                if (result.success) await sent.delete().catch(() => {});
-                return;
-            }
-            if (i.customId === 'vote_stats') {
-                return i.followUp(eph(statsCard(voteSync.getStats(db, uid, gid), rankOf(db, gid, uid), lang, i, who, message.guild.name))).catch(() => {});
-            }
-            if (i.customId === 'vote_lb') {
-                const file = await lbImage(client, db, gid, message.guild.name);
-                return i.followUp(file ? { files: [file], flags: MessageFlags.Ephemeral } : eph(await topCard(client, db, gid, lang, i, message.guild.name))).catch(() => {});
-            }
-        });
+        // The buttons are the global ones (vote_*_slash): they keep working after any delay, and whoever presses
+        // gets a private answer about their own vote (a 2-minute collector used to leave "didn't respond in time")
+        return message.reply(portalCard(client, who, status, lang, message, message.guild.name, true, gid)).catch(() => {});
     },
 
     // ================= SLASH =================
