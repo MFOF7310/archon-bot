@@ -8,6 +8,8 @@ const mentions = require('../lib/mentions');
 const EMOJIS = require('../config/emojis');
 
 const axios = require('axios');
+const { execFile } = require('child_process');
+const execFileAsync = require('util').promisify(execFile);
 
 // ═══════════════════════════════════════════════════════════════════
 //  ARCHON CG-223  •  TIKTOK NOTIFICATION ENGINE v2.0
@@ -25,7 +27,7 @@ const SCRAPE_CONFIG = {
     // Request timeout: 12 seconds (Starlink resilience)
     TIMEOUT_MS: 12000,
     // Max retries per method before moving to next fallback
-    MAX_RETRIES: 3,
+    MAX_RETRIES: 2,
     // Minimum minutes between live notifications for same user (prevents spam)
     NOTIFICATION_COOLDOWN_MINUTES: 30,
     // Realistic browser headers to avoid bot detection
@@ -80,6 +82,8 @@ function initDatabase(db) {
     try {
         db.exec(`ALTER TABLE tiktok_notifications ADD COLUMN force_mode INTEGER DEFAULT 0`);
     } catch (e) { /* column already exists */ }
+    try { db.exec(`ALTER TABLE tiktok_notifications ADD COLUMN last_video_time INTEGER DEFAULT NULL`); } catch {}
+    try { db.exec(`ALTER TABLE tiktok_notifications ADD COLUMN live_room_id TEXT DEFAULT NULL`); } catch {}
     try {
         db.exec(`CREATE INDEX IF NOT EXISTS idx_tiktok_guild ON tiktok_notifications(guild_id)`);
     } catch (e) {}
@@ -253,7 +257,13 @@ async function fetchLiveStatus(username) {
         if (hasEnoughIndicators) {
             const coverMatch = html.match(/"coverUrl":"(https:[^"]+)"/);
             if (coverMatch) liveCover = coverMatch[1].replace(/\\u002F/g, '/');
-            return { isLive: true, roomId, liveCover };
+            // the stream's own title, viewers and start, when the page carries them (best effort)
+            const room = html.slice(Math.max(0, html.indexOf('"liveRoom"')), html.indexOf('"liveRoom"') + 20000);
+            const liveTitle = (room.match(/"title":"([^"]{1,200})"/) || [])[1] || null;
+            const liveViewers = Number((room.match(/"userCount":(\d+)/) || [])[1]) || null;
+            const liveStart = Number((room.match(/"startTime":(\d{10})/) || [])[1]) || null;
+            let title = null; try { title = liveTitle ? JSON.parse(`"${liveTitle}"`) : null; } catch { title = liveTitle; }
+            return { isLive: true, roomId, liveCover, liveTitle: title, liveViewers, liveStart };
         }
 
         return { isLive: false, roomId: null, liveCover: null };
@@ -279,23 +289,6 @@ async function fetchTikTokUser(username) {
         await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
     }
 
-    // ─── LAYER 2: oEmbed ───
-    try {
-        const data = await fetchViaOembed(cleanUsername);
-        if (data) {
-            // oEmbed doesn't expose live status — merge with live check
-            const liveCheck = await fetchLiveStatus(cleanUsername);
-            if (liveCheck.isLive) {
-                data.isLive = true;
-                data.roomId = liveCheck.roomId;
-                data.liveCover = liveCheck.liveCover;
-            }
-            failCounters.delete(cleanUsername);
-            lastKnownStates.set(cleanUsername, { isLive: data.isLive, lastVideoId: null, timestamp: Date.now() });
-            return data;
-        }
-    } catch { /* silent */ }
-
     // ─── LAYER 3: HTML Scrape ───
     for (let attempt = 1; attempt <= SCRAPE_CONFIG.MAX_RETRIES; attempt++) {
         try {
@@ -309,14 +302,32 @@ async function fetchTikTokUser(username) {
         await new Promise(r => setTimeout(r, 1000 * Math.pow(2, attempt - 1)));
     }
 
+    // ─── LAYER 2: oEmbed ───
+    try {
+        const data = await fetchViaOembed(cleanUsername);
+        if (data) {
+            // oEmbed doesn't expose live status — merge with live check
+            const liveCheck = await fetchLiveStatus(cleanUsername);
+            if (liveCheck.isLive) {
+                data.isLive = true;
+                data.roomId = liveCheck.roomId;
+                data.liveCover = liveCheck.liveCover;
+                Object.assign(data, { liveTitle: liveCheck.liveTitle, liveViewers: liveCheck.liveViewers, liveStart: liveCheck.liveStart });
+            }
+            failCounters.delete(cleanUsername);
+            lastKnownStates.set(cleanUsername, { isLive: data.isLive, lastVideoId: null, timestamp: Date.now() });
+            return data;
+        }
+    } catch { /* silent */ }
+
     // ─── LAYER 4: Live-only check ───
     try {
         const liveCheck = await fetchLiveStatus(cleanUsername);
         if (liveCheck.isLive) {
-            return buildResult(
+            return Object.assign(buildResult(
                 { nickname: cleanUsername, avatarThumb: null, signature: '', verified: false, roomId: liveCheck.roomId },
                 null, null, true, null, cleanUsername, liveCheck.liveCover
-            );
+            ), { liveTitle: liveCheck.liveTitle, liveViewers: liveCheck.liveViewers, liveStart: liveCheck.liveStart });
         }
     } catch { /* silent */ }
 
@@ -338,8 +349,9 @@ function parseUniversalData(data, username) {
         const stats = userInfo?.stats;
         const isLive = userInfo?.roomId || false;
         const liveRoomInfo = defaultScope?.liveRoom?.liveRoomUserInfo || null;
-        const itemList = defaultScope?.itemList || [];
-        const latestVideo = itemList.length > 0 ? itemList[0] : null;
+        // a pinned video sits first: take the newest one that isn't pinned
+        const itemList = (defaultScope?.itemList || []).filter((v) => !v.isPinnedItem);
+        const latestVideo = itemList.sort((a, b) => (b.createTime || 0) - (a.createTime || 0))[0] || null;
 
         return buildResult(user, stats, latestVideo, isLive, liveRoomInfo, username);
     } catch (e) { return null; }
@@ -352,7 +364,7 @@ function parseSigiState(data, username) {
 
         const isLive = !!userModule.roomId;
         const itemModule = data.ItemModule || {};
-        const videos = Object.values(itemModule).sort((a, b) => (b.createTime || 0) - (a.createTime || 0));
+        const videos = Object.values(itemModule).filter((v) => !v.isPinnedItem).sort((a, b) => (b.createTime || 0) - (a.createTime || 0));
         const latestVideo = videos[0] || null;
 
         return buildResult(
@@ -416,89 +428,90 @@ function buildResult(user, stats, latestVideo, isLive, liveRoomInfo, username, l
 }
 
 // ================= EMBED BUILDERS =================
+// Text from TikTok (bio, caption, live title) shown on a card: no mentions, no markdown that breaks the card
+function clean(text, max) {
+    let s = String(text || '').replace(/@/g, '@​').replace(/[*_~`|>#]/g, '').replace(/\s+/g, ' ').trim();
+    if (max && s.length > max) s = s.slice(0, max).replace(/\s+\S*$/, '') + '…';
+    return s;
+}
+const fmtNum = (n, lang) => Number(n || 0).toLocaleString({ fr: 'fr-FR', zh: 'zh-CN', ar: 'ar' }[lang] || 'en-US');
+const rule = () => new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small);
 
-/**
- * Professional live notification embed with real stream cover
- * and invitation-style messaging
- */
 function buildLiveEmbed(data, guild, client, lang = 'en', pingText = null) {
-    const tt = em('tiktok_logo', '📱', client);
     const liveEm = em('ic_live', '🔴');
-    const userEm = em('myprofile', '👤', client);
     const c = new ContainerBuilder().setAccentColor(0xFF0050);
     if (pingText) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(pingText));
-    
-    const _img = data.liveCover || data.avatar || guild.iconURL() || client.user.displayAvatarURL();
-    if (_img) {
-        c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(_img)));
-    }
     const isTest = data._isTest === true;
-    const title = isTest ? `## 🧪 [TEST PREVIEW] ${liveEm} ${data.nickname}` : `## ${liveEm} ${t('tiktok.isLiveTitle', lang, { user: data.nickname })}`;
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(title));
-    if (isTest) {
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`> ⚠️ *${t('tiktok.testWarning', lang)}*`));
-    } else if (data.bio && data.bio.length > 5 && !data.bio.includes('Creator Profile')) {
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*"${data.bio.substring(0, 120)}${data.bio.length > 120 ? '...' : ''}"*`));
+    const img = data.liveCover || data.avatar;
+    if (img) c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(img)));
+    const name = clean(data.nickname || data.username, 60);
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(isTest
+        ? `## 🧪 ${t('tiktok.testTitle', lang, { user: name })}`
+        : `## ${liveEm} ${t('tiktok.isLiveTitle', lang, { user: name })}`));
+    c.addSeparatorComponents(rule());
+    const lines = [];
+    if (isTest) lines.push(t('tiktok.testWarning', lang));
+    else {
+        if (data.liveTitle) lines.push(`**${clean(data.liveTitle, 120)}**`);
+        const facts = [];
+        if (data.liveStart) facts.push(`${em('clock', '🕒')} ${t('tiktok.liveStarted', lang, { when: `<t:${data.liveStart}:R>` })}`);
+        if (data.liveViewers) facts.push(`${em('ic_users', '👥')} ${t('tiktok.liveViewers', lang, { n: fmtNum(data.liveViewers, lang) })}`);
+        if (facts.length) lines.push(facts.join('  ·  '));
+        if (!data.liveTitle && data.bio && data.bio.length > 5) lines.push(`-# ${clean(data.bio, 120)}`);
     }
-    if (data.stats.followers > 0 || data.stats.likes > 0) {
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`👥 **${Number(data.stats.followers).toLocaleString()}** followers • ❤️ **${Number(data.stats.likes).toLocaleString()}** likes`));
-    }
-    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    if (data.stats?.followers > 0) lines.push(`-# ${t('tiktok.followersLine', lang, { n: fmtNum(data.stats.followers, lang), likes: fmtNum(data.stats.likes, lang) })}`);
+    if (lines.length) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(lines.join('\n')));
+    c.addSeparatorComponents(rule());
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
         new ButtonBuilder().setLabel(t('tiktok.btnWatchLive', lang)).setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username + '/live').setEmoji(iconObj('ic_live', null, '🔴')),
         new ButtonBuilder().setLabel(t('tiktok.btnProfile', lang)).setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username).setEmoji(iconObj('ic_profile', null, '👤'))
     ));
-    return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2 } };
+    return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: pingText ? ['everyone'] : [] } } };
 }
 
-function buildVideoEmbed(data, guild, client, lang = 'en', pingText = null) {
+function buildVideoEmbed(data, guild, client, lang = 'en') {
     const video = data.latestVideo;
     if (!video) return null;
-    const liveEm = em('ic_live', '🔴');
-    const videoEm = em('youtube', '🎬', client); // on peut utiliser youtube en fallback visuel
     const c = new ContainerBuilder().setAccentColor(0x00F2FE);
-    
-    if (video.cover) {
-        c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(video.cover)));
-    }
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${videoEm} ${t('tiktok.newVideoTitle', lang, { user: data.nickname })}`));
-    if (video.desc) {
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`*"${video.desc.substring(0, 280)}${video.desc.length > 280 ? '...' : ''}"*`));
-    }
-    const postedAgo = video.createTime ? `<t:${video.createTime}:R>` : "à l'instant";
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`📅 ${t('tiktok.posted', lang)} ${postedAgo}\n▶️ **${Number(video.playCount).toLocaleString()}** vues • ❤️ **${Number(video.likeCount).toLocaleString()}** likes`));
-    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    if (video.cover) c.addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(video.cover)));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('tiktok_logo', '🎬')} ${t('tiktok.newVideoTitle', lang, { user: clean(data.nickname || data.username, 60) })}`));
+    c.addSeparatorComponents(rule());
+    const lines = [];
+    const cap = clean(video.desc === 'No caption' ? '' : video.desc, 280);
+    if (cap) lines.push(`**${cap}**`);
+    const facts = [];
+    if (video.createTime) facts.push(`${em('clock', '🕒')} ${t('tiktok.postedWhen', lang, { when: `<t:${video.createTime}:R>` })}`);
+    if (video.duration) facts.push(`${em('ic_video', '🎬')} ${Math.floor(video.duration / 60)}:${String(Math.round(video.duration % 60)).padStart(2, '0')}`);
+    if (video.playCount) facts.push(`${em('ic_eye', '👀')} ${t('tiktok.views', lang, { n: fmtNum(video.playCount, lang) })}`);
+    if (video.likeCount) facts.push(`❤️ ${fmtNum(video.likeCount, lang)}`);
+    if (facts.length) lines.push(facts.join('  ·  '));
+    if (lines.length) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(lines.join('\n')));
+    c.addSeparatorComponents(rule());
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setLabel(t('tiktok.btnWatchVideo', lang)).setStyle(ButtonStyle.Link).setURL(video.url).setEmoji(videoEm)
+        new ButtonBuilder().setLabel(t('tiktok.btnWatchVideo', lang)).setStyle(ButtonStyle.Link).setURL(video.url).setEmoji(iconObj('ic_video', null, '🎬')),
+        new ButtonBuilder().setLabel(t('tiktok.btnProfile', lang)).setStyle(ButtonStyle.Link).setURL('https://www.tiktok.com/@' + data.username).setEmoji(iconObj('ic_profile', null, '👤'))
     ));
-    return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2 } };
+    return { _v2: { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } } };
 }
 
 // ================= NOTIFICATION SENDER =================
-/**
- * Checks if enough time has passed since the last live notification for this user.
- * Prevents spam from false positives or rapid state changes.
- */
-function canNotifyLive(username) {
-    const lastTime = lastNotificationTime.get(username);
-    if (!lastTime) return true;
-    const cooldownMs = SCRAPE_CONFIG.NOTIFICATION_COOLDOWN_MINUTES * 60 * 1000;
-    return (Date.now() - lastTime) >= cooldownMs;
+// The 30-minute guard is per server and account: it used to be per account only, so after the first server got
+// its live alert every other server tracking the same account was skipped
+const liveKey = (guildId, username) => `${guildId}:${String(username).toLowerCase()}`;
+function canNotifyLive(guildId, username) {
+    const lastTime = lastNotificationTime.get(liveKey(guildId, username));
+    return !lastTime || (Date.now() - lastTime) >= SCRAPE_CONFIG.NOTIFICATION_COOLDOWN_MINUTES * 60 * 1000;
 }
 
 async function sendNotification(client, db, guildId, username, data, type) {
     try {
         const lang = client.detectLanguage ? client.detectLanguage('tiktok', guildId) : 'en';
-        if (type === 'live' && !canNotifyLive(username)) {
-            return false; 
-        }
+        if (type === 'live' && !canNotifyLive(guildId, username)) return false;
 
         const tracking = db.prepare('SELECT target_channel_id FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(guildId, username);
         if (!tracking) return false;
-
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return false;
-
         const channel = guild.channels.cache.get(tracking.target_channel_id);
         if (!channel) {
             require('../lib/postProblems').failed(guild, 'tiktok', tracking.target_channel_id, { ok: false, reason: 'gone', missing: [] });
@@ -507,142 +520,144 @@ async function sendNotification(client, db, guildId, username, data, type) {
         const { safeSend, canSend } = require('../lib/safeSend');
         if (!canSend('tiktok', channel, require('../lib/canPost').neededFor('tiktok'))) return false;
 
-        // ─── GESTION DES EMBEDS SELON LE TYPE ───
-        let card;
-        let contentMessage = '';
-
-        if (type === 'live') {
-            contentMessage = data._isTest ? null : `@everyone 🔴 **${data.nickname}** is LIVE on TikTok right now!`;
-            card = buildLiveEmbed(data, guild, client, lang, contentMessage);
-        }
-        else if (type === 'video') {
-            contentMessage = `🎬 **NEW VIDEO** from @${data.username}!`;
-            card = buildVideoEmbed(data, guild, client, lang, contentMessage);
-        }
-        else if (type === 'system_test') {
-            card = buildLiveEmbed(data, guild, client, lang);
-        }
-
+        let card = null;
+        if (type === 'live') card = buildLiveEmbed(data, guild, client, lang, t('tiktok.livePing', lang, { icon: em('ic_live', '🔴'), user: clean(data.nickname || data.username, 60) }));
+        else if (type === 'video') card = buildVideoEmbed(data, guild, client, lang);
+        else if (type === 'system_test') card = buildLiveEmbed(data, guild, client, lang);
         if (!card) return false;
 
-        if (card._v2) {
-            await safeSend('tiktok', channel, card._v2, { throwOnError: true });
-        } else {
-            await safeSend('tiktok', channel, {
-                content: contentMessage,
-                embeds: [card.embed],
-                components: card.row ? [card.row] : []
-            }, { throwOnError: true });
-        }
-
-        if (type === 'live') {
-            lastNotificationTime.set(username, Date.now());
-        }
-
+        await safeSend('tiktok', channel, card._v2, { throwOnError: true });
+        if (type === 'live') lastNotificationTime.set(liveKey(guildId, username), Date.now());
         return true;
     } catch (err) {
-        console.error("[TIKTOK] sendNotification failed:", err.message);
+        console.error('[TIKTOK] sendNotification failed:', err.message);
         return false;
     }
 }
 
+// ================= VIDEOS =================
+// The newest video, through yt-dlp: the profile methods above mostly answer without videos, so new videos were
+// almost never seen. A pinned video sits first on a profile, so the newest is the one with the latest date.
+const VIDEO_CHECK_MS = 5 * 60 * 1000;
+const MAX_VIDEO_AGE_S = 48 * 3600;
+const lastVideoCheck = new Map();
+async function fetchLatestVideo(username) {
+    try {
+        const { stdout } = await execFileAsync('yt-dlp', ['--skip-download', '--no-warnings', '--ignore-errors', '--playlist-items', '1:4',
+            '--dump-json', `https://www.tiktok.com/@${username}`], { timeout: 45000, maxBuffer: 40 * 1024 * 1024 });
+        const items = String(stdout).split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter((j) => j && j.id);
+        if (!items.length) return null;
+        const v = items.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))[0];
+        return {
+            id: String(v.id), desc: v.description || v.title || '', cover: v.thumbnail || null,
+            playCount: v.view_count || 0, likeCount: v.like_count || 0, commentCount: v.comment_count || 0, shareCount: v.repost_count || 0,
+            createTime: v.timestamp || null, duration: v.duration || null,
+            url: v.webpage_url || `https://www.tiktok.com/@${username}/video/${v.id}`,
+        };
+    } catch { return null; }
+}
+
 // ================= POLLING ENGINE =================
+let cycleRunning = false;   // a slow cycle (TikTok retries) must not overlap the next one: it used to post twice
 function startPolling(client, db) {
     if (isPolling) return;
     isPolling = true;
-    // Polling engine started silently
-    runPollingCycle(client, db);
+    initDatabase(db);
+    setTimeout(() => runPollingCycle(client, db), 60000).unref?.();
     pollingInterval = setInterval(() => runPollingCycle(client, db), SCRAPE_CONFIG.POLL_INTERVAL_MS);
+    pollingInterval.unref?.();
 }
 
 function stopPolling() {
     if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
     isPolling = false;
-    // Engine stopped silently
 }
 
 async function runPollingCycle(client, db) {
+    if (cycleRunning) return;
+    cycleRunning = true;
     try {
         const allTracks = db.prepare('SELECT * FROM tiktok_notifications').all();
-        if (allTracks.length === 0) return;
-
-        const usernameToTracks = new Map();
+        const byUser = new Map();
         for (const track of allTracks) {
             const key = track.tiktok_username.toLowerCase();
-            if (!usernameToTracks.has(key)) usernameToTracks.set(key, []);
-            usernameToTracks.get(key).push(track);
+            if (!byUser.has(key)) byUser.set(key, []);
+            byUser.get(key).push(track);
         }
-
-        for (const [username, tracks] of usernameToTracks) {
+        for (const [username, tracks] of byUser) {
             try {
                 await new Promise(r => setTimeout(r, 2000 + Math.random() * 3000));
                 const data = await fetchTikTokUser(username);
-
-                if (data) {
-                    for (const track of tracks) {
-                        await processUserForGuild(client, db, track, data);
-                    }
+                if (data) await processLive(client, db, username, tracks, data);
+                // videos: every 5 minutes, even when the profile itself couldn't be read
+                if (Date.now() - (lastVideoCheck.get(username) || 0) >= VIDEO_CHECK_MS) {
+                    lastVideoCheck.set(username, Date.now());
+                    const video = (await fetchLatestVideo(username)) || data?.latestVideo || null;
+                    if (video?.id) await processVideo(client, db, username, tracks, { ...(data || { username, nickname: username, stats: {} }), latestVideo: video });
                 }
-                // Silently skip on fetch failure - maintain last known state
             } catch (err) {
-                // Silent fail - will retry next cycle
+                console.error(`[TIKTOK] @${username}:`, err.message);
             }
         }
     } catch (err) {
-        // Silent fail
+        console.error('[TIKTOK] cycle:', err.message);
+    } finally {
+        cycleRunning = false;
     }
 }
 
-async function processUserForGuild(client, db, track, data) {
-    const { guild_id, tiktok_username, last_video_id, is_live } = track;
-    const wasLive = is_live === 1;
-    const nowLive = data.isLive;
-
-    // ─── LIVE STATUS LOGIC ───
-    if (nowLive) {
-        // Reset offline checks since we found them live
-        consecutiveOfflineChecks.delete(tiktok_username);
-        
-        if (!wasLive) {
-            const consecutiveCount = (consecutiveLiveChecks.get(tiktok_username) || 0) + 1;
-            consecutiveLiveChecks.set(tiktok_username, consecutiveCount);
-            
-            if (consecutiveCount >= REQUIRED_CONSECUTIVE_LIVE_CHECKS) {
-                if (canNotifyLive(tiktok_username)) {
-                    const sent = await sendNotification(client, db, guild_id, tiktok_username, data, 'live');
-                    if (sent) {
-                        db.prepare('UPDATE tiktok_notifications SET is_live = 1 WHERE guild_id = ? AND tiktok_username = ?')
-                            .run(guild_id, tiktok_username);
-                    }
-                }
-            }
+// Live state is decided once per account (the offline count used to grow once per server, so an account tracked
+// on three servers looked offline after one check), then each server is told
+async function processLive(client, db, username, tracks, data) {
+    if (data.isLive) {
+        consecutiveOfflineChecks.delete(username);
+        // about to announce: the /live page gives the stream's title, viewers and cover
+        if (data.liveTitle === undefined && tracks.some((tr) => tr.is_live !== 1)) {
+            const lc = await fetchLiveStatus(username).catch(() => null);
+            if (lc?.isLive) Object.assign(data, { roomId: data.roomId || lc.roomId, liveCover: data.liveCover || lc.liveCover,
+                liveTitle: lc.liveTitle, liveViewers: lc.liveViewers, liveStart: lc.liveStart });
         }
-    } else {
-        // Not currently live -> Check if we should mark them offline
-        consecutiveLiveChecks.delete(tiktok_username);
-        
-        if (wasLive) {
-            const offlineCount = (consecutiveOfflineChecks.get(tiktok_username) || 0) + 1;
-            consecutiveOfflineChecks.set(tiktok_username, offlineCount);
-
-            // Only mark offline in DB after multiple failed checks (Grace Period)
-            if (offlineCount >= REQUIRED_OFFLINE_CHECKS) {
-                db.prepare('UPDATE tiktok_notifications SET is_live = 0 WHERE guild_id = ? AND tiktok_username = ?')
-                    .run(guild_id, tiktok_username);
-                // Clear the cooldown so the next real stream can trigger immediately
-                lastNotificationTime.delete(tiktok_username);
+        for (const track of tracks) {
+            if (track.is_live === 1) continue;
+            if (data.roomId && track.live_room_id === String(data.roomId)) {   // the same stream, back after a drop
+                db.prepare('UPDATE tiktok_notifications SET is_live = 1 WHERE guild_id = ? AND tiktok_username = ?').run(track.guild_id, track.tiktok_username);
+                continue;
             }
+            if (!canNotifyLive(track.guild_id, username)) continue;
+            const sent = await sendNotification(client, db, track.guild_id, track.tiktok_username, data, 'live');
+            console.log(`[TIKTOK] live @${username} -> ${track.guild_id}: ${sent ? 'sent' : 'failed'}`);
+            if (sent) db.prepare('UPDATE tiktok_notifications SET is_live = 1, live_room_id = COALESCE(?, live_room_id) WHERE guild_id = ? AND tiktok_username = ?')
+                .run(data.roomId ? String(data.roomId) : null, track.guild_id, track.tiktok_username);
         }
+        return;
     }
+    if (!tracks.some((tr) => tr.is_live === 1)) return;
+    const off = (consecutiveOfflineChecks.get(username) || 0) + 1;
+    consecutiveOfflineChecks.set(username, off);
+    if (off >= REQUIRED_OFFLINE_CHECKS) {
+        consecutiveOfflineChecks.delete(username);
+        db.prepare('UPDATE tiktok_notifications SET is_live = 0 WHERE tiktok_username = ? COLLATE NOCASE').run(username);
+        for (const track of tracks) lastNotificationTime.delete(liveKey(track.guild_id, username));
+    }
+}
 
-    // ─── VIDEO CHECK ───
-    if (data.latestVideo?.id) {
-        const currentVideoId = String(data.latestVideo.id);
-        if (last_video_id && last_video_id !== currentVideoId) {
-            await sendNotification(client, db, guild_id, tiktok_username, data, 'video');
+// A video is announced when it is newer than the last one known for this server and less than 48 hours old.
+// The first video seen for a server is only remembered (no post), so adding an account doesn't post its old video.
+async function processVideo(client, db, username, tracks, data) {
+    const v = data.latestVideo;
+    const now = Math.floor(Date.now() / 1000);
+    for (const track of tracks) {
+        const isNew = track.last_video_id && track.last_video_id !== v.id
+            && (!v.createTime || !track.last_video_time || v.createTime > track.last_video_time)
+            && (!v.createTime || now - v.createTime < MAX_VIDEO_AGE_S);
+        if (isNew) {
+            const sent = await sendNotification(client, db, track.guild_id, track.tiktok_username, data, 'video');
+            console.log(`[TIKTOK] new video ${v.id} @${username} -> ${track.guild_id}: ${sent ? 'sent' : 'failed'}`);
         }
-        db.prepare('UPDATE tiktok_notifications SET last_video_id = ? WHERE guild_id = ? AND tiktok_username = ?')
-            .run(currentVideoId, guild_id, tiktok_username);
+        if (!track.last_video_time || !v.createTime || v.createTime >= track.last_video_time) {
+            db.prepare('UPDATE tiktok_notifications SET last_video_id = ?, last_video_time = COALESCE(?, last_video_time) WHERE guild_id = ? AND tiktok_username = ?')
+                .run(v.id, v.createTime || null, track.guild_id, track.tiktok_username);
+        }
     }
 }
 
@@ -770,7 +785,7 @@ if (action === 'test' || action === 'simulate') {
     if (!username) return message.reply(t('tiktok.test_usage', lang));
 
     const track = db.prepare('SELECT * FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(guildId, username);
-    if (!track) return message.reply(`${em('ic_off', '❌')} **${username}** is not being tracked. Run \`.tiktok set ${username} #channel --force\` first.`);
+    if (!track) return message.reply(t('tiktok.notTrackedTest', lang, { username, mention: mentions(client, 'tiktok', 'set') }));
 
     const statusMsg = await message.reply(t('tiktok.test_fetching', lang, { username }));
     
@@ -779,10 +794,10 @@ if (action === 'test' || action === 'simulate') {
     // Si TikTok bloque complètement, on génère des données temporaires pour que le test s'affiche quand même !
     if (!realData) {
         realData = {
-            username, nickname: username, avatar: client.user.displayAvatarURL(),
-            bio: 'Cloud Gaming-223 Automated Profile Node', verified: false,
+            username, nickname: username, avatar: null,
+            bio: '', verified: false,
             isLive: false, roomId: null, liveCover: null,
-            stats: { followers: 223, following: 42, likes: 2230, videos: 12 },
+            stats: {},   // TikTok didn't answer: no invented numbers on the preview
             latestVideo: null
         };
     }
@@ -883,13 +898,10 @@ if (action === 'test' || action === 'simulate') {
             if (!username) return message.reply(t('tiktok.remove_usage', lang));
 
             const result = db.prepare('DELETE FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').run(guildId, username);
-            if (result.changes === 0) return message.reply(`${em('ic_off', '❌')} **${username}** not tracked.`);
-
-            const embed = new EmbedBuilder().setColor('#e74c3c')
-                .setAuthor({ name: '📱 Tracking Removed', iconURL: guildIcon })
-                .setDescription(t('tiktok.removed', lang))
-                .setFooter({ text: 'ARCHON CG-223  •  TikTok Engine', iconURL: client.user.displayAvatarURL() }).setTimestamp();
-            return message.reply(toV2({ embeds: [embed] }));
+            if (result.changes === 0) return message.reply(t('tiktok.test_not_tracked', lang, { username }));
+            const rc = new ContainerBuilder().setAccentColor(0xe74c3c);
+            rc.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('tiktok.removed_success', lang, { username })));
+            return message.reply({ components: [rc], flags: MessageFlags.IsComponentsV2 });
         }
 
         // ─── HELP ───
@@ -964,10 +976,10 @@ if (action === 'test' || action === 'simulate') {
     
     if (!realData) {
         realData = {
-            username, nickname: username, avatar: client.user.displayAvatarURL(),
-            bio: 'Cloud Gaming-223 Automated Profile Node', verified: false,
+            username, nickname: username, avatar: null,
+            bio: '', verified: false,
             isLive: false, roomId: null, liveCover: null,
-            stats: { followers: 223, following: 42, likes: 2230, videos: 12 },
+            stats: {},   // TikTok didn't answer: no invented numbers on the preview
             latestVideo: null
         };
     }

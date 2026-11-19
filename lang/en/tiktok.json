@@ -43,5 +43,12 @@
   "notFoundForce": "❌ I couldn't find **@{username}** on TikTok. Check the name, or use the `force` option to add it anyway.",
   "btnWatchVideo": "Watch Video",
   "newVideoTitle": "{user} posted a new video",
-  "posted": "Posted"
+  "posted": "Posted",
+  "testTitle": "Test preview · {user}",
+  "liveStarted": "Started {when}",
+  "liveViewers": "{n} watching",
+  "followersLine": "{n} followers · {likes} likes",
+  "postedWhen": "Posted {when}",
+  "views": "{n} views",
+  "livePing": "@everyone {icon} **{user}** is live on TikTok!"
 }

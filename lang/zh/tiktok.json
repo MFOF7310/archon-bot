@@ -43,5 +43,12 @@
   "notFoundForce": "❌ 在 TikTok 上找不到 **@{username}**。请检查名称，或使用 `force` 选项强制添加。",
   "btnWatchVideo": "观看视频",
   "newVideoTitle": "{user} 发布了新视频",
-  "posted": "发布于"
+  "posted": "发布于",
+  "testTitle": "测试预览 · {user}",
+  "liveStarted": "开始于 {when}",
+  "liveViewers": "{n} 人正在观看",
+  "followersLine": "{n} 粉丝 · {likes} 获赞",
+  "postedWhen": "发布于 {when}",
+  "views": "{n} 次播放",
+  "livePing": "@everyone {icon} **{user}** 正在 TikTok 直播！"
 }
