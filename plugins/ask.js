@@ -41,11 +41,30 @@ function count(db, uid) {
     } catch { /* not counted */ }
 }
 
-function system(lang) {
+// What Archon knows about itself: short and exact, so "who made you" or "how do I reach support" get a real answer
+// instead of "I don't know" (it used to have no facts at all). Only these facts: nothing invented.
+function facts(client) {
+    const id = client?.user?.id;
+    let invite = null; try { invite = id ? require('../lib/invite').inviteUrl(id) : null; } catch { /* no invite line */ }
+    return [
+        'FACTS ABOUT YOU (use them when asked; never invent others):',
+        '- ARCHON CG-223 is a Discord bot made by Moussa Fofana, a solo developer in Bamako, Mali.',
+        '- Features: Archon AI, levels and economy, moderation (AutoMod, captcha verification, raid shield), tickets, welcome cards, games, music, YouTube and TikTok alerts. Free, with an optional Premium.',
+        '- Support server (help, bug reports, suggestions): https://discord.gg/NFSMFJajp9',
+        '- Website and dashboard: https://archon223.com · quick start: https://archon223.com/docs · all commands: https://archon223.com/commands · Premium: https://archon223.com/premium',
+        invite ? `- Add ARCHON to a server: ${invite}` : null,
+        id ? `- Vote for ARCHON (rewards in servers): https://top.gg/bot/${id}/vote` : null,
+        '- Open source: https://github.com/MFOF7310/archon-bot (only when someone asks about the code).',
+        '- Outside a server (this user app) you have: /ask, Ask Archon on a message, /avatar, /lyrics, /translate, /define, /calc, /qr, /coinflip, /roll, /meme, /anime, /slap, /car, /quote, /image, /youtube, /url. Everything else needs ARCHON in a server.',
+    ].filter(Boolean).join('\n');
+}
+
+function system(lang, client) {
     return 'You are Archon, the assistant of ARCHON CG-223, a Discord bot made in Bamako, Mali. '
         + `Answer in ${LANGS[lang]} unless the person clearly writes in another language; then use theirs. `
         + 'Be direct, warm and accurate. Keep it short: under 1500 characters, Discord markdown, no headings over ###. '
-        + 'Never write @everyone or @here. If you are not sure of a fact, say so instead of guessing.';
+        + 'Never write @everyone or @here. If you are not sure of a fact, say so instead of guessing. '
+        + 'Links: write them bare (no markdown around them).\n\n' + facts(client);
 }
 
 // The answer card: what was asked (a line), the answer, who asked and what's left today
@@ -79,7 +98,7 @@ async function answer(interaction, client, { question, imageUrl = null, quoted =
     let res = null;
     try {
         const { generateAIResponse } = require('../lib/lydia/models');
-        res = await generateAIResponse(system(lang), prompt, [], imageUrl, undefined, null);
+        res = await generateAIResponse(system(lang, client), prompt, [], imageUrl, undefined, null);
     } catch (e) {
         console.error('[ASK]', e.message);
     }
