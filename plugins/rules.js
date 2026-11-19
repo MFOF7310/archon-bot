@@ -63,6 +63,21 @@ function rulesChannel(client, guild) {
     return id ? guild.channels.cache.get(String(id)) || null : null;
 }
 
+// ─── icons in the text: :ic_shield: becomes ARCHON's icon of that name (config/emojis.js) ───
+// Unknown names stay as typed. Icons ARCHON can't use in that channel fall back to nothing, never a broken :name:.
+const SUGGESTED = ['ic_shield', 'ic_flag', 'ic_gavel', 'ic_lock', 'ic_warn', 'ic_bell', 'ic_users', 'ic_ticket', 'ic_link', 'ic_games', 'ic_crown', 'ic_heal'];
+function withIcons(text, where) {
+    let E = {};
+    try { E = require('../config/emojis'); } catch { return text; }
+    let usable = () => true;
+    try { usable = require('../lib/emoji-check').usable; } catch { /* trust them */ }
+    return String(text).replace(/(?<!<a?):([A-Za-z0-9_]{2,32}):(?!\d)/g, (all, key) => {
+        const v = E[key];
+        if (typeof v !== 'string' || !v) return all;
+        return /^<a?:\w+:\d+>$/.test(v) && !usable(v) ? '' : v;
+    });
+}
+
 // ─── the text ───
 // "Name: details" → **Name** · details; "# Heading" → a heading; other lines keep their markdown. Numbers 1–9 use the icons.
 function format(text, where) {
@@ -78,6 +93,7 @@ function format(text, where) {
         return `${num} ${text2}`;
     }).join('\n').trim();
 }
+const render = (text, where) => format(withIcons(text, where), where);
 
 function card(client, guild, row, lang, { where, text, viewer, translatedTo } = {}) {
     const tr = L(lang);
@@ -93,7 +109,7 @@ function card(client, guild, row, lang, { where, text, viewer, translatedTo } = 
     const items = [
         guild.iconURL() ? { thumbnail: [head, guild.iconURL({ extension: 'png', size: 128 })] } : { text: head },
         { rule: true },
-        { text: format(body, where) },
+        { text: render(body, where) },
     ];
     if (translatedTo) return v2.card(colorOf(row), items);
     items.push({ rule: true });
@@ -158,8 +174,10 @@ function settingsCard(client, guild, lang, where) {
         tr('settingsColor', { color: tr(`color_${colorName}`) }),
         tr('acceptedCount', { n: acceptedCount(client.db, guild.id) }),
     ];
+    const shown = SUGGESTED.map((k) => { const e = withIcons(`:${k}:`, where); return e && e !== `:${k}:` ? `${e} \`:${k}:\`` : null; }).filter(Boolean);
     return v2.card(colorOf(row), [
         { text: `### ${icon('tool', where)} ${tr('settingsTitle')}\n${lines.join('\n')}` },
+        ...(shown.length ? [{ rule: true }, { text: `${tr('iconsHint')}\n${shown.join('  ')}` }] : []),
         { row: new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('rules:role').setPlaceholder(tr('pickRole')).setMinValues(0).setMaxValues(1)) },
         { row: new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('rules:color').setPlaceholder(tr('pickColor'))
             .addOptions(Object.keys(COLORS).map((k) => ({ label: tr(`color_${k}`), value: k, default: k === colorName })))) },

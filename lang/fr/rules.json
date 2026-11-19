@@ -48,5 +48,6 @@
   "lang_fr": "français",
   "lang_zh": "chinois",
   "lang_ar": "arabe",
-  "lang_bm": "bambara"
+  "lang_bm": "bambara",
+  "iconsHint": "Icônes : écris le code dans /rules edit, par exemple `Respect : :ic_shield: pas de haine`. Celles-ci vont bien avec des règles :"
 }

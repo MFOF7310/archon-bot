@@ -48,5 +48,6 @@
   "lang_fr": "French",
   "lang_zh": "Chinese",
   "lang_ar": "Arabic",
-  "lang_bm": "Bambara"
+  "lang_bm": "Bambara",
+  "iconsHint": "Icons: write the code in /rules edit, for example `Respect: :ic_shield: no hate`. These ones fit rules well:"
 }

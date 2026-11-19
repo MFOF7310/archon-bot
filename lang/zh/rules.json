@@ -48,5 +48,6 @@
   "lang_fr": "法语",
   "lang_zh": "中文",
   "lang_ar": "阿拉伯语",
-  "lang_bm": "班巴拉语"
+  "lang_bm": "班巴拉语",
+  "iconsHint": "图标：在 /rules edit 中写入代码，例如 `尊重：:ic_shield: 禁止仇恨`。以下图标很适合规则："
 }
