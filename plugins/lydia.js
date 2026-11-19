@@ -12,7 +12,7 @@ catch (e) { console.warn('[LYDIA] axios not installed — AI/web features degrad
 // Lydia's parts live in lib/lydia/ (config, language, prompt, safety, search, models, memory, format)
 const { isPremium, getGuildModel, CFG, C, detectTheme } = require('../lib/lydia/config');
 const { detectUserLanguage, LANG_NAMES } = require('../lib/lydia/language');
-const { SETUP_QUESTION, buildSystemPrompt } = require('../lib/lydia/prompt');
+const { SETUP_QUESTION, RULES_QUESTION, buildSystemPrompt } = require('../lib/lydia/prompt');
 const { scrubSecrets, validateResponse } = require('../lib/lydia/safety');
 const { webSearch } = require('../lib/lydia/search');
 const { MODEL_POOL, PREMIUM_MODEL, generateAIResponse } = require('../lib/lydia/models');
@@ -302,6 +302,18 @@ async function handleLydiaMessage(message, client, database) {
       } else {
         fullSystem += `\n\n[The person asking does not manage this server. Do not describe how the server is configured (channels, roles, verification, logs); suggest they ask a server admin, who can see everything with /setup.]`;
       }
+    }
+
+    // Rules questions ("sum up the rules"): the server's real rules, from /rules set or the rules channel
+    // (lib/rules-text.js). Public to members, so anyone gets them. Kept for follow-ups like the setup checklist.
+    const rulesTalk = RULES_QUESTION.test(message.content || '') || history.slice(-4).some((h) => RULES_QUESTION.test(String(h.content || '')));
+    if (rulesTalk && message.guild) {
+      try {
+        const rules = await require('../lib/rules-text').get(client, message.guild);
+        fullSystem += rules
+          ? `\n\n[SERVER RULES — the real text of this server's rules, read by ARCHON just now from ${rules.where}. Rely on it and never say you can't see the rules. When asked for a summary, give the main points in a few short lines in the member's language, without adding rules that aren't there. Quote a rule only if they ask about a specific one.]\n${rules.text}`
+          : `\n\n[This server has no rules ARCHON can read (none saved with /rules set, and no readable rules channel). Say so plainly; an admin can add them with /rules set or set a rules channel in /channels.]`;
+      } catch (e) { console.error('[LYDIA] rules:', e.message); }
     }
 
     const aiResult = await generateAIResponse(fullSystem, finalPrompt, history, imageUrl, theme, message.guild?.id ?? null);

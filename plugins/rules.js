@@ -45,8 +45,10 @@ function getRow(db, gid) {
     return db.prepare('SELECT * FROM server_rules WHERE guild_id = ?').get(gid) || {};
 }
 
-function saveRulesText(db, gid, text) { saveStyle(db, gid, { rules_text: text }); }
-function clearRulesText(db, gid) { saveStyle(db, gid, { rules_text: null }); }
+// Archon AI caches the rules for 10 minutes: a change here is read at once
+const forgetRules = (gid) => { try { require('../lib/rules-text').forget(gid); } catch { /* not loaded */ } };
+function saveRulesText(db, gid, text) { saveStyle(db, gid, { rules_text: text }); forgetRules(gid); }
+function clearRulesText(db, gid) { saveStyle(db, gid, { rules_text: null }); forgetRules(gid); }
 
 function getRulesChannelId(client, gid) {
     const s = client.getServerSettings?.(gid) || {};
