@@ -107,10 +107,8 @@ function buildV2Card(data, guildName, tKey, lang, context) {
                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(text))
                 .setThumbnailAccessory(new ThumbnailBuilder().setURL(avatarUrl))
         );
-        
-        if (i < entries.length - 1) {
-            container.addSeparatorComponents(new SeparatorBuilder().setDivider(false).setSpacing(SeparatorSpacingSize.Small));
-        }
+        // No spacer between rows: Discord allows 40 components per message, and with 10 players
+        // (3 each: section + text + avatar) plus the spacers the card reached 45 and was refused.
     }
 
     container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
