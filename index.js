@@ -5264,7 +5264,7 @@ apiApp.get('/api/vote-stats/:guildId', requireAdmin, async (req, res) => {
         if (!/^\d{17,20}$/.test(gid)) return res.status(400).json({ error: 'bad_guild' });
         const db = client.db;
         const agg = db.prepare('SELECT COUNT(*) AS voters, COALESCE(SUM(total_votes), 0) AS total FROM user_votes WHERE guild_id = ?').get(gid);
-        const top = db.prepare('SELECT user_id, total_votes FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC LIMIT 3').all(gid);
+        const top = db.prepare('SELECT user_id, total_votes FROM user_votes WHERE guild_id = ? ORDER BY total_votes DESC LIMIT 5').all(gid);
         const topNamed = await Promise.all(top.map(async r => ({
             name: (client.users.cache.get(r.user_id) || await client.users.fetch(r.user_id).catch(() => null))?.username || 'Unknown',
             votes: r.total_votes
