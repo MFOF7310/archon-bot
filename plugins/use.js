@@ -1,799 +1,225 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
-const { icon, iconObj } = require('../lib/ui/icons');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-const { pickLang } = require('../lib/pick-lang');
-const { resolveEmoji } = require('../lib/emoji-resolver');
+// ═══════════════════════════════════════════════════════════════════════════
+// /use [item] — use an item from your inventory: boosts and mystery boxes are consumed, badges are equipped
+//   The panel: a card listing what can be used, a menu to pick one, Inventory and Close buttons.
+//   Every button and menu is global (use:<action>:<uid>[:<item>]): nothing expires after a minute any more.
+//   Using an item takes one from the stock in a single database step first (two quick clicks used to spend one item
+//   twice), then gives its effect. Badges: equip / unequip, the stock is kept.
+//   Items belong to the server they were bought on (user_inventory.guild_id, like /shop and /inventory). The old
+//   /use ignored it: an item bought on one server could be used on another, and using one rewrote the stock of
+//   that item on every server.
+// Texts: lang/<l>/use.json
+// ═══════════════════════════════════════════════════════════════════════════
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, SlashCommandBuilder, MessageFlags } = require('discord.js');
+const { icon } = require('../lib/ui/icons');
 const { t } = require('../lib/i18n');
+const v2 = require('../lib/games/v2');
 
-// ================= UNIFIED LEVEL CALCULATION =================
-function calculateLevel(xp) {
-    return Math.floor(0.1 * Math.sqrt(xp || 0)) + 1;
-}
+const T = (lang, k, v) => t(`use.${k}`, lang, v || {});
+const LANGS = ['en', 'fr', 'zh', 'ar'];
+const langOf = (client, gid, where, uid) => { try { const l = require('../lib/pick-lang').pickLang(client, gid, where, uid); return LANGS.includes(l) ? l : 'en'; } catch { return 'en'; } };
+const C = { panel: 0x7F77DD, ok: 0x1D9E75, warn: 0xEF9F27, bad: 0xE24B4A, gold: 0xE6A817 };
 
-// ================= AGENT RANKS =================
+const calculateLevel = (xp) => Math.floor(0.1 * Math.sqrt(xp || 0)) + 1;
 const AGENT_RANKS = [
-    { minLevel: 1, maxLevel: 5, title: { fr: "RECRUE", en: "RECRUIT" }, color: "#2ecc71", emoji: "🌱" },
-    { minLevel: 6, maxLevel: 15, title: { fr: "AGENT DE TERRAIN", en: "FIELD AGENT" }, color: "#3498db", emoji: "🔹" },
-    { minLevel: 16, maxLevel: 30, title: { fr: "SPÉCIALISTE CYBER", en: "CYBER SPECIALIST" }, color: "#9b59b6", emoji: "💠" },
-    { minLevel: 31, maxLevel: 50, title: { fr: "COMMANDANT BKO", en: "BKO COMMANDER" }, color: "#e67e22", emoji: "⚜️" },
-    { minLevel: 51, maxLevel: Infinity, title: { fr: "ARCHITECTE SYSTÈME", en: "SYSTEM ARCHITECT" }, color: "#e74c3c", emoji: "👑" }
+    { minLevel: 1, maxLevel: 5, title: { fr: 'Recrue', en: 'Recruit' }, emoji: '🌱' },
+    { minLevel: 6, maxLevel: 15, title: { fr: 'Agent de terrain', en: 'Field agent' }, emoji: '🔹' },
+    { minLevel: 16, maxLevel: 30, title: { fr: 'Spécialiste cyber', en: 'Cyber specialist' }, emoji: '💠' },
+    { minLevel: 31, maxLevel: 50, title: { fr: 'Commandant BKO', en: 'BKO commander' }, emoji: '⚜️' },
+    { minLevel: 51, maxLevel: Infinity, title: { fr: 'Architecte système', en: 'System architect' }, emoji: '👑' },
 ];
+const getRank = (level) => AGENT_RANKS.find((r) => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1];
+const rankName = (r, lang) => `${r.emoji} ${r.title[lang] || r.title.en}`;
 
-function getRank(level) {
-    return AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1];
+const itemsOf = (client) => new Map((client.shopItems || []).map((it) => [it.id, it]));
+const nameOf = (item, lang, id) => item?.[lang]?.name || item?.en?.name || item?.name || id;
+const descOf = (item, lang) => item?.[lang]?.desc || item?.en?.desc || item?.desc || '';
+const kindIcon = (item, where) => item?.type === 'badge' ? icon('trophy', where) : item?.type === 'consumable' ? icon('bolt', where) : icon('gift', where);
+const USABLE = new Set(['consumable', 'boost', 'badge']);
+
+function usable(client, uid, gid) {
+    const map = itemsOf(client);
+    const rows = client.db.prepare('SELECT item_id, quantity, expires_at FROM user_inventory WHERE user_id = ? AND guild_id = ? AND active = 1 AND quantity > 0').all(uid, gid);
+    return rows.map((r) => ({ ...r, item: map.get(r.item_id) })).filter((r) => r.item && USABLE.has(r.item.type));
 }
 
-// ================= ARCHON COLOR PALETTE =================
-const ARCHON = {
-    green: '#2ecc71',
-    red: '#e74c3c',
-    gold: '#f1c40f',
-    purple: '#9b59b6',
-    blue: '#3498db',
-    orange: '#e67e22',
-    gray: '#95a5a6',
-    dark: '#2c3e50',
-    neural: '#00ff88',
-    alert: '#ff3333'
-};
+// ─── the panel ───
+function panel(client, uid, gid, lang, where) {
+    const list = usable(client, uid, gid);
+    if (!list.length) {
+        return v2.card(C.warn, [
+            { text: `### ${icon('inventory', where)} ${T(lang, 'emptyTitle')}\n${T(lang, 'emptyBody')}` },
+        ]);
+    }
+    const lines = list.slice(0, 15).map((r) => `${kindIcon(r.item, where)} **${nameOf(r.item, lang, r.item_id)}** ×${r.quantity}${descOf(r.item, lang) ? `\n-# ${String(descOf(r.item, lang)).slice(0, 90)}` : ''}`);
+    const menu = new StringSelectMenuBuilder().setCustomId(`use:pick:${uid}`).setPlaceholder(T(lang, 'pick'))
+        .addOptions(list.slice(0, 25).map((r) => ({
+            label: `${nameOf(r.item, lang, r.item_id)} ×${r.quantity}`.slice(0, 100),
+            description: (r.item.type === 'badge' ? T(lang, 'kindBadge') : T(lang, 'kindUse')).slice(0, 100),
+            value: r.item_id,
+        })));
+    return v2.card(C.panel, [
+        { text: `### ${icon('bolt', where)} ${T(lang, 'title')}\n-# ${T(lang, 'hint')}` },
+        { rule: true },
+        { text: lines.join('\n') + (list.length > 15 ? `\n-# ${T(lang, 'more', { n: list.length - 15 })}` : '') },
+        { row: new ActionRowBuilder().addComponents(menu) },
+        { row: new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`use:inv:${uid}`).setLabel(T(lang, 'btnInventory')).setStyle(ButtonStyle.Secondary).setEmoji(icon('inventory', where)),
+            new ButtonBuilder().setCustomId(`use:close:${uid}`).setLabel(T(lang, 'btnClose')).setStyle(ButtonStyle.Secondary),
+        ) },
+    ]);
+}
 
-// Translations: lang/{en,fr,bm,zh,ar}/use.json
+// ─── badges ───
+function badgeCard(client, uid, gid, itemId, lang, where) {
+    const item = itemsOf(client).get(itemId);
+    const owned = client.db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND active = 1 AND quantity > 0').get(uid, gid, itemId);
+    if (!item || !owned) return v2.card(C.bad, [{ text: T(lang, 'notFound') }]);
+    const current = client.db.prepare('SELECT active_badge FROM users WHERE id = ? AND guild_id = ?').get(uid, gid)?.active_badge;
+    const on = current === itemId;
+    const facts = [item.rarity ? T(lang, 'rarity', { r: String(item.rarity) }) : null].filter(Boolean).join(' · ');
+    return v2.card(on ? C.gold : C.panel, [
+        { text: `### ${icon('trophy', where)} ${nameOf(item, lang, itemId)}\n${on ? T(lang, 'badgeOn') : T(lang, 'badgeAsk')}${facts ? `\n-# ${facts}` : ''}` },
+        { row: new ActionRowBuilder().addComponents(on
+            ? new ButtonBuilder().setCustomId(`use:unequip:${uid}:${itemId}`.slice(0, 100)).setLabel(T(lang, 'btnUnequip')).setStyle(ButtonStyle.Danger)
+            : new ButtonBuilder().setCustomId(`use:equip:${uid}:${itemId}`.slice(0, 100)).setLabel(T(lang, 'btnEquip')).setStyle(ButtonStyle.Success).setEmoji(icon('trophy', where)),
+        new ButtonBuilder().setCustomId(`use:back:${uid}`).setLabel(T(lang, 'btnBack')).setStyle(ButtonStyle.Secondary)) },
+    ]);
+}
+
+// ─── using a boost or a box ───
+function useItem(client, uid, gid, username, itemId, lang, where) {
+    const db = client.db;
+    const item = itemsOf(client).get(itemId);
+    const row = db.prepare('SELECT quantity, expires_at FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND active = 1 AND quantity > 0').get(uid, gid, itemId);
+    if (!item || !row) return v2.card(C.bad, [{ text: T(lang, 'notFound') }]);
+    if (row.expires_at && row.expires_at < Math.floor(Date.now() / 1000)) {
+        db.prepare('UPDATE user_inventory SET active = 0 WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(uid, gid, itemId);
+        return v2.card(C.bad, [{ text: T(lang, 'expired') }]);
+    }
+    // one item, taken in one step: a second click finds nothing to take
+    const took = db.prepare('UPDATE user_inventory SET quantity = quantity - 1 WHERE user_id = ? AND guild_id = ? AND item_id = ? AND active = 1 AND quantity > 0').run(uid, gid, itemId);
+    if (!took.changes) return v2.card(C.bad, [{ text: T(lang, 'notFound') }]);
+    db.prepare('DELETE FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND quantity <= 0').run(uid, gid, itemId);
+    const left = Math.max(0, row.quantity - 1);
+
+    let user = client.getUserData ? client.getUserData(uid, gid) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(uid, gid);
+    if (!user) user = { id: uid, guild_id: gid, username, credits: 0, xp: 0, level: 1 };
+    let xp = user.xp || 0, credits = user.credits || 0;
+    const effects = [];
+    const e = item.effect || {};
+    if (e.xp) { xp += e.xp; effects.push(T(lang, 'gotXp', { n: e.xp.toLocaleString() })); }
+    if (e.credits) { credits += e.credits; effects.push(T(lang, 'gotCredits', { n: e.credits.toLocaleString() })); }
+    if (Array.isArray(e.random) && e.random.length) {
+        const r = e.random[Math.floor(Math.random() * e.random.length)];
+        if (r.xp) { xp += r.xp; effects.push(T(lang, 'boxXp', { n: r.xp.toLocaleString() })); }
+        else if (r.credits) { credits += r.credits; effects.push(T(lang, 'boxCredits', { n: r.credits.toLocaleString() })); }
+    }
+    const update = { ...user, xp, credits, level: calculateLevel(xp) };
+    if (e.streak_protection) { update.streak_protections = (user.streak_protections || 0) + 1; effects.push(T(lang, 'gotShield')); }
+    if (client.queueUserUpdate) client.queueUserUpdate(uid, gid, update);
+    else db.prepare(`INSERT INTO users (id, guild_id, username, credits, xp, level) VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT(id, guild_id) DO UPDATE SET credits = excluded.credits, xp = excluded.xp, level = excluded.level`).run(uid, gid, username, credits, xp, update.level);
+
+    const oldLevel = calculateLevel(user.xp || 0), newLevel = update.level;
+    const oldRank = getRank(oldLevel), newRank = getRank(newLevel);
+    const stats = [];
+    if (xp !== (user.xp || 0)) stats.push(`XP \`${(user.xp || 0).toLocaleString()} → ${xp.toLocaleString()}\``);
+    if (credits !== (user.credits || 0)) stats.push(`${icon('coins', where)} \`${(user.credits || 0).toLocaleString()} → ${credits.toLocaleString()}\``);
+    const items = [
+        { text: `### ${kindIcon(item, where)} ${T(lang, 'usedTitle', { item: nameOf(item, lang, itemId) })}\n${effects.join('\n') || T(lang, 'usedPlain')}` },
+    ];
+    if (stats.length) items.push({ text: stats.join('  ·  ') });
+    if (newLevel > oldLevel) items.push({ text: `${icon('trophy', where)} ${T(lang, 'levelUp', { level: newLevel })}${rankName(oldRank, lang) !== rankName(newRank, lang) ? ` · ${rankName(newRank, lang)}` : ''}` });
+    items.push({ text: `-# ${left ? T(lang, 'left', { n: left }) : T(lang, 'lastOne')}` });
+    console.log(`[USE] ${username} used ${itemId} in ${gid} · ${left} left`);
+    return v2.card(C.ok, items);
+}
+
+// ─── buttons and the menu: use:<action>:<uid>[:<item>] ───
+async function handleComponent(ix, client) {
+    const [, action, uid, ...rest] = ix.customId.split(':');
+    const lang = langOf(client, ix.guildId, ix, ix.user.id);
+    if (ix.user.id !== uid) return ix.reply({ content: T(lang, 'notYours'), flags: MessageFlags.Ephemeral }).catch(() => {});
+    const gid = ix.guildId || 'DM';
+    const update = (p) => ix.update(p).catch((e) => console.error('[USE] update:', e.message));
+
+    if (action === 'close') return ix.message?.flags?.has?.(MessageFlags.Ephemeral) ? update(v2.card(C.panel, [{ text: `-# ${T(lang, 'closed')}` }])) : ix.message.delete().catch(() => update(v2.card(C.panel, [{ text: `-# ${T(lang, 'closed')}` }])));
+    if (action === 'back') return update(panel(client, uid, gid, lang, ix));
+    if (action === 'inv') {
+        const view = require('./inventory.js').view;
+        return view ? update(view(client, client.db, uid, lang, gid, ix.guild?.name || 'ARCHON CG-223')) : null;
+    }
+    if (action === 'pick') {
+        const itemId = ix.values?.[0];
+        const item = itemsOf(client).get(itemId);
+        if (item?.type === 'badge') return update(badgeCard(client, uid, gid, itemId, lang, ix));
+        return update(useItem(client, uid, gid, ix.user.username, itemId, lang, ix));
+    }
+    const itemId = rest.join(':');
+    if (action === 'equip') {
+        const owned = client.db.prepare('SELECT 1 FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ? AND active = 1 AND quantity > 0').get(uid, gid, itemId);
+        if (!owned) return update(v2.card(C.bad, [{ text: T(lang, 'notFound') }]));
+        client.db.prepare(`INSERT INTO users (id, guild_id, username, credits, xp, level, active_badge) VALUES (?, ?, ?, 0, 0, 1, ?)
+            ON CONFLICT(id, guild_id) DO UPDATE SET active_badge = excluded.active_badge`).run(uid, gid, ix.user.username, itemId);
+        client.userDataCache?.delete(`${uid}:${gid}`);
+        return update(v2.card(C.ok, [{ text: `### ${icon('trophy', ix)} ${T(lang, 'equipped', { item: nameOf(itemsOf(client).get(itemId), lang, itemId) })}\n-# ${T(lang, 'equippedHint')}` }]));
+    }
+    if (action === 'unequip') {
+        client.db.prepare('UPDATE users SET active_badge = NULL WHERE id = ? AND guild_id = ?').run(uid, gid);
+        client.userDataCache?.delete(`${uid}:${gid}`);
+        return update(v2.card(C.panel, [{ text: T(lang, 'unequipped') }]));
+    }
+    return ix.reply({ content: T(lang, 'notYours'), flags: MessageFlags.Ephemeral }).catch(() => {});
+}
+
+// "/use item:" or ".use <item>": straight to the item
+function direct(client, uid, gid, username, itemId, lang, where) {
+    const hit = usable(client, uid, gid).find((r) => r.item_id === itemId || nameOf(r.item, lang, r.item_id).toLowerCase() === String(itemId).toLowerCase());
+    if (!hit) return v2.card(C.bad, [{ text: T(lang, 'notFound') }]);
+    return hit.item.type === 'badge' ? badgeCard(client, uid, gid, hit.item_id, lang, where) : useItem(client, uid, gid, username, hit.item_id, lang, where);
+}
 
 module.exports = {
     name: 'use',
     aliases: ['utiliser', 'activate', 'open', 'consume', 'equip'],
-    description: '🎁 Activate an item from your inventory (Boosts, Mystery Boxes, Badges)',
+    description: 'Use an item from your inventory: boosts, mystery boxes, badges',
     category: 'ECONOMY',
-    usage: '.use [item name] or /use',
+    usage: '.use [item]',
     cooldown: 3000,
     examples: ['.use', '.use xp_boost_small', '.use badge_gold'],
+    handleComponent,
 
-    data: new SlashCommandBuilder()
-        .setName('use')
-        .setDescription('🎁 Activate an item from your neural inventory')
-        .addStringOption(option =>
-            option.setName('item')
-                .setDescription('Item to activate (leave empty to open neural interface)')
-                .setRequired(false)
-                .setAutocomplete(true)
-        ),
+    data: new SlashCommandBuilder().setName('use').setDescription('Use an item from your inventory')
+        .setDescriptionLocalizations({ fr: 'Utiliser un objet de ton inventaire' })
+        .addStringOption((o) => o.setName('item').setDescription('The item (empty: open your items)').setRequired(false).setAutocomplete(true)),
 
-    // ================= AUTOCOMPLETE =================
     autocomplete: async (interaction, client) => {
-        const focusedValue = interaction.options.getFocused().toLowerCase();
-        const userId = interaction.user.id;
-        const db = client.db;
-        const shopItems = client.shopItems || [];
-        const itemsMap = new Map(shopItems.map(item => [item.id, item]));
-
+        const q = String(interaction.options.getFocused() || '').toLowerCase();
+        const lang = langOf(client, interaction.guildId, interaction, interaction.user.id);
         try {
-            const usableItems = db.prepare(`
-                SELECT ui.item_id, ui.quantity
-                FROM user_inventory ui
-                WHERE ui.user_id = ? AND ui.active = 1 AND ui.quantity > 0
-            `).all(userId);
-
-            const choices = usableItems
-                .filter(inv => {
-                    const item = itemsMap.get(inv.item_id);
-                    if (!item) return false;
-                    const itemName = (item.en?.name || item.name || inv.item_id).toLowerCase();
-                    return itemName.includes(focusedValue);
-                })
-                .slice(0, 25)
-                .map(inv => {
-                    const item = itemsMap.get(inv.item_id);
-                    const itemName = item?.en?.name || item?.name || inv.item_id;
-                    const typeEmoji = item?.type === 'badge' ? em('badge', '🎖️') : item?.type === 'consumable' ? em('ic_bolt', '⚡') : '💪';
-                    return {
-                        name: `${typeEmoji} ${itemName} (x${inv.quantity})`,
-                        value: inv.item_id
-                    };
-                });
-
+            const choices = usable(client, interaction.user.id, interaction.guildId || 'DM')
+                .filter((r) => nameOf(r.item, lang, r.item_id).toLowerCase().includes(q))
+                .slice(0, 25).map((r) => ({ name: `${nameOf(r.item, lang, r.item_id)} ×${r.quantity}`.slice(0, 100), value: r.item_id }));
             await interaction.respond(choices).catch(() => {});
-        } catch (err) {
-            console.error('[USE-AUTOCOMPLETE] Error:', err);
-            await interaction.respond([]).catch(() => {});
-        }
+        } catch { await interaction.respond([]).catch(() => {}); }
     },
 
-    // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
-        
-        const userId = message.author.id;
-        const userName = message.author.username;
-        const avatarURL = message.author.displayAvatarURL({ dynamic: true, size: 256 });
-        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
-        const version = client.version || '1.7.0';
-        const guildId = message.guild?.id || 'DM';
-
-        const directItemId = args[0];
-        const shopItems = client.shopItems || [];
-        const itemsMap = new Map(shopItems.map(item => [item.id, item]));
-
-        const getUsableItems = () => {
-            return db.prepare(`
-                SELECT ui.item_id, ui.quantity, ui.expires_at
-                FROM user_inventory ui
-                WHERE ui.user_id = ? AND ui.active = 1 AND ui.quantity > 0
-            `).all(userId);
-        };
-
-        const usableItems = getUsableItems().filter(inv => {
-            const item = itemsMap.get(inv.item_id);
-            return item && (item.type === 'consumable' || item.type === 'boost' || item.type === 'badge');
-        });
-
-        // ═══════════════════════════════════════════════════════
-        // EMPTY INVENTORY — CLASSIFIED INTERFACE
-        // ═══════════════════════════════════════════════════════
-        if (usableItems.length === 0) {
-            const noItemsEmbed = new EmbedBuilder()
-                .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`${t('use.noItems', lang)}`)
-                .setDescription(
-                    `\`\`\`ansi\n` +
-                    `\u001b[1;33m  ${t('use.neuralInventoryEmpty', lang)}\u001b[0m\n\n` +
-                    `\u001b[0;37m  ${t('use.noItemsDesc', lang)}\u001b[0m\n` +
-                    `\`\`\``
-                )
-                .setFooter({ text: `${guildName} • ${t('use.footer', lang)} • v${version}`, iconURL: message.guild?.iconURL() })
-                .setTimestamp();
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('use_shop')
-                    .setLabel(t('use.shopHint', lang))
-                    .setStyle(ButtonStyle.Success)
-                    .setEmoji(icon('shop'))
-            );
-
-            const reply = await message.reply({ embeds: [noItemsEmbed], components: [row] }).catch(() => {});
-            if (!reply) return;
-
-            const collector = reply.createMessageComponentCollector({ time: 30000 });
-            collector.on('collect', async (i) => {
-                if (i.user.id !== userId) return i.reply({ content: t('use.accessDenied', lang), flags: 64 }).catch(() => {});
-                if (i.customId === 'use_shop') {
-                    collector.stop();
-                    await reply.delete().catch(() => {});
-                    const shopCmd = client.commands.get('shop');
-                    if (shopCmd) return await shopCmd.run(client, message, [], db, serverSettings, 'shop');
-                }
-            });
-            return;
-        }
-
-        // ═══════════════════════════════════════════════════════
-        // DIRECT ITEM USE VIA PREFIX
-        // ═══════════════════════════════════════════════════════
-        if (directItemId) {
-            const targetItem = usableItems.find(i => i.item_id === directItemId);
-            if (!targetItem) {
-                return message.reply({ content: t('use.itemNotFound', lang) }).catch(() => {});
-            }
-            const item = itemsMap.get(targetItem.item_id);
-            if (item?.type === 'badge') {
-                await processBadgeEquip(client, message, db, userId, targetItem.item_id, itemsMap, lang, guildName, version, guildId, false);
-            } else {
-                await processItemUse(client, message, db, userId, targetItem.item_id, itemsMap, lang, guildName, version, guildId, false);
-            }
-            return;
-        }
-
-        // ═══════════════════════════════════════════════════════
-        // NEURAL SELECTION INTERFACE
-        // ═══════════════════════════════════════════════════════
-        const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId(`use_select_${userId}_${Date.now()}`)
-            .setPlaceholder(t('use.selectPlaceholder', lang))
-            .setMinValues(1)
-            .setMaxValues(1);
-
-        usableItems.slice(0, 25).forEach(inv => {
-            const item = itemsMap.get(inv.item_id);
-            if (item) {
-                const itemName = item[lang]?.name || item.en?.name || item.name || inv.item_id;
-                const typeEmoji = item.type === 'badge' ? em('badge', '🎖️') : item.type === 'consumable' ? em('ic_bolt', '⚡') : '💪';
-                selectMenu.addOptions({
-                    label: `${itemName} (x${inv.quantity})`.slice(0, 100),
-                    description: `${typeEmoji} ${(item[lang]?.desc || item.en?.desc || item.desc || t('use.neuralItemFallback', lang)).substring(0, 50)}`,
-                    value: inv.item_id,
-                    emoji: typeEmoji
-                });
-            }
-        });
-
-        const actionRow = new ActionRowBuilder().addComponents(selectMenu);
-        const backRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`use_cancel_${userId}`).setLabel(t('use.close', lang)).setStyle(ButtonStyle.Danger).setEmoji(icon('no')),
-            new ButtonBuilder().setCustomId(`use_inventory_${userId}`).setLabel(t('use.backToInventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji(iconObj('inventory', null, '📦'))
-        );
-
-        const useEmbed = new EmbedBuilder()
-            .setColor(ARCHON.purple)
-            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: avatarURL })
-            .setTitle(`${t('use.interfaceTitle', lang)}`)
-            .setDescription(
-                `\`\`\`ansi\n` +
-                `\u001b[1;36m  ${t('use.usableItems', lang, { count: usableItems.length })}\u001b[0m\n\n` +
-                `\u001b[0;37m  ${t('use.selectHint', lang)}\u001b[0m\n` +
-                `\u001b[0;37m  ${t('use.consumeWarn', lang)}\u001b[0m\n` +
-                `\`\`\``
-            )
-            .setFooter({ text: `${guildName} • ${t('use.footer', lang)} • v${version}`, iconURL: message.guild?.iconURL() })
-            .setTimestamp();
-
-        const reply = await message.reply({ embeds: [useEmbed], components: [actionRow, backRow] }).catch(() => {});
-        if (!reply) return;
-
-        const collector = reply.createMessageComponentCollector({
-            filter: i => i.user.id === userId,
-            time: 60000
-        });
-
-        collector.on('collect', async (i) => {
-            // Someone else's menu: say so (it used to stay silent, and Discord showed "This interaction failed")
-            if (i.user.id !== userId) return i.reply({ content: t('use.accessDenied', lang), flags: 64 }).catch(() => {});
-            try { await i.deferUpdate(); } catch (e) { return; }
-
-            if (i.customId.startsWith('use_select_')) {
-                const selectedItemId = i.values[0];
-                const item = itemsMap.get(selectedItemId);
-                collector.stop();
-                await reply.delete().catch(() => {});
-                if (item?.type === 'badge') {
-                    await processBadgeEquip(client, message, db, userId, selectedItemId, itemsMap, lang, guildName, version, guildId, false);
-                } else {
-                    await processItemUse(client, message, db, userId, selectedItemId, itemsMap, lang, guildName, version, guildId, false);
-                }
-            } else if (i.customId.startsWith('use_inventory_')) {
-                collector.stop();
-                await reply.delete().catch(() => {});
-                const invCmd = client.commands.get('inventory');
-                if (invCmd) return await invCmd.run(client, message, [], db, serverSettings, 'inventory');
-            } else if (i.customId.startsWith('use_cancel_')) {
-                collector.stop();
-                await reply.delete().catch(() => {});
-            }
-        });
-
-        collector.on('end', async () => {
-            await reply.delete().catch(() => {});
-        });
+    run: async (client, message, args) => {
+        const lang = langOf(client, message.guild?.id, message, message.author.id);
+        const gid = message.guild?.id || 'DM';
+        const payload = args[0]
+            ? direct(client, message.author.id, gid, message.author.username, args.join(' '), lang, message)
+            : panel(client, message.author.id, gid, lang, message);
+        return message.reply(payload).catch(() => {});
     },
 
-    // ================= SLASH COMMAND =================
     execute: async (interaction, client) => {
+        const lang = langOf(client, interaction.guildId, interaction, interaction.user.id);
+        const gid = interaction.guild?.id || 'DM';
         const itemId = interaction.options.getString('item');
-        const db = client.db;
-        const userId = interaction.user.id;
-        const shopItems = client.shopItems || [];
-        const itemsMap = new Map(shopItems.map(item => [item.id, item]));
-        const guildId = interaction.guild?.id || 'DM';
-
-        const ss = client.getServerSettings?.(guildId)
-            || client.settings?.get(guildId)
-            || {};
-        const lang = ss.language || 'en';
-
-        const getUsableItems = () => {
-            return db.prepare(`
-                SELECT ui.item_id, ui.quantity, ui.expires_at
-                FROM user_inventory ui
-                WHERE ui.user_id = ? AND ui.active = 1 AND ui.quantity > 0
-            `).all(userId);
-        };
-
-        const usableItems = getUsableItems().filter(inv => {
-            const item = itemsMap.get(inv.item_id);
-            return item && (item.type === 'consumable' || item.type === 'boost' || item.type === 'badge');
-        });
-
-        if (usableItems.length === 0) {
-            const noItemsEmbed = new EmbedBuilder()
-                .setColor(ARCHON.red)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: client.user.displayAvatarURL() })
-                .setTitle(`${t('use.noItems', lang)}`)
-                .setDescription(
-                    `\`\`\`ansi\n` +
-                    `\u001b[1;33m  ${t('use.neuralInventoryEmpty', lang)}\u001b[0m\n\n` +
-                    `\u001b[0;37m  ${t('use.noItemsDesc', lang)}\u001b[0m\n` +
-                    `\`\`\``
-                )
-                .setFooter({ text: `${t('use.footer', lang)} • v${client.version || '1.7.0'}`, iconURL: interaction.guild?.iconURL() });
-            return interaction.reply({ embeds: [noItemsEmbed], flags: 64 });
-        }
-
-        // Direct item use via slash autocomplete
-        if (itemId) {
-            const targetItem = usableItems.find(i => i.item_id === itemId);
-            if (!targetItem) {
-                return interaction.reply({ content: t('use.itemNotFound', lang), flags: 64 });
-            }
-            const item = itemsMap.get(itemId);
-            await interaction.deferReply().catch(() => {});
-            if (item?.type === 'badge') {
-                await processBadgeEquip(client, interaction, db, userId, itemId, itemsMap, lang, interaction.guild?.name, client.version, guildId, true);
-            } else {
-                await processItemUseForSlash(client, interaction, db, userId, itemId, itemsMap, lang, interaction.guild?.name, client.version, guildId);
-            }
-            return;
-        }
-
-        // Show selection menu for slash
-        const selectMenu = new StringSelectMenuBuilder()
-            .setCustomId(`use_select_slash_${userId}_${Date.now()}`)
-            .setPlaceholder(t('use.selectPlaceholder', lang))
-            .setMinValues(1)
-            .setMaxValues(1);
-
-        usableItems.slice(0, 25).forEach(inv => {
-            const item = itemsMap.get(inv.item_id);
-            if (item) {
-                const itemName = item[lang]?.name || item.en?.name || item.name || inv.item_id;
-                const typeEmoji = item.type === 'badge' ? em('badge', '🎖️') : item.type === 'consumable' ? em('ic_bolt', '⚡') : '💪';
-                selectMenu.addOptions({
-                    label: `${itemName} (x${inv.quantity})`.slice(0, 100),
-                    description: `${typeEmoji} ${(item[lang]?.desc || item.en?.desc || item.desc || t('use.neuralItemFallback', lang)).substring(0, 50)}`,
-                    value: inv.item_id,
-                    emoji: typeEmoji
-                });
-            }
-        });
-
-        const actionRow = new ActionRowBuilder().addComponents(selectMenu);
-
-        const useEmbed = new EmbedBuilder()
-            .setColor(ARCHON.purple)
-            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: client.user.displayAvatarURL() })
-            .setTitle(`${t('use.interfaceTitle', lang)}`)
-            .setDescription(
-                `\`\`\`ansi\n` +
-                `\u001b[1;36m  ${t('use.usableItems', lang, { count: usableItems.length })}\u001b[0m\n\n` +
-                `\u001b[0;37m  ${t('use.selectHint', lang)}\u001b[0m\n` +
-                `\u001b[0;37m  ${t('use.consumeWarn', lang)}\u001b[0m\n` +
-                `\`\`\``
-            )
-            .setFooter({ text: `${t('use.footer', lang)} • v${client.version || '1.7.0'}`, iconURL: interaction.guild?.iconURL() });
-
-        await interaction.reply({ embeds: [useEmbed], components: [actionRow], flags: 64 });
-
-        const replyMsg = await interaction.fetchReply();
-
-        const collector = replyMsg.createMessageComponentCollector({
-            filter: i => i.user.id === interaction.user.id,
-            time: 60000,
-            max: 1
-        });
-
-        collector.on('collect', async (i) => {
-            const selectedItemId = i.values[0];
-            const item = itemsMap.get(selectedItemId);
-            await i.deferUpdate().catch(() => {});
-            if (item?.type === 'badge') {
-                await processBadgeEquip(client, i, db, userId, selectedItemId, itemsMap, lang, interaction.guild?.name, client.version, guildId, true);
-            } else {
-                await processItemUseForSlash(client, i, db, userId, selectedItemId, itemsMap, lang, interaction.guild?.name, client.version, guildId);
-            }
-        });
-
-        collector.on('end', async () => {
-            await interaction.editReply({ components: [] }).catch(() => {});
-        });
-    }
+        const payload = itemId
+            ? direct(client, interaction.user.id, gid, interaction.user.username, itemId, lang, interaction)
+            : panel(client, interaction.user.id, gid, lang, interaction);
+        return interaction.reply({ ...payload, flags: payload.flags | MessageFlags.Ephemeral });
+    },
 };
-
-// ═══════════════════════════════════════════════════════
-// BADGE EQUIPMENT SYSTEM
-// ═══════════════════════════════════════════════════════
-async function processBadgeEquip(client, context, db, userId, itemId, itemsMap, lang, guildName, version, guildId, isSlash) {
-    const item = itemsMap.get(itemId);
-    if (!item) {
-        const msg = t('use.itemNotFound', lang);
-        if (isSlash) return context.editReply({ content: msg }).catch(() => {});
-        return context.reply({ content: msg }).catch(() => {});
-    }
-
-    const inventoryItem = db.prepare(`
-        SELECT quantity, expires_at
-        FROM user_inventory
-        WHERE user_id = ? AND item_id = ? AND active = 1 AND quantity > 0
-    `).get(userId, itemId);
-
-    if (!inventoryItem) {
-        const msg = t('use.itemNotFound', lang);
-        if (isSlash) return context.editReply({ content: msg }).catch(() => {});
-        return context.reply({ content: msg }).catch(() => {});
-    }
-
-    // Check if already equipped
-    const currentBadge = db.prepare(`
-        SELECT active_badge FROM users WHERE id = ? AND guild_id = ?
-    `).get(userId, guildId);
-
-    if (currentBadge?.active_badge === itemId) {
-        // Already equipped — offer to unequip
-        const alreadyEmbed = new EmbedBuilder()
-            .setColor(ARCHON.gold)
-            .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-            .setTitle(`${em('ic_warn', em('ic_warn', '⚠️'))} ${t('use.badgeAlreadyEquipped', lang)}`)
-            .setDescription(
-                `\`\`\`ansi\n` +
-                `\u001b[1;36m  ${t('use.currentBadge', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n\n` +
-                `\u001b[0;37m  ${t('use.removeBadgeQ', lang)}\u001b[0m\n` +
-                `\`\`\``
-            )
-            .setFooter({ text: `${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}` });
-
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId(`badge_unequip_${userId}`)
-                .setLabel(t('use.unequipBadge', lang))
-                .setStyle(ButtonStyle.Danger)
-                .setEmoji(iconObj('unlock', null, '🔓')),
-            new ButtonBuilder()
-                .setCustomId(`badge_keep_${userId}`)
-                .setLabel(t('use.close', lang))
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji(icon('no'))
-        );
-
-        const reply = isSlash
-            ? await context.editReply({ embeds: [alreadyEmbed], components: [row], content: '' }).catch(() => {})
-            : await context.reply({ embeds: [alreadyEmbed], components: [row] }).catch(() => {});
-        if (!reply) return;
-
-        const collector = reply.createMessageComponentCollector({
-            filter: i => i.user.id === userId,
-            time: 30000
-        });
-
-        collector.on('collect', async (i) => {
-            await i.deferUpdate().catch(() => {});
-            if (i.customId === `badge_unequip_${userId}`) {
-                db.prepare(`UPDATE users SET active_badge = NULL WHERE id = ? AND guild_id = ?`).run(userId, guildId);
-                if (client.userDataCache) client.userDataCache.delete(`${userId}:${guildId}`);
-
-                const removedEmbed = new EmbedBuilder()
-                    .setColor(ARCHON.green)
-                    .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.title', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-                    .setTitle(`${em('ok', em('ic_ok', '✅'))} ${t('use.badgeRemoved', lang)}`)
-                    .setDescription(`\`\`\`ansi\n\u001b[0;37m  ${t('use.badgeRemovedDesc', lang)}\u001b[0m\n\`\`\``)
-                    .setFooter({ text: `${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}` });
-
-                await i.editReply({ embeds: [removedEmbed], components: [] }).catch(() => {});
-            } else {
-                await i.editReply({ components: [] }).catch(() => {});
-            }
-            collector.stop();
-        });
-        return;
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // CONFIRM EQUIP INTERFACE
-    // ═══════════════════════════════════════════════════════
-    const confirmEmbed = new EmbedBuilder()
-        .setColor(ARCHON.neural)
-        .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.confirmEquip', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-        .setTitle(`${em('badge', '🎖️')} ${t('use.badgePreview', lang)}`)
-        .setDescription(
-            `\`\`\`ansi\n` +
-            `\u001b[1;36m  ${t('use.badgeField', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n` +
-            `\u001b[1;36m  ${t('use.typeField', lang)}\u001b[0m ${item.type?.toUpperCase() || 'BADGE'}\n` +
-            `\u001b[1;36m  ${t('use.rarityField', lang)}\u001b[0m ${item.rarity?.toUpperCase() || 'STANDARD'}\n` +
-            `\u001b[1;36m  ${t('use.stockLabelPlain', lang)}\u001b[0m ${inventoryItem.quantity} ${t('use.remainingWord', lang)}\n\n` +
-            `\u001b[0;37m  ${t('use.badgeEquippedDesc', lang)}\u001b[0m\n` +
-            `\`\`\``
-        )
-        .setFooter({ text: `${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}` });
-
-    const row = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
-            .setCustomId(`badge_confirm_${userId}`)
-            .setLabel(t('use.equipBadge', lang))
-            .setStyle(ButtonStyle.Success)
-            .setEmoji(iconObj('trophy', null, iconObj('badge', null, '🎖️'))),
-        new ButtonBuilder()
-            .setCustomId(`badge_cancel_${userId}`)
-            .setLabel(t('use.close', lang))
-            .setStyle(ButtonStyle.Danger)
-            .setEmoji(icon('no'))
-    );
-
-    const reply = isSlash
-        ? await context.editReply({ embeds: [confirmEmbed], components: [row], content: '' }).catch(() => {})
-        : await context.reply({ embeds: [confirmEmbed], components: [row] }).catch(() => {});
-    if (!reply) return;
-
-    const collector = reply.createMessageComponentCollector({
-        filter: i => i.user.id === userId,
-        time: 30000
-    });
-
-    collector.on('collect', async (i) => {
-        await i.deferUpdate().catch(() => {});
-        if (i.customId === `badge_confirm_${userId}`) {
-            // Equip the badge
-            db.prepare(`
-                INSERT INTO users (id, guild_id, username, credits, xp, level, active_badge)
-                VALUES (?, ?, ?, 0, 0, 1, ?)
-                ON CONFLICT(id, guild_id) DO UPDATE SET active_badge = excluded.active_badge
-            `).run(userId, guildId, isSlash ? context.user.username : context.author.username, itemId);
-
-            if (client.userDataCache) client.userDataCache.delete(`${userId}:${guildId}`);
-
-            const equippedEmbed = new EmbedBuilder()
-                .setColor(ARCHON.green)
-                .setAuthor({ name: `🦅 ARCHON ENGINE • ${t('use.useSuccess', lang)}`, iconURL: isSlash ? context.user.displayAvatarURL() : context.author.displayAvatarURL() })
-                .setTitle(`${em('ok', em('ic_ok', '✅'))} ${t('use.badgeEquipped', lang)}`)
-                .setDescription(
-                    `\`\`\`ansi\n` +
-                    `\u001b[1;36m  🎖️ ${t('use.badgeField', lang)}\u001b[0m ${item[lang]?.name || item.en?.name || itemId}\n` +
-                    `\u001b[1;36m  ${t('use.stockLabelBadge', lang)}\u001b[0m ${inventoryItem.quantity} ${t('use.remainingWord', lang)}\n\n` +
-                    `\u001b[0;37m  ${t('use.badgeEquippedDesc', lang)}\u001b[0m\n` +
-                    `\`\`\``
-                )
-                .setFooter({ text: `${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)} • v${version}` });
-
-            await i.editReply({ embeds: [equippedEmbed], components: [] }).catch(() => {});
-        } else {
-            await i.editReply({ components: [] }).catch(() => {});
-        }
-        collector.stop();
-    });
-}
-
-// ═══════════════════════════════════════════════════════
-// SLASH-SPECIFIC ITEM PROCESSING
-// ═══════════════════════════════════════════════════════
-async function processItemUseForSlash(client, interaction, db, userId, itemId, itemsMap, lang, guildName, version, guildId) {
-    const item = itemsMap.get(itemId);
-    if (!item) {
-        return interaction.editReply({ content: t('use.itemNotFound', lang) }).catch(() => {});
-    }
-
-    const inventoryItem = db.prepare(`
-        SELECT quantity, expires_at
-        FROM user_inventory
-        WHERE user_id = ? AND item_id = ? AND active = 1 AND quantity > 0
-    `).get(userId, itemId);
-
-    if (!inventoryItem) {
-        return interaction.editReply({ content: t('use.itemNotFound', lang) }).catch(() => {});
-    }
-
-    if (inventoryItem.expires_at && inventoryItem.expires_at < Math.floor(Date.now() / 1000)) {
-        db.prepare(`UPDATE user_inventory SET active = 0 WHERE user_id = ? AND item_id = ?`).run(userId, itemId);
-        return interaction.editReply({ content: t('use.alreadyUsed', lang) }).catch(() => {});
-    }
-
-    let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare(`SELECT * FROM users WHERE id = ? AND guild_id = ?`).get(userId, guildId);
-    if (!userData) {
-        userData = { id: userId, guild_id: guildId, username: interaction.user.username, credits: 0, xp: 0, level: 1 };
-    }
-
-    let newXP = userData.xp || 0;
-    let newCredits = userData.credits || 0;
-    let effectMessage = '';
-    let rewardType = '';
-    let rewardAmount = 0;
-
-    if (item.effect) {
-        if (item.effect.xp) {
-            newXP += item.effect.xp;
-            rewardAmount = item.effect.xp;
-            rewardType = 'XP';
-            effectMessage = t('use.xpGain', lang, { amount: item.effect.xp });
-        }
-        if (item.effect.credits) {
-            newCredits += item.effect.credits;
-            rewardAmount = item.effect.credits;
-            rewardType = 'Credits';
-            effectMessage = t('use.creditGain', lang, { amount: item.effect.credits });
-        }
-        if (item.effect.random) {
-            const randomReward = item.effect.random[Math.floor(Math.random() * item.effect.random.length)];
-            if (randomReward.xp) {
-                newXP += randomReward.xp;
-                rewardAmount = randomReward.xp;
-                rewardType = 'XP';
-                effectMessage = t('use.mysteryReward', lang, { amount: randomReward.xp, type: 'XP' });
-            } else if (randomReward.credits) {
-                newCredits += randomReward.credits;
-                rewardAmount = randomReward.credits;
-                rewardType = 'Credits';
-                effectMessage = t('use.mysteryReward', lang, { amount: randomReward.credits, type: 'Credits' });
-            }
-        }
-        if (item.effect.streak_protection) {
-            rewardAmount = 1;
-            rewardType = 'Streak Protection';
-            effectMessage = t('use.streakProtectionMsg', lang);
-        }
-    }
-
-    const oldLevel = calculateLevel(userData.xp || 0);
-    const newLevel = calculateLevel(newXP);
-    const oldRank = getRank(oldLevel);
-    const newRank = getRank(newLevel);
-
-    const updateData = {
-        ...userData,
-        xp: newXP,
-        credits: newCredits,
-        level: newLevel
-    };
-
-    if (item.effect?.streak_protection) {
-        updateData.streak_protections = (userData.streak_protections || 0) + 1;
-    }
-
-    if (client.queueUserUpdate) {
-        client.queueUserUpdate(userId, guildId, updateData);
-    } else {
-        db.prepare(`
-            INSERT INTO users (id, guild_id, username, credits, xp, level)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id, guild_id) DO UPDATE SET
-                credits = excluded.credits,
-                xp = excluded.xp,
-                level = excluded.level
-        `).run(userId, guildId, interaction.user.username, newCredits, newXP, newLevel);
-    }
-
-    const newQuantity = inventoryItem.quantity - 1;
-    if (newQuantity <= 0) {
-        db.prepare(`DELETE FROM user_inventory WHERE user_id = ? AND item_id = ?`).run(userId, itemId);
-    } else {
-        db.prepare(`UPDATE user_inventory SET quantity = ? WHERE user_id = ? AND item_id = ?`).run(newQuantity, userId, itemId);
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // ARCHON CLASSIFIED RESULT EMBED
-    // ═══════════════════════════════════════════════════════
-    const container = useResultCard(client, lang, { item, effectMessage, userData, newXP, newCredits, oldLevel, newLevel, oldRank, newRank, newQuantity, guildName, version });
-
-    await interaction.editReply({ components: [container], flags: MessageFlags.IsComponentsV2 }).catch(err => {
-        console.error('[USE-SLASH] Failed to edit reply:', err);
-    });
-
-    console.log(`[USE-SLASH] ${interaction.user.tag} used ${itemId} | ${rewardAmount} ${rewardType} | Remaining: ${newQuantity}`);
-}
-
-// ═══════════════════════════════════════════════════════
-// CORE ITEM PROCESSING FUNCTION (PREFIX)
-// ═══════════════════════════════════════════════════════
-// The result of using an item: one card for the slash and the prefix command. The prefix version built an embed
-// and then sent a card that did not exist, so every .use failed; a level-up broke the slash version the same way.
-function useResultCard(client, lang, v) {
-    const { item, effectMessage, userData, newXP, newCredits, oldLevel, newLevel, oldRank, newRank, newQuantity, guildName, version } = v;
-    const rk = (r) => `${r.emoji} ${(r.title[lang] || r.title.en)}`;
-    const container = new ContainerBuilder().setAccentColor(parseInt(String(newRank.color).replace('#', ''), 16));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${resolveEmoji('success', client) || '✨'} ${item[lang]?.name || item.en?.name || item.name} · ${t('use.used', lang)}`));
-    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(effectMessage));
-    container.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.neuralStats', lang)}**\nXP: \`${(userData.xp || 0).toLocaleString()} → ${newXP.toLocaleString()}\`\n${t('use.creditsField', lang)} \`${(userData.credits || 0).toLocaleString()} → ${newCredits.toLocaleString()}\``));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.levelField', lang)}** \`${oldLevel} → ${newLevel}\`\n**${t('use.rankField', lang)}** ${rk(oldRank)}${rk(oldRank) !== rk(newRank) ? ` → ${rk(newRank)}` : ''}`));
-    if (newLevel > oldLevel) container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.ascensionTitle', lang)}** · ${t('use.ascensionLine', lang, { level: newLevel, rank: (newRank.title[lang] || newRank.title.en) })}`));
-    if (rk(oldRank) !== rk(newRank)) container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('use.rankElevationTitle', lang)}** · ${rk(oldRank)} → ${rk(newRank)}`));
-    container.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('use.stockField', lang)} ${newQuantity > 0 ? newQuantity + ' ' + t('use.remainingWord', lang) : t('use.depleted', lang)} · ${guildName || 'ARCHON CG-223'} • ${t('use.footer', lang)}`));
-    return container;
-}
-
-async function processItemUse(client, message, db, userId, itemId, itemsMap, lang, guildName, version, guildId, isSlash) {
-    const item = itemsMap.get(itemId);
-    if (!item) {
-        return message.reply({ content: t('use.itemNotFound', lang) }).catch(() => {});
-    }
-
-    const inventoryItem = db.prepare(`
-        SELECT quantity, expires_at
-        FROM user_inventory
-        WHERE user_id = ? AND item_id = ? AND active = 1 AND quantity > 0
-    `).get(userId, itemId);
-
-    if (!inventoryItem) {
-        return message.reply({ content: t('use.itemNotFound', lang) }).catch(() => {});
-    }
-
-    if (inventoryItem.expires_at && inventoryItem.expires_at < Math.floor(Date.now() / 1000)) {
-        db.prepare(`UPDATE user_inventory SET active = 0 WHERE user_id = ? AND item_id = ?`).run(userId, itemId);
-        return message.reply({ content: t('use.alreadyUsed', lang) }).catch(() => {});
-    }
-
-    let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare(`SELECT * FROM users WHERE id = ? AND guild_id = ?`).get(userId, guildId);
-    if (!userData) {
-        userData = { id: userId, guild_id: guildId, username: message.author.username, credits: 0, xp: 0, level: 1 };
-    }
-
-    let newXP = userData.xp || 0;
-    let newCredits = userData.credits || 0;
-    let effectMessage = '';
-    let rewardType = '';
-    let rewardAmount = 0;
-
-    if (item.effect) {
-        if (item.effect.xp) {
-            newXP += item.effect.xp;
-            rewardAmount = item.effect.xp;
-            rewardType = 'XP';
-            effectMessage = t('use.xpGain', lang, { amount: item.effect.xp });
-        }
-        if (item.effect.credits) {
-            newCredits += item.effect.credits;
-            rewardAmount = item.effect.credits;
-            rewardType = 'Credits';
-            effectMessage = t('use.creditGain', lang, { amount: item.effect.credits });
-        }
-        if (item.effect.random) {
-            const randomReward = item.effect.random[Math.floor(Math.random() * item.effect.random.length)];
-            if (randomReward.xp) {
-                newXP += randomReward.xp;
-                rewardAmount = randomReward.xp;
-                rewardType = 'XP';
-                effectMessage = t('use.mysteryReward', lang, { amount: randomReward.xp, type: 'XP' });
-            } else if (randomReward.credits) {
-                newCredits += randomReward.credits;
-                rewardAmount = randomReward.credits;
-                rewardType = 'Credits';
-                effectMessage = t('use.mysteryReward', lang, { amount: randomReward.credits, type: 'Credits' });
-            }
-        }
-        if (item.effect.streak_protection) {
-            rewardAmount = 1;
-            rewardType = 'Streak Protection';
-            effectMessage = t('use.streakProtectionMsg', lang);
-        }
-    }
-
-    const oldLevel = calculateLevel(userData.xp || 0);
-    const newLevel = calculateLevel(newXP);
-    const oldRank = getRank(oldLevel);
-    const newRank = getRank(newLevel);
-
-    const updateData = {
-        ...userData,
-        xp: newXP,
-        credits: newCredits,
-        level: newLevel
-    };
-
-    if (item.effect?.streak_protection) {
-        updateData.streak_protections = (userData.streak_protections || 0) + 1;
-    }
-
-    if (client.queueUserUpdate) {
-        client.queueUserUpdate(userId, guildId, updateData);
-    } else {
-        db.prepare(`
-            INSERT INTO users (id, guild_id, username, credits, xp, level)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ON CONFLICT(id, guild_id) DO UPDATE SET
-                credits = excluded.credits,
-                xp = excluded.xp,
-                level = excluded.level
-        `).run(userId, guildId, message.author.username, newCredits, newXP, newLevel);
-    }
-
-    const newQuantity = inventoryItem.quantity - 1;
-    if (newQuantity <= 0) {
-        db.prepare(`DELETE FROM user_inventory WHERE user_id = ? AND item_id = ?`).run(userId, itemId);
-    } else {
-        db.prepare(`UPDATE user_inventory SET quantity = ? WHERE user_id = ? AND item_id = ?`).run(newQuantity, userId, itemId);
-    }
-
-    // ═══════════════════════════════════════════════════════
-    // ARCHON CLASSIFIED RESULT EMBED
-    // ═══════════════════════════════════════════════════════
-    const container = useResultCard(client, lang, { item, effectMessage, userData, newXP, newCredits, oldLevel, newLevel, oldRank, newRank, newQuantity, guildName, version });
-
-    await message.reply({ components: [container], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
-
-    console.log(`[USE] ${message.author.tag} used ${itemId} | ${rewardAmount} ${rewardType} | Remaining: ${newQuantity}`);
-}
-

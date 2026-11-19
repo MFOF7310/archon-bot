@@ -3540,61 +3540,16 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return;
     }
 
-// ================= CONTACT REPLY HANDLER (Cross-server DM reply) =================
+// ================= CONTACT (plugins/contact.js) =================
+// The person's type buttons (contact:…), the developer's Reply button (creply_<uid>_<ts>) and its box (creplym_<uid>)
+    if (interaction.isButton() && interaction.customId.startsWith('contact:')) {
+        return require('./plugins/contact.js').handleComponent(interaction, client).catch((e) => console.error('[CONTACT] button:', e.message));
+    }
     if (interaction.isButton() && interaction.customId.startsWith('creply_')) {
-        try {
-            const parts = interaction.customId.split('_');
-            const targetUserId = parts[1];
-
-            // Only owner can use reply button
-            const OWNER_ID = process.env.OWNER_ID;
-            if (interaction.user.id !== OWNER_ID) {
-                return interaction.reply({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.owner_only', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: 64 }).catch(() => {});
-            }
-
-            // Ask owner for reply text via a follow-up
-            await interaction.reply({ content: '💬 **Type your reply** — send it in the next 60 seconds:', flags: 64 }).catch(() => {});
-
-            const filter = m => m.author.id === OWNER_ID;
-            const collected = await interaction.channel.awaitMessages({ filter, max: 1, time: 60000 }).catch(() => null);
-
-            if (!collected || collected.size === 0) {
-                return interaction.followUp({ content: '⏰ Reply timed out.', flags: 64 }).catch(() => {});
-            }
-
-            const replyText = collected.first().content;
-            collected.first().delete().catch(() => {});
-
-            // DM the target user
-            const targetUser = await client.users.fetch(targetUserId).catch(() => null);
-            if (!targetUser) {
-                return interaction.followUp({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.user_not_found', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: 64 }).catch(() => {});
-            }
-
-            await targetUser.send({
-                embeds: [new (require('discord.js').EmbedBuilder)()
-                    .setColor('#00ff88')
-                    .setAuthor({ name: '📡 Reply from the Architect', iconURL: client.user.displayAvatarURL() })
-                    .setDescription(
-                        '```ansi\n' +
-                        '\u001b[1;32m\u25b8 FROM      \u001b[0mThe Architect\n' +
-                        '\u001b[1;37m\u25b8 MESSAGE   \u001b[0m' + replyText + '\n' +
-                        '\u001b[0;37m\u25b8 TIP       \u001b[0mUse .contact to answer\n' +
-                        '```'
-                    )
-                    .setFooter({ text: 'ARCHON CG-223 · Contact · BAMAKO_223 🇲🇱' })
-                    .setTimestamp()
-                ]
-            });
-
-            await interaction.followUp({ content: `${em('ic_ok', '✅')} Reply sent to **${targetUser.username}** via DM.`, flags: 64 }).catch(() => {});
-            console.log(`[CONTACT REPLY] Architect → ${targetUser.tag}: ${replyText.substring(0,80)}`);
-
-        } catch(err) {
-            console.error('[CONTACT REPLY]', err.message);
-            interaction.followUp({ content: em('ic_off', '❌') + ' ' + require('./lib/i18n').t('index.reply_failed', require('./lib/botPerms').langOf({ guild: interaction.guild, client }) || 'en'), flags: 64 }).catch(() => {});
-        }
-        return;
+        return require('./plugins/contact.js').replyButton(interaction, client).catch((e) => console.error('[CONTACT] reply:', e.message));
+    }
+    if (interaction.isModalSubmit() && interaction.customId.startsWith('creplym_')) {
+        return require('./plugins/contact.js').replyModal(interaction, client).catch((e) => console.error('[CONTACT] reply box:', e.message));
     }
 
 // ================= MUSIC PANEL BUTTONS =================
@@ -3645,6 +3600,10 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
 
     // ================= MEME BUTTONS =================
     // The fun pack (lib/fun): Another / Share / Slap back. Buttons from before the rebuild just say they expired.
+    // /use panel, item menu and badge buttons (use:<action>:<uid>[:<item>]): never expire
+    if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId?.startsWith('use:')) {
+        return require('./plugins/use.js').handleComponent(interaction, client).catch((e) => console.error('[USE] component:', e.message));
+    }
     // /lyrics pages (lyr:<id>:<page>:<uid>): never expire, lyrics fetched again by id
     if (interaction.isButton() && interaction.customId?.startsWith('lyr:')) {
         return require('./plugins/lyrics.js').handleComponent(interaction, client).catch((e) => console.error('[LYRICS] button:', e.message));
