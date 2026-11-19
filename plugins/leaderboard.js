@@ -73,8 +73,8 @@ function buildV2Card(data, guildName, tKey, lang, context) {
         // Custom Emojis for Top 3
         let medal = `**${i + 1}.**`;
         if (i === 0) medal = resolveEmoji('crown', context) || '🥇';
-        if (i === 1) medal = '🥈';
-        if (i === 2) medal = '🥉';
+        if (i === 1) medal = require('../lib/ui/icons').icon('medal', context);    // silver ic_medal, else 🥈
+        if (i === 2) medal = require('../lib/ui/icons').icon('medal2', context);   // bronze ic_medal_2, else 🥉
 
         // Better Avatar Fetching (Cache first, then CDN)
         let avatarUrl = `https://cdn.discordapp.com/embed/avatars/${parseInt(entry.id || '0') % 5}.png`;
