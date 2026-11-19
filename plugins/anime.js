@@ -128,27 +128,33 @@ const CHARACTERS = {
     },
 };
 
+// The character's picture: MyAnimeList's (through Jikan), remembered for a day once found. The old fallbacks were
+// fandom-wiki links, which refuse to be shown on other sites: Discord drew a broken-image icon instead. A picture is
+// now only used once it has answered as an image; otherwise the card goes without one.
+const _img = new Map();   // character id -> { url, at }
+async function looksLikeImage(url) {
+    try {
+        const r = await axios.get(url, { timeout: 4000, responseType: 'stream', maxRedirects: 2, headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Discordbot/2.0)' } });
+        r.data.destroy?.();
+        return r.status === 200 && /^image\//.test(String(r.headers['content-type'] || ''));
+    } catch { return false; }
+}
 async function fetchCharacterImage(charData) {
-    for (let attempt = 1; attempt <= 2; attempt++) {
+    const hit = _img.get(charData.id);
+    if (hit && Date.now() - hit.at < 24 * 3600 * 1000) return hit.url;
+    let url = null;
+    for (let attempt = 1; attempt <= 2 && !url; attempt++) {
         try {
-            const res = await axios.get(`${ANIME_API}/characters/${charData.id}`, {
-                timeout: 3000
-            });
-            if (res.status === 429) {
-                await new Promise(r => setTimeout(r, 1000 * attempt));
-                continue;
-            }
-            const url = res.data?.data?.images?.jpg?.image_url;
-            if (url) return url;
+            const res = await axios.get(`${ANIME_API}/characters/${charData.id}`, { timeout: 5000, validateStatus: (st) => st < 500 });
+            if (res.status === 429) { await new Promise(r => setTimeout(r, 1000 * attempt)); continue; }
+            url = res.data?.data?.images?.webp?.image_url || res.data?.data?.images?.jpg?.image_url || null;
         } catch (err) {
             if (attempt === 2) console.error(`[ANIME] Jikan unavailable for ${charData.name}: ${err.message}`);
         }
     }
-    if (charData.fallbackImage) {
-        console.log(`[ANIME] Using fallback image for ${charData.name}`);
-        return charData.fallbackImage;
-    }
-    return null;
+    if (!url && charData.fallbackImage && await looksLikeImage(charData.fallbackImage)) url = charData.fallbackImage;
+    if (url) _img.set(charData.id, { url, at: Date.now() });
+    return url;
 }
 
 // The character card (lib/fun): picture, series, a line they're known for, playful stats
