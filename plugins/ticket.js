@@ -240,7 +240,10 @@ async function createCh(g, uid, uname, cat, s, client) {
 
 function panelCard(s, gn, lang='en', actionRow = null, client = null) {
     const cats = getCats(s) || [];
-    const catLines = cats.map(c => `> ${c.emoji || '🎫'} **${c.label || 'Support'}** — *${c.desc || 'Open a ticket'}*`).join('\n');
+    // Italics break when the text starts or ends with a space ("*Open for partnership *" showed its stars): trim,
+    // and drop stars typed in the label or description themselves
+    const plain = (x, fb) => String(x || '').replace(/[*_]/g, '').replace(/\s+/g, ' ').trim() || fb;
+    const catLines = cats.map(c => `> ${c.emoji || '🎫'} **${plain(c.label, 'Support')}** — *${plain(c.desc, 'Open a ticket')}*`).join('\n');
     const _v2 = require('../lib/games/v2');
     const ticketEmoji = resolveEmoji('ticket', client) || '🎫';
     const items = [
