@@ -406,6 +406,8 @@ async function resumeRaids(client, db) {
 async function handleRaidDetection(member, client, db) {
     const gid = member.guild.id;
     const settings = db.prepare('SELECT raid_enabled, raid_threshold, raid_window, raid_min_age_days FROM server_settings WHERE guild_id = ?').get(gid);
+    // read apart: a database missing the column must never stop raid detection itself
+    if (settings) { try { settings.raid_action = db.prepare('SELECT raid_action FROM server_settings WHERE guild_id = ?').get(gid)?.raid_action; } catch { settings.raid_action = 'alert'; } }
     if (!settings?.raid_enabled) return;
 
     const threshold = settings.raid_threshold || 5;
@@ -476,6 +478,31 @@ async function handleRaidDetection(member, client, db) {
     }
 
     // Kick/flag new accounts during active raid
+    // What happens to anyone joining while a raid is on (dashboard → Moderation → Anti-raid, raid_action):
+    //   alert (default): the owner is told; only accounts younger than the minimum age are kicked (below)
+    //   timeout: every new arrival is timed out for an hour · kick / ban: every new arrival is removed
+    // Members already in the server are never touched.
+    const action = ['timeout', 'kick', 'ban'].includes(String(settings.raid_action)) ? String(settings.raid_action) : 'alert';
+    if (raidActive.get(gid) && !member.user.bot && action !== 'alert') {
+        const why = `Raid protection: joined during a raid (${action})`;
+        let done = false;
+        if (action === 'timeout' && member.moderatable) done = await member.timeout(60 * 60 * 1000, why).then(() => true).catch(() => false);
+        else if (action === 'kick' && member.kickable) done = await member.kick(why).then(() => true).catch(() => false);
+        else if (action === 'ban' && member.bannable) done = await member.ban({ reason: why }).then(() => true).catch(() => false);
+        if (done) {
+            console.log(`[RAID] ${action} on arrival: ${member.user.tag}`);
+            if (action !== 'timeout') {
+                try {
+                    const _al = require('../lib/botPerms').langOf({ guild: member.guild, client });
+                    await member.send(toV2({ embeds: [new EmbedBuilder().setColor(0xff8800)
+                        .setTitle(require('../lib/i18n').t('automod.raidKickTitle', _al, { server: member.guild.name }))
+                        .setDescription(require('../lib/i18n').t('automod.raidAllDesc', _al, { server: member.guild.name }))] })).catch(() => {});
+                } catch { /* DMs closed */ }
+            }
+            return;
+        }
+    }
+
     if (raidActive.get(gid) && isSuspect) {
         console.log(`[RAID] 👶 Suspect account kicked: ${member.user.tag} (${accountAge.toFixed(1)} days old)`);
         await member.kick(`Raid protection: Account too new (${accountAge.toFixed(1)} days)`).catch(() => {});

@@ -336,5 +336,6 @@
   "appeal_sentBtn": "申诉已发送",
   "admin_statusSub": "防护、链接过滤和申诉。",
   "admin_channelsHint": "在这些频道及其子区中，AutoMod 不做任何检查：没有处罚，没有警告。适合刷屏、命令或链接频道。",
-  "admin_channelsChanged": "频道列表的含义已改变：现在用来选择 AutoMod **忽略**的频道。旧列表已清空，以免产生相反效果。请用「频道」按钮选择要忽略的频道。"
+  "admin_channelsChanged": "频道列表的含义已改变：现在用来选择 AutoMod **忽略**的频道。旧列表已清空，以免产生相反效果。请用「频道」按钮选择要忽略的频道。",
+  "raidAllDesc": "{server} 目前正遭遇大量加入，ARCHON 暂时拦下新成员几分钟。请稍后再试。"
 }

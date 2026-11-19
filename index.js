@@ -743,6 +743,12 @@ try {
         { name: 'mention_limit', type: 'INTEGER DEFAULT 10' },
         { name: 'max_warnings', type: 'INTEGER DEFAULT 3' },
         { name: 'warning_action', type: "TEXT DEFAULT 'mute'" },
+        // anti-raid (AutoMod): these came from an old migration; listed so a fresh database gets them too
+        { name: 'raid_enabled', type: 'INTEGER DEFAULT 0' },
+        { name: 'raid_threshold', type: 'INTEGER DEFAULT 5' },
+        { name: 'raid_window', type: 'INTEGER DEFAULT 30' },
+        { name: 'raid_min_age_days', type: 'INTEGER DEFAULT 0' },
+        { name: 'raid_action', type: "TEXT DEFAULT 'alert'" },
         { name: 'timezone', type: "TEXT DEFAULT 'UTC'" },
         { name: 'custom_categories', type: 'TEXT' },
         { name: 'investor_role', type: 'TEXT' },

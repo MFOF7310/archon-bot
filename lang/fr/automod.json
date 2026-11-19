@@ -336,5 +336,6 @@
   "appeal_sentBtn": "Appel envoyé",
   "admin_statusSub": "Protection, filtrage des liens et appels.",
   "admin_channelsHint": "Dans ces salons et leurs fils, AutoMod ne vérifie rien : aucune sanction, aucun avertissement. Pratique pour un salon de spam, de commandes ou de liens.",
-  "admin_channelsChanged": "La liste des salons a changé de sens : elle sert maintenant à choisir les salons qu'AutoMod **ignore**. L'ancienne liste a été vidée pour éviter un effet inverse. Choisis les salons à ignorer avec le bouton Salons."
+  "admin_channelsChanged": "La liste des salons a changé de sens : elle sert maintenant à choisir les salons qu'AutoMod **ignore**. L'ancienne liste a été vidée pour éviter un effet inverse. Choisis les salons à ignorer avec le bouton Salons.",
+  "raidAllDesc": "{server} reçoit une vague d'arrivées en ce moment, alors ARCHON retient les nouveaux venus pendant quelques minutes. Réessaie un peu plus tard."
 }
