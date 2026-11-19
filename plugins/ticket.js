@@ -101,7 +101,7 @@ const timers = new Map();
 
 const CATS = [
     { emoji: em('ic_info', '❓'), label:'Support', value:'support', desc:'General help & questions' },
-    { emoji: em('ic_shield', '🛡️'), label:'Report', value:'report', desc:'Report users or appeal' },
+    { emoji: em('ic_flag', '🚩'), label:'Report', value:'report', desc:'Report users or appeal' },
     { emoji:'💰', label:'Billing', value:'billing', desc:'Payments & shop issues' },
 ];
 
