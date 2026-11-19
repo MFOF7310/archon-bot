@@ -70,33 +70,37 @@ function setupGameDB(database) {
     } catch (e) { console.error('\x1b[31m[GAME DB]\x1b[0m', e.message); }
 }
 
-function deductBet(db, client, userId, guildId, bet, userData) {
-    const newBal = Math.max(0, (userData.credits || 0) - bet);
-    db.prepare("UPDATE users SET credits = ? WHERE id = ? AND guild_id = ?").run(newBal, userId, guildId);
-    if (client.queueUserUpdate) client.queueUserUpdate(userId, guildId, { ...userData, credits: newBal });
-    if (client.userDataCache) client.userDataCache.delete(`${userId}:${guildId}`);
-    return newBal;
+// Money goes through client.changeUser (index.js): it starts from the newest balance (cache and waiting writes
+// included), refuses to go below zero and updates memory and the database together. The old code wrote the whole
+// row from a copy taken at the start of the game, so a daily or a vote paid during a blackjack hand could be put
+// back, and two games started at once could both spend the same credits.
+function deductBet(db, client, userId, guildId, bet, userData, username = 'Unknown') {
+    if (client.changeUser) {
+        const r = client.changeUser(userId, guildId, { add: { credits: -bet } }, username);
+        return r.ok ? r.user.credits : null;
+    }
+    const res = db.prepare('UPDATE users SET credits = credits - ? WHERE id = ? AND guild_id = ? AND credits >= ?').run(bet, userId, guildId, bet);
+    client.userDataCache?.delete(`${userId}:${guildId}`);
+    return res.changes ? Math.max(0, (userData?.credits || 0) - bet) : null;
 }
 
 function updateGameStats(db, client, userId, guildId, won, winnings, xpGain, ctx, lang, gameType) {
-    let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
-    if (!userData) {
-        db.prepare("INSERT INTO users (id, guild_id, username, xp, level, credits, streak_days, last_daily, total_dailies, highest_streak, games_played, games_won, total_winnings) VALUES (?, ?, ?, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0)").run(userId, guildId, ctx.user.username);
-        userData = { games_played: 0, games_won: 0, total_winnings: 0, xp: 0, level: 1, credits: 0 };
+    const before = (client.getUserData ? client.getUserData(userId, guildId) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId)) || { level: 1 };
+    const add = { games_played: 1, games_won: won ? 1 : 0, total_winnings: winnings > 0 ? winnings : 0, xp: xpGain, credits: Math.max(0, winnings) };
+    let after;
+    if (client.changeUser) {
+        const r = client.changeUser(userId, guildId, { add, set: { level: (u) => calculateLevel(u.xp || 0) } }, ctx.user?.username || 'Unknown');
+        if (!r.ok) { console.error(`[GAME] payout failed for ${userId}@${guildId}: ${r.error}`); return; }
+        after = r.user;
+    } else {
+        db.prepare('UPDATE users SET games_played = games_played + 1, games_won = games_won + ?, total_winnings = total_winnings + ?, xp = xp + ?, credits = credits + ? WHERE id = ? AND guild_id = ?')
+            .run(add.games_won, add.total_winnings, add.xp, add.credits, userId, guildId);
+        client.userDataCache?.delete(`${userId}:${guildId}`);
+        after = { ...before, xp: (before.xp || 0) + xpGain, games_played: (before.games_played || 0) + 1, games_won: (before.games_won || 0) + add.games_won };
     }
-    const gamesPlayed = (userData.games_played || 0) + 1;
-    const gamesWon = (userData.games_won || 0) + (won ? 1 : 0);
-    const totalWinnings = (userData.total_winnings || 0) + (winnings > 0 ? winnings : 0);
-    const newXP = (userData.xp || 0) + xpGain;
-    const newLevel = calculateLevel(newXP);
-    const newCredits = (userData.credits || 0) + winnings;
-
-    db.prepare("UPDATE users SET games_played = ?, games_won = ?, total_winnings = ?, xp = ?, credits = ? WHERE id = ? AND guild_id = ?")
-        .run(gamesPlayed, gamesWon, totalWinnings, newXP, newCredits, userId, guildId);
-
-    if (client.queueUserUpdate) client.queueUserUpdate(userId, guildId, { ...userData, games_played: gamesPlayed, games_won: gamesWon, total_winnings: totalWinnings, xp: newXP, credits: newCredits });
-    if (client.userDataCache) client.userDataCache.delete(`${userId}:${guildId}`);
-
+    const newLevel = calculateLevel(after.xp || 0);
+    const gamesPlayed = after.games_played || 0, gamesWon = after.games_won || 0;
+    const userData = before;
     if (newLevel > (userData.level || 1) && ctx.channel) {
         // v8: level-up on CV2, every emoji from the registry, no hardcoded ids
         const GAME_EMOJI = {
@@ -128,57 +132,12 @@ function updateGameStats(db, client, userId, guildId, won, winnings, xpGain, ctx
     }
 }
 
-// ================= HUB BUILDER =================
-function buildHub(client, lang, guildName) {
-    const dw = s => [...s].reduce((n, c) => {
-        const cp = c.codePointAt(0);
-        if (cp === 0xFE0F) return n;
-        return n + ((cp > 0xFFFF || (cp >= 0x2600 && cp <= 0x27BF) || (cp >= 0x2B00 && cp <= 0x2BFF)) ? 2 : 1);
-    }, 0);
-    const W = 40;
-    const border = (l, r) => `\u001b[1;36m${l}${'═'.repeat(W)}${r}\u001b[0m\n`;
-    const headText = `  ◈ ${guildName || 'ARCHON CG-223'}`;
-    const head = `\u001b[1;36m║\u001b[0m  ◈ \u001b[1;33m${guildName || 'ARCHON CG-223'}\u001b[0m${' '.repeat(Math.max(1, W - dw(headText)))}\u001b[1;36m║\u001b[0m\n`;
-    const gameLine = (emoji, name) => {
-        const left = emoji ? `  ▸ ${emoji} ${name}` : `  ▸ ${name}`;
-        const gap = ' '.repeat(Math.max(1, W - dw(left) - 9));
-        const shown = emoji
-            ? `  \u001b[1;36m▸\u001b[0m ${emoji} \u001b[1;37m${name}\u001b[0m`
-            : `  \u001b[1;36m▸\u001b[0m \u001b[1;37m${name}\u001b[0m`;
-        return `\u001b[1;36m║\u001b[0m${shown}${gap}\u001b[1;32mAVAILABLE\u001b[0m\u001b[1;36m║\u001b[0m\n`;
-    };
-    const embed = new EmbedBuilder().setColor('#00d4ff')
-        .setAuthor({ name: t('game.hubTitle', lang), iconURL: client.user.displayAvatarURL() })
-        .setDescription(
-            '```ansi\n' +
-            border('╔', '╗') +
-            head +
-            border('╠', '╣') +
-            gameLine('🔫', t('game.codm', lang)) +
-            gameLine(null, t('game.slots', lang)) +
-            gameLine(null, t('game.tictactoe', lang)) +
-            gameLine(null, t('game.blackjack', lang)) +
-            gameLine(null, t('game.roulette', lang)) +
-            gameLine(null, t('game.trivia', lang)) +
-            border('╚', '╝') +
-            '```\n' +
-            `> ${t('game.hubDesc', lang)}`
-        )
-        .setFooter({ text: `${t('game.footer', lang)} • ${guildName || 'ARCHON CG-223'} • v${client.version || '2.0.0'}`, iconURL: client.user.displayAvatarURL() })
-        .setTimestamp();
-
-    const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('game_play_codm').setLabel('CODM').setStyle(ButtonStyle.Primary).setEmoji(iconObj('gameCodm', null, '🔫')),
-        new ButtonBuilder().setCustomId('game_play_slots').setLabel('SLOTS').setStyle(ButtonStyle.Primary).setEmoji(iconObj('gameSlots', null, '🎰')),
-        new ButtonBuilder().setCustomId('game_play_tictactoe').setLabel('TIC TAC TOE').setStyle(ButtonStyle.Primary).setEmoji(iconObj('gameTicTacToe', null, '⭕'))
-    );
-    const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('game_play_blackjack').setLabel('BLACKJACK').setStyle(ButtonStyle.Primary).setEmoji(iconObj('gameBlackjack', null, '🃏')),
-        new ButtonBuilder().setCustomId('game_play_roulette').setLabel('ROULETTE').setStyle(ButtonStyle.Primary).setEmoji(iconObj('gameRoulette', null, '🎲')),
-        new ButtonBuilder().setCustomId('game_play_trivia').setLabel('TRIVIA').setStyle(ButtonStyle.Secondary).setEmoji(iconObj('gameTrivia', null, '🧠'))
-    );
-
-    return { embeds: [embed], components: [row1, row2] };
+// The "not enough credits" card (private), with the real balance
+function noFunds(lang, client, userId, guildId) {
+    const bal = client.liveCredits ? client.liveCredits(userId, guildId) : 0;
+    const c = v2.card(0xE24B4A, [{ text: `${t('game.insufficientCredits', lang)} **${Number(bal).toLocaleString()}** ${EMOJIS.coins || '🪙'}` }]);
+    c.flags = 64 | 32768;
+    return c;
 }
 
 // ================= TRIVIA BRIDGE =================
@@ -191,11 +150,9 @@ async function bridgeToTrivia(interaction, client) {
         console.error('[TRIVIA BRIDGE]', e.message);
         const serverLang = client.getServerSettings?.(interaction.guild?.id)?.language;
         const lang = serverLang === 'fr' ? 'fr' : serverLang === 'en' ? 'en' : (require('../lib/i18n').slashLang(interaction));
-        const embed = new EmbedBuilder().setColor('#9b59b6')
-            .setAuthor({ name: t('game.trivia_bridge_author', lang), iconURL: client.user.displayAvatarURL() })
-            .setDescription(`⚡ ${t('game.triviaBridge', lang)}`)
-            .setFooter({ text: t('game.footer_center', lang) });
-        return interaction.reply({ embeds: [embed], flags: 64 });
+        const c = v2.card(0x9b59b6, [{ text: `⚡ ${t('game.triviaBridge', lang)}` }]);
+        c.flags = 64 | 32768;
+        return interaction.reply(c);
     }
 }
 
@@ -204,41 +161,29 @@ async function playCODM(ctx, client, db, lang, guildId, userId, bet) {
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t('game.insufficientCredits', lang)} **${userData.credits.toLocaleString()} 🪙**`);
-        return ctx.reply({ embeds: [embed], flags: 64 });
+        return ctx.reply(noFunds(lang, client, userId, guildId));
     }
-    deductBet(db, client, userId, guildId, bet, userData);
+    if (deductBet(db, client, userId, guildId, bet, userData, ctx.user.username) === null) return ctx.reply(noFunds(lang, client, userId, guildId));
 
-    const won = Math.random() > 0.45;
+    // Half the matches are won; a win returns 1.85× to 2× the bet with the score (about 96 % back on average: the
+    // old odds gave the player +2 % per game, so playing in a loop printed credits)
+    const won = Math.random() < 0.5;
     const kills = won ? Math.floor(Math.random() * 15) + 10 : Math.floor(Math.random() * 8) + 2;
     const deaths = won ? Math.floor(Math.random() * 5) + 1 : Math.floor(Math.random() * 10) + 5;
     const kd = (kills / Math.max(deaths, 1)).toFixed(2);
     const score = won ? Math.floor(Math.random() * 30) + 70 : Math.floor(Math.random() * 40) + 20;
-    const winnings = won ? Math.floor(bet * (1 + (score / 100))) : 0;
-    const isMVP = won && score > 85;
+    const winnings = won ? Math.floor(bet * (1.5 + score / 200)) : 0;
+    const isMVP = won && score > 90;
+    const balance = client.liveCredits ? client.liveCredits(userId, guildId) + winnings : null;
 
-    const rankPoints = won ? Math.floor(score * 0.5) + 10 : Math.floor(score * 0.2);
-    const currentRP = (userData.total_winnings || 0) + rankPoints;
-    const rank = getRank(currentRP);
-    const nextPoints = nextRankPoints(currentRP);
-
-    const embed = new EmbedBuilder().setColor(won ? '#2ecc71' : '#e74c3c')
-        .setAuthor({ name: `${won ? t('game.codmVictory', lang) : t('game.codmDefeat', lang)}`, iconURL: ctx.user.displayAvatarURL() })
-        .setDescription(
-            '```ansi\n' +
-            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.codmScore', lang).padEnd(12)}\u001b[0m \u001b[1;33m${score}\u001b[0m\n` +
-            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.codmKills', lang).padEnd(12)}\u001b[0m \u001b[1;32m${kills}\u001b[0m\n` +
-            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.codmDeaths', lang).padEnd(12)}\u001b[0m \u001b[1;31m${deaths}\u001b[0m\n` +
-            `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.codmKDRatio', lang).padEnd(12)}\u001b[0m \u001b[1;36m${kd}\u001b[0m\n` +
-            '```' + (isMVP ? `\n${t('game.codmMVP', lang)}` : '')
-        )
-        .addFields(
-            { name: `💰 ${won ? t('game.winnings', lang) : t('game.loss', lang)}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true },
-            { name: `🏆 ${t('game.currentRank', lang)}`, value: `**${rank.name}**${nextPoints !== 'MAX' ? `\nNext: ${nextPoints.toLocaleString()} RP` : ''}`, inline: true }
-        )
-        .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'ARCHON CG-223'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
-    await ctx.reply({ embeds: [embed] });
-    updateGameStats(db, client, userId, guildId, won, winnings, 50, ctx, lang, 'codm');
+    const card = v2.card(won ? 0x2ecc71 : 0xe74c3c, [
+        { text: `-# ${EMOJIS.gameCodm || '🔫'} CODM · ${t('game.codmRanked', lang)}\n## ${won ? t('game.codmVictory', lang) : t('game.codmDefeat', lang)}${isMVP ? `\n${t('game.codmMVP', lang)}` : ''}` },
+        { rule: true },
+        { text: `**${t('game.codmScore', lang)}** ${score}  ·  **${t('game.codmKills', lang)}** ${kills}  ·  **${t('game.codmDeaths', lang)}** ${deaths}  ·  **${t('game.codmKDRatio', lang)}** ${kd}` },
+        { text: `${EMOJIS.coins || '🪙'} ${won ? t('game.winnings', lang) : t('game.loss', lang)}: **${won ? '+' + winnings.toLocaleString() : '-' + bet.toLocaleString()}**${balance != null ? `  ·  ${t('game.newBalance', lang)}: **${balance.toLocaleString()}**` : ''}` },
+    ]);
+    await ctx.reply(card);
+    updateGameStats(db, client, userId, guildId, won, winnings, won ? 50 : 20, ctx, lang, 'codm');
 }
 
 // ================= SLOTS =================
@@ -250,7 +195,7 @@ async function playSlots(ctx, client, db, lang, guildId, userId, bet) {
         card.flags = 64 | 32768;
         return ctx.reply(card);
     }
-    deductBet(db, client, userId, guildId, bet, userData);
+    if (deductBet(db, client, userId, guildId, bet, userData, ctx.user.username) === null) return ctx.reply(noFunds(lang, client, userId, guildId));
 
     const symbols = ['🍎', '🍊', '🍋', '🍇', '💎', '7️⃣', '🎰'];
     const spin = () => symbols[Math.floor(Math.random() * symbols.length)];
@@ -262,11 +207,7 @@ async function playSlots(ctx, client, db, lang, guildId, userId, bet) {
     const winnings = isJackpot ? bet * 10 : allSame ? bet * 5 : twoMatch ? bet * 2 : 0;
 
     // v8: slots on CV2
-    const reel = '```ansi\n' +
-        `\u001b[1;36m╔${'═'.repeat(16)}╗\u001b[0m\n` +
-        `\u001b[1;36m║\u001b[0m  ${line.map(s => `\u001b[1;33m${s}\u001b[0m`).join(' \u001b[1;36m│\u001b[0m ')}  \u001b[1;36m║\u001b[0m\n` +
-        `\u001b[1;36m╚${'═'.repeat(16)}╝\u001b[0m\n` +
-        '```';
+    const reel = `# ${line.join('  │  ')}`;
     const headline = isJackpot ? `## 🎰 ${t('game.jackpot', lang)}` : won ? `## ✨ ${t('game.slotsWin', lang)}` : `## 💨 ${t('game.slotsLoss', lang)}`;
     const delta = won ? `+${winnings.toLocaleString()}` : `-${bet.toLocaleString()}`;
     const balance = (userData.credits - bet + winnings).toLocaleString();
@@ -301,7 +242,9 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
     let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
     if (!userData) userData = { credits: 0 };
     if (userData.credits < bet) return ctx.reply(errCard(`${t('game.insufficientCredits', lang)} **${userData.credits.toLocaleString()} ${EMOJIS.coins}**`));
-    deductBet(db, client, userId, guildId, bet, userData);
+    // Both players stake the same amount, taken only when the challenge is accepted. The old code took the
+    // challenger's bet at once and never gave it back on a decline, a timeout or a draw; and an opponent who won
+    // received twice a bet they never paid.
 
     const challengeCard = v2.card(0x9b59b6, [
         { text: `<@${opponent.id}>` },
@@ -339,6 +282,16 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
             ])).catch(() => {});
         }
 
+        // the stakes: the opponent first (the challenger's balance was checked a moment ago), then the challenger
+        const oppPaid = deductBet(db, client, opponent.id, guildId, bet, null, opponent.username) !== null;
+        const mePaid = oppPaid && deductBet(db, client, userId, guildId, bet, null, ctx.user.username) !== null;
+        if (!mePaid) {
+            if (oppPaid) client.changeUser?.(opponent.id, guildId, { add: { credits: bet } }, opponent.username);
+            return sent.edit(v2.card(0x95a5a6, [
+                { text: `## ${resolveEmoji('error', ctx)} ${t('game.insufficientCredits', lang)}` },
+                { text: `-# ${oppPaid ? ctx.user.username : opponent.username}` },
+            ])).catch(() => {});
+        }
         gameStarted = true;
         let board = [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '];
         let currentPlayer = userId;
@@ -425,14 +378,18 @@ async function playTicTacToe(ctx, client, db, lang, guildId, userId, bet, oppone
                     finalItems.push(...makeRows(true).map(r => ({ row: r })));
                     await sent.edit(v2.card(won ? 0x2ecc71 : 0xf1c40f, finalItems)).catch(() => {});
 
-                    updateGameStats(db, client, userId, guildId, won && currentPlayer === userId, won && currentPlayer === userId ? winnings : 0, won ? 75 : 25, ctx, lang, 'ttt');
-                    if (won && currentPlayer !== userId) updateGameStats(db, client, opponent.id, guildId, true, winnings, 75, { ...ctx, user: opponent }, lang, 'ttt');
+                    // winner: both stakes · draw: each gets their own back · loser: nothing
+                    const iWon = won && currentPlayer === userId, theyWon = won && currentPlayer !== userId;
+                    updateGameStats(db, client, userId, guildId, iWon, iWon ? winnings : won ? 0 : bet, iWon ? 75 : 25, ctx, lang, 'ttt');
+                    updateGameStats(db, client, opponent.id, guildId, theyWon, theyWon ? winnings : won ? 0 : bet, theyWon ? 75 : 25, { ...ctx, user: opponent }, lang, 'ttt');
                     break;
                 }
 
                 currentPlayer = currentPlayer === userId ? opponent.id : userId;
                 await sent.edit(turnCard()).catch(() => {});
             } catch (e) {
+                client.changeUser?.(userId, guildId, { add: { credits: bet } }, ctx.user.username);
+                client.changeUser?.(opponent.id, guildId, { add: { credits: bet } }, opponent.username);
                 await sent.edit(v2.card(0x95a5a6, [
                     { text: `## ${resolveEmoji('error', ctx)} ${t('game.timeout', lang)}` },
                     { rule: true },
@@ -464,7 +421,7 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
         card.flags = 64 | 32768;
         return ctx.reply(card);
     }
-    deductBet(db, client, userId, guildId, bet, userData);
+    if (deductBet(db, client, userId, guildId, bet, userData, ctx.user.username) === null) return ctx.reply(noFunds(lang, client, userId, guildId));
 
     const cards = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
     const suits = ['♠', '♥', '♦', '♣'];
@@ -476,14 +433,11 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
         return val;
     };
     const formatHand = (hand) => hand.map(c => `${c.card}${c.suit}`).join(' ');
-    const fmtCard = c => (c.suit === '♥' || c.suit === '♦') ? `\u001b[1;31m${c.card}${c.suit}\u001b[0m` : `\u001b[1;37m${c.card}${c.suit}\u001b[0m`;
-    const fmtHand = h => h.map(fmtCard).join(' ');
-    const labelW = Math.max(t('game.yourHand', lang).length, t('game.dealerHand', lang).length);
+    const fmtCard = (c) => `\`${c.card}${c.suit}\``;
+    const fmtHand = (h) => h.map(fmtCard).join(' ');
     const bjDesc = (reveal) =>
-        '```ansi\n' +
-        `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.yourHand', lang).padEnd(labelW)}\u001b[0m  ${fmtHand(playerHand)}  \u001b[1;33m(${handValue(playerHand)})\u001b[0m\n` +
-        `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.dealerHand', lang).padEnd(labelW)}\u001b[0m  ${reveal ? fmtHand(dealerHand) : fmtCard(dealerHand[0]) + ' \u001b[1;30m??\u001b[0m'}  \u001b[1;33m(${reveal ? handValue(dealerHand) : '?'})\u001b[0m\n` +
-        '```';
+        `**${t('game.yourHand', lang)}** ${fmtHand(playerHand)}  ·  **${handValue(playerHand)}**\n` +
+        `**${t('game.dealerHand', lang)}** ${reveal ? fmtHand(dealerHand) : fmtCard(dealerHand[0]) + ' `??`'}  ·  **${reveal ? handValue(dealerHand) : '?'}**`;
 
     let playerHand = [drawCard(), drawCard()];
     let dealerHand = [drawCard(), drawCard()];
@@ -539,13 +493,14 @@ async function playBlackjack(ctx, client, db, lang, guildId, userId, bet) {
     const playerBust = pVal > 21;
     const dealerBust = dVal > 21;
     const blackjack = pVal === 21 && playerHand.length === 2;
-    const won = blackjack || (!playerBust && (dealerBust || pVal > dVal));
-    const draw = pVal === dVal && !playerBust && !dealerBust;
+    const dealerBJ = dVal === 21 && dealerHand.length === 2;
+    const draw = (blackjack && dealerBJ) || (!blackjack && !dealerBJ && pVal === dVal && !playerBust);
+    const won = !draw && !playerBust && (blackjack || (!dealerBJ && (dealerBust || pVal > dVal)));
     const winnings = blackjack ? Math.floor(bet * 2.5) : won ? bet * 2 : draw ? bet : 0;
 
     const outcome = blackjack ? t('game.blackjackWin', lang) : won ? t('game.youWon', lang) : draw ? t('game.draw', lang) : t('game.youLost', lang);
     const bustNote = playerBust ? `\n_${t('game.youBusted', lang)}_` : dealerBust ? `\n_${t('game.dealerBusted', lang)}_` : '';
-    const deltaStr = `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()}`;
+    const deltaStr = draw ? '±0' : won ? `+${(winnings - bet).toLocaleString()}` : `-${bet.toLocaleString()}`;
     await sent.edit(v2.card(won ? 0x2ecc71 : draw ? 0xf1c40f : 0xe74c3c, [
         { text: `## ${EMOJIS.gameBlackjack} ${outcome}` },
         { text: bjDesc(true) + bustNote },
@@ -566,91 +521,10 @@ async function playRoulette(ctx, client, db, lang, guildId, userId, bet) {
         charge: (amount) => {
             const user = client.getUserData ? client.getUserData(userId, guildId) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
             if (!user || (user.credits || 0) < amount) return false;
-            deductBet(db, client, userId, guildId, amount, user);
-            return true;
+            return deductBet(db, client, userId, guildId, amount, user, ctx.user.username) !== null;
         },
         settle: (won, returned, xp) => updateGameStats(db, client, userId, guildId, won, returned, xp, ctx, lang, 'roulette'),
     });
-    let userData = client.getUserData ? client.getUserData(userId, guildId) : db.prepare("SELECT * FROM users WHERE id = ? AND guild_id = ?").get(userId, guildId);
-    if (!userData) userData = { credits: 0 };
-    if (userData.credits < bet) {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(`${t('game.insufficientCredits', lang)} **${userData.credits.toLocaleString()} 🪙**`);
-        return ctx.reply({ embeds: [embed], flags: 64 });
-    }
-    deductBet(db, client, userId, guildId, bet, userData);
-
-    const numbers = Array.from({ length: 37 }, (_, i) => i);
-    const redNumbers = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36];
-    const isRed = (n) => redNumbers.includes(n);
-    const isBlack = (n) => n !== 0 && !isRed(n);
-
-    const embed = new EmbedBuilder().setColor('#e74c3c')
-        .setAuthor({ name: t('game.roulette_author', lang), iconURL: ctx.user.displayAvatarURL() })
-        .setDescription(`## 💰 ${t('game.bet', lang)}: ${bet.toLocaleString()} 🪙\n${t('game.chooseNumber', lang)} (0-36):`)
-        .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'ARCHON CG-223'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
-
-    const rows = [];
-    for (let r = 0; r < 4; r++) {
-        const row = new ActionRowBuilder();
-        for (let c = 0; c < 10; c++) {
-            const num = r * 10 + c;
-            if (num > 36) break;
-            const style = num === 0 ? ButtonStyle.Success : isRed(num) ? ButtonStyle.Danger : ButtonStyle.Secondary;
-            row.addComponents(new ButtonBuilder().setCustomId(`rl_${num}`).setLabel(num.toString()).setStyle(style));
-        }
-        rows.push(row);
-    }
-
-    const sent = await ctx.reply({ embeds: [embed], components: rows });
-
-    try {
-        const response = await sent.channel.awaitMessageComponent({
-            filter: (i) => i.message.id === sent.id && i.user.id === userId && i.customId.startsWith('rl_'),
-            time: 30000
-        });
-        const chosenNum = parseInt(response.customId.split('_')[1]);
-        await response.deferUpdate().catch(() => {});
-
-        const result = numbers[Math.floor(Math.random() * numbers.length)];
-        const resultRed = isRed(result);
-        const resultColor = result === 0 ? t('game.rouletteGreen', lang) : resultRed ? t('game.rouletteRed', lang) : t('game.rouletteBlack', lang);
-        const won = result === chosenNum;
-        const winnings = won ? bet * 35 : 0;
-
-        // spinning animation — cosmetic frames, result already decided above
-        for (let i = 0; i < 3; i++) {
-            const n = numbers[Math.floor(Math.random() * numbers.length)];
-            const nc = n === 0 ? t('game.rouletteGreen', lang) : isRed(n) ? t('game.rouletteRed', lang) : t('game.rouletteBlack', lang);
-            const spinEmbed = new EmbedBuilder().setColor('#95a5a6')
-                .setAuthor({ name: t('game.spinning', lang), iconURL: ctx.user.displayAvatarURL() })
-                .setDescription(`## 🎲 ${n} ${nc}`)
-                .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'ARCHON CG-223'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() });
-            await sent.edit({ embeds: [spinEmbed], components: [] }).catch(() => {});
-            await new Promise(r => setTimeout(r, 700));
-        }
-
-        const accent = result === 0 ? '#2ecc71' : resultRed ? '#e74c3c' : '#2b2d31';
-        const numColor = result === 0 ? '\u001b[1;32m' : resultRed ? '\u001b[1;31m' : '\u001b[1;37m';
-        const pw = Math.max(t('game.your_pick', lang).length, t('game.result_label', lang).length);
-        const resultEmbed = new EmbedBuilder().setColor(accent)
-            .setAuthor({ name: `${won ? t('game.youWon', lang) : t('game.youLost', lang)}`, iconURL: ctx.user.displayAvatarURL() })
-            .setDescription(
-                `## ${t('game.rouletteResult', lang, { number: result, color: resultColor })}\n` +
-                '```ansi\n' +
-                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.your_pick', lang).padEnd(pw)}\u001b[0m \u001b[1;33m${chosenNum}\u001b[0m\n` +
-                `\u001b[1;36m▸\u001b[0m \u001b[1;37m${t('game.result_label', lang).padEnd(pw)}\u001b[0m ${numColor}${result}\u001b[0m\n` +
-                '```'
-            )
-            .addFields(
-                { name: `💰 ${t('game.bet', lang)}`, value: `${bet.toLocaleString()} 🪙`, inline: true },
-                { name: `💰 ${won ? t('game.winnings', lang) : t('game.loss', lang)}`, value: `${won ? '+' : '-'}${Math.abs(won ? winnings : bet).toLocaleString()} 🪙`, inline: true }
-            )
-            .setFooter({ text: `${t('game.footer', lang)} • ${ctx.guild?.name?.toUpperCase() || 'ARCHON CG-223'} • v${ctx.client.version || '2.0.0'}`, iconURL: ctx.guild?.iconURL() || ctx.client.user.displayAvatarURL() }).setTimestamp();
-
-        await sent.edit({ embeds: [resultEmbed], components: [] }).catch(() => {});
-        updateGameStats(db, client, userId, guildId, won, winnings, won ? 150 : 25, ctx, lang, 'roulette');
-
-    } catch (e) { await sent.edit({ content: t('game.timeout', lang), embeds: [], components: [] }).catch(() => {}); }
 }
 
 // ================= SLASH COMMAND =================
@@ -729,12 +603,9 @@ async function run(client, message, args, db, serverSettings, usedCommand, lang)
         if (directGame === 'roulette') return playRoulette(ctx, client, db, lang, guildId, userId, bet);
     }
 
-    // Default: show hub redirect
-    const embed = new EmbedBuilder().setColor('#00d4ff')
-        .setAuthor({ name: t('game.hubTitle', lang), iconURL: client.user.displayAvatarURL() })
-        .setDescription(`**${t('game.slash_redirect', lang)}**\n\`\`\`\n/game menu\n/game codm\n/game slots\n/game tictactoe @user\n/game blackjack\n/game roulette\n/game trivia\n\`\`\``)
-        .setFooter({ text: t('game.footer_center', lang) });
-    return message.reply({ embeds: [embed] }).catch(() => {});
+    // Default: the game hub (the same card as /game menu)
+    const stats = client.getUserData ? client.getUserData(userId, guildId) : db.prepare('SELECT * FROM users WHERE id = ? AND guild_id = ?').get(userId, guildId);
+    return message.reply(require('../lib/games/hub').buildHub({ lang, guildName: message.guild?.name, user: message.author, stats: stats || null })).catch(() => {});
 }
 
 // ================= BUTTON HANDLER =================
@@ -760,8 +631,9 @@ async function handleComponent(interaction, client) {
 
     // Tic-tac-toe needs an opponent — quick reply
     if (game === 'tictactoe') {
-        const embed = new EmbedBuilder().setColor('#ff4757').setDescription(t('game.ttt_use_slash', lang));
-        return interaction.reply({ embeds: [embed], flags: 64 });
+        const c = v2.card(0x9b59b6, [{ text: t('game.ttt_use_slash', lang) }]);
+        c.flags = 64 | 32768;
+        return interaction.reply(c);
     }
 
     // CRITICAL: Defer immediately so DB lookups + game logic don't expire the token
