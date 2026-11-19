@@ -1,0 +1,8 @@
+{
+  "asked": "Asked Archon",
+  "foot": "Asked by {user} · {left} of {total} left today",
+  "footOwner": "Asked by {user}",
+  "limit": "You've used your {total} questions for today. More {when}.",
+  "failed": "Archon couldn't answer right now. Try again in a moment.",
+  "empty": "That message has no text or picture to ask about."
+}

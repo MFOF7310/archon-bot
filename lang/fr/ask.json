@@ -1,0 +1,8 @@
+{
+  "asked": "Question à Archon",
+  "foot": "Demandé par {user} · encore {left} sur {total} aujourd'hui",
+  "footOwner": "Demandé par {user}",
+  "limit": "Tu as utilisé tes {total} questions du jour. Les prochaines {when}.",
+  "failed": "Archon n'a pas pu répondre pour l'instant. Réessaie dans un moment.",
+  "empty": "Ce message n'a ni texte ni image à analyser."
+}

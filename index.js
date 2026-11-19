@@ -3091,6 +3091,18 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return;
     }
 
+    // Message menus (Apps → …): the plugin that declares the menu answers (lib/slash-payload.js sends `menus`)
+    if (interaction.isMessageContextMenuCommand?.()) {
+        const owner = [...client.commands.values()].find((c) => typeof c.menu === 'function' && (c.menus || []).some((m) => m.name === interaction.commandName));
+        if (!owner) return interaction.reply({ content: require('./lib/i18n').t('commandNotFound', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 }).catch(() => {});
+        try { return await owner.menu(interaction, client); }
+        catch (e) {
+            console.error(`[MENU] ${interaction.commandName}:`, e.message);
+            const say = { content: require('./lib/i18n').t('genericError', client.detectLanguage('system', interaction.guildId, interaction)), flags: 1 << 6 };
+            return (interaction.deferred || interaction.replied ? interaction.followUp(say) : interaction.reply(say)).catch(() => {});
+        }
+    }
+
     if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
 

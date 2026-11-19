@@ -1,0 +1,8 @@
+{
+  "asked": "向 Archon 提问",
+  "foot": "{user} 提问 · 今天还剩 {left}/{total} 次",
+  "footOwner": "{user} 提问",
+  "limit": "你今天的 {total} 次提问已用完。{when}恢复。",
+  "failed": "Archon 暂时无法回答，请稍后再试。",
+  "empty": "这条消息没有可以分析的文字或图片。"
+}
