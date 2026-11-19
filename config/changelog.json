@@ -2,6 +2,94 @@
   "_note": "Release notes shown by /changelog, posted in each server's updates channel, and read by Lydia and the updater. Newest first. Plain language, for members: no commit jargon, no security details. Each line: en, fr, zh, ar (bm falls back to en). Bump version.txt to the same version.",
   "releases": [
     {
+      "version": "3.4.0",
+      "date": "2026-11-19",
+      "headline": {
+        "en": "Archon AI everywhere: in your DMs and on any message",
+        "fr": "L’IA Archon partout : en DM et sur n’importe quel message",
+        "zh": "Archon AI 无处不在：私信里、任何消息上",
+        "ar": "ذكاء Archon في كل مكان: في الرسائل الخاصة وعلى أي رسالة"
+      },
+      "new": [
+        {
+          "en": "Ask Archon: /ask a question anywhere, or long-press any message → Apps → Ask Archon. 20 answers a day per person.",
+          "fr": "Ask Archon : pose une question avec /ask où que tu sois, ou appui long sur un message → Applications → Demander à Archon. 20 réponses par jour et par personne.",
+          "zh": "Ask Archon：在任何地方用 /ask 提问，或长按任意消息 → 应用 → Ask Archon。每人每天 20 次。",
+          "ar": "Ask Archon: اسأل بـ ‎/ask في أي مكان، أو اضغط مطولًا على أي رسالة ← التطبيقات ← Ask Archon. ‏20 إجابة يوميًا لكل شخص."
+        },
+        {
+          "en": "Add ARCHON to your account: /avatar, /lyrics, /translate, /define, /anime, /meme, /slap and more work in your DMs and in any server.",
+          "fr": "Ajoute ARCHON à ton compte : /avatar, /lyrics, /translate, /define, /anime, /meme, /slap et d’autres marchent dans tes DM et sur n’importe quel serveur.",
+          "zh": "把 ARCHON 添加到你的账号：/avatar、/lyrics、/translate、/define、/anime、/meme、/slap 等可在私信和任何服务器中使用。",
+          "ar": "أضف ARCHON إلى حسابك: ‎/avatar و‎/lyrics و‎/translate و‎/define و‎/anime و‎/meme و‎/slap وغيرها تعمل في رسائلك الخاصة وفي أي خادم."
+        },
+        {
+          "en": "New /rules: a panel that updates itself, a Translate button, an optional accept role, and icons in your rules. Archon can sum up the rules when asked.",
+          "fr": "Nouveau /rules : un panneau qui se met à jour tout seul, un bouton Traduire, un rôle d’acceptation au choix, et des icônes dans tes règles. Archon peut résumer les règles quand on le lui demande.",
+          "zh": "全新 /rules：自动更新的面板、翻译按钮、可选的同意身份组，规则中还能使用图标。询问时 Archon 可以总结规则。",
+          "ar": "‎/rules جديد: لوحة تتحدث تلقائيًا، وزر ترجمة، ودور قبول اختياري، وأيقونات داخل القواعد. ويستطيع Archon تلخيص القواعد عند السؤال."
+        },
+        {
+          "en": "/global: your balance across servers and sending credits from one server to another (5 % fee).",
+          "fr": "/global : ton solde sur tous les serveurs et l’envoi de crédits d’un serveur à un autre (5 % de frais).",
+          "zh": "/global：查看跨服务器余额，并在服务器之间转账积分（5% 手续费）。",
+          "ar": "‎/global: رصيدك عبر الخوادم وإرسال الرصيد من خادم إلى آخر (رسوم 5%)."
+        },
+        {
+          "en": "The raid shield can act on its own: time out, kick or ban new arrivals during a raid (dashboard, Premium).",
+          "fr": "Le bouclier anti-raid peut agir seul : exclure temporairement, expulser ou bannir les arrivants pendant un raid (dashboard, Premium).",
+          "zh": "防突袭盾牌可以自动处理：突袭期间对新成员禁言、踢出或封禁（控制面板，Premium）。",
+          "ar": "درع الغارات يتصرف وحده: كتم أو طرد أو حظر القادمين الجدد أثناء الغارة (لوحة التحكم، Premium)."
+        }
+      ],
+      "improved": [
+        {
+          "en": "Fresh cards for /image, /lyrics, /quote, /use, /define, /calc, /youtube, /qr, /url, /contact, /autoreply, .pin and the server info commands. Their buttons no longer stop working after a minute.",
+          "fr": "Nouvelles cartes pour /image, /lyrics, /quote, /use, /define, /calc, /youtube, /qr, /url, /contact, /autoreply, .pin et les commandes d’infos du serveur. Leurs boutons ne s’arrêtent plus au bout d’une minute.",
+          "zh": "/image、/lyrics、/quote、/use、/define、/calc、/youtube、/qr、/url、/contact、/autoreply、.pin 以及服务器信息命令换上新卡片，按钮不会再在一分钟后失效。",
+          "ar": "بطاقات جديدة لـ ‎/image و‎/lyrics و‎/quote و‎/use و‎/define و‎/calc و‎/youtube و‎/qr و‎/url و‎/contact و‎/autoreply و‎.pin وأوامر معلومات الخادم. أزرارها لم تعد تتوقف بعد دقيقة."
+        },
+        {
+          "en": "YouTube and TikTok alerts show more (viewers, length, views), reach every server that follows the channel, and catch new TikTok videos.",
+          "fr": "Les alertes YouTube et TikTok en montrent plus (spectateurs, durée, vues), arrivent sur chaque serveur qui suit la chaîne, et repèrent les nouvelles vidéos TikTok.",
+          "zh": "YouTube 和 TikTok 提醒显示更多信息（观众、时长、播放量），会送达每个关注该频道的服务器，并能检测到 TikTok 新视频。",
+          "ar": "تنبيهات YouTube وTikTok تعرض المزيد (المشاهدون، المدة، المشاهدات)، وتصل إلى كل خادم يتابع القناة، وتلتقط فيديوهات TikTok الجديدة."
+        },
+        {
+          "en": "More moderation settings in the dashboard: AutoMod allowed links, sensitivity, its log channel and what happens after warnings. Vote cards can go to a channel of your choice.",
+          "fr": "Plus de réglages de modération dans le dashboard : liens autorisés par AutoMod, sensibilité, son salon de logs et la sanction après les avertissements. Les cartes de vote peuvent aller dans le salon de ton choix.",
+          "zh": "控制面板新增更多管理设置：AutoMod 允许的链接、灵敏度、日志频道和警告后的处理。投票卡片可以发到你选择的频道。",
+          "ar": "إعدادات إشراف أكثر في لوحة التحكم: الروابط المسموح بها في AutoMod، والحساسية، وقناة السجل، وما يحدث بعد الإنذارات. ويمكن إرسال بطاقات التصويت إلى قناة تختارها."
+        },
+        {
+          "en": "A new server gets one reminder 24 hours after adding ARCHON if its basic setup is still missing.",
+          "fr": "Un nouveau serveur reçoit un rappel 24 heures après l’ajout d’ARCHON si sa configuration de base manque encore.",
+          "zh": "新服务器在添加 ARCHON 24 小时后，如果基础设置仍未完成，会收到一次提醒。",
+          "ar": "يتلقى الخادم الجديد تذكيرًا واحدًا بعد 24 ساعة من إضافة ARCHON إذا كان الإعداد الأساسي ما زال ناقصًا."
+        }
+      ],
+      "fixed": [
+        {
+          "en": "/use: an item stays on the server where it was bought, and a double tap can’t spend it twice.",
+          "fr": "/use : un objet reste sur le serveur où il a été acheté, et un double appui ne peut plus le dépenser deux fois.",
+          "zh": "/use：物品只在购买它的服务器上使用，连点两次也不会重复消耗。",
+          "ar": "‎/use: يبقى الغرض في الخادم الذي اشتُري فيه، والضغط مرتين لم يعد يستهلكه مرتين."
+        },
+        {
+          "en": "Tic-tac-toe: both players bet when the challenge is accepted; a draw or an abandoned game gives the stakes back.",
+          "fr": "Morpion : les deux joueurs misent quand le défi est accepté ; un match nul ou une partie abandonnée rend les mises.",
+          "zh": "井字棋：挑战被接受时双方下注；平局或中途放弃会退还赌注。",
+          "ar": "إكس-أو: يراهن اللاعبان عند قبول التحدي؛ والتعادل أو اللعبة المتروكة يعيدان الرهان."
+        },
+        {
+          "en": "/define, /calc functions (sqrt, round…), /autoreply clear and the pin archive’s Unpin button work again; .membercount shows real numbers.",
+          "fr": "/define, les fonctions de /calc (sqrt, round…), /autoreply clear et le bouton Désépingler de l’archive refonctionnent ; .membercount affiche de vrais chiffres.",
+          "zh": "/define、/calc 的函数（sqrt、round…）、/autoreply clear 以及置顶存档的取消置顶按钮恢复正常；.membercount 显示真实数字。",
+          "ar": "‎/define ودوال ‎/calc (sqrt وround…) و‎/autoreply clear وزر إلغاء التثبيت في الأرشيف تعمل مجددًا؛ ‎.membercount يعرض أرقامًا حقيقية."
+        }
+      ]
+    },
+    {
       "version": "3.3.0",
       "date": "2026-11-13",
       "headline": {

@@ -4,6 +4,28 @@ What changed in ARCHON CG-223, in plain language. These are the same notes `/cha
 (in English, French, Chinese and Arabic). This file is generated from `config/changelog.json`: edit that file,
 then run `node scripts/changelog-md.js`.
 
+## 3.4.0 · 2026-11-19
+
+_Archon AI everywhere: in your DMs and on any message_
+
+**New**
+- Ask Archon: /ask a question anywhere, or long-press any message → Apps → Ask Archon. 20 answers a day per person.
+- Add ARCHON to your account: /avatar, /lyrics, /translate, /define, /anime, /meme, /slap and more work in your DMs and in any server.
+- New /rules: a panel that updates itself, a Translate button, an optional accept role, and icons in your rules. Archon can sum up the rules when asked.
+- /global: your balance across servers and sending credits from one server to another (5 % fee).
+- The raid shield can act on its own: time out, kick or ban new arrivals during a raid (dashboard, Premium).
+
+**Improved**
+- Fresh cards for /image, /lyrics, /quote, /use, /define, /calc, /youtube, /qr, /url, /contact, /autoreply, .pin and the server info commands. Their buttons no longer stop working after a minute.
+- YouTube and TikTok alerts show more (viewers, length, views), reach every server that follows the channel, and catch new TikTok videos.
+- More moderation settings in the dashboard: AutoMod allowed links, sensitivity, its log channel and what happens after warnings. Vote cards can go to a channel of your choice.
+- A new server gets one reminder 24 hours after adding ARCHON if its basic setup is still missing.
+
+**Fixed**
+- /use: an item stays on the server where it was bought, and a double tap can’t spend it twice.
+- Tic-tac-toe: both players bet when the challenge is accepted; a draw or an abandoned game gives the stakes back.
+- /define, /calc functions (sqrt, round…), /autoreply clear and the pin archive’s Unpin button work again; .membercount shows real numbers.
+
 ## 3.3.0 · 2026-11-13
 
 _Sending credits is now one tap away_
