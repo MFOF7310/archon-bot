@@ -1,0 +1,8 @@
+{
+  "notFound": "Je n'ai pas trouvé ce mot.",
+  "onlyEnglish": "Ce dictionnaire est uniquement en anglais : vérifie l'orthographe.",
+  "synonyms": "Proches :",
+  "listen": "Écouter",
+  "more": "Wiktionary",
+  "usage": "Écris un mot anglais après la commande : `.define curious`"
+}

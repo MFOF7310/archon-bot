@@ -1,0 +1,12 @@
+{
+  "resultsFor": "Results for “{q}”",
+  "none": "No videos found for “{q}”.",
+  "views": "{n} views",
+  "tip": "Send a video link to /youtube info for its details.",
+  "notFound": "This video couldn't be read: it may be private, removed or age-restricted.",
+  "live": "Live now",
+  "watch": "Watch",
+  "channel": "Channel",
+  "badLink": "That doesn't look like a YouTube link.",
+  "usage": "Write a search or a video link after the command: `.yt lofi hip hop`"
+}

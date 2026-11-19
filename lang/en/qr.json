@@ -1,0 +1,7 @@
+{
+  "title": "QR code",
+  "alt": "QR code",
+  "hint": "scan it with a phone camera",
+  "open": "Open the link",
+  "usage": "Write the text or link after the command: `.qr https://example.com`"
+}

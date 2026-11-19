@@ -1,0 +1,8 @@
+{
+  "notFound": "找不到这个单词。",
+  "onlyEnglish": "这个词典只收录英文单词，请检查拼写。",
+  "synonyms": "近义词：",
+  "listen": "发音",
+  "more": "Wiktionary",
+  "usage": "在命令后写一个英文单词：`.define curious`"
+}

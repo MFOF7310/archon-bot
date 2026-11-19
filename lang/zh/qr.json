@@ -1,0 +1,7 @@
+{
+  "title": "二维码",
+  "alt": "二维码",
+  "hint": "用手机相机扫描",
+  "open": "打开链接",
+  "usage": "在命令后写下文字或链接：`.qr https://example.com`"
+}

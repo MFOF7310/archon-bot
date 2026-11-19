@@ -1,0 +1,12 @@
+{
+  "resultsFor": "Résultats pour « {q} »",
+  "none": "Aucune vidéo trouvée pour « {q} ».",
+  "views": "{n} vues",
+  "tip": "Donne un lien de vidéo à /youtube info pour voir ses détails.",
+  "notFound": "Cette vidéo n'a pas pu être lue : elle est peut-être privée, supprimée ou réservée aux adultes.",
+  "live": "En direct",
+  "watch": "Regarder",
+  "channel": "Chaîne",
+  "badLink": "Ça ne ressemble pas à un lien YouTube.",
+  "usage": "Écris une recherche ou un lien de vidéo après la commande : `.yt lofi hip hop`"
+}

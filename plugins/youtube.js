@@ -1,537 +1,164 @@
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
+// ═══════════════════════════════════════════════════════════════════════════
+// /youtube search <query> [results] · /youtube info <link>
+//   search: up to 5 videos, each with its picture, channel, length and views, and a button to open it
+//   info:   one video: picture, channel, length, views, likes, posted date, a few lines of description
+// Source: the YouTube Data API when YOUTUBE_API_KEY is set; otherwise yt-dlp (already used for the YouTube alerts),
+// so info works without a key too (it used to answer "Video not found" for every link without one).
+// Titles with adult words are left out of searches (SafeSearch strict with the API).
+// Texts: lang/<l>/youtube.json
+// ═══════════════════════════════════════════════════════════════════════════
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const axios = require('axios');
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
+const { t } = require('../lib/i18n');
+const { icon } = require('../lib/ui/icons');
+const v2 = require('../lib/games/v2');
 
-// Terminal colors for logging
-const green = "\x1b[32m", cyan = "\x1b[36m", yellow = "\x1b[33m", red = "\x1b[31m", reset = "\x1b[0m";
+const T = (lang, k, v) => t(`youtube.${k}`, lang, v || {});
+const LANGS = ['en', 'fr', 'zh', 'ar'];
+const langOf = (client, gid, where, uid) => { try { const l = require('../lib/pick-lang').pickLang(client, gid, where, uid); return LANGS.includes(l) ? l : 'en'; } catch { return 'en'; } };
+const clean = (s, n = 200) => String(s || '').replace(/[*_~`|>\\]/g, '').replace(/@(everyone|here)/gi, '@​$1').replace(/\s+/g, ' ').trim().slice(0, n);
+const RED = 0xFF0000;
+const KEY = () => process.env.YOUTUBE_API_KEY || '';
+const API = 'https://www.googleapis.com/youtube/v3';
+const COOKIES = require('path').join(__dirname, '..', 'assets', 'cookies.txt');
+const cookieArgs = () => (require('fs').existsSync(COOKIES) ? ['--cookies', COOKIES] : []);
+const BLOCKED = /\b(nsfw|18\+|xxx|porn|onlyfans|explicit|sexual|adult content)\b/i;
 
-// Cache for search results (5 min TTL)
-const searchCache = new Map();
-const CACHE_TTL = 300000;
+function videoIdOf(input) {
+    const s = String(input || '').trim();
+    if (/^[\w-]{11}$/.test(s)) return s;
+    const m = s.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/);
+    return m ? m[1] : null;
+}
+function isoSeconds(iso) {
+    const m = String(iso || '').match(/P(?:(\d+)D)?T?(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
+    return m ? (+m[1] || 0) * 86400 + (+m[2] || 0) * 3600 + (+m[3] || 0) * 60 + (+m[4] || 0) : 0;
+}
+const hms = (s) => { s = Math.round(s || 0); if (!s) return null; const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return h ? `${h}:${String(m).padStart(2, '0')}:${String(x).padStart(2, '0')}` : `${m}:${String(x).padStart(2, '0')}`; };
+const compact = (n, lang) => (n == null ? null : Number(n).toLocaleString({ fr: 'fr-FR', zh: 'zh-CN', ar: 'en-US' }[lang] || 'en-US', { notation: 'compact', maximumFractionDigits: 1 }));
+const thumb = (id) => `https://i.ytimg.com/vi/${id}/hqdefault.jpg`;
+
+async function ytdlp(args, timeout = 20000) {
+    const { stdout } = await execFileAsync('yt-dlp', ['--skip-download', '--no-warnings', ...cookieArgs(), ...args], { timeout, maxBuffer: 30 * 1024 * 1024 });
+    return String(stdout).split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l); } catch { return null; } }).filter(Boolean);
+}
+
+// → [{ id, title, channel, seconds, views, published (unix | null) }]
+const cache = new Map();
+async function search(q, n) {
+    const key = `${q.toLowerCase()}:${n}`;
+    const hit = cache.get(key);
+    if (hit && Date.now() - hit.at < 5 * 60 * 1000) return hit.list;
+    let list = [];
+    if (KEY()) {
+        try {
+            const s = await axios.get(`${API}/search`, { params: { part: 'snippet', q, type: 'video', maxResults: n, safeSearch: 'strict', key: KEY() }, timeout: 8000 });
+            const ids = (s.data.items || []).map((i) => i.id.videoId).filter(Boolean).join(',');
+            if (ids) {
+                const d = await axios.get(`${API}/videos`, { params: { part: 'snippet,contentDetails,statistics', id: ids, key: KEY() }, timeout: 8000 });
+                list = (d.data.items || []).map((v) => ({ id: v.id, title: v.snippet.title, channel: v.snippet.channelTitle, seconds: isoSeconds(v.contentDetails.duration), views: Number(v.statistics.viewCount) || null, published: Math.floor(Date.parse(v.snippet.publishedAt) / 1000) || null }));
+            }
+        } catch (e) { console.log(`[YOUTUBE] API search: ${e.response?.status || e.message}`); }
+    }
+    if (!list.length) {
+        try {
+            list = (await ytdlp(['--flat-playlist', '--dump-json', `ytsearch${n + 3}:${q}`])).filter((v) => v.id && /^[\w-]{11}$/.test(v.id))
+                .map((v) => ({ id: v.id, title: v.title, channel: v.channel || v.uploader, seconds: v.duration, views: v.view_count ?? null, published: v.timestamp || null }));
+        } catch (e) { console.log(`[YOUTUBE] yt-dlp search: ${String(e.message).slice(0, 100)}`); }
+    }
+    list = list.filter((v) => !BLOCKED.test(v.title || '')).slice(0, n);
+    if (list.length) { if (cache.size > 200) cache.clear(); cache.set(key, { list, at: Date.now() }); }
+    return list;
+}
+
+// → { id, title, channel, channelUrl, seconds, views, likes, published, description, live }
+async function info(id) {
+    if (KEY()) {
+        try {
+            const d = await axios.get(`${API}/videos`, { params: { part: 'snippet,contentDetails,statistics', id, key: KEY() }, timeout: 8000 });
+            const v = d.data.items?.[0];
+            if (v) return { id, title: v.snippet.title, channel: v.snippet.channelTitle, channelUrl: `https://youtube.com/channel/${v.snippet.channelId}`, seconds: isoSeconds(v.contentDetails.duration), views: Number(v.statistics.viewCount) || null, likes: v.statistics.likeCount != null ? Number(v.statistics.likeCount) : null, published: Math.floor(Date.parse(v.snippet.publishedAt) / 1000) || null, description: v.snippet.description, live: v.snippet.liveBroadcastContent === 'live' };
+        } catch (e) { console.log(`[YOUTUBE] API info: ${e.response?.status || e.message}`); }
+    }
+    try {
+        const [v] = await ytdlp(['--dump-json', '--no-playlist', `https://www.youtube.com/watch?v=${id}`]);
+        if (v) return { id, title: v.title, channel: v.channel || v.uploader, channelUrl: v.channel_url || v.uploader_url || null, seconds: v.duration, views: v.view_count ?? null, likes: v.like_count ?? null, published: v.timestamp || (v.upload_date ? Math.floor(Date.parse(`${v.upload_date.slice(0, 4)}-${v.upload_date.slice(4, 6)}-${v.upload_date.slice(6, 8)}`) / 1000) : null), description: v.description, live: v.is_live === true };
+    } catch (e) { console.log(`[YOUTUBE] yt-dlp info: ${String(e.message).slice(0, 100)}`); }
+    return null;
+}
+
+function searchCard(lang, q, list, where) {
+    if (!list.length) return v2.card(0x888780, [{ text: `${icon('warn', where)} ${T(lang, 'none', { q: clean(q, 80) })}` }]);
+    const items = [{ text: `-# ${icon('youtube', where)} YouTube\n### ${T(lang, 'resultsFor', { q: clean(q, 80) })}` }, { rule: true }];
+    list.forEach((v, i) => {
+        const facts = [clean(v.channel, 60), hms(v.seconds), v.views != null ? T(lang, 'views', { n: compact(v.views, lang) }) : null, v.published ? `<t:${v.published}:R>` : null].filter(Boolean).join(' · ');
+        items.push({ thumbnail: [`**${i + 1}. [${clean(v.title, 90)}](https://youtu.be/${v.id})**\n-# ${facts}`, thumb(v.id)] });
+    });
+    items.push({ row: new ActionRowBuilder().addComponents(...list.map((v, i) => new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(`https://youtu.be/${v.id}`).setLabel(`${i + 1}`))) });
+    items.push({ text: `-# ${T(lang, 'tip')}` });
+    return v2.card(RED, items);
+}
+
+function infoCard(lang, v, where) {
+    if (!v) return v2.card(0x888780, [{ text: `${icon('warn', where)} ${T(lang, 'notFound')}` }]);
+    const facts = [
+        v.live ? `🔴 ${T(lang, 'live')}` : hms(v.seconds),
+        v.views != null ? `${icon('eye', where)} ${T(lang, 'views', { n: compact(v.views, lang) })}` : null,
+        v.likes != null ? `👍 ${compact(v.likes, lang)}` : null,
+        v.published ? `${icon('clock', where)} <t:${v.published}:D>` : null,
+    ].filter(Boolean).join('  ·  ');
+    const desc = String(v.description || '').replace(/https?:\/\/\S+/g, '').split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 3).join(' · ');
+    const items = [
+        { media: [`https://i.ytimg.com/vi/${v.id}/maxresdefault.jpg`, clean(v.title, 200)] },
+        { text: `### ${clean(v.title, 200)}\n${v.channelUrl ? `[${clean(v.channel, 80)}](${v.channelUrl})` : clean(v.channel, 80)}\n${facts}${desc ? `\n-# ${clean(desc, 300)}` : ''}` },
+        { row: new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(`https://youtu.be/${v.id}`).setLabel(T(lang, 'watch')),
+            ...(v.channelUrl ? [new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(v.channelUrl).setLabel(T(lang, 'channel'))] : []),
+        ) },
+    ];
+    return v2.card(RED, items);
+}
 
 module.exports = {
     name: 'youtube',
     userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['yt', 'video', 'ytsearch', 'ytinfo'],
-    description: '🎬 Search YouTube or get detailed video information',
+    description: 'Search YouTube or see a video’s details',
     category: 'UTILITY',
-    cooldown: 3,
-    usage: '.youtube <search query> or .youtube info <url>',
-    examples: [
-        '.yt lofi hip hop',
-        '.youtube info https://youtube.com/watch?v=...',
-        '.video search trap music'
-    ],
+    cooldown: 3000,
+    usage: '.yt <search> or .yt <link>',
+    examples: ['.yt lofi hip hop', '.yt https://youtu.be/dQw4w9WgXcQ'],
+    videoIdOf,
 
-    // ================= SLASH COMMAND DATA =================
-    data: new SlashCommandBuilder()
-        .setName('youtube')
-        .setDescription('🎬 Search YouTube or get video information')
-        .setDescriptionLocalizations({
-            fr: '🎬 Rechercher sur YouTube ou obtenir des informations vidéo'
-        })
-        .addSubcommand(sub => sub
-            .setName('search')
-            .setDescription('🔍 Search YouTube for videos')
-            .setDescriptionLocalizations({ fr: '🔍 Rechercher des vidéos sur YouTube' })
-            .addStringOption(opt => opt
-                .setName('query')
-                .setDescription('What to search for')
-                .setDescriptionLocalizations({ fr: 'Que rechercher' })
-                .setRequired(true)
-            )
-            .addIntegerOption(opt => opt
-                .setName('results')
-                .setDescription('Number of results (1-5)')
-                .setDescriptionLocalizations({ fr: 'Nombre de résultats (1-5)' })
-                .setMinValue(1)
-                .setMaxValue(5)
-            )
-        )
-        .addSubcommand(sub => sub
-            .setName('info')
-            .setDescription('📋 Get detailed info about a YouTube video')
-            .setDescriptionLocalizations({ fr: '📋 Obtenir des informations détaillées sur une vidéo YouTube' })
-            .addStringOption(opt => opt
-                .setName('url')
-                .setDescription('YouTube video URL or ID')
-                .setDescriptionLocalizations({ fr: 'URL ou ID de la vidéo YouTube' })
-                .setRequired(true)
-            )
-        ),
+    data: new SlashCommandBuilder().setName('youtube').setDescription('Search YouTube or see a video’s details')
+        .setDescriptionLocalizations({ fr: 'Chercher sur YouTube ou voir les détails d’une vidéo' })
+        .addSubcommand((s) => s.setName('search').setDescription('Search for videos').setDescriptionLocalizations({ fr: 'Chercher des vidéos' })
+            .addStringOption((o) => o.setName('query').setDescription('What to look for').setRequired(true).setMaxLength(150))
+            .addIntegerOption((o) => o.setName('results').setDescription('How many (1-5)').setMinValue(1).setMaxValue(5)))
+        .addSubcommand((s) => s.setName('info').setDescription('A video’s details').setDescriptionLocalizations({ fr: 'Les détails d’une vidéo' })
+            .addStringOption((o) => o.setName('url').setDescription('The video’s link or ID').setRequired(true))),
 
-    // ================= PREFIX COMMAND EXECUTION =================
     run: async (client, message, args) => {
-        if (!args.length) {
-            return message.reply({
-                embeds: [new EmbedBuilder()
-                    .setColor('#FF0000')
-                    .setDescription('🎬 **YouTube search**\n\n' +
-                        '└ `.yt <search>` - Search for videos\n' +
-                        '└ `.yt info <url>` - Get video details\n\n' +
-                        '**Examples:**\n' +
-                        '└ `.yt lofi hip hop`\n' +
-                        '└ `.yt info https://youtube.com/watch?v=dQw4w9WgXcQ`')
-                    .setFooter({ text: 'ARCHON CG-223 • YouTube Integration' })
-                ]
-            });
-        }
-
-        const fullQuery = args.join(' ');
-
-// 🔥 SMART DETECTION: Auto-detect if user passed a URL instead of search query
-const detectedVideoId = extractVideoId(fullQuery);
-if (detectedVideoId) {
-    return handleVideoInfo(message, fullQuery, false);
-}
-
-const sub = args[0]?.toLowerCase();
-
-// Info mode
-if (sub === 'info') {
-            const url = args.slice(1).join(' ');
-            if (!url) return message.reply(em('ic_off', em('ic_off', '❌')) + ' Please provide a YouTube URL or video ID.');
-            return handleVideoInfo(message, url, false);
-        }
-
-        // Search mode (default)
-        const query = args.join(' ');
-        return handleYouTubeSearch(message, query, 5, false);
+        const lang = langOf(client, message.guild?.id, message, message.author.id);
+        let q = args.join(' ').trim();
+        if (/^info\s+/i.test(q)) q = q.replace(/^info\s+/i, '');
+        if (!q) return message.reply(`${icon('warn', message)} ${T(lang, 'usage')}`).catch(() => {});
+        const id = /youtu\.?be/i.test(q) ? videoIdOf(q) : null;   // a bare 11-letter word stays a search
+        return message.reply(id ? infoCard(lang, await info(id), message) : searchCard(lang, q, await search(q, 5), message)).catch(() => {});
     },
 
-    // ================= SLASH COMMAND EXECUTION =================
-    execute: async (interaction) => {
-        const subcommand = interaction.options.getSubcommand();
-
-        if (subcommand === 'search') {
-            const query = interaction.options.getString('query');
-            const results = interaction.options.getInteger('results') || 5;
-            await interaction.deferReply();
-            return handleYouTubeSearch(interaction, query, results, true);
+    execute: async (interaction, client) => {
+        const lang = langOf(client, interaction.guildId, interaction, interaction.user.id);
+        await interaction.deferReply();
+        if (interaction.options.getSubcommand() === 'info') {
+            const id = videoIdOf(interaction.options.getString('url'));
+            return interaction.editReply(id ? infoCard(lang, await info(id), interaction) : v2.card(0x888780, [{ text: `${icon('warn', interaction)} ${T(lang, 'badLink')}` }]));
         }
-
-        if (subcommand === 'info') {
-            const url = interaction.options.getString('url');
-            await interaction.deferReply();
-            return handleVideoInfo(interaction, url, true);
-        }
-    }
+        const q = interaction.options.getString('query');
+        const n = interaction.options.getInteger('results') || 5;
+        return interaction.editReply(searchCard(lang, q, await search(q, n), interaction));
+    },
 };
-
-// ================= YOUTUBE API CONFIGURATION =================
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
-const YOUTUBE_API_URL = 'https://www.googleapis.com/youtube/v3';
-
-// ================= HELPER: EXTRACT VIDEO ID =================
-function extractVideoId(url) {
-    // Already an ID
-    if (/^[a-zA-Z0-9_-]{11}$/.test(url)) return url;
-    
-    // Full URL patterns
-    const patterns = [
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
-        /youtube\.com\/watch\?.*v=([a-zA-Z0-9_-]{11})/
-    ];
-    
-    for (const pattern of patterns) {
-        const match = url.match(pattern);
-        if (match) return match[1];
-    }
-    
-    return null;
-}
-
-// ================= FORMAT DURATION =================
-function formatDuration(isoDuration) {
-    const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-    if (!match) return 'Unknown';
-    
-    const hours = parseInt(match[1]) || 0;
-    const minutes = parseInt(match[2]) || 0;
-    const seconds = parseInt(match[3]) || 0;
-    
-    if (hours > 0) {
-        return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-    }
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-}
-
-// ================= FORMAT VIEW COUNT =================
-function formatViews(views) {
-    if (!views) return 'N/A';
-    const num = parseInt(views);
-    if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toLocaleString();
-}
-
-// ================= FORMAT DATE =================
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now - date;
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days} days ago`;
-    if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-    if (days < 365) return `${Math.floor(days / 30)} months ago`;
-    return `${Math.floor(days / 365)} years ago`;
-}
-
-// ================= FETCH VIDEO DETAILS =================
-async function fetchVideoDetails(videoId) {
-    try {
-        const response = await axios.get(`${YOUTUBE_API_URL}/videos`, {
-            params: {
-                part: 'snippet,contentDetails,statistics',
-                id: videoId,
-                key: YOUTUBE_API_KEY
-            },
-            timeout: 8000
-        });
-
-        if (!response.data.items?.length) return null;
-
-        const video = response.data.items[0];
-        const snippet = video.snippet;
-        const stats = video.statistics;
-        const content = video.contentDetails;
-
-        return {
-            id: videoId,
-            title: snippet.title,
-            description: snippet.description?.substring(0, 200) + '...',
-            channelName: snippet.channelTitle,
-            channelId: snippet.channelId,
-            publishedAt: snippet.publishedAt,
-            duration: formatDuration(content.duration),
-            views: formatViews(stats.viewCount),
-            likes: formatViews(stats.likeCount),
-            comments: formatViews(stats.commentCount),
-            thumbnails: snippet.thumbnails,
-            url: `https://youtube.com/watch?v=${videoId}`,
-            channelUrl: `https://youtube.com/channel/${snippet.channelId}`
-        };
-    } catch (error) {
-        console.error(`${red}[YT API ERROR]${reset}`, error.message);
-        return null;
-    }
-}
-
-// ================= SEARCH YOUTUBE =================
-async function searchYouTube(query, maxResults = 5) {
-    // Check cache first
-    const cacheKey = `search:${query.toLowerCase().trim()}`;
-    if (searchCache.has(cacheKey)) {
-        console.log(`${green}[YT CACHE]${reset} Using cached results for: "${query}"`);
-        return searchCache.get(cacheKey);
-    }
-
-    try {
-        // If no API key, do a web scrape fallback
-        if (!YOUTUBE_API_KEY) {
-            return await scrapeYouTubeSearch(query, maxResults);
-        }
-
-        const response = await axios.get(`${YOUTUBE_API_URL}/search`, {
-    params: {
-        part: 'snippet',
-        q: query,
-        type: 'video',
-        maxResults: maxResults,
-        key: YOUTUBE_API_KEY,
-        safeSearch: 'strict',
-        videoEmbeddable: true,
-        regionCode: 'US'
-    },
-    timeout: 8000
-});
-
-        const videoIds = response.data.items.map(item => item.id.videoId).join(',');
-        
-        // Fetch detailed info for all videos
-        const detailsResponse = await axios.get(`${YOUTUBE_API_URL}/videos`, {
-            params: {
-                part: 'snippet,contentDetails,statistics',
-                id: videoIds,
-                key: YOUTUBE_API_KEY
-            },
-            timeout: 8000
-        });
-
-        const results = detailsResponse.data.items.map(video => ({
-    id: video.id,
-    title: video.snippet.title,
-    channelName: video.snippet.channelTitle,
-    publishedAt: formatDate(video.snippet.publishedAt),
-    duration: formatDuration(video.contentDetails.duration),
-    views: formatViews(video.statistics.viewCount),
-    thumbnail: video.snippet.thumbnails.medium?.url || video.snippet.thumbnails.default?.url,
-    url: `https://youtube.com/watch?v=${video.id}`
-}));
-
-// 🔒 SFW Title Filter — Top.gg Approved
-const blockedWords = [
-    'nsfw', '18+', 'explicit', 'adult', 'xxx', 'porn', 'sex',
-    'adult content', 'onlyfans', 'nsfw content', 'sexual'
-];
-const safeResults = results.filter(video => {
-    const lowerTitle = (video.title || '').toLowerCase();
-    return !blockedWords.some(word => lowerTitle.includes(word));
-});
-
-// Cache results
-searchCache.set(cacheKey, safeResults);
-setTimeout(() => searchCache.delete(cacheKey), CACHE_TTL);
-
-console.log(`${green}[YT SEARCH]${reset} Found ${safeResults.length} results for: "${query}" (${results.length - safeResults.length} filtered)`);
-return safeResults;
-    } catch (error) {
-        console.error(`${red}[YT SEARCH ERROR]${reset}`, error.message);
-        return null;
-    }
-}
-
-// ================= FALLBACK: WEB SCRAPE (NO API KEY) =================
-async function scrapeYouTubeSearch(query, maxResults = 5) {
-    try {
-        const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&hl=en&gl=US`;
-        const response = await axios.get(searchUrl, {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-            },
-            timeout: 10000
-        });
-
-        // Extract video IDs from initial data
-        const jsonMatch = response.data.match(/var ytInitialData = ({.*?});/);
-        if (!jsonMatch) return null;
-
-        const data = JSON.parse(jsonMatch[1]);
-        const contents = data.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents?.[0]?.itemSectionRenderer?.contents || [];
-        
-        const results = [];
-        for (const item of contents) {
-            if (results.length >= maxResults) break;
-            
-            const videoRenderer = item.videoRenderer;
-            if (!videoRenderer) continue;
-
-            results.push({
-                id: videoRenderer.videoId,
-                title: videoRenderer.title?.runs?.[0]?.text || 'Unknown Title',
-                channelName: videoRenderer.ownerText?.runs?.[0]?.text || 'Unknown Channel',
-                publishedAt: videoRenderer.publishedTimeText?.simpleText || 'Unknown',
-                duration: videoRenderer.lengthText?.simpleText || 'Unknown',
-                views: videoRenderer.viewCountText?.simpleText || 'N/A',
-                thumbnail: videoRenderer.thumbnail?.thumbnails?.[0]?.url || '',
-                url: `https://youtube.com/watch?v=${videoRenderer.videoId}`
-            });
-        }
-
-        // SFW Content Filter - Top.gg
-const safeResults = results.filter(video => {
-    const lowerTitle = (video.title || '').toLowerCase();
-    const blockedWords = ['nsfw', '18+', 'explicit', 'adult', 'xxx', 'porn', 'sex'];
-    return !blockedWords.some(word => lowerTitle.includes(word));
-});
-
-return safeResults.length > 0 ? safeResults : null;
-    } catch (error) {
-        console.error(`${red}[YT SCRAPE ERROR]${reset}`, error.message);
-        return null;
-    }
-}
-
-// ================= HANDLE VIDEO INFO - PROFESSIONAL EDITION =================
-async function handleVideoInfo(context, input, isSlash) {
-    const videoId = extractVideoId(input);
-    if (!videoId) {
-        const msg = em('ic_off', em('ic_off', '❌')) + ' **Invalid YouTube URL or ID**\nPlease provide a valid YouTube link.\nExample: `https://youtube.com/watch?v=dQw4w9WgXcQ`';
-        return isSlash ? context.editReply(msg) : context.reply(msg);
-    }
-
-    // Show typing indicator for prefix commands
-    if (!isSlash && context.channel) {
-        await context.channel.sendTyping().catch(() => {});
-    }
-
-    const video = await fetchVideoDetails(videoId);
-    if (!video) {
-        const msg = em('ic_off', em('ic_off', '❌')) + ' **Video Not Found**\nThe video may be private, deleted, or the API quota has been exhausted.\nTry again later or use a different link.';
-        return isSlash ? context.editReply(msg) : context.reply(msg);
-    }
-
-    // ================= INTELLIGENT COLOR GENERATION =================
-    // Generate a visually appealing color from the video title
-    let hash = 0;
-    for (let i = 0; i < video.title.length; i++) {
-        hash = video.title.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const dynamicColor = Math.abs(hash) % 0xFFFFFF;
-    
-    // Ensure the color is vibrant enough (not too dark or too gray)
-    const r = (dynamicColor >> 16) & 255;
-    const g = (dynamicColor >> 8) & 255;
-    const b = dynamicColor & 255;
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b);
-    const finalColor = luminance < 80 ? dynamicColor + 0x444444 : dynamicColor;
-
-    // ================= INTELLIGENT DESCRIPTION FORMATTING =================
-    let description = video.description || '';
-    
-    // Clean up the description
-    if (description.length > 500) {
-        // Find the last complete sentence within 500 chars
-        const truncated = description.substring(0, 500);
-        const lastPeriod = truncated.lastIndexOf('. ');
-        const lastNewline = truncated.lastIndexOf('\n');
-        const cutPoint = Math.max(lastPeriod, lastNewline);
-        
-        if (cutPoint > 300) {
-            description = truncated.substring(0, cutPoint + 1) + '\n\n*... View on YouTube for full description*';
-        } else {
-            description = truncated + '...\n\n*View on YouTube for full description*';
-        }
-    }
-    
-    // Remove excessive newlines
-    description = description.replace(/\n{4,}/g, '\n\n\n');
-    
-    // Add subtle formatting for links in description
-    description = description.replace(/(https?:\/\/[^\s]+)/g, '[$1]($1)');
-
-    // ================= ENGAGEMENT METER =================
-    const viewsNum = parseInt(video.views?.replace(/[^0-9.]/g, '')) || 0;
-    const likesNum = parseInt(video.likes?.replace(/[^0-9.]/g, '')) || 0;
-    
-    let engagementRating = '';
-    let engagementEmoji = '';
-    if (likesNum > 0 && viewsNum > 0) {
-        const engagementRate = (likesNum / viewsNum) * 100;
-        if (engagementRate > 10) {
-            engagementRating = '🔥 Viral';
-            engagementEmoji = '🦅';
-        } else if (engagementRate > 5) {
-            engagementRating = '⭐ Excellent';
-            engagementEmoji = '💎';
-        } else if (engagementRate > 2) {
-            engagementRating = '👍 Great';
-            engagementEmoji = '✨';
-        } else {
-            engagementRating = '📈 Standard';
-            engagementEmoji = '📊';
-        }
-    }
-
-    // ================= BUILD PROFESSIONAL EMBED =================
-    const embed = new EmbedBuilder()
-        .setColor(finalColor)
-        .setAuthor({ 
-            name: `📹 ${video.title}`,
-            iconURL: 'https://www.youtube.com/s/desktop/12d6b690/img/favicon_144x144.png',
-            url: video.url
-        })
-        .setDescription(description || '*No description provided by creator*')
-        .setThumbnail(video.thumbnails?.maxres?.url || video.thumbnails?.high?.url || video.thumbnails?.medium?.url)
-        .setImage(video.thumbnails?.maxres?.url || null) // Full-width thumbnail for dramatic effect
-        .addFields(
-            { 
-                name: '📊 **Video Statistics**',
-                value: [
-                    `👁️ **Views** ─ \`${video.views}\``,
-                    `👍 **Likes** ─ \`${video.likes || 'Hidden'}\``,
-                    `💬 **Comments** ─ \`${video.comments || 'Hidden'}\``,
-                    `⏱️ **Duration** ─ \`${video.duration}\``
-                ].join('\n'),
-                inline: true
-            },
-            { 
-                name: `${em('ic_satellite', '📡')} **Channel Information**`,
-                value: [
-                    `📺 **Channel** ─ [${video.channelName}](${video.channelUrl})`,
-                    `📅 **Published** ─ ${formatDate(video.publishedAt)}`,
-                    `🏷️ **Video ID** ─ \`${video.id}\``,
-                    engagementEmoji ? `${engagementEmoji} **Rating** ─ ${engagementRating}` : ''
-                ].filter(line => line).join('\n'),
-                inline: true
-            }
-        )
-        .addFields({
-            name: '🔗 **Quick Actions**',
-            value: [
-                `🎬 **[Watch on YouTube](${video.url})**`,
-                `📺 **[Visit Channel](${video.channelUrl})**`,
-                `🔗 **Share:** \`${video.url}\``
-            ].join('  •  '),
-            inline: false
-        })
-        .setFooter({ 
-            text: 'ARCHON CG-223 • YouTube',
-            iconURL: context.client?.user?.displayAvatarURL?.() || '' 
-        })
-        .setTimestamp();
-
-    // ================= SEND RESPONSE =================
-    const reply = { embeds: [embed] };
-    
-    if (isSlash) {
-        return context.editReply(reply).catch(() => context.followUp(reply));
-    } else {
-        return context.reply(reply).catch(() => context.channel.send(reply));
-    }
-}
-
-// ================= HANDLE YOUTUBE SEARCH =================
-async function handleYouTubeSearch(context, query, maxResults, isSlash) {
-    const sendTyping = !isSlash && context.channel ? context.channel.sendTyping() : Promise.resolve();
-    await sendTyping;
-
-    const results = await searchYouTube(query, maxResults);
-    
-    if (!results || !results.length) {
-        const msg = em('ic_off', em('ic_off', '❌')) + ' **No results found**\nTry a different search query. If the problem persists, the YouTube API quota may be exhausted.';
-        return isSlash ? context.editReply(msg) : context.reply(msg);
-    }
-
-    // Professional search results embed
-    const embed = new EmbedBuilder()
-        .setColor('#FF0000')
-        .setAuthor({ 
-            name: `🔍 YouTube Search: "${query}"`, 
-            iconURL: 'https://www.youtube.com/favicon.ico' 
-        })
-        .setDescription(`Showing **${results.length}** result${results.length > 1 ? 's' : ''}`)
-        .setFooter({ 
-            text: `ARCHON CG-223 • YouTube search`,
-            iconURL: context.client?.user?.displayAvatarURL?.() || '' 
-        })
-        .setTimestamp();
-
-    // Add each result as a field with rich formatting
-    results.forEach((video, index) => {
-        const numberEmoji = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣'][index] || '▶️';
-        embed.addFields({
-            name: `${numberEmoji} **${video.title?.substring(0, 80)}${video.title?.length > 80 ? '...' : ''}**`,
-            value: [
-                `📺 **Channel:** ${video.channelName}`,
-                `⏱️ **Duration:** \`${video.duration}\` | 👁️ **Views:** \`${video.views}\``,
-                `📅 **Published:** ${video.publishedAt}`,
-                `🔗 [Watch Video](${video.url})`
-            ].join('\n'),
-            inline: false
-        });
-    });
-
-    // Add a hint about info command
-    embed.addFields({
-        name: '💡 **Tip**',
-        value: 'Use `/youtube info <url>` or `.yt info <url>` for detailed video information!',
-        inline: false
-    });
-
-    const reply = { embeds: [embed] };
-    return isSlash ? context.editReply(reply) : context.reply(reply);
-}

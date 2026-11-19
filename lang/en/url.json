@@ -1,0 +1,8 @@
+{
+  "invalid": "Give a full link starting with https://",
+  "blocked": "This address can't be previewed (private or local address).",
+  "unreachable": "This page didn't answer. Check the link or try again later.",
+  "open": "Open",
+  "redirected": "redirected",
+  "fileType": "A file ({type}), not a web page"
+}

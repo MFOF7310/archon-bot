@@ -1,0 +1,8 @@
+{
+  "invalid": "请提供以 https:// 开头的完整链接",
+  "blocked": "无法预览此地址（私有或本地地址）。",
+  "unreachable": "该页面没有响应。请检查链接或稍后再试。",
+  "open": "打开",
+  "redirected": "已重定向",
+  "fileType": "这是一个文件（{type}），不是网页"
+}

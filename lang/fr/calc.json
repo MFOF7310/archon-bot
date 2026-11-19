@@ -1,0 +1,7 @@
+{
+  "title": "Calculatrice",
+  "recent": "Tes derniers résultats",
+  "bad": "Je n'arrive pas à lire ce calcul",
+  "help": "Essaie : 2+2 · sqrt(144) · 15% * 2000 · sin(30) · 2^10 · max(3,7)",
+  "usage": "Écris un calcul après la commande : `.calc 2+2`"
+}

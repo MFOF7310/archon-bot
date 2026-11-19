@@ -1,0 +1,8 @@
+{
+  "notFound": "I couldn't find this word.",
+  "onlyEnglish": "This dictionary is English only: check the spelling.",
+  "synonyms": "Similar:",
+  "listen": "Listen",
+  "more": "Wiktionary",
+  "usage": "Write an English word after the command: `.define curious`"
+}

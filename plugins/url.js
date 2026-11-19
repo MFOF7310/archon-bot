@@ -1,277 +1,144 @@
-const { EmbedBuilder, SlashCommandBuilder, ButtonBuilder, ActionRowBuilder, ButtonStyle } = require('discord.js');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
+// ═══════════════════════════════════════════════════════════════════════════
+// /url <link> — a preview card for a web page: title, description, picture, site, and an Open button.
+// Safety: the bot fetches the page from the VPS, so it only goes to public addresses on ports 80/443. Every address
+// (and every redirect) is resolved and checked first, and the connection uses the checked address. Before, any link
+// was fetched, including the VPS's own internal services (localhost, the bot's API, the cloud metadata address):
+// with /url open to everyone as a user app, that let anyone read them.
+// Texts: lang/<l>/url.json
+// ═══════════════════════════════════════════════════════════════════════════
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const https = require('https');
 const http = require('http');
+const dns = require('dns').promises;
+const net = require('net');
+const { t } = require('../lib/i18n');
+const { icon } = require('../lib/ui/icons');
+const v2 = require('../lib/games/v2');
 
-// ================= TRANSLATIONS =================
-const T = {
-    en: {
-        loading: (url) => `🔍 Analyzing **${truncateUrl(url)}**...`,
-        error: em('ic_off', em('ic_off', '❌')) + ' Could not fetch URL. It may be blocked or invalid.',
-        invalid: em('ic_off', em('ic_off', '❌')) + ' Please provide a valid URL starting with `http://` or `https://`',
-        title: '🔗 URL Preview',
-        siteName: '🌐 Site',
-        description: '📝 Description',
-        image: '🖼️ Image',
-        noImage: 'No image found',
-        type: '📄 Type',
-        locale: '🌍 Language',
-        footer: (domain) => `${domain} • URL Preview`,
-        visit: '🔗 Visit',
-        safe: em('ic_ok', '✅') + ' Safe',
-        unknown: '❓ Unknown',
-    },
-    fr: {
-        loading: (url) => `🔍 Analyse de **${truncateUrl(url)}**...`,
-        error: em('ic_off', em('ic_off', '❌')) + ' Impossible de récupérer l\'URL. Elle peut être bloquée ou invalide.',
-        invalid: em('ic_off', em('ic_off', '❌')) + ' Veuillez fournir une URL valide commençant par `http://` ou `https://`',
-        title: '🔗 Aperçu de l\'URL',
-        siteName: '🌐 Site',
-        description: '📝 Description',
-        image: '🖼️ Image',
-        noImage: 'Aucune image trouvée',
-        type: '📄 Type',
-        locale: '🌍 Langue',
-        footer: (domain) => `${domain} • Aperçu URL`,
-        visit: '🔗 Visiter',
-        safe: em('ic_ok', '✅') + ' Sûr',
-        unknown: '❓ Inconnu',
+const T = (lang, k, v) => t(`url.${k}`, lang, v || {});
+const LANGS = ['en', 'fr', 'zh', 'ar'];
+const langOf = (client, gid, where, uid) => { try { const l = require('../lib/pick-lang').pickLang(client, gid, where, uid); return LANGS.includes(l) ? l : 'en'; } catch { return 'en'; } };
+const clean = (s, n = 300) => String(s || '').replace(/[*_~`|>\\]/g, '').replace(/@(everyone|here)/gi, '@​$1').replace(/\s+/g, ' ').trim().slice(0, n);
+const MAX_BYTES = 600 * 1024;
+
+// ─── only public addresses ───
+function isPublicIp(ip) {
+    if (net.isIPv4(ip)) {
+        const [a, b] = ip.split('.').map(Number);
+        return !(a === 0 || a === 10 || a === 127 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254)
+            || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 192 && b === 0) || (a === 198 && (b === 18 || b === 19))
+            || a >= 224);
     }
-};
-
-// ================= HELPERS =================
-function truncateUrl(url, max = 60) {
-    try {
-        const u = new URL(url);
-        const host = u.hostname;
-        const path = u.pathname + u.search;
-        const full = host + path;
-        return full.length > max ? full.substring(0, max - 3) + '...' : full;
-    } catch { return url.length > max ? url.substring(0, max - 3) + '...' : url; }
+    if (net.isIPv6(ip)) {
+        const x = ip.toLowerCase();
+        if (x.startsWith('::ffff:')) return isPublicIp(x.slice(7));
+        return !(x === '::' || x === '::1' || x.startsWith('fc') || x.startsWith('fd') || x.startsWith('fe8') || x.startsWith('fe9')
+            || x.startsWith('fea') || x.startsWith('feb') || x.startsWith('ff') || x.startsWith('64:ff9b') || x.startsWith('2001:db8'));
+    }
+    return false;
+}
+async function checkedTarget(raw) {
+    let u;
+    try { u = new URL(raw); } catch { return { error: 'invalid' }; }
+    if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password) return { error: 'invalid' };
+    if (u.port && !['80', '443'].includes(u.port)) return { error: 'blocked' };
+    const host = u.hostname.replace(/^\[|\]$/g, '');
+    if (/^(localhost|.*\.local|.*\.internal|.*\.localhost)$/i.test(host)) return { error: 'blocked' };
+    let addrs;
+    try { addrs = net.isIP(host) ? [{ address: host, family: net.isIP(host) }] : await dns.lookup(host, { all: true }); }
+    catch { return { error: 'unreachable' }; }
+    if (!addrs.length || addrs.some((a) => !isPublicIp(a.address))) return { error: 'blocked' };
+    return { url: u, address: addrs[0].address, family: addrs[0].family };
 }
 
-function extractDomain(url) {
-    try { return new URL(url).hostname; } catch { return url; }
-}
-
-function fetchMeta(targetUrl) {
+// One request to the checked address (no second DNS answer can swap it for an internal one)
+function getOnce(target) {
     return new Promise((resolve, reject) => {
-        const clientLib = targetUrl.startsWith('https:') ? https : http;
-        const req = clientLib.get(targetUrl, {
-            timeout: 15000,
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'identity',
-            },
-            maxRedirects: 5
+        const lib = target.url.protocol === 'https:' ? https : http;
+        const req = lib.get(target.url, {
+            timeout: 10000,
+            lookup: (host, opts, cb) => cb(null, target.address, target.family),
+            headers: { 'User-Agent': 'Mozilla/5.0 (compatible; ARCHON-CG223 link preview; +https://archon223.com)', Accept: 'text/html,application/xhtml+xml', 'Accept-Encoding': 'identity' },
         }, (res) => {
-            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-                const redirectUrl = new URL(res.headers.location, targetUrl).toString();
-                return fetchMeta(redirectUrl).then(resolve).catch(reject);
-            }
-            if (res.statusCode !== 200) return reject(new Error(`HTTP ${res.statusCode}`));
-
-            // Abort if not HTML
-            const contentType = res.headers['content-type'] || '';
-            if (!contentType.includes('text/html')) {
-                return resolve({
-                    title: extractDomain(targetUrl),
-                    description: `Content-Type: ${contentType}`,
-                    image: null,
-                    siteName: extractDomain(targetUrl),
-                    type: contentType.split(';')[0].trim(),
-                    locale: null,
-                    url: targetUrl
-                });
-            }
-
-            let data = '';
-            res.on('data', chunk => {
-                data += chunk;
-                // Stop early if we have enough meta tags
-                if (data.length > 500000) req.destroy();
-            });
-            res.on('end', () => {
-                const meta = parseMeta(data, targetUrl);
-                resolve(meta);
-            });
-        }).on('error', reject).on('timeout', () => reject(new Error('Timeout')));
+            if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) { res.resume(); return resolve({ redirect: new URL(res.headers.location, target.url).toString() }); }
+            if (res.statusCode !== 200) { res.resume(); return reject(new Error(`HTTP ${res.statusCode}`)); }
+            const type = String(res.headers['content-type'] || '');
+            if (!type.includes('text/html')) { res.resume(); return resolve({ html: '', type: type.split(';')[0].trim() }); }
+            let size = 0; const chunks = [];
+            res.on('data', (c) => { size += c.length; chunks.push(c); if (size > MAX_BYTES) { req.destroy(); resolve({ html: Buffer.concat(chunks).toString('utf8'), type: 'text/html' }); } });
+            res.on('end', () => resolve({ html: Buffer.concat(chunks).toString('utf8'), type: 'text/html' }));
+        });
+        req.on('error', reject);
+        req.on('timeout', () => req.destroy(new Error('Timeout')));
     });
 }
-
-function parseMeta(html, baseUrl) {
-    const meta = {
-        title: extractTag(html, '<title>', '</title>') || null,
-        description: extractMetaTag(html, 'description') || extractMetaTag(html, 'og:description') || null,
-        image: extractMetaTag(html, 'og:image') || extractMetaTag(html, 'twitter:image') || extractLinkTag(html, 'image_src') || null,
-        siteName: extractMetaTag(html, 'og:site_name') || extractDomain(baseUrl),
-        type: extractMetaTag(html, 'og:type') || 'website',
-        locale: extractMetaTag(html, 'og:locale') || null,
-        url: extractMetaTag(html, 'og:url') || baseUrl,
-        themeColor: extractMetaTag(html, 'theme-color') || null,
-    };
-
-    // Resolve relative image URLs
-    if (meta.image && !meta.image.match(/^https?:\/\//)) {
-        meta.image = new URL(meta.image, baseUrl).toString();
+async function fetchPage(raw) {
+    let current = raw;
+    for (let hop = 0; hop < 5; hop++) {
+        const target = await checkedTarget(current);
+        if (target.error) return target;
+        const r = await getOnce(target);
+        if (r.redirect) { current = r.redirect; continue; }
+        return { ...r, finalUrl: target.url.toString() };
     }
-
-    // Fallback title
-    if (!meta.title) meta.title = meta.siteName || extractDomain(baseUrl);
-
-    // Clean up description
-    if (meta.description) {
-        meta.description = meta.description.replace(/\s+/g, ' ').trim();
-        if (meta.description.length > 500) meta.description = meta.description.substring(0, 497) + '...';
-    }
-
-    return meta;
+    return { error: 'unreachable' };
 }
 
-function extractTag(html, open, close) {
-    const start = html.indexOf(open);
-    if (start === -1) return null;
-    const end = html.indexOf(close, start + open.length);
-    if (end === -1) return null;
-    const content = html.substring(start + open.length, end).trim();
-    return content.replace(/<[^>]+>/g, '').trim() || null;
-}
-
-function extractMetaTag(html, property) {
-    const patterns = [
-        new RegExp(`<meta[^>]*property=["']${property}["'][^>]*content=["']([^"']+)["']`, 'i'),
-        new RegExp(`<meta[^>]*content=["']([^"']+)["'][^>]*property=["']${property}["']`, 'i'),
-        new RegExp(`<meta[^>]*name=["']${property}["'][^>]*content=["']([^"']+)["']`, 'i'),
-        new RegExp(`<meta[^>]*content=["']([^"']+)["'][^>]*name=["']${property}["']`, 'i'),
-    ];
-    for (const pattern of patterns) {
-        const match = html.match(pattern);
-        if (match) return match[1].trim();
-    }
+// ─── reading the page ───
+const decode = (s) => String(s || '').replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)));
+function meta(html, prop) {
+    for (const re of [
+        new RegExp(`<meta[^>]+(?:property|name)=["']${prop}["'][^>]*content=["']([^"']*)["']`, 'i'),
+        new RegExp(`<meta[^>]+content=["']([^"']*)["'][^>]*(?:property|name)=["']${prop}["']`, 'i'),
+    ]) { const m = html.match(re); if (m && m[1].trim()) return decode(m[1].trim()); }
     return null;
 }
-
-function extractLinkTag(html, rel) {
-    const pattern = new RegExp(`<link[^>]*rel=["']${rel}["'][^>]*href=["']([^"']+)["']`, 'i');
-    const match = html.match(pattern);
-    return match ? match[1].trim() : null;
+function parse(html, base) {
+    const title = meta(html, 'og:title') || decode((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [])[1] || '').trim() || null;
+    let image = meta(html, 'og:image') || meta(html, 'twitter:image');
+    try { if (image) image = new URL(image, base).toString(); } catch { image = null; }
+    return {
+        title, image: image && /^https:\/\//.test(image) ? image : null,
+        description: meta(html, 'og:description') || meta(html, 'description') || meta(html, 'twitter:description'),
+        site: meta(html, 'og:site_name'),
+    };
 }
 
-// ================= MODULE =================
+async function card(lang, link, where) {
+    const raw = String(link || '').trim();
+    const r = /^https?:\/\//i.test(raw) ? await fetchPage(raw).catch((e) => ({ error: 'unreachable', why: e.message })) : { error: 'invalid' };
+    if (r.error) {
+        if (r.why) console.log(`[URL] ${raw.slice(0, 80)}: ${r.why}`);
+        return v2.card(0x888780, [{ text: `${icon('warn', where)} ${T(lang, r.error)}` }]);
+    }
+    const host = new URL(r.finalUrl).hostname.replace(/^www\./, '');
+    const m = r.html ? parse(r.html, r.finalUrl) : { title: null, description: r.type ? T(lang, 'fileType', { type: r.type }) : null };
+    const items = [{ text: `-# ${icon('link', where)} ${clean(m.site || host, 80)}\n### ${clean(m.title || host, 200)}${m.description ? `\n${clean(m.description, 350)}` : ''}` }];
+    if (m.image) items.push({ media: [m.image, clean(m.title || host, 200)] });
+    items.push({ text: `-# ${host}${r.finalUrl.replace(/\/$/, '') !== raw.replace(/\/$/, '') ? ` · ${T(lang, 'redirected')}` : ''}` });
+    if (r.finalUrl.length <= 512) items.push({ row: new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(r.finalUrl).setLabel(T(lang, 'open'))) });
+    return v2.card(0x378ADD, items);
+}
+
 module.exports = {
     name: 'url',
     userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
     aliases: ['link', 'preview', 'website', 'site', 'urlpreview'],
-    description: '🔗 Fetch rich preview of any URL — title, description, image, metadata.',
+    description: 'A preview of a web page: title, description, picture',
     category: 'UTILITY',
     cooldown: 5000,
     usage: '.url <link>',
-    examples: ['.url https://discord.com', '.url https://github.com', '/url link:https://openai.com'],
-
-    data: new SlashCommandBuilder()
-        .setName('url')
-        .setDescription('🔗 Preview any URL with metadata and image')
-        .addStringOption(opt => opt
-            .setName('link')
-            .setDescription('URL to preview')
-            .setRequired(true)),
-
-    run: async (client, message, args, db, ss, used, lang) => {
-        // The language was used here without being defined, so this command always failed ("lang is not defined")
-        if (!lang) lang = require('../lib/pick-lang').pickLang(client, message?.guild?.id, message, message?.author?.id);
-
-        const t = T[lang] || T.en;
-        const targetUrl = args[0];
-
-        if (!targetUrl || !targetUrl.match(/^https?:\/\//)) {
-            return message.reply(t.invalid).catch(() => {});
-        }
-
-        const loadingMsg = await message.reply(t.loading(targetUrl)).catch(() => null);
-
-        try {
-            const meta = await fetchMeta(targetUrl);
-            const domain = extractDomain(targetUrl);
-
-            const embed = new EmbedBuilder()
-                .setColor(meta.themeColor || '#00fbff')
-                .setAuthor({ name: domain, iconURL: `https://www.google.com/s2/favicons?domain=${domain}&sz=128` })
-                .setTitle(meta.title || domain)
-                .setURL(targetUrl);
-
-            if (meta.description) {
-                embed.setDescription(meta.description);
-            }
-
-            if (meta.image) {
-                embed.setImage(meta.image);
-            }
-
-            embed.addFields(
-                { name: t.type, value: meta.type || 'website', inline: true },
-                { name: t.locale, value: meta.locale || t.unknown, inline: true }
-            );
-
-            embed.setFooter({ text: t.footer(domain) })
-                .setTimestamp();
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setURL(targetUrl)
-                    .setLabel(t.visit)
-                    .setStyle(ButtonStyle.Link)
-            );
-
-            loadingMsg?.edit({ content: null, embeds: [embed], components: [row] }).catch(() => {});
-
-        } catch (err) {
-            console.error('[URL]', err.message);
-            loadingMsg?.edit(t.error).catch(() => {});
-        }
+    examples: ['.url https://discord.com', '/url link:https://github.com'],
+    isPublicIp,
+    data: new SlashCommandBuilder().setName('url').setDescription('A preview of a web page').setDescriptionLocalizations({ fr: 'L’aperçu d’une page web' })
+        .addStringOption((o) => o.setName('link').setDescription('The link (https://…)').setRequired(true).setMaxLength(500)),
+    run: async (client, message, args) => {
+        const lang = langOf(client, message.guild?.id, message, message.author.id);
+        return message.reply(await card(lang, args[0], message)).catch(() => {});
     },
-
     execute: async (interaction, client) => {
-        const lang = require('../lib/i18n').slashLang(interaction, ['en', 'fr']);
-        const t = T[lang] || T.en;
-        const targetUrl = interaction.options.getString('link');
-
-        if (!targetUrl || !targetUrl.match(/^https?:\/\//)) {
-            return interaction.reply({ content: t.invalid, flags: 64 });
-        }
-
+        const lang = langOf(client, interaction.guildId, interaction, interaction.user.id);
         await interaction.deferReply();
-
-        try {
-            const meta = await fetchMeta(targetUrl);
-            const domain = extractDomain(targetUrl);
-
-            const embed = new EmbedBuilder()
-                .setColor(meta.themeColor || '#00fbff')
-                .setAuthor({ name: domain, iconURL: `https://www.google.com/s2/favicons?domain=${domain}&sz=128` })
-                .setTitle(meta.title || domain)
-                .setURL(targetUrl);
-
-            if (meta.description) embed.setDescription(meta.description);
-            if (meta.image) embed.setImage(meta.image);
-
-            embed.addFields(
-                { name: t.type, value: meta.type || 'website', inline: true },
-                { name: t.locale, value: meta.locale || t.unknown, inline: true }
-            );
-
-            embed.setFooter({ text: t.footer(domain) }).setTimestamp();
-
-            const row = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setURL(targetUrl).setLabel(t.visit).setStyle(ButtonStyle.Link)
-            );
-
-            await interaction.editReply({ embeds: [embed], components: [row] });
-
-        } catch (err) {
-            console.error('[URL SLASH]', err.message);
-            interaction.editReply(t.error).catch(() => {});
-        }
-    }
+        return interaction.editReply(await card(lang, interaction.options.getString('link'), interaction));
+    },
 };

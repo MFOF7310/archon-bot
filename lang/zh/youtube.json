@@ -1,0 +1,12 @@
+{
+  "resultsFor": "“{q}” 的搜索结果",
+  "none": "没有找到“{q}”的视频。",
+  "views": "{n} 次观看",
+  "tip": "把视频链接发给 /youtube info 查看详情。",
+  "notFound": "无法读取这个视频：可能是私密、已删除或有年龄限制。",
+  "live": "正在直播",
+  "watch": "观看",
+  "channel": "频道",
+  "badLink": "这看起来不是 YouTube 链接。",
+  "usage": "在命令后写搜索词或视频链接：`.yt lofi hip hop`"
+}

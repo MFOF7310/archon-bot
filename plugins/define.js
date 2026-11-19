@@ -1,215 +1,107 @@
-'use strict';
-const { SlashCommandBuilder, EmbedBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MessageFlags } = require('discord.js');
-const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
-const https = require('https');
+// ═══════════════════════════════════════════════════════════════════════════
+// /define <word> — an English dictionary card: pronunciation, up to 3 meanings with an example, synonyms,
+// a link to hear it. Source: Free Dictionary API (dictionaryapi.dev), then Wiktionary when it has nothing.
+// The old version read the answer as if it came from Wiktionary ("data.en"), so every word came back "not found".
+// Texts: lang/<l>/define.json (the definitions themselves stay in English)
+// ═══════════════════════════════════════════════════════════════════════════
+const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { t } = require('../lib/i18n');
+const { icon } = require('../lib/ui/icons');
+const v2 = require('../lib/games/v2');
 
-const T = {
-    en: {
-        loading: (word) => `\`[LEXICON]\`  **Initializing query for \`${word}\`**`,
-        notFound: (word) => `**No lexical entry found.**\n> Target: \`${word}\`\n> Status: **NOT IN DATABASE**`,
-        error: '> **LEXICON SERVICE UNAVAILABLE**\n> Check network integrity or retry.',
-        footer: (word) => `ARCHON LEXICON // TARGET: "${word}"`,
-        phonetic: 'Phonetic Transcription',
-        meanings: 'Semantic Entries',
-        audio: 'Phonetic Audio',
-        multipleMeanings: (count) => `Displaying ${count} semantic entries`,
-        operator: 'Operator'
-    },
-    fr: {
-        loading: (word) => `\`[LEXIQUE]\`  **Initialisation de la requête pour \`${word}\`**`,
-        notFound: (word) => `**Aucune entrée lexicale trouvée.**\n> Cible : \`${word}\`\n> Statut : **NON RÉPERTORIÉ**`,
-        error: '> **SERVICE LEXIQUE INDISPONIBLE**\n> Vérifiez l\'intégrité du réseau ou réessayez.',
-        footer: (word) => `ARCHON LEXIQUE // CIBLE : "${word}"`,
-        phonetic: 'Transcription Phonétique',
-        meanings: 'Entrées Sémantiques',
-        audio: 'Audio Phonétique',
-        multipleMeanings: (count) => `Affichage de ${count} entrées sémantiques`,
-        operator: 'Opérateur'
-    },
-    cn: {
-        loading: (word) => `\`[词库]\`  **正在初始化查询 \`${word}\`**`,
-        notFound: (word) => `**未找到词汇条目。**\n> 目标：\`${word}\`\n> 状态：**未收录**`,
-        error: '> **词库服务不可用**\n> 请检查网络完整性或重试。',
-        footer: (word) => `ARCHON 词库 // 目标："${word}"`,
-        phonetic: '音标转录',
-        meanings: '语义条目',
-        audio: '语音音频',
-        multipleMeanings: (count) => `显示 ${count} 条语义条目`,
-        operator: '操作员'
+const T = (lang, k, v) => t(`define.${k}`, lang, v || {});
+const LANGS = ['en', 'fr', 'zh', 'ar'];
+const langOf = (client, gid, where, uid) => { try { const l = require('../lib/pick-lang').pickLang(client, gid, where, uid); return LANGS.includes(l) ? l : 'en'; } catch { return 'en'; } };
+const clean = (s, n = 300) => String(s || '').replace(/<[^>]+>/g, '').replace(/[*_~`|>\\]/g, '').replace(/@(everyone|here)/gi, '@​$1').replace(/\s+/g, ' ').trim().slice(0, n);
+
+async function getJSON(url) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    try {
+        const res = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'ARCHON-CG223 (archon223.com)' } });
+        if (res.status === 404) return null;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+    } finally { clearTimeout(timer); }
+}
+
+// → { word, phonetic, audio, meanings: [{ pos, defs: [{ text, example }], synonyms }], source }
+async function lookup(word) {
+    try {
+        const d = await getJSON(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+        if (Array.isArray(d) && d.length) {
+            const meanings = [];
+            for (const e of d) for (const m of e.meanings || []) {
+                const had = meanings.find((x) => x.pos === m.partOfSpeech);
+                const defs = (m.definitions || []).map((x) => ({ text: x.definition, example: x.example }));
+                if (had) had.defs.push(...defs); else meanings.push({ pos: m.partOfSpeech, defs, synonyms: m.synonyms || [] });
+            }
+            const ph = d.flatMap((e) => e.phonetics || []);
+            return {
+                word: d[0].word || word,
+                phonetic: d[0].phonetic || ph.find((p) => p.text)?.text || null,
+                audio: ph.find((p) => p.audio)?.audio || null,
+                meanings,
+                source: d[0].sourceUrls?.[0] || `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`,
+            };
+        }
+    } catch (e) { console.log(`[DEFINE] dictionaryapi: ${e.message}`); }
+    // Wiktionary: definitions grouped by language; the English ones
+    try {
+        const w = await getJSON(`https://en.wiktionary.org/api/rest_v1/page/definition/${encodeURIComponent(word)}`);
+        const en = w?.en || [];
+        if (en.length) return {
+            word, phonetic: null, audio: null,
+            meanings: en.map((m) => ({ pos: String(m.partOfSpeech || '').toLowerCase(), defs: (m.definitions || []).filter((x) => clean(x.definition)).map((x) => ({ text: x.definition, example: x.examples?.[0] })), synonyms: [] })),
+            source: `https://en.wiktionary.org/wiki/${encodeURIComponent(word)}`,
+        };
+    } catch (e) { console.log(`[DEFINE] wiktionary: ${e.message}`); }
+    return null;
+}
+
+async function card(lang, word, where) {
+    const w = String(word || '').trim().slice(0, 60);
+    const r = await lookup(w);
+    if (!r || !r.meanings.some((m) => m.defs.length)) {
+        return v2.card(0x888780, [{ text: `### ${icon('define', where)} ${clean(w, 60)}\n${T(lang, 'notFound')}\n-# ${T(lang, 'onlyEnglish')}` }]);
     }
-};
-
-const PALETTE = {
-    primary: 0x1a1a2e,
-    accent: 0xe94560,
-    cyan: 0x00d9ff,
-    warning: 0xfdcb6e,
-};
-
-async function fetchDict(word) {
-    const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' }
+    const blocks = r.meanings.filter((m) => m.defs.length).slice(0, 3).map((m) => {
+        const defs = m.defs.slice(0, 2).map((d, i) => `${i + 1}. ${clean(d.text, 280)}${d.example ? `\n-# « ${clean(d.example, 160)} »` : ''}`).join('\n');
+        const syn = m.synonyms?.length ? `\n-# ${T(lang, 'synonyms')} ${m.synonyms.slice(0, 5).map((s) => clean(s, 30)).join(', ')}` : '';
+        return `**${clean(m.pos, 30) || '—'}**\n${defs}${syn}`;
     });
-    if (res.status === 404) return [];
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return await res.json();
-}
-
-function getLang(client, interactionOrMessage, usedPrefix, overrideLang) {
-    if (overrideLang && T[overrideLang]) return overrideLang;
-    if (interactionOrMessage?.locale) {
-        const loc = interactionOrMessage.locale.toLowerCase();
-        if (loc.startsWith('fr')) return 'fr';
-        if (loc.startsWith('zh') || loc.startsWith('cn')) return 'cn';
-        return 'en';
-    }
-    if (interactionOrMessage?.guild?.preferredLocale) {
-        const guildLoc = interactionOrMessage.guild.preferredLocale.toLowerCase();
-        if (guildLoc.startsWith('fr')) return 'fr';
-        if (guildLoc.startsWith('zh') || guildLoc.startsWith('cn')) return 'cn';
-    }
-    if (client?.detectLanguage) {
-        try {
-            const detected = client.detectLanguage(usedPrefix, 'en');
-            if (detected === 'fr') return 'fr';
-            if (detected === 'cn' || detected === 'zh') return 'cn';
-        } catch (e) { /* fallback */ }
-    }
-    return 'en';
-}
-
-function buildIntelligenceCard(entry, t, word, timestamp) {
-    const c = new ContainerBuilder().setAccentColor(PALETTE.primary);
-    
-    // Wiktionary renvoie les données par langue (ex: data.en)
-    const enData = entry.en || [];
-    
-    // Header
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('note', '📖')} ${word.toUpperCase()}`));
-
-    if (enData.length > 0) {
-        c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-        
-        enData.forEach((meaning) => {
-            const defs = meaning.definitions?.slice(0, 2) || [];
-            if (defs.length === 0) return;
-
-            let fieldValue = `**${meaning.partOfSpeech ? meaning.partOfSpeech.toUpperCase() : 'DEFINITION'}**\n`;
-            defs.forEach((def) => {
-                fieldValue += `${em('dot_white', '•')} ${def.definition}\n`;
-                if (def.examples && def.examples.length > 0) {
-                    fieldValue += `> *"${def.examples[0]}"*\n`;
-                }
-                fieldValue += '\n';
-            });
-            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(fieldValue.trim()));
-        });
-    } else {
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t.notFound(word)));
-    }
-
-    const queryTime = ((Date.now() - timestamp.getTime()) / 1000).toFixed(2);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t.footer(word)}  |  Wiktionary API  |  ⏱️ ${queryTime}s`));
-
-    return c;
+    const buttons = [];
+    if (r.audio && /^https:\/\//.test(r.audio)) buttons.push(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(r.audio).setLabel(T(lang, 'listen')));
+    if (r.source && /^https:\/\//.test(r.source)) buttons.push(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(r.source).setLabel(T(lang, 'more')));
+    const items = [
+        { text: `### ${icon('define', where)} ${clean(r.word, 60)}${r.phonetic ? `  \`${clean(r.phonetic, 60)}\`` : ''}` },
+        { rule: true },
+        { text: blocks.join('\n\n').slice(0, 3500) },
+    ];
+    if (buttons.length) items.push({ row: new ActionRowBuilder().addComponents(...buttons) });
+    return v2.card(0x7F77DD, items);
 }
 
 module.exports = {
     name: 'define',
     userApp: true,   // also works as a user app (DMs, servers without ARCHON): lib/slash-payload.js
-    description: '📖 Intelligence dictionary lookup — English definitions with trilingual UI',
+    aliases: ['dictionary', 'dict', 'definition'],
+    description: 'An English word: meaning, pronunciation, examples',
     category: 'UTILITY',
-    data: new SlashCommandBuilder()
-        .setName('define')
-        .setDescription('📖 Intelligence dictionary lookup')
-        .addStringOption(o => o.setName('word').setDescription('Target lexical entry to query').setRequired(true))
-        .addStringOption(o => o.setName('language').setDescription('Interface language (overrides auto-detect)').addChoices({ name: 'English', value: 'en' }, { name: 'Français', value: 'fr' }, { name: '中文', value: 'cn' })),
+    cooldown: 3000,
+    data: new SlashCommandBuilder().setName('define').setDescription('An English word: meaning, pronunciation, examples')
+        .setDescriptionLocalizations({ fr: 'Un mot anglais : sens, prononciation, exemples' })
+        .addStringOption((o) => o.setName('word').setDescription('The English word').setRequired(true).setMaxLength(60)),
 
-    run: async (client, message, args, db, ss, used) => {
-        const lang = getLang(client, message, used);
-        const t = T[lang];
+    run: async (client, message, args) => {
+        const lang = langOf(client, message.guild?.id, message, message.author.id);
         const word = args.join(' ').trim();
-
-        if (!word) {
-            return message.reply({
-                embeds: [new EmbedBuilder()
-                    .setColor(PALETTE.warning)
-                    .setTitle('\`[ ERROR ]\`')
-                    .setDescription('**' + t.operator + '** — Provide a target lexical entry.\n> Usage: \`.define <word>\`')
-                    .setFooter({ text: `ARCHON Lexicon  |  Free Dictionary API` })
-                ]
-            }).catch(() => {});
-        }
-
-        const loadingEmbed = new EmbedBuilder()
-            .setColor(PALETTE.cyan)
-            .setTitle('\`[ PENDING ]\`')
-            .setDescription(t.loading(word))
-            .setFooter({ text: `${t.footer(word)}  |  QUERY IN PROGRESS  |  Free Dictionary API` });
-
-        const msg = await message.reply({ embeds: [loadingEmbed] }).catch(() => null);
-        const startTime = Date.now();
-
-        try {
-            const data = await fetchDict(word);
-            if (!data || !data.en || data.en.length === 0) {
-                const notFoundEmbed = new EmbedBuilder()
-                    .setColor(PALETTE.accent)
-                    .setTitle('\`[ NOT FOUND ]\`')
-                    .setDescription(t.notFound(word))
-                    .setFooter({ text: `${t.footer(word)}  |  Free Dictionary API` })
-                    .setTimestamp();
-                return msg?.edit({ embeds: [notFoundEmbed], content: null }).catch(() => {});
-            }
-
-            const entry = data[0];
-            const card = buildIntelligenceCard(entry, t, word, new Date(startTime));
-            msg?.edit({ content: null, components: [card], flags: MessageFlags.IsComponentsV2 }).catch(() => {});
-
-        } catch (e) {
-            const errorEmbed = new EmbedBuilder()
-                .setColor(PALETTE.accent)
-                .setTitle('\`[ SYSTEM FAILURE ]\`')
-                .setDescription(t.error + `\n\n\`[DEBUG]\`  ${e.message?.substring(0, 100) || 'Unknown'}`)
-                .setFooter({ text: `${t.footer(word)}  |  Free Dictionary API` })
-                .setTimestamp();
-            msg?.edit({ content: null, embeds: [errorEmbed] }).catch(() => {});
-        }
+        if (!word) return message.reply(`${icon('warn', message)} ${T(lang, 'usage')}`).catch(() => {});
+        return message.reply(await card(lang, word, message)).catch(() => {});
     },
-
-    execute: async (interaction) => {
-        const overrideLang = interaction.options.getString('language');
-        const lang = getLang(null, interaction, null, overrideLang);
-        const t = T[lang];
-        const word = interaction.options.getString('word').trim();
-        const startTime = Date.now();
-
+    execute: async (interaction, client) => {
+        const lang = langOf(client, interaction.guildId, interaction, interaction.user.id);
         await interaction.deferReply();
-
-        try {
-            const data = await fetchDict(word);
-            if (!data || !data.en || data.en.length === 0) {
-                const notFoundEmbed = new EmbedBuilder()
-                    .setColor(PALETTE.accent)
-                    .setTitle('\`[ NOT FOUND ]\`')
-                    .setDescription(t.notFound(word))
-                    .setFooter({ text: `${t.footer(word)}  |  Free Dictionary API` })
-                    .setTimestamp();
-                return interaction.editReply({ embeds: [notFoundEmbed] });
-            }
-
-            const entry = data[0];
-            const card = buildIntelligenceCard(entry, t, word, new Date(startTime));
-            interaction.editReply({ components: [card], flags: MessageFlags.IsComponentsV2 });
-
-        } catch (e) {
-            const errorEmbed = new EmbedBuilder()
-                .setColor(PALETTE.accent)
-                .setTitle('\`[ SYSTEM FAILURE ]\`')
-                .setDescription(t.error + `\n\n\`[DEBUG]\`  ${e.message?.substring(0, 100) || 'Unknown'}`)
-                .setFooter({ text: `${t.footer(word)}  |  Free Dictionary API` })
-                .setTimestamp();
-            interaction.editReply({ embeds: [errorEmbed] });
-        }
-    }
+        return interaction.editReply(await card(lang, interaction.options.getString('word'), interaction));
+    },
 };
