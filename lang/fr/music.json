@@ -114,5 +114,6 @@
   "open_on": "Ouvrir sur {site}",
   "failed_to_find": "Impossible de trouver une version lisible de ce morceau.",
   "resumed_title": "De retour après un redémarrage",
-  "resumed_line": "Je reprends **{title}** à {at}, là où on s'était arrêté."
+  "resumed_line": "Je reprends **{title}** à {at}, là où on s'était arrêté.",
+  "ends": "Se termine {when}"
 }

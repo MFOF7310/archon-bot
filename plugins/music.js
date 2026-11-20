@@ -3,7 +3,7 @@ const {
     ButtonBuilder, ButtonStyle, StringSelectMenuBuilder,
     ContainerBuilder, TextDisplayBuilder, SectionBuilder,
     ThumbnailBuilder, SeparatorBuilder, SeparatorSpacingSize,
-    MessageFlags
+    MessageFlags, MediaGalleryBuilder, MediaGalleryItemBuilder, AttachmentBuilder
 } = require('discord.js');
 const { icon, iconObj } = require('../lib/ui/icons');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
@@ -492,7 +492,8 @@ function accentForTrack(t) {
     return 0x5865F2; // default blurple
 }
 
-function buildPanelContainer(q, client) {
+// banner: the attachment name of the drawn now-playing image (lib/music-banner.js); without it, the text version
+function buildPanelContainer(q, client, banner = null) {
     const t = q.currentTrack;
     const lang = L(q);
     const now = Date.now(); const currentPause = q.pausedAt ? now - q.pausedAt : 0; const elapsed = q.startTime ? Math.floor((now - q.startTime - q.totalPaused - currentPause) / 1000) : 0;
@@ -534,6 +535,24 @@ function buildPanelContainer(q, client) {
         `${sliderBar(elapsed, duration)}\n` +
         `\`${formatTime(elapsed)}\` ――― \`${formatTime(duration)}\``
     );
+    // With the banner: the image carries cover, title, bar and times; the line under it counts down by itself
+    // (a Discord timestamp: every member's app updates it each second, no edit needed)
+    const endsAt = q.startTime && duration ? Math.floor((q.startTime + q.totalPaused + duration * 1000) / 1000) : 0;
+    const liveLine = new TextDisplayBuilder().setContent(
+        (isPaused ? `${em('mc_pause', '⏸️')} ${String(tx('music.paused_title', lang)).replace(/^⏸️?\s*/, '')}`
+            : endsAt ? `${icon('clock', null) || '🕒'} ${tx('music.ends', lang, { when: `<t:${endsAt}:R>` })}` : '')
+        + `\n[${tx('music.open_on', lang, { site: t.spotifyUrl ? 'Spotify' : 'YouTube' })}](${sourceUrl}) · ${tx('music.added_by', lang)} ${requester} · ${em('mc_volume_up', '🔊')} ${q.voiceChannel?.name?.substring(0, 22) || tx('music.voice_label', lang)}`);
+    if (banner) {
+        return new ContainerBuilder()
+            .setAccentColor(isPaused ? 0xF1C40F : accentForTrack(t))
+            .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL(`attachment://${banner}`).setDescription(fullTitle.slice(0, 200))))
+            .addTextDisplayComponents(liveLine)
+            .addTextDisplayComponents(statsLine)
+            .addActionRowComponents(rowTransport)
+            .addActionRowComponents(rowSession)
+            .addActionRowComponents(rowTaste)
+            .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 • Autoplay ${q.autoplay ? tx('music.on_short', lang) : tx('music.off_short', lang)} • ${q.silentPanel ? '🔕' : '🔔'} • ${FILTER_EMOJI[q.audioFilter] || '🎵'} ${q.audioFilter || 'Normal'}`));
+    }
 
     const filterIcon = FILTER_EMOJI[q.audioFilter] || '🎵';
     const footer = new TextDisplayBuilder().setContent(
@@ -549,6 +568,29 @@ function buildPanelContainer(q, client) {
         .addActionRowComponents(rowSession)
         .addActionRowComponents(rowTaste)
         .addTextDisplayComponents(footer);
+}
+
+// The panel as a message: the drawn banner when it can be made (a new file name each time, so apps don't show the
+// old picture from their cache), else the text version. `attachments: []` makes an edit replace the previous image.
+async function panelPayload(q, client) {
+    const t = q.currentTrack;
+    try {
+        const now = Date.now(), paused = q.player?.state?.status === AudioPlayerStatus.Paused;
+        const elapsed = q.startTime ? Math.floor((now - q.startTime - q.totalPaused - (q.pausedAt ? now - q.pausedAt : 0)) / 1000) : 0;
+        const genre = t.requestedBy?.split('•')[1]?.trim();
+        const lang = L(q);
+        const head = paused ? String(tx('music.paused_title', lang)).replace(/^⏸️?\s*/, '') : tx('music.now_playing', lang);
+        const png = await require('../lib/music-banner').renderBanner({
+            title: t.title, artist: t.artist && t.artist !== 'Unknown' ? t.artist : (t.source || ''), coverUrl: t.thumbnail,
+            accent: accentForTrack(t), elapsed, duration: t.duration || 0, paused, label: genre ? `${head} · ${genre}` : head,
+        });
+        const name = `np_${now}.jpg`;
+        q._bannerPaused = paused;
+        return { components: [buildPanelContainer(q, client, name)], files: [new AttachmentBuilder(png, { name })], attachments: [] };
+    } catch (e) {
+        if (!q._bannerFailLogged) { q._bannerFailLogged = true; console.log('[MUSIC PANEL] banner:', e.message); }
+        return { components: [buildPanelContainer(q, client)], files: [], attachments: [] };
+    }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -605,7 +647,7 @@ async function handlePanelButton(i, client) {
     if (botVc && vc.id !== botVc) return i.reply({ content: t('music.same_voice', lang, { channel: `<#${botVc}>` }), flags: 64 }).catch(() => {});
 
     const redraw = async () => {
-        await i.update({ components: [buildPanelContainer(q, client)], flags: V2, allowedMentions: NO_PINGS })
+        await i.update({ ...(await panelPayload(q, client)), flags: V2, allowedMentions: NO_PINGS })
             .catch((e) => console.error('[MUSIC PANEL] click:', e.message));
         if (isMain) { if (q._isUpdatingPanel) q._pendingPanelUpdate = true; } // a timed refresh already on its way gets one more pass
         else updatePersistentPanel(q).catch(() => {});                       // a copy: keep the live panel in step
@@ -715,8 +757,9 @@ async function sendPanel(q) {
     }
 
     const flags = V2 | (q.silentPanel ? MessageFlags.SuppressNotifications : 0);
+    const { attachments: _a, ...first } = await panelPayload(q, client);
     const msg = await q.textChannel.send({
-        components: [buildPanelContainer(q, client)],
+        ...first,
         flags,
         allowedMentions: NO_PINGS,
     }).catch(() => null);
@@ -737,8 +780,6 @@ async function updatePersistentPanel(q, opts = {}) {
         return;
     }
     q._isUpdatingPanel = true;
-
-    const container = buildPanelContainer(q, client);
 
     try {
         let msg = q.persistentMsg;
@@ -762,7 +803,7 @@ async function updatePersistentPanel(q, opts = {}) {
 
         if (msg) {
             let resend = false;
-            await msg.edit({ components: [container], flags: MessageFlags.IsComponentsV2 }).catch((e) => {
+            await msg.edit({ ...(await panelPayload(q, client)), flags: MessageFlags.IsComponentsV2 }).catch((e) => {
                 if (e.code === 10008) { resend = true; } // message genuinely deleted
                 // other errors (rate limit, network) → keep panel, retry next 15s tick
             });
@@ -793,8 +834,9 @@ function startPanelUpdater(q) {
             clearInterval(q.updateInterval);
             return;
         }
+        if (qNow.player?.state?.status === AudioPlayerStatus.Paused && qNow._bannerPaused) return;   // nothing moves
         updatePersistentPanel(qNow).catch(() => {});
-    }, 15000);
+    }, 10000);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1848,7 +1890,7 @@ module.exports = {
         if (sub === 'nowplaying') {
             if (!q.currentTrack) return interaction.editReply({ content: t('music.not_playing', lang, { cmd_play: mention(global.client, 'music', 'play') }) });
             const reply = await interaction.editReply({
-                components: [buildPanelContainer(q, client)],
+                ...(await panelPayload(q, client)),
                 flags: MessageFlags.IsComponentsV2,
             });
             // Its buttons work like the live panel's (handled in handlePanelButton), and keep the live panel in step

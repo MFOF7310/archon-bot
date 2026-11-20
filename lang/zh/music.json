@@ -114,5 +114,6 @@
   "open_on": "在 {site} 打开",
   "failed_to_find": "找不到这首歌可播放的版本。",
   "resumed_title": "重启后已恢复",
-  "resumed_line": "已从 {at} 继续播放 **{title}**，接着刚才的位置。"
+  "resumed_line": "已从 {at} 继续播放 **{title}**，接着刚才的位置。",
+  "ends": "{when}结束"
 }
