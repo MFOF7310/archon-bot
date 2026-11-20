@@ -163,7 +163,12 @@ function resolveFile(input, list = [], rootList = roots(list)) {
     }
     const full = path.resolve(path.isAbsolute(raw) ? raw : path.join(base, raw));
     let real;
-    try { real = fs.realpathSync(full); } catch { return { error: `Nothing at <code>${esc(full)}</code>.`, missing: true }; }
+    try { real = fs.realpathSync(full); } catch {
+        // "levanter/config.env" meant the levanter app's folder: say how to write it
+        const first = raw.split('/')[0], app = !m && !path.isAbsolute(raw) && raw.includes('/') ? pick(list, first) : null;
+        const hint = app ? `\nFor a file of the <b>${esc(app.name)}</b> app, write <code>${esc(first)}:${esc(raw.slice(first.length + 1))}</code>.` : '';
+        return { error: `Nothing at <code>${esc(full)}</code>.${hint}`, missing: true };
+    }
     if (!inRoots(real, rootList)) return { error: 'I only read inside the apps in PM2\'s list, <code>~/deploy-backups</code> and the PM2 logs.' };
     if (isSecret(real)) return { error: 'That file holds secrets or private data, so it stays on the server.' };
     return { real };
