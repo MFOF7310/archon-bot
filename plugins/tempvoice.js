@@ -35,6 +35,7 @@ function ensure(db) {
     db.exec(`CREATE TABLE IF NOT EXISTS tempvoice_hubs (hub_id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, category_id TEXT, user_limit INTEGER DEFAULT 0);
              CREATE TABLE IF NOT EXISTS tempvoice_rooms (channel_id TEXT PRIMARY KEY, guild_id TEXT NOT NULL, owner_id TEXT NOT NULL,
                  hub_id TEXT, created_at INTEGER, locked INTEGER DEFAULT 0);`);
+    try { db.prepare('ALTER TABLE tempvoice_rooms ADD COLUMN panel_id TEXT').run(); } catch { /* already there */ }
 }
 const hubs = new Map();                  // hub channel id → row (loaded at start)
 const rooms = new Map();                 // room channel id → row
@@ -108,7 +109,10 @@ async function createRoom(client, member, hub) {
     const moved = await member.voice.setChannel(ch).then(() => true).catch((e) => { console.warn(`[TEMPVOICE] guild=${guild.id} move failed: ${e.message}`); return false; });
     if (!moved) return removeRoom(client, ch.id, true);   // no Move Members (or they left already): no empty room left behind
     const msg = await ch.send(panel(langOf(client, guild.id, null, member.id), room, ch)).catch(() => null);
-    if (msg) room.panel_id = msg.id;
+    if (msg) {
+        room.panel_id = msg.id;
+        db.prepare('UPDATE tempvoice_rooms SET panel_id = ? WHERE channel_id = ?').run(msg.id, ch.id);
+    }
 }
 
 async function removeRoom(client, channelId, deleteChannel) {
@@ -155,10 +159,15 @@ async function sweep(client) {
         else if (!humans(ch).size) await removeRoom(client, id, true);
     }
     for (const [id, hub] of [...hubs]) {
-        if (client.guilds.cache.has(hub.guild_id) && !client.channels.cache.get(id)) {
+        if (!client.guilds.cache.has(hub.guild_id)) continue;
+        const hubCh = client.channels.cache.get(id);
+        if (!hubCh) {
             hubs.delete(id);
             client.db.prepare('DELETE FROM tempvoice_hubs WHERE hub_id = ?').run(id);
+            continue;
         }
+        // someone waiting in the hub (they joined while ARCHON was restarting): their room now
+        for (const m of humans(hubCh).values()) await createRoom(client, m, hub).catch(() => {});
     }
 }
 
