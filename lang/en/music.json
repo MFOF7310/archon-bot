@@ -112,5 +112,7 @@
   "same_voice": "🎧 Join {channel} to control the music.",
   "suggest_not_yours": "These suggestions are for the person who added the song.",
   "open_on": "Open on {site}",
-  "failed_to_find": "Couldn't find a playable version of this track."
+  "failed_to_find": "Couldn't find a playable version of this track.",
+  "resumed_title": "Back after a restart",
+  "resumed_line": "I picked up **{title}** at {at}, right where we were."
 }

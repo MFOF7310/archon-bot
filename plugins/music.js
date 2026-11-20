@@ -201,6 +201,7 @@ function cleanTemp(track) {
 
 function destroyQueue(guildId) {
     const q = queues.get(guildId);
+    if (q && !resume.stopping) resume.forget(guildId);
     if (q) {
         q.destroyed = true;
         if (q.updateInterval) { clearInterval(q.updateInterval); q.updateInterval = null; }
@@ -213,6 +214,77 @@ function destroyQueue(guildId) {
         try { q.player?.stop(true); } catch (e) {}
         try { q.connection?.destroy(); } catch (e) {}
         queues.delete(guildId);
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+// RESUME AFTER A RESTART
+// Every 10 s, each playing session is written to data/music-resume.json: voice and text channel, the track and
+// the second it's at, what's next, volume, loop, filter. When ARCHON comes back (within 10 minutes) and people
+// are still in that voice channel, it rejoins and picks the track up where it stopped, and says so.
+// A session that really ends (stop, everyone left) is removed. A restart freezes the file first, so the voice
+// disconnection during shutdown doesn't erase it.
+// ═══════════════════════════════════════════════════════
+const resume = {
+    path: require('path').join(__dirname, '../data/music-resume.json'),
+    stopping: false,
+    read() { try { return JSON.parse(require('fs').readFileSync(this.path, 'utf8')) || {}; } catch { return {}; } },
+    last: null,
+    write(data) {
+        const json = JSON.stringify(data);
+        if (json === this.last) return;   // nothing changed (most of the time: nothing playing)
+        try { require('fs').writeFileSync(this.path, json); this.last = json; } catch (e) { console.log('[MUSIC] resume save:', e.message); }
+    },
+    forget(guildId) { const d = this.read(); if (d[guildId]) { delete d[guildId]; this.write(d); } },
+    keep: (t) => t && t.source !== 'file' ? {
+        title: t.title, query: t.query, artist: t.artist, source: t.source, duration: t.duration || 0,
+        thumbnail: t.thumbnail || null, requestedBy: t.requestedBy, requestedById: t.requestedById, url: t.url || null,
+        _libraryIndex: t._libraryIndex,
+    } : null,
+    snapshot() {
+        if (this.stopping) return;
+        const out = {};
+        for (const [gid, q] of queues) {
+            if (q.destroyed || !q.currentTrack || !q.voiceChannel || !q.connection) continue;
+            const cur = this.keep(q.currentTrack);
+            if (!cur) continue;
+            const now = Date.now(), paused = q.pausedAt ? now - q.pausedAt : 0;
+            const at = q.startTime ? Math.max(0, Math.floor((now - q.startTime - q.totalPaused - paused) / 1000)) : 0;
+            out[gid] = { voice: q.voiceChannel.id, text: q.textChannel?.id || null, at, track: cur,
+                next: q.tracks.map((t) => this.keep(t)).filter(Boolean).slice(0, 50),
+                volume: q.volume, loop: q.loop, autoplay: q.autoplay, filter: q.audioFilter, libraryIndex: q.libraryIndex, savedAt: now };
+        }
+        this.write(out);
+    },
+};
+
+async function resumeSessions(client) {
+    const saved = resume.read();
+    resume.write({});
+    for (const [gid, s] of Object.entries(saved)) {
+        try {
+            if (Date.now() - (s.savedAt || 0) > 10 * 60 * 1000) continue;          // too old: not a restart
+            const guild = client.guilds.cache.get(gid);
+            const voice = guild?.channels.cache.get(s.voice);
+            if (!voice || !voice.members?.some((m) => !m.user.bot)) continue;       // nobody left to listen
+            if (queues.has(gid)) continue;                                         // someone already started music
+            const text = guild.channels.cache.get(s.text) || null;
+            const q = createQueue(guild, voice, text, client);
+            q.volume = s.volume ?? q.volume; q.loop = !!s.loop; q.autoplay = s.autoplay !== false;
+            q.audioFilter = s.filter ?? q.audioFilter; q.libraryIndex = s.libraryIndex ?? q.libraryIndex;
+            const at = Number(s.at) || 0;
+            // too close to the start or the end: start the track over / move on rather than jump
+            const startAt = at > 10 && (!s.track.duration || at < s.track.duration - 10) ? at : 0;
+            q.tracks = [{ ...s.track, _resumeAt: startAt }, ...(s.next || [])];
+            await ensureConnection(q);
+            await playNext(q);
+            const lang = L(q);
+            if (text) {
+                await text.send({ ...noticeCard(ARCHON.cyan, tx('music.resumed_title', lang),
+                    tx('music.resumed_line', lang, { title: s.track.title, at: formatTime(startAt) })), flags: MessageFlags.SuppressNotifications | MessageFlags.IsComponentsV2 }).catch(() => {});
+            }
+            console.log(`[MUSIC] Resumed after restart: guild=${gid} "${s.track.title}" at ${startAt}s`);
+        } catch (e) { console.log(`[MUSIC] resume guild=${gid}: ${e.message}`); }
     }
 }
 
@@ -831,7 +903,10 @@ const FILTER_EMOJI = { bassboost: em('mc_volume_up', '🔊'), nightcore: '🐰',
 
 function createFilteredResource(input, q) {
     const filterStr = FILTER_MAP[q?.audioFilter] || '';
-    if (!filterStr) {
+    // Resuming after a restart: start this track at the saved second (only the first resource of that track)
+    const seek = Math.max(0, Math.floor(Number(q?._seek) || 0));
+    if (q) q._seek = 0;
+    if (!filterStr && !seek) {
         if (typeof input === 'string') {
             return createAudioResource(require('fs').createReadStream(input), { inputType: StreamType.OggOpus, inlineVolume: true });
         }
@@ -839,9 +914,9 @@ function createFilteredResource(input, q) {
     }
     const isFile = typeof input === 'string';
     const args = ['-hide_banner', '-loglevel', 'error'];
-    if (isFile) args.push('-i', input);
-    else args.push('-i', 'pipe:0');
-    args.push('-vn', '-af', filterStr, '-acodec', 'libopus', '-b:a', '128k', '-f', 'opus', 'pipe:1');
+    if (isFile) { if (seek) args.push('-ss', String(seek)); args.push('-i', input); }    // a file: jump straight there
+    else { args.push('-i', 'pipe:0'); if (seek) args.push('-ss', String(seek)); }           // a stream: skip that much audio
+    args.push('-vn', ...(filterStr ? ['-af', filterStr] : []), '-acodec', 'libopus', '-b:a', '128k', '-f', 'opus', 'pipe:1');
     const ffmpeg = spawn('ffmpeg', args, { stdio: ['pipe', 'pipe', 'pipe'] });
     let err = '';
     ffmpeg.stderr.on('data', d => { err += d.toString(); });
@@ -968,7 +1043,9 @@ async function playNext(q) {
         } catch(e) {}
     }
     q.currentTrack = track;
-    q.startTime = Date.now();
+    q._seek = Number(track._resumeAt) || 0;
+    delete track._resumeAt;
+    q.startTime = Date.now() - q._seek * 1000;
     q.totalPaused = 0;
     q.pausedAt = null;
 
@@ -1477,6 +1554,19 @@ module.exports = {
     description: '🎵 Full music system for ARCHON CG-223',
     category: 'MUSIC',
     cooldown: 2000,
+
+    // Resume after a restart: save every 10 s, freeze at shutdown, pick up once ready
+    init(client) {
+        clearInterval(client._musicResumeTimer);
+        client._musicResumeTimer = setInterval(() => resume.snapshot(), 10 * 1000);
+        if (!client._musicResumeHooked) {
+            client._musicResumeHooked = true;
+            const freeze = () => { resume.snapshot(); resume.stopping = true; };
+            process.on('SIGINT', freeze); process.on('SIGTERM', freeze);
+            const go = () => setTimeout(() => resumeSessions(client).catch((e) => console.log('[MUSIC] resume:', e.message)), 8000);
+            if (client.isReady()) go(); else client.once('ready', go);
+        }
+    },
 
     // Export utilities for other plugins
     getQueue, createQueue, destroyQueue, buildNowPlayingEmbed, autoCleanOldPanels,
