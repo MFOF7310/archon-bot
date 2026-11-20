@@ -38,5 +38,18 @@
   "offNone": "这个服务器没有开启语音房间。",
   "serverOnly": "只能在服务器中使用。",
   "adminOnly": "你需要「管理服务器」权限。",
-  "usage": "用法：`.tempvoice setup` 或 `.tempvoice off`"
+  "usage": "用法：`.tempvoice setup` 或 `.tempvoice off`",
+  "btnInvite": "邀请",
+  "btnKick": "移出",
+  "pickInvite": "谁可以加入？",
+  "pickKick": "谁需要离开？",
+  "inviteHow": "最多选择 10 名成员。即使房间已锁定他们也能加入，并会收到带加入按钮的私信。",
+  "kickHow": "选择需要离开的人。他们会被断开连接，且无法再进入这个房间。",
+  "invitedTitle": "你被邀请加入 {guild} 的 {room}",
+  "invitedBody": "{owner} 给你留了位置。点击按钮打开语音房间。",
+  "btnJoin": "加入房间",
+  "invitedHere": "{users}：{owner} 邀请你加入这个房间，快来吧。",
+  "invitedDone": "已邀请：{users}。",
+  "kickedDone": "已移出：{users}。",
+  "kickNone": "没有可移出的人（不能移出自己或房主）。"
 }

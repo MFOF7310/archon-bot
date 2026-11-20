@@ -38,5 +38,18 @@
   "offNone": "Les salons vocaux n'étaient pas actifs sur ce serveur.",
   "serverOnly": "Ça ne marche que dans un serveur.",
   "adminOnly": "Il te faut la permission Gérer le serveur.",
-  "usage": "Utilisation : `.tempvoice setup` ou `.tempvoice off`"
+  "usage": "Utilisation : `.tempvoice setup` ou `.tempvoice off`",
+  "btnInvite": "Inviter",
+  "btnKick": "Retirer",
+  "pickInvite": "Qui peut entrer ?",
+  "pickKick": "Qui doit sortir ?",
+  "inviteHow": "Choisis jusqu'à 10 membres. Ils pourront entrer même si le salon est verrouillé, et reçoivent un DM avec un bouton pour rejoindre.",
+  "kickHow": "Choisis qui doit sortir. Il est déconnecté et ne peut plus revenir dans ce salon.",
+  "invitedTitle": "Tu es invité dans {room} sur {guild}",
+  "invitedBody": "{owner} t'a gardé une place. Le bouton ouvre le salon vocal.",
+  "btnJoin": "Rejoindre le salon",
+  "invitedHere": "{users} : {owner} t'invite dans ce salon, viens.",
+  "invitedDone": "Invité(s) : {users}.",
+  "kickedDone": "Retiré(s) : {users}.",
+  "kickNone": "Personne à retirer (tu ne peux retirer ni toi-même ni le propriétaire)."
 }

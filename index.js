@@ -3605,7 +3605,7 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
         return require('./plugins/pin.js').handleComponent(interaction, client).catch((e) => console.error('[PIN] button:', e.message));
     }
     // /tempvoice room panel: rename (form), limit (menu), lock, claim (tv:<action>:<channelId>)
-    if ((interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) && interaction.customId?.startsWith('tv:')) {
+    if ((interaction.isButton() || interaction.isStringSelectMenu() || interaction.isUserSelectMenu?.() || interaction.isModalSubmit()) && interaction.customId?.startsWith('tv:')) {
         return require('./plugins/tempvoice.js').handleComponent(interaction, client).catch((e) => console.error('[TEMPVOICE] component:', e.message));
     }
     // /autoreply list: remove menu and clear buttons (ar:<action>:<uid>)

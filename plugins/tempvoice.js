@@ -7,7 +7,7 @@
 // Admins: Manage Server. Texts: lang/<l>/tempvoice.json. Buttons, menu and form: tv:<action>:<channelId>
 // ═══════════════════════════════════════════════════════════════════════════
 const {
-    SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, ModalBuilder,
+    SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, UserSelectMenuBuilder, ModalBuilder,
     TextInputBuilder, TextInputStyle, PermissionFlagsBits: P, MessageFlags, ChannelType,
 } = require('discord.js');
 const { t } = require('../lib/i18n');
@@ -51,12 +51,17 @@ function panel(lang, room, ch) {
     const id = ch.id;
     const limit = ch.userLimit ? T(lang, 'limitN', { n: ch.userLimit }) : T(lang, 'limitNone');
     return v2.card(CYAN, [
-        { text: `-# ARCHON · ${T(lang, 'eyebrow')}\n### ${icon('music', null) || '🎮'} ${T(lang, 'panelTitle', { owner: `<@${room.owner_id}>` })}\n${T(lang, 'panelSub')}` },
+        { text: `-# ARCHON · ${T(lang, 'eyebrow')}\n### ${icon('voice', null) || '🎙️'} ${T(lang, 'panelTitle', { owner: `<@${room.owner_id}>` })}\n${T(lang, 'panelSub')}` },
         { text: `-# ${room.locked ? `${icon('lock', null) || '🔒'} ${T(lang, 'stateLocked')}` : T(lang, 'stateOpen')} · ${limit}` },
         { row: new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId(`tv:rename:${id}`).setLabel(T(lang, 'btnRename')).setStyle(ButtonStyle.Secondary).setEmoji(icon('edit', null) || '✏️'),
             new ButtonBuilder().setCustomId(`tv:lock:${id}`).setLabel(T(lang, room.locked ? 'btnUnlock' : 'btnLock')).setStyle(room.locked ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(icon('lock', null) || '🔒'),
             new ButtonBuilder().setCustomId(`tv:claim:${id}`).setLabel(T(lang, 'btnClaim')).setStyle(ButtonStyle.Secondary).setEmoji(icon('crown', null) || '👑'),
+        ) },
+        // a locked room: the owner lets chosen members in (they get a DM with a join button) or sends someone out
+        { row: new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(`tv:invite:${id}`).setLabel(T(lang, 'btnInvite')).setStyle(ButtonStyle.Primary).setEmoji(icon('join', null) || '➕'),
+            new ButtonBuilder().setCustomId(`tv:kick:${id}`).setLabel(T(lang, 'btnKick')).setStyle(ButtonStyle.Secondary).setEmoji(icon('x', null) || '✖️'),
         ) },
         { row: new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(`tv:limit:${id}`).setPlaceholder(T(lang, 'pickLimit'))
             .addOptions(LIMITS.map((n) => ({ label: n ? T(lang, 'limitN', { n }) : T(lang, 'limitNone'), value: String(n), default: (ch.userLimit || 0) === n })))) },
@@ -81,7 +86,7 @@ async function createRoom(client, member, hub) {
 
     const hubCh = guild.channels.cache.get(hub.hub_id);
     const parent = hubCh?.parentId || hub.category_id || null;
-    const name = `🎮 ${String(member.displayName || member.user.username).replace(/[\n\r]/g, ' ').slice(0, 90)}`;
+    const name = `🎮 ${String(member.displayName || member.user.username).replace(/[\n\r]/g, ' ').slice(0, 90)}`;   // channel names can't hold custom emojis
     let ch;
     try {
         // created in the hub's category with its permissions; the owner may always connect (even once locked)
@@ -192,6 +197,42 @@ async function handleComponent(interaction, client) {
         await interaction.deferReply({ flags: EPH }).catch(() => {});
         const ok = await ch.setName(name).then(() => true).catch(() => false);
         return interaction.editReply({ content: ok ? T(lang, 'renamed', { name }) : T(lang, 'failed') }).catch(() => {});
+    }
+    if (action === 'invite' || action === 'kick') {
+        const menu = new UserSelectMenuBuilder().setCustomId(`tv:${action}sel:${channelId}`).setPlaceholder(T(lang, action === 'invite' ? 'pickInvite' : 'pickKick')).setMinValues(1).setMaxValues(10);
+        return interaction.reply({ content: T(lang, action === 'invite' ? 'inviteHow' : 'kickHow'), components: [new ActionRowBuilder().addComponents(menu)], flags: EPH }).catch(() => {});
+    }
+    if (action === 'invitesel') {
+        await interaction.deferUpdate().catch(() => {});
+        const url = `https://discord.com/channels/${ch.guild.id}/${ch.id}`;
+        const done = [], pinged = [];
+        for (const u of interaction.users?.values?.() || []) {
+            if (u.bot || u.id === room.owner_id) continue;
+            const ok = await ch.permissionOverwrites.edit(u.id, { Connect: true, ViewChannel: true }).then(() => true).catch(() => false);
+            if (!ok) continue;
+            done.push(u.id);
+            // tell them: a DM with a join button, or a mention in the room's chat when their DMs are closed
+            const ul = langOf(client, ch.guild.id, null, u.id);
+            const dm = await u.send(v2.card(CYAN, [
+                { text: `-# ARCHON · ${T(ul, 'eyebrow')}\n### ${icon('voice', null) || '🎙️'} ${T(ul, 'invitedTitle', { room: ch.name, guild: ch.guild.name })}\n${T(ul, 'invitedBody', { owner: `<@${room.owner_id}>` })}` },
+                { row: new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(url).setLabel(T(ul, 'btnJoin'))) },
+            ])).then(() => true).catch(() => false);
+            if (!dm) pinged.push(u.id);
+        }
+        if (pinged.length) await ch.send({ content: T(lang, 'invitedHere', { users: pinged.map((x) => `<@${x}>`).join(' '), owner: `<@${room.owner_id}>` }), allowedMentions: { users: pinged } }).catch(() => {});
+        return interaction.editReply({ content: done.length ? T(lang, 'invitedDone', { users: done.map((x) => `<@${x}>`).join(' ') }) : T(lang, 'failed'), components: [], allowedMentions: { parse: [] } }).catch(() => {});
+    }
+    if (action === 'kicksel') {
+        await interaction.deferUpdate().catch(() => {});
+        const done = [];
+        for (const u of interaction.users?.values?.() || []) {
+            if (u.bot || u.id === room.owner_id || u.id === interaction.user.id) continue;
+            await ch.permissionOverwrites.edit(u.id, { Connect: false }).catch(() => {});
+            const m = ch.members.get(u.id);
+            if (m) await m.voice.disconnect('Removed from the room by its owner').catch(() => {});
+            done.push(u.id);
+        }
+        return interaction.editReply({ content: done.length ? T(lang, 'kickedDone', { users: done.map((x) => `<@${x}>`).join(' ') }) : T(lang, 'kickNone'), components: [], allowedMentions: { parse: [] } }).catch(() => {});
     }
     if (action === 'limit') {
         const n = Math.max(0, Math.min(99, Number(interaction.values?.[0]) || 0));

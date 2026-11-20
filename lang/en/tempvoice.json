@@ -38,5 +38,18 @@
   "offNone": "Voice rooms weren't on in this server.",
   "serverOnly": "This only works in a server.",
   "adminOnly": "You need the Manage Server permission.",
-  "usage": "Usage: `.tempvoice setup` or `.tempvoice off`"
+  "usage": "Usage: `.tempvoice setup` or `.tempvoice off`",
+  "btnInvite": "Invite",
+  "btnKick": "Remove",
+  "pickInvite": "Who can join?",
+  "pickKick": "Who should leave?",
+  "inviteHow": "Pick up to 10 members. They can join even when the room is locked, and get a DM with a join button.",
+  "kickHow": "Pick who should leave. They're disconnected and can't come back into this room.",
+  "invitedTitle": "You're invited to {room} on {guild}",
+  "invitedBody": "{owner} saved you a place. The button opens the voice room.",
+  "btnJoin": "Join the room",
+  "invitedHere": "{users}: {owner} invited you to this room, come in.",
+  "invitedDone": "Invited: {users}.",
+  "kickedDone": "Removed: {users}.",
+  "kickNone": "Nobody to remove (you can't remove yourself or the owner)."
 }
