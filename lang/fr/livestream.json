@@ -69,7 +69,7 @@
   "btn_channels": "Salons",
   "pick_live_channel": "Salon des alertes de live",
   "pick_upload_channel": "Salon des nouvelles vidéos",
-  "channels_how": "Où envoyer les alertes de **{name}** ?\n🔴 **Menu du haut :** alertes de live\n🎬 **Menu du bas :** nouvelles vidéos\n-# Ça peut être le même salon.",
+  "channels_how": "Où envoyer les alertes de **{name}** ?\n{iconLive} **Menu du haut :** alertes de live\n{iconVideo} **Menu du bas :** nouvelles vidéos\n-# Ça peut être le même salon.",
   "live_channel_set": "Les alertes de live de {name} arrivent maintenant dans {channel}.",
   "upload_channel_set": "Les nouvelles vidéos de {name} arrivent maintenant dans {channel}.",
   "channel_no_perms": "Je ne peux pas publier dans {channel} : donne à ARCHON le droit de le voir, d'y écrire et d'y intégrer des liens, puis choisis-le à nouveau.",

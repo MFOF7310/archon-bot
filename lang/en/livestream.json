@@ -69,7 +69,7 @@
   "btn_channels": "Channels",
   "pick_live_channel": "Channel for live alerts",
   "pick_upload_channel": "Channel for new videos",
-  "channels_how": "Where should the alerts for **{name}** go?\n🔴 **Top menu:** live alerts\n🎬 **Bottom menu:** new videos\n-# They can be the same channel.",
+  "channels_how": "Where should the alerts for **{name}** go?\n{iconLive} **Top menu:** live alerts\n{iconVideo} **Bottom menu:** new videos\n-# They can be the same channel.",
   "live_channel_set": "Live alerts for {name} now go to {channel}.",
   "upload_channel_set": "New videos from {name} now go to {channel}.",
   "channel_no_perms": "I can't post in {channel}: give ARCHON permission to see it, send messages and embed links there, then pick it again.",

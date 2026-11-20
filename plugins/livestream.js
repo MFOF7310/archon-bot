@@ -621,7 +621,7 @@ async function handleChannels(interaction, client) {
         const upMenu = new ChannelSelectMenuBuilder().setCustomId(`ls_chsel:up:${ytId}`).setChannelTypes(...types)
             .setPlaceholder(t('livestream.pick_upload_channel', lang)).setDefaultChannels(row.upload_channel_id || row.target_channel_id);
         return interaction.reply({
-            content: t('livestream.channels_how', lang, { name }),
+            content: t('livestream.channels_how', lang, { name, iconLive: em('ic_live', '🔴'), iconVideo: em('ic_video', '🎬') }),
             components: [new ActionRowBuilder().addComponents(liveMenu), new ActionRowBuilder().addComponents(upMenu)],
             flags: 64, allowedMentions: { parse: [] },
         });

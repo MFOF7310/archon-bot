@@ -722,7 +722,7 @@ async function handleChannels(interaction, client) {
         if (!row) return interaction.reply({ content: t('tiktok.notTracked', lang, { user: '@' + user }), flags: 64 });
         const live = new ChannelSelectMenuBuilder().setCustomId(`tt_chsel:live:${user}`.slice(0, 100)).setChannelTypes(...types).setPlaceholder(t('tiktok.pickLiveChannel', lang)).setDefaultChannels(row.target_channel_id);
         const vids = new ChannelSelectMenuBuilder().setCustomId(`tt_chsel:up:${user}`.slice(0, 100)).setChannelTypes(...types).setPlaceholder(t('tiktok.pickVideoChannel', lang)).setDefaultChannels(row.upload_channel_id || row.target_channel_id);
-        return interaction.reply({ content: t('tiktok.channelsHow', lang, { user: '@' + user }), components: [new ActionRowBuilder().addComponents(live), new ActionRowBuilder().addComponents(vids)], flags: 64, allowedMentions: { parse: [] } });
+        return interaction.reply({ content: t('tiktok.channelsHow', lang, { user: '@' + user, iconLive: em('ic_live', '🔴', client), iconVideo: em('ic_video', '🎬', client) }), components: [new ActionRowBuilder().addComponents(live), new ActionRowBuilder().addComponents(vids)], flags: 64, allowedMentions: { parse: [] } });
     }
     const which = parts[1], user = parts[2], picked = interaction.channels?.first?.();
     if (!picked) return interaction.deferUpdate().catch(() => {});

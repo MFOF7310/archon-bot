@@ -69,7 +69,7 @@
   "btn_channels": "频道",
   "pick_live_channel": "直播提醒发到哪个频道",
   "pick_upload_channel": "新视频发到哪个频道",
-  "channels_how": "**{name}** 的提醒发到哪里？\n🔴 **上面的菜单：** 直播提醒\n🎬 **下面的菜单：** 新视频\n-# 可以是同一个频道。",
+  "channels_how": "**{name}** 的提醒发到哪里？\n{iconLive} **上面的菜单：** 直播提醒\n{iconVideo} **下面的菜单：** 新视频\n-# 可以是同一个频道。",
   "live_channel_set": "{name} 的直播提醒现在会发到 {channel}。",
   "upload_channel_set": "{name} 的新视频现在会发到 {channel}。",
   "channel_no_perms": "我没法在 {channel} 发消息：请给 ARCHON 查看频道、发送消息和嵌入链接的权限，然后再选一次。",
