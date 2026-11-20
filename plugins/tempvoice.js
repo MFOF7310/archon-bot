@@ -82,6 +82,7 @@ async function refreshPanel(client, ch, room) {
 
 // ── create, move, clean ──
 const lastCreate = new Map();
+const warned = new Map();   // guild → when the "missing Move Members" note was last posted
 async function createRoom(client, member, hub) {
     const guild = member.guild, db = client.db;
     // already has a room here: back to it
@@ -107,7 +108,16 @@ async function createRoom(client, member, hub) {
     rooms.set(ch.id, room);
     db.prepare('INSERT OR REPLACE INTO tempvoice_rooms (channel_id, guild_id, owner_id, hub_id, created_at, locked) VALUES (?, ?, ?, ?, ?, 0)').run(ch.id, guild.id, member.id, hub.hub_id, room.created_at);
     const moved = await member.voice.setChannel(ch).then(() => true).catch((e) => { console.warn(`[TEMPVOICE] guild=${guild.id} move failed: ${e.message}`); return false; });
-    if (!moved) return removeRoom(client, ch.id, true);   // no Move Members (or they left already): no empty room left behind
+    if (!moved) {
+        await removeRoom(client, ch.id, true);   // no Move Members (or they left already): no empty room left behind
+        // say it in the hub's chat, once per 10 minutes per server, so the admin knows what to fix
+        if (!member.guild.members.me?.permissionsIn(hubCh || ch.parent)?.has(P.MoveMembers) && Date.now() - (warned.get(guild.id) || 0) > 600000) {
+            warned.set(guild.id, Date.now());
+            const lang = langOf(client, guild.id, null, member.id);
+            await hubCh?.send({ content: `${icon('warn', null) || '⚠️'} ${T(lang, 'noMove')}`, allowedMentions: { parse: [] } }).catch(() => {});
+        }
+        return;
+    }
     const msg = await ch.send(panel(langOf(client, guild.id, null, member.id), room, ch)).catch(() => null);
     if (msg) {
         room.panel_id = msg.id;

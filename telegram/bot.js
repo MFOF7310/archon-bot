@@ -861,10 +861,14 @@ async function sendBoot(bridge, client) {
     // a clean stop (pm2 restart, deploy, shutdown) is written here; a crash leaves cleanExit false
     if (!bridge._exitHooked) {
         bridge._exitHooked = true;
-        const clean = () => { const st = readJson(BOOT_STATE) || {}; writeJson(BOOT_STATE, { ...st, cleanExit: true }); };
-        process.on('SIGINT', clean); process.on('SIGTERM', clean);
+        // index.js's shutdown ends with process.exit(0) inside the first SIGINT listener, so a SIGINT listener here
+        // never ran (every restart looked like a crash). 'exit' runs on any exit: code 0 is a clean stop.
+        process.on('exit', (code) => { if (code === 0) { const st = readJson(BOOT_STATE) || {}; writeJson(BOOT_STATE, { ...st, cleanExit: true }); } });
     }
 
+    // the servers arrive over the first seconds after Discord is ready: counting at once said 18 instead of 23
+    if (client && !client.isReady?.()) await new Promise((r) => client.once('ready', r));
+    await new Promise((r) => setTimeout(r, 15000));
     const g = client?.guilds?.cache?.size || 0;
     const u = client?.guilds?.cache?.reduce((a, x) => a + (x.memberCount || 0), 0) || 0;
     const ping = Math.round(client?.ws?.ping || 0);

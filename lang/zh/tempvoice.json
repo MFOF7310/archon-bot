@@ -53,5 +53,6 @@
   "kickedDone": "已移出：{users}。",
   "kickNone": "没有可移出的人：房间里没有其他人，也没有被邀请的人。",
   "inRoom": "在房间内",
-  "invitedOnly": "已邀请"
+  "invitedOnly": "已邀请",
+  "noMove": "无法把你移到你的房间：ARCHON 在这里缺少「移动成员」权限。管理员可以在这个分类上给 ARCHON 角色授予该权限。"
 }

@@ -1606,7 +1606,7 @@ module.exports = {
         if (!client._musicResumeHooked) {
             client._musicResumeHooked = true;
             const freeze = () => { resume.snapshot(); resume.stopping = true; };
-            process.on('SIGINT', freeze); process.on('SIGTERM', freeze);
+            process.on('exit', freeze);   // index.js exits inside its own SIGINT listener: a SIGINT listener here never ran
             const go = () => setTimeout(() => resumeSessions(client).catch((e) => console.log('[MUSIC] resume:', e.message)), 8000);
             if (client.isReady()) go(); else client.once('ready', go);
         }

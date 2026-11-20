@@ -53,5 +53,6 @@
   "kickedDone": "Removed: {users}.",
   "kickNone": "Nobody to remove: no one else is in the room or invited.",
   "inRoom": "In the room",
-  "invitedOnly": "Invited"
+  "invitedOnly": "Invited",
+  "noMove": "I can't move you into your room: ARCHON is missing the **Move Members** permission here. An admin can give it to the ARCHON role on this category."
 }

@@ -53,5 +53,6 @@
   "kickedDone": "Retiré(s) : {users}.",
   "kickNone": "Personne à retirer : il n'y a personne d'autre dans le salon ni d'invité.",
   "inRoom": "Dans le salon",
-  "invitedOnly": "Invité"
+  "invitedOnly": "Invité",
+  "noMove": "Je ne peux pas te déplacer dans ton salon : il manque à ARCHON la permission **Déplacer des membres** ici. Un admin peut l'accorder au rôle ARCHON sur cette catégorie."
 }
