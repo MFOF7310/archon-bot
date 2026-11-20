@@ -65,5 +65,13 @@
   "detail_published": "Posted {when}",
   "detail_views": "{n} views",
   "card_short_title": "{icon} New Short from {name}",
-  "btn_watch_short": "Watch the Short"
+  "btn_watch_short": "Watch the Short",
+  "btn_channels": "Channels",
+  "pick_live_channel": "Channel for live alerts",
+  "pick_upload_channel": "Channel for new videos",
+  "channels_how": "Where should the alerts for **{name}** go? Pick a channel for live alerts and one for new videos (they can be the same).",
+  "live_channel_set": "Live alerts for {name} now go to {channel}.",
+  "upload_channel_set": "New videos from {name} now go to {channel}.",
+  "channel_no_perms": "I can't post in {channel}: give ARCHON permission to see it, send messages and embed links there, then pick it again.",
+  "set_where_split": "Live alerts go to {live}, new videos to {uploads}."
 }

@@ -65,5 +65,13 @@
   "detail_published": "Publiée {when}",
   "detail_views": "{n} vues",
   "card_short_title": "{icon} Nouveau Short de {name}",
-  "btn_watch_short": "Voir le Short"
+  "btn_watch_short": "Voir le Short",
+  "btn_channels": "Salons",
+  "pick_live_channel": "Salon des alertes de live",
+  "pick_upload_channel": "Salon des nouvelles vidéos",
+  "channels_how": "Où envoyer les alertes de **{name}** ? Choisis un salon pour les lives et un pour les nouvelles vidéos (ça peut être le même).",
+  "live_channel_set": "Les alertes de live de {name} arrivent maintenant dans {channel}.",
+  "upload_channel_set": "Les nouvelles vidéos de {name} arrivent maintenant dans {channel}.",
+  "channel_no_perms": "Je ne peux pas publier dans {channel} : donne à ARCHON le droit de le voir, d'y écrire et d'y intégrer des liens, puis choisis-le à nouveau.",
+  "set_where_split": "Les lives arrivent dans {live}, les nouvelles vidéos dans {uploads}."
 }

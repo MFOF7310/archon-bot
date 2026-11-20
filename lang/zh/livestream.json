@@ -65,5 +65,13 @@
   "detail_published": "发布于 {when}",
   "detail_views": "{n} 次观看",
   "card_short_title": "{icon} {name} 发布了新 Short",
-  "btn_watch_short": "观看 Short"
+  "btn_watch_short": "观看 Short",
+  "btn_channels": "频道",
+  "pick_live_channel": "直播提醒发到哪个频道",
+  "pick_upload_channel": "新视频发到哪个频道",
+  "channels_how": "**{name}** 的提醒发到哪里？分别为直播和新视频选一个频道（可以是同一个）。",
+  "live_channel_set": "{name} 的直播提醒现在会发到 {channel}。",
+  "upload_channel_set": "{name} 的新视频现在会发到 {channel}。",
+  "channel_no_perms": "我没法在 {channel} 发消息：请给 ARCHON 查看频道、发送消息和嵌入链接的权限，然后再选一次。",
+  "set_where_split": "直播提醒发到 {live}，新视频发到 {uploads}。"
 }

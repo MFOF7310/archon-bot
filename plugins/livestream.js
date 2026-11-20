@@ -4,7 +4,7 @@
 //  Upload check: YouTube RSS feed (free, unlimited, near-instant)
 //  Priority channels polled every 2 min · Normal every 5 min
 // ═══════════════════════════════════════════════════════════════════
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType, MessageFlags, ChannelSelectMenuBuilder } = require('discord.js');
 const { iconObj } = require('../lib/ui/icons');
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MediaGalleryBuilder, MediaGalleryItemBuilder } = require('discord.js');
 const { t } = require('../lib/i18n');
@@ -80,6 +80,8 @@ function initDatabase(db) {
     try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN seen_videos TEXT DEFAULT '[]'`); } catch {}
     // the stream already announced: a stream that drops for a few minutes and comes back is not announced twice
     try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN live_video_id TEXT DEFAULT NULL`); } catch {}
+    // where uploads go when it's not the live channel (NULL: same channel as the live alerts)
+    try { db.exec(`ALTER TABLE youtube_notifications ADD COLUMN upload_channel_id TEXT DEFAULT NULL`); } catch {}
     try { db.exec(`CREATE INDEX IF NOT EXISTS idx_youtube_guild ON youtube_notifications(guild_id)`); } catch {}
     try { db.exec(`ALTER TABLE tiktok_notifications ADD COLUMN priority INTEGER DEFAULT 0`); } catch {}
 }
@@ -357,8 +359,10 @@ function canNotifyLive(guildId, channelId) {
 async function sendNotification(client, db, guildId, channelId, handle, payload, type) {
     try {
         if (type === 'live' && !canNotifyLive(guildId, channelId)) return { ok: false, reason: 'cooldown' };
-        const track = db.prepare('SELECT target_channel_id FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').get(guildId, channelId);
+        const track = db.prepare('SELECT target_channel_id, upload_channel_id FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ? COLLATE NOCASE').get(guildId, channelId);
         if (!track) return { ok: false, reason: 'not_tracked' };
+        // uploads go to their own channel when one is set; lives (and tests) to the main one
+        if (type === 'video' && track.upload_channel_id) track.target_channel_id = track.upload_channel_id;
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return { ok: false, reason: 'guild_missing' };
         const channel = guild.channels.cache.get(track.target_channel_id);
@@ -516,7 +520,7 @@ async function trackedOrResolve(db, guildId, input) {
 }
 
 // ─── List ───
-const MAX_TOGGLE_ROWS = 8; // a V2 card holds 40 components; 8 channels with two buttons each fit
+const MAX_TOGGLE_ROWS = 6; // a V2 card holds 40 components; 6 channels with three buttons each fit
 
 function toggleButton(kind, row, lang, view = '') {
     const on = (kind === 'live' ? row.notify_live : row.notify_uploads) !== 0;
@@ -524,6 +528,15 @@ function toggleButton(kind, row, lang, view = '') {
         .setCustomId(`ls_toggle:${kind}:${row.youtube_channel_id}${view ? ':' + view : ''}`)
         .setLabel(t(`livestream.btn_${kind}_${on ? 'on' : 'off'}`, lang))
         .setStyle(on ? ButtonStyle.Success : ButtonStyle.Secondary);
+}
+
+// Where this channel's alerts go: one line, or live and uploads apart when they differ
+function whereLine(row, lang) {
+    const up = row.upload_channel_id && row.upload_channel_id !== row.target_channel_id ? row.upload_channel_id : null;
+    return up ? `↳ ${em('ic_live', '🔴')} <#${row.target_channel_id}> · ${em('ic_video', '🎬')} <#${up}>` : `↳ <#${row.target_channel_id}>`;
+}
+function channelsButton(row, lang, view = '') {
+    return new ButtonBuilder().setCustomId(`ls_chan:${row.youtube_channel_id}${view ? ':' + view : ''}`).setLabel(t('livestream.btn_channels', lang)).setStyle(ButtonStyle.Secondary);
 }
 
 function statusText(row, client, lang) {
@@ -543,8 +556,8 @@ function buildListEmbed(tracks, guild, client, lang = 'en') {
     tracks.slice(0, MAX_TOGGLE_ROWS).forEach((row, i) => {
         const prio = row.priority === 1 ? ' ⚡' : '';
         const tag = handleOf(row.youtube_handle) ? '@' + handleOf(row.youtube_handle) : row.youtube_channel_id;
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${i + 1}. ${tag}**${prio}  ·  ${statusText(row, client, lang)}\n↳ <#${row.target_channel_id}>`));
-        c.addActionRowComponents(new ActionRowBuilder().addComponents(toggleButton('live', row, lang), toggleButton('up', row, lang)));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${i + 1}. ${tag}**${prio}  ·  ${statusText(row, client, lang)}\n${whereLine(row, lang)}`));
+        c.addActionRowComponents(new ActionRowBuilder().addComponents(toggleButton('live', row, lang), toggleButton('up', row, lang), channelsButton(row, lang)));
     });
     const more = tracks.length - MAX_TOGGLE_ROWS;
     if (more > 0) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(t('livestream.list_more', lang, { count: more, mention: mentions(client, 'livestream', 'set') })));
@@ -556,14 +569,16 @@ function buildListEmbed(tracks, guild, client, lang = 'en') {
 // Confirmation card after /livestream set, with the same two switches
 function buildSetCard(row, client, lang = 'en') {
     const name = handleOf(row.youtube_handle) ? '@' + handleOf(row.youtube_handle) : row.youtube_channel_id;
-    const lines = [t('livestream.set_where', lang, { channel: `<#${row.target_channel_id}>` })];
+    const lines = [row.upload_channel_id && row.upload_channel_id !== row.target_channel_id
+        ? t('livestream.set_where_split', lang, { live: `<#${row.target_channel_id}>`, uploads: `<#${row.upload_channel_id}>` })
+        : t('livestream.set_where', lang, { channel: `<#${row.target_channel_id}>` })];
     if (row.priority === 1) lines.push(`-# ${t('livestream.set_priority', lang)}`);
     if (row.is_live === 1) lines.push(`${em('ic_live', '🔴')} ${t('livestream.set_live_now', lang, { name })}`);
     if (row.last_video_id) lines.push(`${em('ic_video', '🎬')} ${t('livestream.set_latest', lang, { url: `https://youtube.com/watch?v=${row.last_video_id}` })}`);
     const c = new ContainerBuilder().setAccentColor(0x2ecc71);
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('ic_youtube', '📺')} ${t('livestream.set_title', lang, { name })}\n${lines.join('\n')}`));
     c.addSeparatorComponents(rule());
-    c.addActionRowComponents(new ActionRowBuilder().addComponents(toggleButton('live', row, lang, 'set'), toggleButton('up', row, lang, 'set')));
+    c.addActionRowComponents(new ActionRowBuilder().addComponents(toggleButton('live', row, lang, 'set'), toggleButton('up', row, lang, 'set'), channelsButton(row, lang, 'set')));
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('livestream.set_hint', lang, { mention: mentions(client, 'livestream', 'list') })}`));
     return c;
 }
@@ -586,6 +601,42 @@ async function handleToggle(interaction, client) {
     }
     const rows = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ?').all(interaction.guildId);
     return interaction.update({ components: [buildListEmbed(rows, interaction.guild, client, lang)], flags: MessageFlags.IsComponentsV2 });
+}
+
+// "Channels" button: two channel menus (live alerts, uploads), shown to the admin only
+async function handleChannels(interaction, client) {
+    const db = client.db;
+    const lang = livLang(client, interaction.guildId, interaction);
+    { const _no = require('../lib/access').deny(interaction.member, 'alerts', lang); if (_no) return interaction.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
+    const [kind, a, b] = interaction.customId.split(':');
+    const types = [ChannelType.GuildText, ChannelType.GuildAnnouncement];
+
+    if (kind === 'ls_chan') {
+        const ytId = a;
+        const row = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(interaction.guildId, ytId);
+        if (!row) return interaction.reply({ content: t('livestream.toggle_gone', lang), flags: 64 });
+        const name = handleOf(row.youtube_handle) ? '@' + handleOf(row.youtube_handle) : ytId;
+        const liveMenu = new ChannelSelectMenuBuilder().setCustomId(`ls_chsel:live:${ytId}`).setChannelTypes(...types)
+            .setPlaceholder(t('livestream.pick_live_channel', lang)).setDefaultChannels(row.target_channel_id);
+        const upMenu = new ChannelSelectMenuBuilder().setCustomId(`ls_chsel:up:${ytId}`).setChannelTypes(...types)
+            .setPlaceholder(t('livestream.pick_upload_channel', lang)).setDefaultChannels(row.upload_channel_id || row.target_channel_id);
+        return interaction.reply({
+            content: t('livestream.channels_how', lang, { name }),
+            components: [new ActionRowBuilder().addComponents(liveMenu), new ActionRowBuilder().addComponents(upMenu)],
+            flags: 64, allowedMentions: { parse: [] },
+        });
+    }
+    // ls_chsel:<live|up>:<ytId>
+    const which = a, ytId = b, picked = interaction.channels?.first?.();
+    if (!picked) return interaction.deferUpdate().catch(() => {});
+    const row = db.prepare('SELECT * FROM youtube_notifications WHERE guild_id = ? AND youtube_channel_id = ?').get(interaction.guildId, ytId);
+    if (!row) return interaction.reply({ content: t('livestream.toggle_gone', lang), flags: 64 });
+    const check = require('../lib/canPost').diagnose(interaction.guild, picked, interaction.guild.members.me, require('../lib/canPost').neededFor('youtube'));
+    if (!check.ok) return interaction.reply({ content: t('livestream.channel_no_perms', lang, { channel: `<#${picked.id}>` }), flags: 64, allowedMentions: { parse: [] } });
+    if (which === 'live') db.prepare('UPDATE youtube_notifications SET target_channel_id = ? WHERE guild_id = ? AND youtube_channel_id = ?').run(picked.id, interaction.guildId, ytId);
+    else db.prepare('UPDATE youtube_notifications SET upload_channel_id = ? WHERE guild_id = ? AND youtube_channel_id = ?').run(picked.id === row.target_channel_id ? null : picked.id, interaction.guildId, ytId);
+    const name = handleOf(row.youtube_handle) ? '@' + handleOf(row.youtube_handle) : ytId;
+    return interaction.reply({ content: `${em('ic_ok', '✅')} ${t(which === 'live' ? 'livestream.live_channel_set' : 'livestream.upload_channel_set', lang, { name, channel: `<#${picked.id}>` })}`, flags: 64, allowedMentions: { parse: [] } });
 }
 
 module.exports = {
@@ -807,5 +858,5 @@ module.exports = {
         }
     },
 
-    handleToggle, startPolling, stopPolling, fetchLiveStatus, fetchLiveFallback, fetchLatestUpload, resolveHandle,
+    handleToggle, handleChannels, startPolling, stopPolling, fetchLiveStatus, fetchLiveFallback, fetchLatestUpload, resolveHandle,
 };

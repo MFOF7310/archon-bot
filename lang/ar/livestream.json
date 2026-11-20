@@ -65,5 +65,13 @@
   "detail_published": "نُشر {when}",
   "detail_views": "{n} مشاهدة",
   "card_short_title": "{icon} مقطع Short جديد من {name}",
-  "btn_watch_short": "شاهد الـShort"
+  "btn_watch_short": "شاهد الـShort",
+  "btn_channels": "القنوات",
+  "pick_live_channel": "قناة تنبيهات البث",
+  "pick_upload_channel": "قناة الفيديوهات الجديدة",
+  "channels_how": "أين تُرسل تنبيهات **{name}**؟ اختر قناة للبث المباشر وأخرى للفيديوهات الجديدة (يمكن أن تكون نفسها).",
+  "live_channel_set": "تنبيهات بث {name} تُرسل الآن إلى {channel}.",
+  "upload_channel_set": "فيديوهات {name} الجديدة تُرسل الآن إلى {channel}.",
+  "channel_no_perms": "لا أستطيع النشر في {channel}: امنح ARCHON صلاحية رؤيتها والكتابة فيها وتضمين الروابط، ثم اخترها مجددًا.",
+  "set_where_split": "تنبيهات البث تذهب إلى {live}، والفيديوهات الجديدة إلى {uploads}."
 }
