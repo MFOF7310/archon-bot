@@ -151,7 +151,7 @@ async function onVoice(client, oldS, newS) {
 }
 
 // rooms that emptied or vanished while ARCHON was offline; hubs that were deleted
-async function sweep(client) {
+async function sweep(client, startup = false) {
     for (const [id, room] of [...rooms]) {
         const ch = client.channels.cache.get(id);
         if (!client.guilds.cache.has(room.guild_id)) continue;           // server unavailable or left: its rows go with the 7-day purge
@@ -167,7 +167,7 @@ async function sweep(client) {
             continue;
         }
         // someone waiting in the hub (they joined while ARCHON was restarting): their room now
-        for (const m of humans(hubCh).values()) await createRoom(client, m, hub).catch(() => {});
+        if (startup) for (const m of humans(hubCh).values()) await createRoom(client, m, hub).catch(() => {});
     }
 }
 
@@ -354,8 +354,8 @@ module.exports = {
         client.on('voiceStateUpdate', client._tempvoiceListener);
         clearInterval(client._tempvoiceSweep);
         client._tempvoiceSweep = setInterval(() => sweep(client).catch(() => {}), 10 * 60 * 1000);
-        if (client.isReady()) sweep(client).catch(() => {});
-        else client.once('ready', () => setTimeout(() => sweep(client).catch(() => {}), 15000));
+        if (client.isReady()) sweep(client, true).catch(() => {});
+        else client.once('ready', () => setTimeout(() => sweep(client, true).catch(() => {}), 15000));
     },
 
     execute: async (interaction, client) => {
