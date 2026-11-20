@@ -276,7 +276,7 @@ async function setup(client, guild, user, lang, { category = null, limit = 0 } =
 function doneCard(lang, guild, hub, already) {
     const missing = missingIn(guild, guild.channels.cache.get(hub.category_id) || null);
     const items = [
-        { text: `-# ARCHON · ${T(lang, 'eyebrow')}\n### ${icon('ok', null) || '✅'} ${T(lang, already ? 'alreadyTitle' : 'readyTitle')}\n${T(lang, 'readyBody', { hub: `<#${hub.hub_id}>` })}` },
+        { text: `-# ARCHON · ${T(lang, 'eyebrow')}\n### ${icon('gamepad', null) || '🎮'} ${T(lang, already ? 'alreadyTitle' : 'readyTitle')}\n${T(lang, 'readyBody', { hub: `<#${hub.hub_id}>` })}` },
         { text: `-# ${hub.user_limit ? T(lang, 'defaultLimit', { n: hub.user_limit }) : T(lang, 'defaultNoLimit')} · ${T(lang, 'offHint')}` },
     ];
     if (missing.length) items.push({ text: `${icon('warn', null) || '⚠️'} ${T(lang, 'missing', { perms: missing.join(', ') })}` });
