@@ -5411,9 +5411,10 @@ apiApp.get('/api/general/:guildId', requireAdmin, async (req, res) => {
         for (const [k, col] of Object.entries(GENERAL_FIELDS)) settings[k] = row[col] ? String(row[col]) : null;
         // An auto-role saved by the old .settings command lives in auto_role_id: show it, the bot applies it
         if (!settings.joinRoleId && row.auto_role_id) settings.joinRoleId = String(row.auto_role_id);
+        // canSend: ARCHON can post there. staffOnly: @everyone can't see it (logs belong there)
         const channels = [...g.channels.cache.values()].filter(isTextChan)
             .sort((x, y) => x.rawPosition - y.rawPosition)
-            .map(c => ({ id: c.id, name: c.name, category: c.parent?.name || null }));
+            .map(c => ({ id: c.id, name: c.name, category: c.parent?.name || null, canSend: canBotSend(g, c), staffOnly: !isMemberVisible(g, c) }));
         const roles = [...g.roles.cache.values()]
             .filter(r => r.id !== g.id && !r.managed)
             .sort((x, y) => y.position - x.position)
