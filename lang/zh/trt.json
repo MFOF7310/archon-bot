@@ -4,5 +4,7 @@
   "translated": "翻译后",
   "original": "原文",
   "usage": "❌ 用法：`.translate hello fr` 或 `.translate bonjour en fr`",
-  "provideText": "❌ 请提供要翻译的文本。"
+  "provideText": "❌ 请提供要翻译的文本。",
+  "nothing": "There's no text in this message to translate.",
+  "cut": "only the first {n} characters"
 }

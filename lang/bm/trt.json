@@ -4,5 +4,7 @@
   "translated": "Traduit",
   "original": "Original",
   "usage": "❌ Baara: `.translate hello fr` walima `.translate bonjour en fr`",
-  "provideText": "❌ Aw ye texte di min bɛ traduit."
+  "provideText": "❌ Aw ye texte di min bɛ traduit.",
+  "nothing": "There's no text in this message to translate.",
+  "cut": "only the first {n} characters"
 }

@@ -3,6 +3,8 @@
   "error": "Translation failed. Try again!",
   "translated": "Translated",
   "original": "Original",
-  "usage": "❌ Usage: `.translate hello fr` or `.translate bonjour en fr`",
-  "provideText": "❌ Provide text to translate."
+  "usage": "❌ Usage: `.translate hello fr`, `.translate bonjour en fr`, or reply to a message with `.tr` (or `.tr fr`).",
+  "provideText": "❌ Provide text to translate.",
+  "nothing": "There's no text in this message to translate.",
+  "cut": "only the first {n} characters"
 }

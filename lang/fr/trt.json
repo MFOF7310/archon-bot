@@ -3,6 +3,8 @@
   "error": "Échec de la traduction. Réessayez !",
   "translated": "Traduit",
   "original": "Original",
-  "usage": "❌ Utilisation : `.translate hello fr` ou `.translate bonjour en fr`",
-  "provideText": "❌ Fournissez un texte à traduire."
+  "usage": "❌ Utilisation : `.translate hello fr`, `.translate bonjour en fr`, ou réponds à un message avec `.tr` (ou `.tr fr`).",
+  "provideText": "❌ Fournissez un texte à traduire.",
+  "nothing": "Ce message n'a pas de texte à traduire.",
+  "cut": "seulement les {n} premiers caractères"
 }
