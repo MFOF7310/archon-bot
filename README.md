@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://discord.com/oauth2/authorize?client_id=1472707869257367676&permissions=2253174475189494&scope=bot%20applications.commands"><img src=".github/readme/btn-add.png" alt="Add ARCHON to Discord" width="32%"></a>
+  <a href="https://discord.com/oauth2/authorize?client_id=1472707869257367676&permissions=2253174491966710&scope=bot%20applications.commands"><img src=".github/readme/btn-add.png" alt="Add ARCHON to Discord" width="32%"></a>
   <a href="https://top.gg/bot/1472707869257367676/vote"><img src=".github/readme/btn-vote.png" alt="Vote on Top.gg" width="32%"></a>
   <a href="https://archon223.com"><img src=".github/readme/btn-dashboard.png" alt="Open the dashboard" width="32%"></a>
 </p>

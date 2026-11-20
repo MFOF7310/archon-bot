@@ -3604,6 +3604,10 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
     if (interaction.isButton() && (interaction.customId?.startsWith('pin:unpin:') || interaction.customId?.startsWith('unpin_'))) {
         return require('./plugins/pin.js').handleComponent(interaction, client).catch((e) => console.error('[PIN] button:', e.message));
     }
+    // /tempvoice room panel: rename (form), limit (menu), lock, claim (tv:<action>:<channelId>)
+    if ((interaction.isButton() || interaction.isStringSelectMenu() || interaction.isModalSubmit()) && interaction.customId?.startsWith('tv:')) {
+        return require('./plugins/tempvoice.js').handleComponent(interaction, client).catch((e) => console.error('[TEMPVOICE] component:', e.message));
+    }
     // /autoreply list: remove menu and clear buttons (ar:<action>:<uid>)
     if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId?.startsWith('ar:')) {
         return require('./plugins/autoreply.js').handleComponent(interaction, client).catch((e) => console.error('[AUTOREPLY] component:', e.message));
@@ -3670,7 +3674,7 @@ const ensureDepartures = () => db.prepare('CREATE TABLE IF NOT EXISTS guild_depa
 const PURGE_SQL = [
     'DELETE FROM scrim_signups WHERE scrim_id IN (SELECT id FROM scrims WHERE guild_id = ?)',
     ...['scrims', 'member_builds', 'clan_wars', 'server_settings', 'users', 'warnings', 'moderation_logs',
-        'server_command_settings', 'global_server_stats', 'server_economy_settings']
+        'server_command_settings', 'global_server_stats', 'server_economy_settings', 'tempvoice_hubs', 'tempvoice_rooms']
         .map(t => `DELETE FROM ${t} WHERE guild_id = ?`)
 ];
 function purgeGuildData(gid) {
@@ -5279,6 +5283,17 @@ apiApp.get('/api/overview-health/:guildId', requireAdmin, (req, res) => {
 
         add(require('./lib/modlog.js').resolveModLog(guild, db), 'Mod-log channel set', 'Pick a mod-log channel in General settings.', 'general');
         add(me?.permissions.has(P.Flags.ManageRoles), 'Bot can manage roles', 'Give the bot the Manage Roles permission.');
+
+        // Temporary voice rooms: the member is moved into their new room, which needs Move Members
+        try {
+            const hub = db.prepare('SELECT hub_id, category_id FROM tempvoice_hubs WHERE guild_id = ?').get(gid);
+            if (hub && guild.channels.cache.has(hub.hub_id)) {
+                const where = guild.channels.cache.get(hub.category_id) || guild.channels.cache.get(hub.hub_id);
+                const p = me?.permissionsIn(where);
+                add(p?.has(P.Flags.MoveMembers) && p?.has(P.Flags.ManageChannels), 'Voice rooms can be created',
+                    'Voice rooms are on: give the bot Manage Channels and Move Members on their category.');
+            }
+        } catch {} // table is created with the first /tempvoice setup
 
         const premium = !!isPremium(db, gid);
         const verifyOn = !!s.verify_enabled;
