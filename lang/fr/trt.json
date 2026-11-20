@@ -6,5 +6,6 @@
   "usage": "❌ Utilisation : `.translate hello fr`, `.translate bonjour en fr`, ou réponds à un message avec `.tr` (ou `.tr fr`).",
   "provideText": "❌ Fournissez un texte à traduire.",
   "nothing": "Ce message n'a pas de texte à traduire.",
-  "cut": "seulement les {n} premiers caractères"
+  "cut": "seulement les {n} premiers caractères",
+  "source": "message d’origine"
 }

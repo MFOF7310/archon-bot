@@ -15,12 +15,19 @@ async function translate(text, from, to) {
     return res.data?.responseData?.translatedText || null;
 }
 const quote = (x) => (x.length > 900 ? x.slice(0, 900) + '…' : x).replace(/\n/g, '\n> ');
-function resultCard(text, translated, from, to, lang) {
+// source: the message that was translated (reply or Apps menu). Then only the translation is shown, with a link
+// back to that message: its text is already on screen and quoting it took most of the card.
+function resultCard(text, translated, from, to, lang, source = null) {
     const c = new ContainerBuilder().setAccentColor(0x00fbff);
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('globe', '🌐')} ${t('trt.translated', lang)}`));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${em('file', '📝')} ${t('trt.original', lang)}**\n> ${quote(text)}`));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${em('ic_status_ok', em('ic_ok', '✅'))} ${t('trt.translated', lang)}**\n> ${quote(translated)}`));
-    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${from.toUpperCase()} ➔ ${to.toUpperCase()}${text.length > MAX ? ` · ${t('trt.cut', lang, { n: MAX })}` : ''}`));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${source ? '**' : '## '}${em('globe', '🌐')} ${t('trt.translated', lang)}${source ? '**' : ''}`));
+    if (source) {
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(quote(translated).replace(/^/, '> ')));
+    } else {
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${em('file', '📝')} ${t('trt.original', lang)}**\n> ${quote(text)}`));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${em('ic_status_ok', em('ic_ok', '✅'))} ${t('trt.translated', lang)}**\n> ${quote(translated)}`));
+    }
+    const from_ = source?.url ? ` · [${t('trt.source', lang)}](${source.url})` : '';
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${from.toUpperCase()} ➔ ${to.toUpperCase()}${from_}${text.length > MAX ? ` · ${t('trt.cut', lang, { n: MAX })}` : ''}`));
     return { components: [c], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };
 }
 // The clicker's Discord language ("en-US", "zh-CN", "pt-BR" → en, zh, pt)
@@ -44,7 +51,7 @@ module.exports = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const translated = await translate(text, 'auto', to).catch(() => null);
         if (!translated) return interaction.editReply(t('trt.error', lang)).catch(() => {});
-        return interaction.editReply(resultCard(text, translated, 'auto', to, lang)).catch(() => {});
+        return interaction.editReply(resultCard(text, translated, 'auto', to, lang, interaction.targetMessage)).catch(() => {});
     },
 
     run: async (client, message, args, db, ss, used, lang) => {
@@ -56,18 +63,19 @@ module.exports = {
             to = resolveCode(last); args.pop();
             if (isLang(secondLast)) { from = resolveCode(secondLast); args.pop(); }
         }
-        let text = args.join(' ');
+        let text = args.join(' '), source = null;
         // Replying to a message with ".tr" (or ".tr fr"): translate that message, no need to copy it
         if (!text && message.reference?.messageId) {
             const ref = await message.fetchReference().catch(() => null);
             text = messageText(ref).text;
+            source = ref;
         }
         if (!text) return message.reply(t('trt.usage', lang)).catch(() => {});
 
         const loadingMsg = await message.reply(t('trt.loading', lang)).catch(() => null);
         const translated = await translate(text, from, to).catch(() => null);
         if (!translated) return loadingMsg?.edit(t('trt.error', lang)).catch(() => {});
-        return loadingMsg?.edit({ content: null, ...resultCard(text, translated, from, to, lang) }).catch(() => {});
+        return loadingMsg?.edit({ content: null, ...resultCard(text, translated, from, to, lang, source) }).catch(() => {});
     },
 
     execute: async (interaction) => {

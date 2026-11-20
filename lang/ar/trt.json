@@ -6,5 +6,6 @@
   "usage": "❌ الاستخدام: `.translate hello fr` أو `.translate bonjour en fr`",
   "provideText": "❌ يرجى تقديم النص المراد ترجمته.",
   "nothing": "There's no text in this message to translate.",
-  "cut": "only the first {n} characters"
+  "cut": "only the first {n} characters",
+  "source": "الرسالة الأصلية"
 }
