@@ -138,6 +138,8 @@ make ic_search search
 make ic_pin pin
 make ic_voice microphone
 make ic_gamepad device-gamepad-2
+make ic_live broadcast "$RED"
+make ic_video movie
 
 # Every new icon goes to its category in config/emojis.js
 node scripts/emojis-tidy.js
