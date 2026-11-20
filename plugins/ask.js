@@ -116,6 +116,31 @@ async function answer(interaction, client, { question, imageUrl = null, quoted =
     return interaction.editReply(answerCard(lang, { asked: quoted ? `"${quoted}"` : question, answer: text, who, left, owner })).catch(() => {});
 }
 
+// The readable text of a card message: Components V2 (containers, sections, text, buttons, menus) and old embeds,
+// plus the first picture found (thumbnail, gallery, embed image) when the message has no attachment.
+function cardText(m) {
+    const out = []; let image = null;
+    const seen = new Set();
+    const walk = (c) => {
+        if (!c || typeof c !== 'object' || seen.has(c)) return; seen.add(c);
+        if (typeof c.content === 'string' && c.content.trim()) out.push(c.content.trim());   // text display
+        if (typeof c.label === 'string' && c.label.trim()) out.push(`[${c.label.trim()}]`);  // buttons
+        if (typeof c.placeholder === 'string' && c.placeholder.trim()) out.push(`[${c.placeholder.trim()}]`);
+        const url = c.media?.url;
+        if (!image && typeof url === 'string' && /^https?:/.test(url)) image = url;
+        for (const k of ['components', 'items']) if (Array.isArray(c[k])) c[k].forEach(walk);
+        if (c.accessory) walk(c.accessory);
+    };
+    try { for (const c of m?.components || []) walk(typeof c.toJSON === 'function' ? c.toJSON() : (c.data || c)); } catch { /* keep what was read */ }
+    for (const e of m?.embeds || []) {
+        const d = e.data || e;
+        [d.author?.name, d.title, d.description, ...(d.fields || []).map((f) => `${f.name}: ${f.value}`), d.footer?.text]
+            .filter((x) => typeof x === 'string' && x.trim()).forEach((x) => out.push(x.trim()));
+        if (!image) image = d.image?.url || d.thumbnail?.url || null;
+    }
+    return { text: out.join('\n'), image };
+}
+
 module.exports = {
     name: 'ask',
     userApp: true,   // DMs, group DMs, servers without ARCHON (lib/slash-payload.js)
@@ -142,8 +167,10 @@ module.exports = {
     async menu(interaction, client) {
         const m = interaction.targetMessage;
         const lang = langOf(interaction);
-        const textPart = String(m?.content || '').trim().slice(0, 1500);
-        const img = [...(m?.attachments?.values?.() || [])].find((a) => /^image\//.test(a.contentType || ''))?.url || null;
+        // Cards (Components V2 and embeds) have no plain text: their words live in the components, so read those too
+        const card = cardText(m);
+        const textPart = [String(m?.content || '').trim(), card.text].filter(Boolean).join('\n').slice(0, 1500);
+        const img = [...(m?.attachments?.values?.() || [])].find((a) => /^image\//.test(a.contentType || ''))?.url || card.image || null;
         if (!textPart && !img) return interaction.reply({ content: `${icon('warn')} ${T(lang, 'empty')}`, flags: MessageFlags.Ephemeral }).catch(() => {});
         // who wrote it (and whether it's a bot) is the one piece of context that changes the answer: "Verified" from a
         // verification bot means something else than from a friend. Still nothing else from the chat.
