@@ -5,7 +5,7 @@
   "summary": "**{n}** of {total} servers have not used the bot for **{days}+ days** ({members} members in total).",
   "line": "{members} members · quiet for {quiet} days",
   "more": "and {n} more",
-  "pick": "Pick a server to look at",
+  "pick": "Pick one or several servers",
   "leaveAll": "Leave all {n}",
   "refresh": "Refresh",
   "note": "Quiet means no command, button or member join in that time. Your home server is never listed.",
@@ -31,5 +31,9 @@
   "activeTitle": "Active servers",
   "activeSummary": "**{n}** of {total} servers used the bot in the last {days} days.",
   "activeLine": "{members} members · last used {quiet} days ago",
-  "noActive": "No active server yet."
+  "noActive": "No active server yet.",
+  "pickActive": "Leave an active server…",
+  "askActive": "This server still uses ARCHON. Leave it anyway?",
+  "surePicked": "Leave these {n} servers?",
+  "surePickedBody": "{members} members in total. ARCHON can only come back if someone invites it again."
 }

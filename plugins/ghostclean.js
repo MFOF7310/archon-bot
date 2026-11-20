@@ -86,6 +86,7 @@ function listCard(client, lang, days) {
     const menu = new StringSelectMenuBuilder()
         .setCustomId(`ghost:pick:${days}`)
         .setPlaceholder(T(lang, 'pick'))
+        .setMinValues(1).setMaxValues(Math.min(PICK, ghosts.length))   // one → its card; several → one confirm
         .addOptions(ghosts.slice(0, PICK).map(s => ({
             label: s.name.slice(0, 100),
             description: T(lang, 'line', { members: fmt(s.members, lang), quiet: s.quiet }).slice(0, 100),
@@ -119,12 +120,20 @@ function activeCard(client, lang, days) {
         { text: T(lang, 'activeSummary', { n: active.length, total: fmt(total, lang), days }) },
         { rule: true },
         { text: lines.join('\n') || T(lang, 'noActive') },
+        ...(active.length ? [{ row: new ActionRowBuilder().addComponents(new StringSelectMenuBuilder()
+            .setCustomId(`ghost:pickactive:${days}`)
+            .setPlaceholder(T(lang, 'pickActive'))
+            .addOptions(active.slice(0, PICK).map(s => ({
+                label: s.name.slice(0, 100),
+                description: T(lang, 'activeLine', { members: fmt(s.members, lang), quiet: s.quiet }).slice(0, 100),
+                value: s.id,
+            })))) }] : []),
         { row: new ActionRowBuilder().addComponents(btn(`ghost:list:${days}`, T(lang, 'showQuiet'), ButtonStyle.Secondary, emojiOf('ic_ghost', '👻'))) },
     ]);
 }
 
 // ── One server, before leaving ──
-function oneCard(client, lang, days, id) {
+function oneCard(client, lang, days, id, active = false) {
     const s = scan(client, 0).ghosts.find(x => x.id === id);
     if (!s) return listCard(client, lang, days);
     const g = client.guilds.cache.get(id);
@@ -138,10 +147,29 @@ function oneCard(client, lang, days, id) {
             `-# ID \`${s.id}\``,
         ].join('\n') },
         { rule: true },
-        { text: T(lang, 'askOne') },
+        { text: active ? `${em('ic_warn', '⚠️')} ${T(lang, 'askActive')}` : T(lang, 'askOne') },
         { row: new ActionRowBuilder().addComponents(
-            btn(`ghost:go:${days}:${id}`, T(lang, 'yesLeave'), ButtonStyle.Danger),
-            btn(`ghost:list:${days}`, T(lang, 'back'), ButtonStyle.Secondary),
+            // an active server is only left from its own list, on purpose: "goa" skips the quiet check
+            btn(`ghost:${active ? 'goa' : 'go'}:${days}:${id}`, T(lang, 'yesLeave'), ButtonStyle.Danger),
+            btn(`ghost:${active ? 'active' : 'list'}:${days}`, T(lang, 'back'), ButtonStyle.Secondary),
+        ) },
+    ]);
+}
+
+// ── Several quiet servers picked in the menu, before leaving ──
+const picked = new Map();   // owner id → the servers picked (button ids can't hold 25 server ids)
+function askPickedCard(client, lang, days, ids) {
+    const all = new Map(scan(client, 0).ghosts.map(s => [s.id, s]));
+    const list = ids.map(id => all.get(id)).filter(Boolean);
+    if (!list.length) return listCard(client, lang, days);
+    const members = list.reduce((a, s) => a + s.members, 0);
+    return v2.card(RED, [
+        { text: `-# ARCHON · ${T(lang, 'title')}\n## ${em('ic_warn', '⚠️')} ${T(lang, 'surePicked', { n: list.length })}` },
+        { text: list.map(s => `• **${s.name.slice(0, 40)}** · ${T(lang, 'line', { members: fmt(s.members, lang), quiet: s.quiet })}`).join('\n') },
+        { text: `-# ${T(lang, 'surePickedBody', { members: fmt(members, lang) })}` },
+        { row: new ActionRowBuilder().addComponents(
+            btn(`ghost:gosel:${days}`, T(lang, 'yesAll', { n: list.length }), ButtonStyle.Danger),
+            btn(`ghost:list:${days}`, T(lang, 'cancel'), ButtonStyle.Secondary),
         ) },
     ]);
 }
@@ -196,24 +224,34 @@ async function handleComponent(interaction, client) {
     const days = clampDays(d);
 
     if (action === 'list') return interaction.update(listCard(client, lang, days)).catch(() => {});
-    if (action === 'pick') return interaction.update(oneCard(client, lang, days, interaction.values?.[0])).catch(() => {});
+    if (action === 'pick') {
+        const vals = interaction.values || [];
+        if (vals.length <= 1) return interaction.update(oneCard(client, lang, days, vals[0])).catch(() => {});
+        picked.set(interaction.user.id, vals);
+        return interaction.update(askPickedCard(client, lang, days, vals)).catch(() => {});
+    }
+    if (action === 'pickactive') return interaction.update(oneCard(client, lang, days, interaction.values?.[0], true)).catch(() => {});
     if (action === 'active') return interaction.update(activeCard(client, lang, days)).catch(() => {});
     if (action === 'all') return interaction.update(askAllCard(client, lang, days)).catch(() => {});
 
-    if (action === 'go' || action === 'goall') {
+    if (action === 'go' || action === 'goall' || action === 'gosel' || action === 'goa') {
         if (busy.has('run')) return interaction.reply({ content: T(lang, 'busy'), flags: MessageFlags.Ephemeral }).catch(() => {});
         busy.add('run');
         try {
             await interaction.deferUpdate().catch(() => {});
             // check again now: the server may have become active since the card was shown
             const quiet = new Set(scan(client, days).ghosts.map(s => s.id));
-            const ids = action === 'go' ? [id].filter(x => quiet.has(x)) : [...quiet];
+            const ids = action === 'goa' ? [id].filter(x => client.guilds.cache.has(x))          // active, chosen on purpose
+                : action === 'go' ? [id].filter(x => quiet.has(x))
+                : action === 'gosel' ? (picked.get(interaction.user.id) || []).filter(x => quiet.has(x))
+                : [...quiet];
+            if (action === 'gosel') picked.delete(interaction.user.id);
             const left = [], failed = [];
             for (const gid of ids) {
                 const r = await leave(client, gid);
                 if (r?.ok) left.push(r.name); else if (r) failed.push(r.name);
             }
-            if (action === 'go' && !ids.length) {
+            if ((action === 'go' || action === 'gosel') && !ids.length) {
                 return interaction.editReply(v2.card(GREY, [
                     { text: `${em('ic_ok', '✅')} ${T(lang, 'nowActive')}` },
                     { row: new ActionRowBuilder().addComponents(btn(`ghost:list:${days}`, T(lang, 'backList'), ButtonStyle.Secondary)) },

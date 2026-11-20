@@ -5,7 +5,7 @@
   "summary": "**{n}** serveurs sur {total} n'ont pas utilisé le bot depuis **{days} jours ou plus** ({members} membres au total).",
   "line": "{members} membres · inactif depuis {quiet} jours",
   "more": "et {n} de plus",
-  "pick": "Choisis un serveur à examiner",
+  "pick": "Choisis un ou plusieurs serveurs",
   "leaveAll": "Quitter les {n}",
   "refresh": "Actualiser",
   "note": "Inactif veut dire aucune commande, aucun bouton ni aucune arrivée de membre pendant cette période. Ton serveur principal n'est jamais listé.",
@@ -31,5 +31,9 @@
   "activeTitle": "Serveurs actifs",
   "activeSummary": "**{n}** serveurs sur {total} ont utilisé le bot ces {days} derniers jours.",
   "activeLine": "{members} membres · dernière activité il y a {quiet} jours",
-  "noActive": "Aucun serveur actif pour l'instant."
+  "noActive": "Aucun serveur actif pour l'instant.",
+  "pickActive": "Quitter un serveur actif…",
+  "askActive": "Ce serveur utilise encore ARCHON. Le quitter quand même ?",
+  "surePicked": "Quitter ces {n} serveurs ?",
+  "surePickedBody": "{members} membres au total. ARCHON ne pourra revenir que si quelqu'un l'invite à nouveau."
 }
