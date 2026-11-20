@@ -6,7 +6,10 @@ module.exports = {
       cwd: "/root/cloud-gaming-223-digital-engine",
       env: { PORT: 5000 },
       restart_delay: 3000,
-      max_restarts: 10
+      max_restarts: 10,
+      // time to save before PM2 forces the stop (default 1.6 s): the shutdown writes the pending XP/credits and
+      // closes the database; cut short, data is lost and the next start reports a crash
+      kill_timeout: 10000
     },
     {
       name: "archon-webhook",
