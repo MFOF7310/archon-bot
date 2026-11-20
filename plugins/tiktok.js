@@ -515,14 +515,19 @@ async function sendNotification(client, db, guildId, username, data, type) {
         // new videos go to their own channel when one is set; lives (and tests) to the main one
         if (type === 'video' && tracking.upload_channel_id) tracking.target_channel_id = tracking.upload_channel_id;
         const guild = client.guilds.cache.get(guildId);
-        if (!guild) return false;
+        if (!guild) { console.log(`[TIKTOK] ${guildId}: ARCHON isn't in that server anymore`); return false; }
         const channel = guild.channels.cache.get(tracking.target_channel_id);
         if (!channel) {
             require('../lib/postProblems').failed(guild, 'tiktok', tracking.target_channel_id, { ok: false, reason: 'gone', missing: [] });
+            console.log(`[TIKTOK] ${guildId} (${guild.name}): the alert channel ${tracking.target_channel_id} was deleted`);
             return false;
         }
         const { safeSend, canSend } = require('../lib/safeSend');
-        if (!canSend('tiktok', channel, require('../lib/canPost').neededFor('tiktok'))) return false;
+        if (!canSend('tiktok', channel, require('../lib/canPost').neededFor('tiktok'))) {
+            const d = require('../lib/canPost').diagnose(guild, channel, guild.members.me, require('../lib/canPost').neededFor('tiktok'));
+            console.log(`[TIKTOK] ${guildId} (${guild.name}): can't post in #${channel.name}${d.missing?.length ? ` (missing: ${d.missing.join(', ')})` : d.reason ? ` (${d.reason})` : ''}`);
+            return false;
+        }
 
         let card = null;
         if (type === 'live') card = buildLiveEmbed(data, guild, client, lang, t('tiktok.livePing', lang, { icon: em('ic_live', '🔴'), user: clean(data.nickname || data.username, 60) }));
