@@ -65,17 +65,46 @@ function run(cmd, args, { cwd, env = process.env, timeout = 120000 } = {}) {
 const tail = (s, n = 600) => { const x = String(s || '').trim(); return x.length > n ? '…' + x.slice(-n) : x; };
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-function tgNotify(msg) {
+// A Telegram call; resolves with the result (the message for sendMessage) or null
+function tgCall(method, payload) {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     const chat = process.env.TELEGRAM_CHAT_ID || process.env.OWNER_TELEGRAM_ID;
-    if (!token || !chat) return;
-    const body = JSON.stringify({ chat_id: chat, text: msg, parse_mode: 'HTML', disable_web_page_preview: true });
-    const req = https.request({
-        hostname: 'api.telegram.org', path: `/bot${token}/sendMessage`, method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+    if (!token || !chat) return Promise.resolve(null);
+    const body = JSON.stringify({ chat_id: chat, parse_mode: 'HTML', disable_web_page_preview: true, ...payload });
+    return new Promise((resolve) => {
+        const req = https.request({
+            hostname: 'api.telegram.org', path: `/bot${token}/${method}`, method: 'POST', timeout: 15000,
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+        }, (res) => { let d = ''; res.on('data', (c) => (d += c)); res.on('end', () => { try { const j = JSON.parse(d); resolve(j.ok ? j.result : null); } catch { resolve(null); } }); });
+        req.on('error', (e) => { console.error('[WEBHOOK] Telegram:', e.message); resolve(null); });
+        req.on('timeout', () => req.destroy());
+        req.end(body);
     });
-    req.on('error', (e) => console.error('[WEBHOOK] Telegram:', e.message));
-    req.end(body);
+}
+const tgNotify = (msg) => tgCall('sendMessage', { text: msg });
+
+// Successful deploys close together share ONE message (edited), instead of one message per push: a busy day of
+// fixes used to mean dozens of messages, plus the bot's own "online" message after each restart.
+// Failures always get their own message. For the bot, the message is left for the bot to complete with
+// "back online" once it has restarted (data/deploy-note.json, read by telegram/bot.js).
+const GROUP_MS = 20 * 60 * 1000;
+const groups = new Map();   // target kind → { id, at, items: [{ commit, subject, title }] }
+async function reportOk(target, info, title, lines) {
+    const g = groups.get(target.kind);
+    const item = { commit: info.commit, subject: info.subject || '', title };
+    const recent = g && Date.now() - g.at < GROUP_MS && g.id;
+    const items = recent ? [...g.items, item].slice(-8) : [item];
+    const n = recent ? g.count + 1 : 1;
+    const head = n > 1 ? `🚀 <b>${esc(target.name)}: ${n} deploys</b> · all good` : `🚀 <b>${esc(target.name)}: ${esc(title)}</b>`;
+    const list = items.map((x) => `• <code>${esc(x.commit)}</code> ${esc(x.subject || x.title)}`).join('\n');
+    const text = [head, list, ...lines.filter(Boolean)].join('\n\n');
+    let id = recent ? g.id : null;
+    if (id) { const r = await tgCall('editMessageText', { message_id: id, text }); if (!r) id = null; }
+    if (!id) { const m = await tgNotify(text); id = m?.message_id || null; }
+    groups.set(target.kind, { id, at: Date.now(), items, count: n });
+    if (target.kind === 'bot' && id) {
+        try { fs.writeFileSync(path.join(target.dir, 'data', 'deploy-note.json'), JSON.stringify({ id, text, at: Date.now() })); } catch { /* the bot then sends its own message */ }
+    }
 }
 
 function report(target, info, ok, title, lines = []) {
@@ -90,9 +119,11 @@ function report(target, info, ok, title, lines = []) {
             ? `📌 Open case, failing since ${ago(Date.now() - c.since)} (${c.attempts} deploys). You'll get a message here once it's solved.`
             : `📌 Case opened. You'll get a message here once it's solved.`);
     }
-    const msg = [top, ...lines.filter(Boolean), ...extra].join('\n\n');
     (ok ? console.log : console.error)(`[WEBHOOK] ${target.name}: ${title} (${info.commit})`);
-    tgNotify(msg);
+    // a success that closes nothing joins the running group; a closed case or a failure is worth its own message
+    if (ok && !extra.length) return reportOk(target, info, title, lines);
+    if (!ok) groups.delete(target.kind);
+    tgNotify([top, ...lines.filter(Boolean), ...extra].join('\n\n'));
 }
 
 // The packages a commit asks for. A change here needs "npm install", which is never run automatically.
@@ -336,6 +367,7 @@ const server = http.createServer((req, res) => {
         const info = {
             commit: payload.head_commit?.id?.substring(0, 7) || '?',
             author: payload.head_commit?.author?.name || '?',
+            subject: String(payload.head_commit?.message || '').split('\n')[0].slice(0, 90),
             files: [...files],
         };
         console.log(`[WEBHOOK] ${target.name}: push from ${info.author} — commit ${info.commit} — deploying...`);

@@ -829,13 +829,63 @@ function startPolling(bridge, client) {
 //  BOOT NOTIFICATION
 // ═══════════════════════════════
 
+// What the owner gets on Telegram when ARCHON starts, without the noise:
+//   - after a deploy: the webhook's deploy message is completed with "back online" (no new message);
+//   - after a crash (the last run didn't stop cleanly): always a message, it's worth knowing;
+//   - otherwise: one message, unless the last one was under 30 minutes ago (restarts in a row stay quiet).
+const BOOT_STATE = require('path').join(__dirname, '..', 'data', 'boot-state.json');
+const DEPLOY_NOTE = require('path').join(__dirname, '..', 'data', 'deploy-note.json');
+const readJson = (f) => { try { return JSON.parse(require('fs').readFileSync(f, 'utf8')); } catch { return null; } };
+const writeJson = (f, v) => { try { require('fs').writeFileSync(f, JSON.stringify(v)); } catch { /* not vital */ } };
+function tgApi(token, method, payload) {
+    const https = require('https');
+    const body = JSON.stringify(payload);
+    return new Promise((resolve) => {
+        const req = https.request({ hostname: 'api.telegram.org', path: `/bot${token}/${method}`, method: 'POST', timeout: 15000, family: 4,
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } },
+        (res) => { let d = ''; res.on('data', (c) => (d += c)); res.on('end', () => { try { resolve(JSON.parse(d).ok); } catch { resolve(false); } }); });
+        req.on('error', () => resolve(false)); req.on('timeout', () => req.destroy());
+        req.end(body);
+    });
+}
+
 async function sendBoot(bridge, client) {
     const owner = bridge.chatId;
     if (!owner || !bridge.enabled) return;
+    const now = Date.now();
+    const prev = readJson(BOOT_STATE) || {};
+    const crashed = prev.lastBootAt && prev.cleanExit === false;
+    const day = new Date().toISOString().slice(0, 10);
+    const today = prev.day === day ? (prev.today || 0) + 1 : 1;
+    writeJson(BOOT_STATE, { lastBootAt: now, cleanExit: false, day, today, lastMsgAt: prev.lastMsgAt || 0 });
+    // a clean stop (pm2 restart, deploy, shutdown) is written here; a crash leaves cleanExit false
+    if (!bridge._exitHooked) {
+        bridge._exitHooked = true;
+        const clean = () => { const st = readJson(BOOT_STATE) || {}; writeJson(BOOT_STATE, { ...st, cleanExit: true }); };
+        process.on('SIGINT', clean); process.on('SIGTERM', clean);
+    }
+
     const g = client?.guilds?.cache?.size || 0;
-    const u = client?.guilds?.cache?.reduce((a,g) => a+(g.memberCount||0), 0) || 0;
-    const msg = `⚡ <b>ARCHON CG-223 ONLINE</b>\n━━━━━━━━━━━━━━━━━━━━\n\n🟢 System Active\nEngine  · Architect-CG-223\nNode    · BAMAKO_223 🇲🇱\nVersion · ${bot_version}\n\n📡 Connections\nDiscord  · ${g} servers · ${formatNumber(u)} members\nTelegram · ${bridge.commands.size} commands\n\n🕐 ${new Date().toLocaleString()}\n· @mfof7310 ·`;
-    await bridge.sendTo(owner, msg, { parse_mode: 'HTML' }).catch(()=>{});
+    const u = client?.guilds?.cache?.reduce((a, x) => a + (x.memberCount || 0), 0) || 0;
+    const ping = Math.round(client?.ws?.ping || 0);
+    const status = `🟢 <b>Back online</b> · v${bot_version} · ${g} servers · ${formatNumber(u)} members${ping > 0 ? ` · ${ping} ms` : ''}${today > 1 ? ` · ${today} starts today` : ''}`;
+
+    // 1. a deploy just restarted it: complete the webhook's message
+    const note = readJson(DEPLOY_NOTE);
+    try { require('fs').unlinkSync(DEPLOY_NOTE); } catch { /* none */ }
+    if (note?.id && now - (note.at || 0) < 5 * 60 * 1000 && !crashed) {
+        const ok = await tgApi(bridge.token, 'editMessageText', { chat_id: owner, message_id: note.id, text: `${note.text}\n\n${status}`, parse_mode: 'HTML', disable_web_page_preview: true });
+        if (ok) return;
+    }
+    // 2. a crash, or 3. a plain start that isn't one of several in a row
+    if (!crashed && now - (prev.lastMsgAt || 0) < 30 * 60 * 1000) {
+        console.log(`[TG] Boot message skipped (one was sent ${Math.round((now - prev.lastMsgAt) / 60000)} min ago)`);
+        return;
+    }
+    const head = crashed ? `⚠️ <b>ARCHON restarted after a crash</b>\nThe last run stopped without shutting down cleanly. Check <code>pm2 logs Architect-CG223 --err</code>.` : `⚡ <b>ARCHON CG-223 online</b>`;
+    await bridge.sendTo(owner, `${head}\n\n${status}`, { parse_mode: 'HTML' }).catch(() => {});
+    const st = readJson(BOOT_STATE) || {};
+    writeJson(BOOT_STATE, { ...st, lastMsgAt: now });
 }
 
 // ═══════════════════════════════
