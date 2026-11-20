@@ -18,6 +18,7 @@ const { webSearch } = require('../lib/lydia/search');
 const { MODEL_POOL, PREMIUM_MODEL, generateAIResponse } = require('../lib/lydia/models');
 const { parseAndStoreMemory, parseAndScheduleReminder, handleMemorySubcommand, forgetMemories } = require('../lib/lydia/memory');
 const { buildEmbed } = require('../lib/lydia/format');
+const { extractFiles, stripFakeLinks } = require('../lib/lydia/files');
 
 const lydiaActions = require('./lydia-actions');
 const { isElevated: _isElevated } = (() => { try { return require('./automod'); } catch { return { isElevated: () => false }; } })();
@@ -361,15 +362,22 @@ async function handleLydiaMessage(message, client, database) {
     parseAndStoreMemory(safeReply, message.author.id, database, message.guild.id);   // memories belong to this server
     // The tags are read from the reply before they are stripped (they were stripped first, so no reminder was ever set)
     parseAndScheduleReminder(safeReply, message.author.id, message.channel.id, client, database, message.guild.id);
-    const finalReply = cleanReply;
+    // Files asked for: [FILE:name] + code block become real attachments; invented download links lose their link
+    const { text: withoutFiles, files } = extractFiles(cleanReply);
+    const finalReply = stripFakeLinks(withoutFiles);
 
     // NEW — buildEmbed now returns array of embeds (multi-embed support)
     const finalEmbeds = buildEmbed(finalReply, message, {
       isError: false, theme, model, latency, tokens, sources: searchSources, lang
     });
+    const { AttachmentBuilder, FileBuilder } = require('discord.js');
+    const attachments = files.map((f) => new AttachmentBuilder(Buffer.from(f.content, 'utf8'), { name: f.name }));
+    const fileParts = files.map((f) => new FileBuilder().setURL(`attachment://${f.name}`));   // V2 shows files through File parts
+    const payload = { components: [...finalEmbeds, ...fileParts], files: attachments, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } };
+    if (files.length) console.log(`[LYDIA] guild=${message.guild?.id} sent ${files.length} file(s): ${files.map((f) => f.name).join(', ')}`);
 
-    if (thinkingMsg) await thinkingMsg.edit({ components: finalEmbeds, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
-    else await message.reply({ components: finalEmbeds, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
+    if (thinkingMsg) await thinkingMsg.edit(payload);
+    else await message.reply(payload);
 
     if (client.botStats && message.guild) {
       client.botStats.onLydiaChatProcessed?.(database, message.guild.id);
