@@ -1,4 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, SlashCommandBuilder, PermissionFlagsBits, ChannelType, ChannelSelectMenuBuilder } = require('discord.js');
 const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } catch { return fb; } };
 const { iconObj } = require('../lib/ui/icons');
 const { ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, MediaGalleryBuilder, MediaGalleryItemBuilder, MessageFlags, SectionBuilder, ThumbnailBuilder } = require('discord.js');
@@ -84,6 +84,8 @@ function initDatabase(db) {
     } catch (e) { /* column already exists */ }
     try { db.exec(`ALTER TABLE tiktok_notifications ADD COLUMN last_video_time INTEGER DEFAULT NULL`); } catch {}
     try { db.exec(`ALTER TABLE tiktok_notifications ADD COLUMN live_room_id TEXT DEFAULT NULL`); } catch {}
+    // where new videos go when it's not the live channel (NULL: same channel as the live alerts)
+    try { db.exec(`ALTER TABLE tiktok_notifications ADD COLUMN upload_channel_id TEXT DEFAULT NULL`); } catch {}
     try {
         db.exec(`CREATE INDEX IF NOT EXISTS idx_tiktok_guild ON tiktok_notifications(guild_id)`);
     } catch (e) {}
@@ -508,8 +510,10 @@ async function sendNotification(client, db, guildId, username, data, type) {
         const lang = client.detectLanguage ? client.detectLanguage('tiktok', guildId) : 'en';
         if (type === 'live' && !canNotifyLive(guildId, username)) return false;
 
-        const tracking = db.prepare('SELECT target_channel_id FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(guildId, username);
+        const tracking = db.prepare('SELECT target_channel_id, upload_channel_id FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(guildId, username);
         if (!tracking) return false;
+        // new videos go to their own channel when one is set; lives (and tests) to the main one
+        if (type === 'video' && tracking.upload_channel_id) tracking.target_channel_id = tracking.upload_channel_id;
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return false;
         const channel = guild.channels.cache.get(tracking.target_channel_id);
@@ -690,7 +694,11 @@ function buildListEmbed(tracks, guild, client, lang = 'en') {
         const forceTag = track.force_mode === 1 ? ' ⚠️' : '';
         const lastVideo = track.last_video_id ? `🎬 \`...${track.last_video_id.slice(-6)}\`` : t('tiktok.noVideoYet', lang);
         
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${i + 1}. @${track.tiktok_username}**${forceTag} · ${liveEm} ${status}\n<#${track.target_channel_id}> · ${lastVideo}`));
+        const up = track.upload_channel_id && track.upload_channel_id !== track.target_channel_id ? track.upload_channel_id : null;
+        const where = up ? `${em('ic_live', '🔴', client)} <#${track.target_channel_id}> · ${em('ic_video', '🎬', client)} <#${up}>` : `<#${track.target_channel_id}>`;
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${i + 1}. @${track.tiktok_username}**${forceTag} · ${liveEm} ${status}\n${where} · ${lastVideo}`));
+        // a "Channels" button per account (the first 8: Discord allows 40 parts per card)
+        if (i < 8) c.addActionRowComponents(new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(`tt_chan:${track.tiktok_username}`.slice(0, 100)).setLabel(t('tiktok.btnChannels', lang)).setStyle(ButtonStyle.Secondary)));
         if (i < tracks.length - 1) c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     });
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
@@ -698,11 +706,41 @@ function buildListEmbed(tracks, guild, client, lang = 'en') {
     return c;
 }
 
+// "Channels" button: two channel menus (live alerts on top, new videos below), shown to the admin only
+async function handleChannels(interaction, client) {
+    const db = client.db;
+    const lang = client.detectLanguage ? client.detectLanguage('tiktok', interaction.guildId, interaction) : 'en';
+    const isOwner = interaction.user.id === process.env.OWNER_ID;
+    if (!isOwner && !interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+        return interaction.reply({ content: require('../lib/access').deny(interaction.member, 'alerts', lang), flags: 64, allowedMentions: { parse: [] } });
+    }
+    const parts = interaction.customId.split(':');
+    const types = [ChannelType.GuildText, ChannelType.GuildAnnouncement];
+    if (parts[0] === 'tt_chan') {
+        const user = parts[1];
+        const row = db.prepare('SELECT * FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(interaction.guildId, user);
+        if (!row) return interaction.reply({ content: t('tiktok.notTracked', lang, { user: '@' + user }), flags: 64 });
+        const live = new ChannelSelectMenuBuilder().setCustomId(`tt_chsel:live:${user}`.slice(0, 100)).setChannelTypes(...types).setPlaceholder(t('tiktok.pickLiveChannel', lang)).setDefaultChannels(row.target_channel_id);
+        const vids = new ChannelSelectMenuBuilder().setCustomId(`tt_chsel:up:${user}`.slice(0, 100)).setChannelTypes(...types).setPlaceholder(t('tiktok.pickVideoChannel', lang)).setDefaultChannels(row.upload_channel_id || row.target_channel_id);
+        return interaction.reply({ content: t('tiktok.channelsHow', lang, { user: '@' + user }), components: [new ActionRowBuilder().addComponents(live), new ActionRowBuilder().addComponents(vids)], flags: 64, allowedMentions: { parse: [] } });
+    }
+    const which = parts[1], user = parts[2], picked = interaction.channels?.first?.();
+    if (!picked) return interaction.deferUpdate().catch(() => {});
+    const row = db.prepare('SELECT * FROM tiktok_notifications WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').get(interaction.guildId, user);
+    if (!row) return interaction.reply({ content: t('tiktok.notTracked', lang, { user: '@' + user }), flags: 64 });
+    const check = require('../lib/canPost').diagnose(interaction.guild, picked, interaction.guild.members.me, require('../lib/canPost').neededFor('tiktok'));
+    if (!check.ok) return interaction.reply({ content: t('tiktok.channelNoPerms', lang, { channel: `<#${picked.id}>` }), flags: 64, allowedMentions: { parse: [] } });
+    if (which === 'live') db.prepare('UPDATE tiktok_notifications SET target_channel_id = ? WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').run(picked.id, interaction.guildId, user);
+    else db.prepare('UPDATE tiktok_notifications SET upload_channel_id = ? WHERE guild_id = ? AND tiktok_username = ? COLLATE NOCASE').run(picked.id === row.target_channel_id ? null : picked.id, interaction.guildId, user);
+    return interaction.reply({ content: `${em('ic_ok', '✅', client)} ${t(which === 'live' ? 'tiktok.liveChannelSet' : 'tiktok.videoChannelSet', lang, { user: '@' + user, channel: `<#${picked.id}>` })}`, flags: 64, allowedMentions: { parse: [] } });
+}
+
 // ═══════════════════════════════════════════════════════════════════
 //  PLUGIN EXPORT
 // ═══════════════════════════════════════════════════════════════════
 
 module.exports = {
+    handleChannels,
     name: 'tiktok',
     aliases: ['tt', 'tiktoknotif'],
     description: '📱 TikTok Live & Video notification system',

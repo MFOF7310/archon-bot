@@ -50,5 +50,13 @@
   "followersLine": "{n} abonnés · {likes} likes",
   "postedWhen": "Publiée {when}",
   "views": "{n} vues",
-  "livePing": "@everyone {icon} **{user}** est en live sur TikTok !"
+  "livePing": "@everyone {icon} **{user}** est en live sur TikTok !",
+  "btnChannels": "Salons",
+  "pickLiveChannel": "Salon des alertes de live",
+  "pickVideoChannel": "Salon des nouvelles vidéos",
+  "channelsHow": "Où envoyer les alertes de **{user}** ?\n🔴 **Menu du haut :** alertes de live\n🎬 **Menu du bas :** nouvelles vidéos\n-# Ça peut être le même salon.",
+  "liveChannelSet": "Les alertes de live de {user} arrivent maintenant dans {channel}.",
+  "videoChannelSet": "Les nouvelles vidéos de {user} arrivent maintenant dans {channel}.",
+  "channelNoPerms": "Je ne peux pas publier dans {channel} : donne à ARCHON le droit de le voir, d'y écrire et d'y intégrer des liens, puis choisis-le à nouveau.",
+  "notTracked": "{user} n'est plus suivi sur ce serveur."
 }

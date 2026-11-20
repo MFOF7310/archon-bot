@@ -3428,6 +3428,10 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId.startsWith('help:')) {
         return require('./plugins/help').handleComponent(interaction, client).catch(e => console.error('[HELP] component:', e.message));
     }
+    // tiktok list: "Channels" button and its two channel menus
+    if ((interaction.isButton() && interaction.customId.startsWith('tt_chan:')) || (interaction.isChannelSelectMenu?.() && interaction.customId.startsWith('tt_chsel:'))) {
+        return require('./plugins/tiktok').handleChannels(interaction, client).catch(e => console.error('[TIKTOK] channels:', e.message));
+    }
     // livestream list/set card: "Channels" button and its two channel menus (live alerts, uploads)
     if ((interaction.isButton() && interaction.customId.startsWith('ls_chan:')) || (interaction.isChannelSelectMenu?.() && interaction.customId.startsWith('ls_chsel:'))) {
         return require('./plugins/livestream').handleChannels(interaction, client).catch(e => console.error('[LIVESTREAM] channels:', e.message));

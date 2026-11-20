@@ -50,5 +50,13 @@
   "followersLine": "{n} متابع · {likes} إعجاب",
   "postedWhen": "نُشر {when}",
   "views": "{n} مشاهدة",
-  "livePing": "@everyone {icon} **{user}** في بث مباشر على TikTok!"
+  "livePing": "@everyone {icon} **{user}** في بث مباشر على TikTok!",
+  "btnChannels": "القنوات",
+  "pickLiveChannel": "قناة تنبيهات البث",
+  "pickVideoChannel": "قناة الفيديوهات الجديدة",
+  "channelsHow": "أين تُرسل تنبيهات **{user}**؟\n🔴 **القائمة العلوية:** تنبيهات البث\n🎬 **القائمة السفلية:** الفيديوهات الجديدة\n-# يمكن أن تكون القناة نفسها.",
+  "liveChannelSet": "تنبيهات بث {user} تُرسل الآن إلى {channel}.",
+  "videoChannelSet": "فيديوهات {user} الجديدة تُرسل الآن إلى {channel}.",
+  "channelNoPerms": "لا أستطيع النشر في {channel}: امنح ARCHON صلاحية رؤيتها والكتابة فيها وتضمين الروابط، ثم اخترها مجددًا.",
+  "notTracked": "لم يعد {user} متابعًا في هذا الخادم."
 }

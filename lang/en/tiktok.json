@@ -50,5 +50,13 @@
   "followersLine": "{n} followers · {likes} likes",
   "postedWhen": "Posted {when}",
   "views": "{n} views",
-  "livePing": "@everyone {icon} **{user}** is live on TikTok!"
+  "livePing": "@everyone {icon} **{user}** is live on TikTok!",
+  "btnChannels": "Channels",
+  "pickLiveChannel": "Channel for live alerts",
+  "pickVideoChannel": "Channel for new videos",
+  "channelsHow": "Where should the alerts for **{user}** go?\n🔴 **Top menu:** live alerts\n🎬 **Bottom menu:** new videos\n-# They can be the same channel.",
+  "liveChannelSet": "Live alerts for {user} now go to {channel}.",
+  "videoChannelSet": "New videos from {user} now go to {channel}.",
+  "channelNoPerms": "I can't post in {channel}: give ARCHON permission to see it, send messages and embed links there, then pick it again.",
+  "notTracked": "{user} isn't tracked on this server anymore."
 }
