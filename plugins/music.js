@@ -609,6 +609,8 @@ function noticeCard(color, title, line) {
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${title}${line ? `\n-# ${line}` : ''}`));
     return { components: [c], flags: V2, allowedMentions: NO_PINGS };
 }
+// A short confirmation as a small card (pause, skip, volume…): same look as the rest of the music cards
+const okCard = (text, color = 0x00f0ff) => ({ components: [new ContainerBuilder().setAccentColor(color).addTextDisplayComponents(new TextDisplayBuilder().setContent(String(text)))], flags: V2, allowedMentions: NO_PINGS });
 const stoppedCard = (lang, userId) => noticeCard(0xED4245, tx('music.stopped_title', lang), tx('music.stopped_by', lang, { user: `<@${userId}>`, cmd_play: cmdPlay() }));
 const closedCard = (lang) => noticeCard(0x4E5058, tx('music.session_over', lang), tx('music.session_over_hint', lang, { cmd_play: cmdPlay() }));
 
@@ -1852,7 +1854,7 @@ module.exports = {
             const qNow = getQueue(guildId);
             if (qNow) { qNow.audioFilter = effect === 'off' ? '' : effect; await updatePersistentPanel(qNow).catch(() => {}); }
             const names = {bassboost: t('music.filter_bassboost', lang), nightcore: t('music.filter_nightcore', lang), vaporwave: t('music.filter_vaporwave', lang), normalize: t('music.filter_normalize', lang), '': t('music.filter_off', lang)};
-            return interaction.editReply({ content: `🎚️ ${names[effect === 'off' ? '' : effect] || t('music.filter_off', lang)}` });
+            return interaction.editReply(okCard(`🎚️ ${names[effect === 'off' ? '' : effect] || t('music.filter_off', lang)}`));
         }
 
         // ── PAUSE ──
@@ -1862,14 +1864,14 @@ module.exports = {
             if (isPaused) { q.totalPaused += Date.now() - (q.pausedAt || Date.now()); q.pausedAt = null; }
             else q.pausedAt = Date.now();
             await updatePersistentPanel(q).catch(() => {});
-            return interaction.editReply({ content: t(isPaused ? 'music.resumed' : 'music.paused', lang, { emoji: isPaused ? '▶️' : '⏸️' }) });
+            return interaction.editReply(okCard(t(isPaused ? 'music.resumed' : 'music.paused', lang, { emoji: isPaused ? '▶️' : '⏸️' })));
         }
 
         // ── SKIP ──
         if (sub === 'skip') {
             const title = String(q.currentTrack?.title || '').replace(/^🎵\s*/, '').substring(0, 60) || '—';
             q.player.stop();
-            return interaction.editReply({ content: t('music.skipped', lang, { emoji: em('mc_skip', '⏭️'), title }) });
+            return interaction.editReply(okCard(t('music.skipped', lang, { emoji: em('mc_skip', '⏭️'), title })));
         }
 
         // ── STOP ── the live panel becomes a short "stopped" card
@@ -1878,7 +1880,7 @@ module.exports = {
             q.persistentMsg = null; q.panelMsgId = null;
             forgetPanel(client, guildId);
             destroyQueue(guildId);
-            return interaction.editReply({ content: t('music.stopped', lang, { cmd_play: cmdPlay() }) });
+            return interaction.editReply(okCard(t('music.stopped', lang, { cmd_play: cmdPlay() })));
         }
 
         // ── QUEUE ──
@@ -1888,7 +1890,7 @@ module.exports = {
 
         // ── NOW PLAYING ── (CV2 card, same style as the live panel)
         if (sub === 'nowplaying') {
-            if (!q.currentTrack) return interaction.editReply({ content: t('music.not_playing', lang, { cmd_play: mention(global.client, 'music', 'play') }) });
+            if (!q.currentTrack) return interaction.editReply(okCard(t('music.not_playing', lang, { cmd_play: mention(global.client, 'music', 'play') })));
             const reply = await interaction.editReply({
                 ...(await panelPayload(q, client)),
                 flags: MessageFlags.IsComponentsV2,
@@ -1903,21 +1905,21 @@ module.exports = {
             q.volume = vol;
             try { q.player?.state?.resource?.volume?.setVolume(vol/100); } catch(e) {}
             await updatePersistentPanel(q).catch(() => {});
-            return interaction.editReply({ content: t('music.volume_set', lang, { emoji: vol === 0 ? '🔇' : em('mc_volume_up', '🔊'), vol }) });
+            return interaction.editReply(okCard(t('music.volume_set', lang, { emoji: vol === 0 ? '🔇' : em('mc_volume_up', '🔊'), vol })));
         }
 
         // ── LOOP ── (the Idle handler replays the track: adding it to the queue here played it twice)
         if (sub === 'loop') {
             q.loop = !q.loop;
             await updatePersistentPanel(q).catch(() => {});
-            return interaction.editReply({ content: t(q.loop ? 'music.loop_on' : 'music.loop_off', lang, { emoji: em('mc_loop', '🔁') }) });
+            return interaction.editReply(okCard(t(q.loop ? 'music.loop_on' : 'music.loop_off', lang, { emoji: em('mc_loop', '🔁') })));
         }
 
         // ── AUTOPLAY ──
         if (sub === 'autoplay') {
             q.autoplay = !q.autoplay;
             await updatePersistentPanel(q).catch(() => {});
-            return interaction.editReply({ content: t(q.autoplay ? 'music.autoplay_on' : 'music.autoplay_off', lang, { emoji: '🔄' }) });
+            return interaction.editReply(okCard(t(q.autoplay ? 'music.autoplay_on' : 'music.autoplay_off', lang, { emoji: '🔄' })));
         }
 
         // ── SILENT ── 🔕 toggle @silent panel notifications
@@ -1929,7 +1931,7 @@ module.exports = {
                 try { await oldMsg.delete().catch(() => {}); } catch(e) {}
                 await updatePersistentPanel(q, { resend: true });
             }
-            return interaction.editReply({ content: t(q.silentPanel ? 'music.silent_on' : 'music.silent_off', lang) });
+            return interaction.editReply(okCard(t(q.silentPanel ? 'music.silent_on' : 'music.silent_off', lang)));
         }
 
         // ── LIBRARY ──
@@ -1960,96 +1962,69 @@ module.exports = {
                 return folderMap.get(state.folder) || lib;
             };
 
-            const renderLibrary = () => {
-                const embed = new EmbedBuilder()
-                    .setColor(ARCHON.cyan)
-                    .setAuthor({ name: '🎵 ARCHON Music library', iconURL: client.user.displayAvatarURL() })
-                    .setTimestamp();
-                const rows = [];
-
-                // Row 1 — folder select (always present)
-                const folderMenu = new SSM().setCustomId('mlb_folder').setPlaceholder('📁 Choose a folder to browse…');
+            // The library card (Components V2): folders on the home page, a page of 10 tracks inside a folder.
+            // Menus can't show custom emojis in their placeholder (they came out as <:music:…>): plain words there.
+            const clean = (x) => String(x || '').replace(/^[\u{1F3B5}\u{1F3B6}]\s*/u, '').trim();
+            const L_ = (k, v) => t(`music.lib_${k}`, lang, v);
+            const renderLibrary = (ended = false) => {
+                const c = new ContainerBuilder().setAccentColor(ARCHON.cyan);
                 const likedCount = getUserLikes(state.userId).length;
-                if (likedCount > 0) {
-                    folderMenu.addOptions({
-                        label: '❤️ My Liked Songs', value: '__liked__',
-                        description: `${likedCount} track${likedCount > 1 ? 's' : ''} · your favorites`,
-                        default: state.folder === '__liked__',
-                    });
+                const nowLine = q?.currentTrack ? `${icon('music', interaction)} ${clean(q.currentTrack.title).substring(0, 70)}` : `${em('mc_stop', '⏹️')} ${L_('nothing')}`;
+
+                const folderMenu = new SSM().setCustomId('mlb_folder').setPlaceholder(L_('pickFolder')).setDisabled(ended);
+                if (likedCount > 0) folderMenu.addOptions({ label: L_('liked').slice(0, 100), value: '__liked__', emoji: '❤️', description: L_('nTracks', { n: likedCount }), default: state.folder === '__liked__' });
+                folderMenu.addOptions({ label: L_('all').slice(0, 100), value: '__all__', emoji: '🎵', description: L_('nTracks', { n: lib.length }), default: state.folder === '__all__' });
+                for (const f of folders.slice(0, likedCount > 0 ? 23 : 24)) {
+                    folderMenu.addOptions({ label: f.substring(0, 100), value: f, description: L_('nTracks', { n: folderMap.get(f).length }), default: state.folder === f });
                 }
-                folderMenu.addOptions({
-                    label: 'All Tracks', value: '__all__',
-                    description: `${lib.length} tracks · full catalog`,
-                    default: state.folder === '__all__',
-                });
-                for (const f of folders.slice(0, 24)) {
-                    folderMenu.addOptions({
-                        label: f.substring(0, 95),
-                        value: f,
-                        description: `${folderMap.get(f).length} tracks`,
-                        default: state.folder === f,
-                    });
-                }
-                rows.push(new ARB().addComponents(folderMenu));
 
                 if (state.folder === null) {
-                    // Home — catalog overview
-                    const overview = folders.map(f => `> ${f} — \`${folderMap.get(f).length} tracks\``).join('\n');
-                    embed.setTitle('📚 Music Library')
-                        .setDescription(`**${lib.length} curated tracks** across ${folders.length} folders.\nSelect a folder below to browse and queue.\n\n${overview}`)
-                        .addFields({ name: 'Now Playing', value: q?.currentTrack ? `${em('music', '🎵')} ${q.currentTrack.title.substring(0, 60)}` : `${em('mc_stop', '⏹️')} Nothing`, inline: false })
-                        .setFooter({ text: `BAMAKO_223 🇲🇱 • Pick a folder • ${mention(global.client, 'music', 'library')} search:<term> to search` });
-                } else {
-                    // Folder view — paginated tracks
-                    const tracks = resolveTracks();
-                    state.viewTracks = tracks;
-                    const totalPages = Math.max(1, Math.ceil(tracks.length / PER_PAGE));
-                    state.page = Math.min(Math.max(1, state.page), totalPages);
-                    const slice = tracks.slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE);
-                    const list = slice.map((t, i) => `\`${String((state.page - 1) * PER_PAGE + i + 1).padStart(3, '0')}\` ${t.title.replace(/^🎵\s*/, em('music', '🎵') + ' ')}`).join('\n');
-                    const viewTitle = state.folder === '__all__' ? `${em('music', '🎵')} All Tracks`
-                        : state.folder === '__liked__' ? '❤️ My Liked Songs'
-                        : state.folder === '__search__' ? `🔍 "${state.search}" — ${tracks.length} result${tracks.length !== 1 ? 's' : ''}`
-                        : state.folder;
-                    embed.setTitle(viewTitle)
-                        .setDescription(tracks.length ? list : t('music.liked_empty', lang))
-                        .addFields(
-                            { name: 'Tracks', value: `\`${tracks.length}\``, inline: true },
-                            { name: 'Page', value: `\`${state.page}/${totalPages}\``, inline: true },
-                            { name: 'Now Playing', value: q?.currentTrack ? `${em('music', '🎵')} ${q.currentTrack.title.substring(0, 30)}` : `${em('mc_stop', '⏹️')} Nothing`, inline: true },
-                        )
-                        .setFooter({ text: 'BAMAKO_223 🇲🇱 • Select tracks below to queue them instantly' });
-
-                    if (tracks.length) {
-                        // Row 2 — track pick (multi-select queues several at once)
-                        const pickMenu = new SSM().setCustomId('mlb_pick').setPlaceholder(`${em('music', '🎵')} Pick track(s) to queue…`)
-                            .setMinValues(1).setMaxValues(Math.min(slice.length, 10));
-                        for (let i = 0; i < slice.length; i++) {
-                            const t = slice[i];
-                            pickMenu.addOptions({
-                                label: t.title.replace(/^🎵\s*/, '').substring(0, 95),
-                                value: String((state.page - 1) * PER_PAGE + i),
-                                description: (t.folder || '').substring(0, 95),
-                            });
-                        }
-                        rows.push(new ARB().addComponents(pickMenu));
-                    }
-
-                    // Row 3 — pagination + shuffle
-                    const nav = new ARB();
-                    nav.addComponents(new BB().setCustomId('mlb_prev').setLabel('Prev').setEmoji(icon('page_prev', interaction)).setStyle(BS.Secondary).setDisabled(state.page <= 1));
-                    nav.addComponents(new BB().setCustomId('mlb_next').setLabel('Next').setEmoji(icon('page_next', interaction)).setStyle(BS.Primary).setDisabled(state.page >= totalPages));
-                    nav.addComponents(new BB().setCustomId('mlb_home').setLabel('📚 Folders').setStyle(BS.Secondary));
-                    nav.addComponents(new BB().setCustomId('mlb_shuffle').setLabel('🔀 Shuffle').setStyle(BS.Success).setDisabled(!tracks.length));
-                    rows.push(nav);
+                    const overview = folders.map((f) => `${f} · \`${folderMap.get(f).length}\``).join('\n');
+                    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON · ${L_('eyebrow')}\n## 📚 ${L_('title')}\n${L_('homeSub', { n: lib.length, folders: folders.length })}`))
+                     .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(overview.slice(0, 3000)))
+                     .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${tx('music.now_playing', lang)}** · ${nowLine}`))
+                     .addActionRowComponents(new ARB().addComponents(folderMenu))
+                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 · ${L_('searchHint', { cmd: mention(global.client, 'music', 'library') })}`));
+                    return { components: [c], flags: V2, allowedMentions: NO_PINGS };
                 }
-                return { embeds: [embed], components: rows };
+
+                const tracks = resolveTracks();
+                state.viewTracks = tracks;
+                const totalPages = Math.max(1, Math.ceil(tracks.length / PER_PAGE));
+                state.page = Math.min(Math.max(1, state.page), totalPages);
+                const slice = tracks.slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE);
+                const list = slice.map((tr, n) => `\`${String((state.page - 1) * PER_PAGE + n + 1).padStart(2, ' ')}\` ${clean(tr.title).substring(0, 70)}`).join('\n');
+                const viewTitle = state.folder === '__all__' ? `🎵 ${L_('all')}`
+                    : state.folder === '__liked__' ? `❤️ ${L_('liked')}`
+                    : state.folder === '__search__' ? `🔍 ${L_('results', { term: state.search, n: tracks.length })}`
+                    : state.folder;
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON · ${L_('eyebrow')}\n## ${viewTitle}\n-# ${L_('pageOf', { page: state.page, total: totalPages, n: tracks.length })}`))
+                 .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(tracks.length ? list : t('music.liked_empty', lang)))
+                 .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${tx('music.now_playing', lang)}** · ${nowLine}`));
+                if (tracks.length) {
+                    const pickMenu = new SSM().setCustomId('mlb_pick').setPlaceholder(L_('pickTracks')).setMinValues(1).setMaxValues(Math.min(slice.length, 10)).setDisabled(ended);
+                    slice.forEach((tr, n) => pickMenu.addOptions({ label: clean(tr.title).substring(0, 100) || '—', value: String((state.page - 1) * PER_PAGE + n), description: String(tr.folder || '').substring(0, 100) || undefined }));
+                    c.addActionRowComponents(new ARB().addComponents(pickMenu));
+                }
+                c.addActionRowComponents(new ARB().addComponents(folderMenu));
+                c.addActionRowComponents(new ARB().addComponents(
+                    new BB().setCustomId('mlb_prev').setLabel(L_('prev')).setEmoji(icon('page_prev', interaction)).setStyle(BS.Secondary).setDisabled(ended || state.page <= 1),
+                    new BB().setCustomId('mlb_next').setLabel(L_('next')).setEmoji(icon('page_next', interaction)).setStyle(BS.Primary).setDisabled(ended || state.page >= totalPages),
+                    new BB().setCustomId('mlb_home').setLabel(L_('folders')).setEmoji('📚').setStyle(BS.Secondary).setDisabled(ended),
+                    new BB().setCustomId('mlb_shuffle').setLabel(L_('shuffle')).setEmoji('🔀').setStyle(BS.Success).setDisabled(ended || !tracks.length),
+                ));
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 · ${ended ? L_('closed', { cmd: mention(global.client, 'music', 'library') }) : L_('pickHint')}`));
+                return { components: [c], flags: V2, allowedMentions: NO_PINGS };
             };
 
             const msg = await interaction.editReply(renderLibrary());
             if (!msg) return;
 
-            const collector = msg.createMessageComponentCollector({ time: 300000 });
+            const collector = msg.createMessageComponentCollector({ time: 15 * 60 * 1000 });
             collector.on('collect', async (i) => {
                 try {
                     if (i.customId === 'mlb_folder') {
@@ -2107,7 +2082,7 @@ module.exports = {
                                 async (opts) => {
                                     if (first) {
                                         first = false;
-                                        await i.followUp({ content: t('music.shuffle_loaded', lang, { count: batch.length, folder: state.folder === '__liked__' ? '❤️ My Liked Songs' : state.folder === '__all__' ? '🎵 All Tracks' : state.folder }), flags: 64 }).catch(() => {});
+                                        await i.followUp({ content: t('music.shuffle_loaded', lang, { count: batch.length, folder: state.folder === '__liked__' ? `❤️ ${L_('liked')}` : state.folder === '__all__' ? `🎵 ${L_('all')}` : state.folder }), flags: 64 }).catch(() => {});
                                     }
                                     return null;
                                 },
@@ -2117,13 +2092,7 @@ module.exports = {
                     }
                 } catch (e) { console.log('[LIBRARY]', e.message); }
             });
-            collector.on('end', () => {
-                try {
-                    const r = renderLibrary();
-                    for (const row of r.components) for (const c of row.components) c.setDisabled(true);
-                    msg.edit({ embeds: r.embeds, components: r.components }).catch(() => {});
-                } catch (e) {}
-            });
+            collector.on('end', () => { try { msg.edit(renderLibrary(true)).catch(() => {}); } catch (e) {} });
         }
 
     }
