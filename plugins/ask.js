@@ -43,7 +43,24 @@ function count(db, uid) {
 
 // What Archon knows about itself: short and exact, so "who made you" or "how do I reach support" get a real answer
 // instead of "I don't know" (it used to have no facts at all). Only these facts: nothing invented.
+// The current release, read from version.txt and config/changelog.json (kept 10 minutes), so the facts follow each release
+let releaseCache = null;
+function release() {
+    if (releaseCache && Date.now() - releaseCache.at < 600000) return releaseCache;
+    const fs = require('fs'), path = require('path');
+    let version = null, date = null, headline = null;
+    try { version = fs.readFileSync(path.join(__dirname, '..', 'version.txt'), 'utf8').trim() || null; } catch { /* unknown */ }
+    try {
+        const r = (JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'changelog.json'), 'utf8')).releases || [])[0] || {};
+        if (!version || r.version === version) { version = version || r.version || null; date = r.date || null; headline = r.headline?.en || null; }
+    } catch { /* no notes */ }
+    releaseCache = { at: Date.now(), version, date, headline };
+    return releaseCache;
+}
+
 function facts(client) {
+    const rel = release();
+    const servers = client?.guilds?.cache?.size || 0;
     const id = client?.user?.id;
     let invite = null; try { invite = id ? require('../lib/invite').inviteUrl(id, { source: 'ask' }) : null; } catch { /* no invite line */ }
     return [
@@ -55,7 +72,12 @@ function facts(client) {
         invite ? `- Add ARCHON to a server: ${invite}` : null,
         id ? `- Vote for ARCHON (rewards in servers): https://top.gg/bot/${id}/vote` : null,
         '- Open source: https://github.com/MFOF7310/archon-bot (only when someone asks about the code).',
-        '- Outside a server (this user app) you have: /ask, Ask Archon on a message, /avatar, /lyrics, /translate, /define, /calc, /qr, /coinflip, /roll, /meme, /anime, /slap, /car, /quote, /image, /youtube, /url. Everything else needs ARCHON in a server.',
+        rel.version ? `- Current version: v${rel.version}${rel.date ? `, released ${rel.date}` : ''}${rel.headline ? ` (${String(rel.headline).slice(0, 160)})` : ''}. What changed: /changelog in a server.` : null,
+        servers ? `- ARCHON is currently in ${servers} servers.` : null,
+        `- Ask Archon limits: ${DAILY} answers per person per day, reset at midnight UTC; the bot owner has no limit. Answers that fail don't count.`,
+        '- Ways to ask: /ask, or Apps → Ask Archon on any message (works on cards too). In a server, the text command .ask is the magic 8-ball, not you.',
+        '- Translation: /translate, reply to a message with .tr (or .tr fr), or Apps → Translate on a message (into the person\'s own Discord language).',
+        '- Outside a server (this user app) you have: /ask, Ask Archon and Translate on a message, /avatar, /lyrics, /translate, /define, /calc, /qr, /coinflip, /roll, /meme, /anime, /slap, /car, /quote, /image, /youtube, /url. Everything else needs ARCHON in a server.',
     ].filter(Boolean).join('\n');
 }
 
