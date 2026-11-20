@@ -39,5 +39,9 @@
     "timeouts": "timeouts",
     "moderation": "moderation",
     "music": "music"
-  }
+  },
+  "eyebrowDeleted": "ARCHON · {guild}",
+  "deletedTitle": "{guild} was deleted",
+  "deletedSub": "The server no longer exists on Discord, so I left with it. Its ARCHON data (settings, levels and credits) will be erased on {date}.",
+  "deletedNext": "Thanks for having ARCHON there. If you start a new server, you can add me again from archon223.com."
 }

@@ -39,5 +39,9 @@
     "timeouts": "الإسكات المؤقت",
     "moderation": "الإشراف",
     "music": "الموسيقى"
-  }
+  },
+  "eyebrowDeleted": "ARCHON · {guild}",
+  "deletedTitle": "تم حذف {guild}",
+  "deletedSub": "لم يعد هذا الخادم موجودًا على Discord، لذا غادرتُ معه. ستُحذف بيانات ARCHON الخاصة به (الإعدادات والمستويات والرصيد) في {date}.",
+  "deletedNext": "شكرًا لاستخدامك ARCHON هناك. إذا أنشأت خادمًا جديدًا، يمكنك إضافتي من جديد عبر archon223.com."
 }

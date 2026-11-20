@@ -39,5 +39,9 @@
     "timeouts": "禁言",
     "moderation": "管理",
     "music": "音乐"
-  }
+  },
+  "eyebrowDeleted": "ARCHON · {guild}",
+  "deletedTitle": "{guild} 已被删除",
+  "deletedSub": "这个服务器已在 Discord 上被删除，所以我也随之离开。它的 ARCHON 数据（设置、等级和积分）将于 {date} 清除。",
+  "deletedNext": "感谢你在那里使用 ARCHON。如果你创建了新服务器，可以在 archon223.com 重新添加我。"
 }

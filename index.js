@@ -3705,10 +3705,10 @@ function recordArrival(guild) {
 // reason: 'left' = the owner left with /ghostclean · 'removed' = someone kicked the bot · 'unknown' = found in old stats at boot
 const ensureGuildHistory = () => db.prepare(`CREATE TABLE IF NOT EXISTS guild_history (
     guild_id TEXT PRIMARY KEY, name TEXT, icon TEXT, members INTEGER, joined_at INTEGER, left_at INTEGER, reason TEXT)`).run();
-function recordDeparture(guild) {
+function recordDeparture(guild, { deleted = false } = {}) {
     try {
         ensureGuildHistory();
-        const reason = client.ghostLeaving?.has(guild.id) ? 'left' : 'removed';
+        const reason = client.ghostLeaving?.has(guild.id) ? 'left' : deleted ? 'deleted' : 'removed';
         client.ghostLeaving?.delete(guild.id);
         db.prepare('INSERT OR REPLACE INTO guild_history (guild_id, name, icon, members, joined_at, left_at, reason) VALUES (?, ?, ?, ?, ?, ?, ?)')
             .run(guild.id, guild.name || null, guild.iconURL?.({ size: 64 }) || null, guild.memberCount || 0, guild.joinedTimestamp || null, Date.now(), reason);
@@ -3718,11 +3718,14 @@ safeOn(Events.GuildDelete, async (guild) => {
     // available === false means a Discord outage, not a departure
     if (guild.available !== false) {
         const byOwner = !!client.ghostLeaving?.has(guild.id);   // read before recordDeparture clears it
-        recordDeparture(guild);
-        // tell whoever added ARCHON, with the date its settings are deleted and a way back
+        const gw = require('./lib/guild-welcome');
+        // Kicked, or the whole server deleted? Same event from Discord; the server's public widget address tells them apart
+        const deleted = byOwner ? false : await gw.serverDeleted(client, guild.id);
+        recordDeparture(guild, { deleted });
+        // tell whoever added ARCHON: a way back after a kick, a plain goodbye (no buttons) when the server is gone
         if (guild.id !== process.env.GUILD_ID && !byOwner) {
-            require('./lib/guild-welcome').sendRemoved(client, guild)
-                .then((via) => console.log(`[GUILD DELETE] Removal notice ${via ? 'sent via ' + via : 'not delivered'} (${guild.name})`)).catch(() => {});
+            gw.sendRemoved(client, guild, { deleted })
+                .then((via) => console.log(`[GUILD DELETE] ${deleted ? 'Server deleted, goodbye' : 'Removal'} notice ${via ? 'sent via ' + via : 'not delivered'} (${guild.name})`)).catch(() => {});
         }
     }
     try {
