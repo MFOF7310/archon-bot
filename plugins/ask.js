@@ -45,7 +45,7 @@ function count(db, uid) {
 // instead of "I don't know" (it used to have no facts at all). Only these facts: nothing invented.
 function facts(client) {
     const id = client?.user?.id;
-    let invite = null; try { invite = id ? require('../lib/invite').inviteUrl(id) : null; } catch { /* no invite line */ }
+    let invite = null; try { invite = id ? require('../lib/invite').inviteUrl(id, { source: 'ask' }) : null; } catch { /* no invite line */ }
     return [
         'FACTS ABOUT YOU (use them when asked; never invent others):',
         '- ARCHON CG-223 is a Discord bot made by Moussa Fofana, a solo developer in Bamako, Mali.',
