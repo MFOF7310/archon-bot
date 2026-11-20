@@ -5420,7 +5420,7 @@ apiApp.get('/api/general/:guildId', requireAdmin, async (req, res) => {
             .sort((x, y) => y.position - x.position)
             .map(r => {
                 const reason = _vg.validateVerifyRole(g, r, a.member);
-                return { id: r.id, name: r.name, eligible: !reason, reason: reason ? _vg.GUARD_MSG[reason] : null };
+                return { id: r.id, name: r.name, color: r.color ? r.hexColor : null, eligible: !reason, reason: reason ? _vg.GUARD_MSG[reason] : null };
             });
         const fallbacks = {};
         if (g.id === process.env.GUILD_ID) {
@@ -5668,10 +5668,10 @@ apiApp.get('/api/ticket-config/:guildId', requireAdmin, async (req, res) => {
         const cats = parseJSONSafe(row.ticket_categories_config, null);
         const isTextChan = c => c && (c.type === 0 || c.type === 5);
         const isCatChan = c => c && c.type === 4;
-        const channels = [...g.channels.cache.values()].filter(isTextChan).sort((x,y) => x.rawPosition - y.rawPosition).map(c => ({ id: c.id, name: c.name, category: c.parent?.name || null }));
+        const channels = [...g.channels.cache.values()].filter(isTextChan).sort((x,y) => x.rawPosition - y.rawPosition).map(c => ({ id: c.id, name: c.name, category: c.parent?.name || null, canSend: canBotSend(g, c), staffOnly: !isMemberVisible(g, c) }));
         const categories = [...g.channels.cache.values()].filter(isCatChan).sort((x,y) => x.rawPosition - y.rawPosition).map(c => ({ id: c.id, name: c.name }));
         const _RR = require('./lib/role-rules');
-        const roles = [...g.roles.cache.values()].filter(r => r.id !== gid && !r.managed).sort((x,y) => y.position - x.position).map(r => { const err = _RR.checkRole(g, r, 'staff', a.member); return { id: r.id, name: r.name, eligible: !err, reason: err ? _RR.reasonText(err, 'en') : null }; });
+        const roles = [...g.roles.cache.values()].filter(r => r.id !== gid && !r.managed).sort((x,y) => y.position - x.position).map(r => { const err = _RR.checkRole(g, r, 'staff', a.member); return { id: r.id, name: r.name, color: r.color ? r.hexColor : null, eligible: !err, reason: err ? _RR.reasonText(err, 'en') : null }; });
         res.json({
             premium: !!isPremium(db, gid),
             settings: {
