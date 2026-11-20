@@ -17,22 +17,23 @@ function getRank(level) {
 }
 
 function getSortType(raw, lang) {
-    const valid = ['xp','credits','messages','msg','streak','daily','wins','games'];
+    const valid = ['xp','credits','messages','msg','streak','daily','wins','games','voice','vocal','vc'];
     const type = valid.includes(raw) ? raw : 'xp';
     let orderCol = 'xp';
     if (type === 'credits') orderCol = 'credits';
     else if (['messages','msg'].includes(type)) orderCol = 'total_messages';
     else if (['streak','daily'].includes(type)) orderCol = 'streak_days';
     else if (['wins','games'].includes(type))   orderCol = 'games_won';
+    else if (['voice','vocal','vc'].includes(type)) orderCol = 'voice_minutes';
     
-    const tKey = { xp: 'xp', credits: 'credits', messages: 'messages', msg: 'messages', streak: 'streak', daily: 'streak', wins: 'wins', games: 'wins' }[type];
+    const tKey = { xp: 'xp', credits: 'credits', messages: 'messages', msg: 'messages', streak: 'streak', daily: 'streak', wins: 'wins', games: 'wins', voice: 'voice', vocal: 'voice', vc: 'voice' }[type];
     return { orderCol, tKey };
 }
 
 async function getLeaderboardData(db, guildId, orderCol, userId) {
     const entries = db.prepare(
-        `SELECT id, username, avatar, xp, credits, level, total_messages, streak_days, games_won
-         FROM users WHERE guild_id = ? ORDER BY ${orderCol} DESC LIMIT 10`
+        `SELECT id, username, avatar, xp, credits, level, total_messages, streak_days, games_won, voice_minutes
+         FROM users WHERE guild_id = ?${orderCol === 'voice_minutes' ? ' AND voice_minutes > 0' : ''} ORDER BY ${orderCol} DESC LIMIT 10`
     ).all(guildId);
 
     if (!entries.length) return null;
@@ -99,8 +100,11 @@ function buildV2Card(data, guildName, tKey, lang, context) {
             credits: credStr
         });
 
+        // the voice board shows the time spent in voice
+        const mins = Number(entry.voice_minutes) || 0;
+        const voiceLine = tKey === 'voice' ? `\n${require('../lib/ui/icons').icon('voice', context)} ${t('leaderboard.voiceTime', lang, { h: Math.floor(mins / 60), m: mins % 60 })}` : '';
         // Fixed Spacing: Use standard line break instead of -#
-        const text = `### ${medal} **${entry.username || 'Unknown'}**\n${statLine}`;
+        const text = `### ${medal} **${entry.username || 'Unknown'}**\n${statLine}${voiceLine}`;
 
         container.addSectionComponents(
             new SectionBuilder()
@@ -129,7 +133,7 @@ module.exports = {
     aliases: ['lb', 'top', 'classement', 'rich', 'richest', 'winners', 'gainers'],
     description: '🏆 See who is dominating the server.',
     category: 'ECONOMY',
-    usage: '.leaderboard [xp|credits|messages|streak|wins]',
+    usage: '.leaderboard [xp|credits|messages|streak|wins|voice]',
     cooldown: 8000,
 
     data: new SlashCommandBuilder().setName('leaderboard').setDescription('🏆 See who is dominating the server.')
@@ -139,7 +143,8 @@ module.exports = {
                 { name: 'Credits',     value: 'credits'  },
                 { name: 'Messages',    value: 'messages' },
                 { name: 'Daily Streak',value: 'streak'   },
-                { name: 'Games Won',   value: 'wins'     }
+                { name: 'Games Won',   value: 'wins'     },
+                { name: 'Voice time',  value: 'voice'    }
             )),
 
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {

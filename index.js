@@ -1289,7 +1289,7 @@ client.liveUser = (userId, guildId) => liveUser(userId, guildId || 'DM');
 // `set` replaces them (a function gets the row after `add`). The database, the cache and any waiting write all
 // receive the result, so nothing is put back 30 seconds later. Credits can't go below zero: the change is refused.
 const USER_NUMBERS = new Set(['credits', 'xp', 'level', 'games_played', 'games_won', 'total_winnings', 'streak_days',
-    'streak_protections', 'total_messages', 'highest_streak', 'total_dailies', 'last_daily']);
+    'streak_protections', 'total_messages', 'highest_streak', 'total_dailies', 'last_daily', 'voice_minutes']);
 function changeUser(userId, guildId, { add = {}, set = {} } = {}, username = 'Unknown') {
     if (!guildId) guildId = 'DM';
     try {
@@ -2101,6 +2101,8 @@ client.once(Events.ClientReady, async () => {
 // Store references to plugins that need event hooks
 const leveling = client.commands.get('leveling');
 if (leveling?.onMemberAdd) { client.leveling = leveling; console.log(`${green}[LEVELING]${reset} Event hooks registered`); }
+// Voice XP: a minute in voice with others earns XP and voice time (lib/voice-xp.js)
+try { require('./lib/voice-xp').start(client); } catch (e) { console.error('[VOICE XP]', e.message); }
 const welcomeMod = client.commands.get('welcome');
 if (welcomeMod?.onMemberAdd) { client.welcome = welcomeMod; console.log(`${green}[WELCOME]${reset} Event hooks registered`); }
 

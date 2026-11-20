@@ -6,7 +6,8 @@
     "credits": "Top Crédits",
     "messages": "Top Messages",
     "streak": "Série Quotidienne",
-    "wins": "Top Gagnants"
+    "wins": "Top Gagnants",
+    "voice": "Temps en vocal"
   },
   "ranks": {
     "recruit": "Recrue",
@@ -18,5 +19,6 @@
   "stats": "{rank} • Niveau **{level}** • XP **{xp}** • {coins} **{credits}**",
   "footer": "👤 **Ton Rang:** {rank} • 📊 **Total Agents:** {count} • **Niveau Moyen:** {avg}",
   "empty": "Personne n'est encore sur le tableau. Commence à discuter ou à jouer pour prendre la 1ère place !",
-  "error": "Je n'ai pas pu générer le classement. Réessaie dans un instant."
+  "error": "Je n'ai pas pu générer le classement. Réessaie dans un instant.",
+  "voiceTime": "**{h} h {m} min** en vocal"
 }
