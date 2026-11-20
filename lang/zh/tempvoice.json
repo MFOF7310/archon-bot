@@ -51,5 +51,7 @@
   "invitedHere": "{users}：{owner} 邀请你加入这个房间，快来吧。",
   "invitedDone": "已邀请：{users}。",
   "kickedDone": "已移出：{users}。",
-  "kickNone": "没有可移出的人（不能移出自己或房主）。"
+  "kickNone": "没有可移出的人：房间里没有其他人，也没有被邀请的人。",
+  "inRoom": "在房间内",
+  "invitedOnly": "已邀请"
 }

@@ -51,5 +51,7 @@
   "invitedHere": "{users}: {owner} invited you to this room, come in.",
   "invitedDone": "Invited: {users}.",
   "kickedDone": "Removed: {users}.",
-  "kickNone": "Nobody to remove (you can't remove yourself or the owner)."
+  "kickNone": "Nobody to remove: no one else is in the room or invited.",
+  "inRoom": "In the room",
+  "invitedOnly": "Invited"
 }

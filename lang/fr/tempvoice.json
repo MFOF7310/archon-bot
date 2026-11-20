@@ -51,5 +51,7 @@
   "invitedHere": "{users} : {owner} t'invite dans ce salon, viens.",
   "invitedDone": "Invité(s) : {users}.",
   "kickedDone": "Retiré(s) : {users}.",
-  "kickNone": "Personne à retirer (tu ne peux retirer ni toi-même ni le propriétaire)."
+  "kickNone": "Personne à retirer : il n'y a personne d'autre dans le salon ni d'invité.",
+  "inRoom": "Dans le salon",
+  "invitedOnly": "Invité"
 }

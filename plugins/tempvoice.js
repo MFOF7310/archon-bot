@@ -21,6 +21,12 @@ const EPH = MessageFlags.Ephemeral;
 const CYAN = 0x00F0FF, GREEN = 0x2ECC71, ORANGE = 0xE67E22;
 const NEEDS = [['ManageChannels', P.ManageChannels], ['MoveMembers', P.MoveMembers], ['Connect', P.Connect], ['ViewChannel', P.ViewChannel]];
 const LIMITS = [0, 2, 3, 4, 5, 6, 8, 10, 15, 20];
+// What the owner and invited members get on the room, whatever the category says: see it, join, talk, stream,
+// use the room's chat and activities. (Lock only takes Connect from @everyone.)
+const GUEST = { ViewChannel: true, Connect: true, Speak: true, Stream: true, UseVAD: true, SendMessages: true,
+    ReadMessageHistory: true, EmbedLinks: true, AttachFiles: true, AddReactions: true, UseEmbeddedActivities: true };
+// Discord refuses an overwrite that grants something ARCHON doesn't have itself (the whole edit fails): keep only those
+const guest = (ch) => { const mine = ch.guild.members.me?.permissionsIn(ch); return Object.fromEntries(Object.entries(GUEST).filter(([k]) => mine?.has(P[k]))); };
 const COOLDOWN = 10_000;                 // one new room per member every 10 s (joining the hub in a loop)
 const RENAMES = 2, RENAME_WINDOW = 600_000;   // Discord allows 2 renames of a channel per 10 minutes
 
@@ -91,7 +97,7 @@ async function createRoom(client, member, hub) {
     try {
         // created in the hub's category with its permissions; the owner may always connect (even once locked)
         ch = await guild.channels.create({ name, type: ChannelType.GuildVoice, parent, userLimit: hub.user_limit || 0, bitrate: hubCh?.bitrate, reason: `Temporary room for ${member.user.username}` });
-        await ch.permissionOverwrites.edit(member.id, { Connect: true, ViewChannel: true }).catch(() => {});
+        await ch.permissionOverwrites.edit(member.id, guest(ch)).catch(() => {});
     } catch (e) {
         console.warn(`[TEMPVOICE] guild=${guild.id} create failed: ${e.message}`);
         return;
@@ -125,7 +131,7 @@ async function onLeave(client, channel) {
     const next = [...left.values()][0];
     room.owner_id = next.id;
     client.db.prepare('UPDATE tempvoice_rooms SET owner_id = ? WHERE channel_id = ?').run(next.id, channel.id);
-    await channel.permissionOverwrites.edit(next.id, { Connect: true, ViewChannel: true }).catch(() => {});
+    await channel.permissionOverwrites.edit(next.id, guest(channel)).catch(() => {});
     const lang = langOf(client, channel.guild.id, null, next.id);
     await channel.send({ content: `${icon('crown', null) || '👑'} ${T(lang, 'newOwner', { user: `<@${next.id}>` })}`, allowedMentions: { users: [next.id] } }).catch(() => {});
     await refreshPanel(client, channel, room);
@@ -172,7 +178,7 @@ async function handleComponent(interaction, client) {
         if (!humans(ch).has(interaction.user.id)) return interaction.reply({ content: T(lang, 'beInside'), flags: EPH }).catch(() => {});
         room.owner_id = interaction.user.id;
         client.db.prepare('UPDATE tempvoice_rooms SET owner_id = ? WHERE channel_id = ?').run(room.owner_id, channelId);
-        await ch.permissionOverwrites.edit(room.owner_id, { Connect: true, ViewChannel: true }).catch(() => {});
+        await ch.permissionOverwrites.edit(room.owner_id, guest(ch)).catch(() => {});
         await interaction.reply({ content: `${icon('crown', null) || '👑'} ${T(lang, 'newOwner', { user: `<@${room.owner_id}>` })}`, allowedMentions: { parse: [] } }).catch(() => {});
         return refreshPanel(client, ch, room);
     }
@@ -198,9 +204,27 @@ async function handleComponent(interaction, client) {
         const ok = await ch.setName(name).then(() => true).catch(() => false);
         return interaction.editReply({ content: ok ? T(lang, 'renamed', { name }) : T(lang, 'failed') }).catch(() => {});
     }
-    if (action === 'invite' || action === 'kick') {
-        const menu = new UserSelectMenuBuilder().setCustomId(`tv:${action}sel:${channelId}`).setPlaceholder(T(lang, action === 'invite' ? 'pickInvite' : 'pickKick')).setMinValues(1).setMaxValues(10);
-        return interaction.reply({ content: T(lang, action === 'invite' ? 'inviteHow' : 'kickHow'), components: [new ActionRowBuilder().addComponents(menu)], flags: EPH }).catch(() => {});
+    if (action === 'invite') {
+        const menu = new UserSelectMenuBuilder().setCustomId(`tv:invitesel:${channelId}`).setPlaceholder(T(lang, 'pickInvite')).setMinValues(1).setMaxValues(10);
+        return interaction.reply({ content: T(lang, 'inviteHow'), components: [new ActionRowBuilder().addComponents(menu)], flags: EPH }).catch(() => {});
+    }
+    if (action === 'kick') {
+        // only the people concerned: those in the room now and those invited (their own permission on the room)
+        const ids = new Set([...humans(ch).keys()]);
+        for (const [id, ow] of ch.permissionOverwrites.cache) if (ow.type === 1 && ow.allow.has(P.Connect)) ids.add(id);
+        ids.delete(room.owner_id); ids.delete(interaction.user.id); ids.delete(client.user.id);
+        const opts = [];
+        for (const id of ids) {
+            const m = ch.guild.members.cache.get(id) || await ch.guild.members.fetch(id).catch(() => null);
+            if (!m || m.user.bot) continue;
+            opts.push({ label: String(m.displayName || m.user.username).slice(0, 100), value: id,
+                description: T(lang, humans(ch).has(id) ? 'inRoom' : 'invitedOnly').slice(0, 100) });
+            if (opts.length >= 25) break;
+        }
+        if (!opts.length) return interaction.reply({ content: T(lang, 'kickNone'), flags: EPH }).catch(() => {});
+        const menu = new StringSelectMenuBuilder().setCustomId(`tv:kicksel:${channelId}`).setPlaceholder(T(lang, 'pickKick'))
+            .setMinValues(1).setMaxValues(opts.length).addOptions(opts);
+        return interaction.reply({ content: T(lang, 'kickHow'), components: [new ActionRowBuilder().addComponents(menu)], flags: EPH }).catch(() => {});
     }
     if (action === 'invitesel') {
         await interaction.deferUpdate().catch(() => {});
@@ -208,7 +232,7 @@ async function handleComponent(interaction, client) {
         const done = [], pinged = [];
         for (const u of interaction.users?.values?.() || []) {
             if (u.bot || u.id === room.owner_id) continue;
-            const ok = await ch.permissionOverwrites.edit(u.id, { Connect: true, ViewChannel: true }).then(() => true).catch(() => false);
+            const ok = await ch.permissionOverwrites.edit(u.id, guest(ch)).then(() => true).catch(() => false);
             if (!ok) continue;
             done.push(u.id);
             // tell them: a DM with a join button, or a mention in the room's chat when their DMs are closed
@@ -225,12 +249,12 @@ async function handleComponent(interaction, client) {
     if (action === 'kicksel') {
         await interaction.deferUpdate().catch(() => {});
         const done = [];
-        for (const u of interaction.users?.values?.() || []) {
-            if (u.bot || u.id === room.owner_id || u.id === interaction.user.id) continue;
-            await ch.permissionOverwrites.edit(u.id, { Connect: false }).catch(() => {});
-            const m = ch.members.get(u.id);
+        for (const id of interaction.values || []) {
+            if (id === room.owner_id || id === interaction.user.id) continue;
+            await ch.permissionOverwrites.edit(id, { Connect: false }).catch(() => {});   // replaces their invitation
+            const m = ch.members.get(id);
             if (m) await m.voice.disconnect('Removed from the room by its owner').catch(() => {});
-            done.push(u.id);
+            done.push(id);
         }
         return interaction.editReply({ content: done.length ? T(lang, 'kickedDone', { users: done.map((x) => `<@${x}>`).join(' ') }) : T(lang, 'kickNone'), components: [], allowedMentions: { parse: [] } }).catch(() => {});
     }
