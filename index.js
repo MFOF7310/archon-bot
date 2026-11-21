@@ -117,7 +117,8 @@ const client = new Client({
         GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.GuildVoiceStates
+        GatewayIntentBits.GuildVoiceStates,
+        GatewayIntentBits.AutoModerationExecution   // messages Discord's own AutoMod blocked with ARCHON's rules (lib/native-automod.js)
     ],
     partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember],
     // Messages are the only cache that grows with activity (by default up to 200 per channel, kept forever), and
@@ -3650,6 +3651,9 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
 // ║  🦅 GUILD CREATE — OWNER WELCOME SYSTEM                            ║
 // ║  Sends professional onboarding DM when ARCHON joins a new server   ║
 // ╚══════════════════════════════════════════════════════════════════════╝
+// Discord's own AutoMod blocked a message with one of ARCHON's rules: it counts as an AutoMod strike (lib/native-automod.js)
+safeOn(Events.AutoModerationActionExecution, (execution) => require('./lib/native-automod').onExecution(execution, client));
+
 safeOn(Events.GuildCreate, async (guild) => {
     try {
         // Back within the 7 days its data is kept? Then the welcome says "nothing to redo" instead of the setup steps
@@ -4749,6 +4753,30 @@ apiApp.get('/api/admin/usage', requireAdmin, (req, res) => {
         console.error('[API /api/admin/usage]', err.message);
         res.json(empty);
     }
+});
+
+// Discord's own AutoMod rules for a server (dashboard → Moderation): what's there, and Update / Remove
+apiApp.get('/api/native-automod/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const a = await verifyActor(req.params.guildId, req.query.userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        res.json(await require('./lib/native-automod').status(a.guild));
+    } catch (e) { console.error('[API native-automod]', e.message); res.status(500).json({ error: 'internal' }); }
+});
+apiApp.post('/api/native-automod/:guildId', requireAdmin, async (req, res) => {
+    try {
+        const { userId, action } = req.body || {};
+        const a = await verifyActor(req.params.guildId, userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const native = require('./lib/native-automod');
+        try { client.settings?.delete?.(a.guild.id); } catch (_) {}
+        const ss = client.getServerSettings?.(a.guild.id) || {};
+        if (action === 'remove') return res.json(await native.remove(a.guild));
+        if (!ss.autoModEnabled) return res.status(400).json({ error: 'automod_off' });
+        const r = await native.sync(a.guild, ss);
+        console.log(`[AUTOMOD NATIVE] sync guild=${a.guild.id} by=${a.member.id} ${JSON.stringify(r)}`);
+        res.json(r);
+    } catch (e) { console.error('[API native-automod]', e.message); res.status(500).json({ error: 'internal' }); }
 });
 
 // Servers ARCHON is no longer in (owner dashboard). The first call also adds old ones found in the stats table.
@@ -5947,11 +5975,15 @@ apiApp.post('/api/update-config', requireAdmin, (req, res) => {
         client.invalidateGuildCache(guildId);
         // the /welcome panel says who changed a message, and open panels redraw themselves
         try { require('./plugins/welcome.js').dashboardSaved(client, String(guildId), Object.keys(settings)); } catch (e) { console.error('[WELCOME] dashboard hook:', e.message); }
-        // Discord's own invite rule follows the invite filter set from the dashboard
-        if (Object.keys(settings).some(k => /^invite_?filter/i.test(k))) {
+        // Discord's own AutoMod rules follow every AutoMod setting saved from the dashboard (lib/native-automod.js)
+        if (Object.keys(settings).some(k => /automod|filter|mention/i.test(k))) {
             const g = client.guilds.cache.get(String(guildId));
-            const ss = client.getServerSettings?.(String(guildId));
-            if (g && ss?.autoModEnabled) require('./plugins/automod.js').syncRules(g, 'invite', ss).catch(() => {});
+            if (g) {
+                try { client.settings?.delete?.(String(guildId)); } catch (_) {}
+                const ss = client.getServerSettings?.(String(guildId)) || {};
+                const native = require('./lib/native-automod');
+                (ss.autoModEnabled ? native.sync(g, ss) : native.remove(g)).catch(() => {});
+            }
         }
         res.json({ success: true, updated, guildId });
     } catch (err) {

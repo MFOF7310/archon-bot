@@ -1425,50 +1425,18 @@ async function handleAppealButton(interaction, client) {
     return true;
 }
 
+// Discord's own AutoMod rules (lib/native-automod.js): 'create' and 'invite' bring them in step with the settings
+// (AutoMod is on when they're called), 'delete' removes ARCHON's rules only.
 async function syncRules(guild, action, settings) {
-    const PREFIX = 'ARCHON CG-223';
+    const native = require('../lib/native-automod');
     try {
-        if (!guild.members.me.permissions.has(PermissionsBitField.Flags.ManageGuild)) return false;
-        let existing; try { existing = await guild.autoModerationRules.fetch(); } catch { existing = null; }
-        const exemptRoles = settings?.autoModWhitelist ? settings.autoModWhitelist.split(',').filter(Boolean) : [];
-
-        const rules = [
-            { name: `${PREFIX} • Core Shield`, eventType: 1, triggerType: 4, triggerMetadata: { presets: [1, 2, 3] }, actions: [{ type: 1, metadata: { customMessage: '🛡️ AutoMod: Content violation detected.' } }], enabled: true, exemptRoles, reason: 'AutoMod Core Shield' },
-            { name: `${PREFIX} • Malicious Links`, eventType: 1, triggerType: 1, triggerMetadata: { keywordFilter: ['discordg1ft', 'free-nitro', 'steamm-rewards'] }, actions: [{ type: 1, metadata: { customMessage: '🛡️ AutoMod: Phishing link blocked.' } }], enabled: true, exemptRoles, reason: 'AutoMod Link Shield' },
-            { name: `${PREFIX} • Invite Spam`, eventType: 1, triggerType: 1, triggerMetadata: { keywordFilter: ['discord.gg/', 'discord.com/invite/', 'discordapp.com/invite/'] }, actions: [{ type: 1, metadata: { customMessage: '🛡️ AutoMod: Unauthorized invite blocked.' } }], enabled: true, exemptRoles, reason: 'AutoMod Invite Shield' },
-            { name: `${PREFIX} • Self-Bot`, eventType: 1, triggerType: 1, triggerMetadata: { keywordFilter: ['selfbot', 'self-bot', 'autotyper', 'massdm'] }, actions: [{ type: 1, metadata: { customMessage: '🛡️ AutoMod: Automation tool detected.' } }], enabled: true, exemptRoles, reason: 'AutoMod Bot Shield' },
-            { name: `${PREFIX} • Rogue Domains`, eventType: 1, triggerType: 1, triggerMetadata: { keywordFilter: ['.ru/', 'grabify.', 'iplogger.', 'bit.ly-'] }, actions: [{ type: 1, metadata: { customMessage: '🛡️ AutoMod: Unverified domain blocked.' } }], enabled: true, exemptRoles, reason: 'AutoMod Domain Shield' },
-            { name: `${PREFIX} • Promo Spam`, eventType: 1, triggerType: 1, triggerMetadata: { keywordFilter: ['dm me for', 'join for reward', 'free tokens', 'giveaway enter'] }, actions: [{ type: 1, metadata: { customMessage: '🛡️ AutoMod: Promotional spam blocked.' } }], enabled: true, exemptRoles, reason: 'AutoMod Promo Shield' },
-        ];
-
-        // Discord's own invite rule follows the server's invite filter
-        if (settings && settings.inviteFilterEnabled === false) {
-            const i = rules.findIndex(r => r.name.endsWith('Invite Spam'));
-            if (i >= 0) rules.splice(i, 1);
-        }
-
-        if (action === 'invite') {
-            const rule = rules.find(r => r.name.endsWith('Invite Spam'));
-            const cur = [...(existing?.values?.() || [])].find(r => r.name === `${PREFIX} • Invite Spam`);
-            if (rule && !cur) { try { await guild.autoModerationRules.create(rule); } catch (e) { console.log(`[AUTOMOD GATEWAY] invite rule: ${e.message}`); } }
-            if (!rule && cur) { try { await cur.delete('Invite filter turned off'); } catch {} }
-            return true;
-        }
-
-        if (action === 'create') {
-            let created = 0, skipped = 0;
-            for (const r of rules) {
-                if (existing?.some?.(ex => ex.name === r.name)) { skipped++; continue; }
-                try { await guild.autoModerationRules.create(r); created++; } catch (e) { console.log(`[AUTOMOD GATEWAY] ${r.name}: ${e.message}`); }
-            }
-            console.log(`[AUTOMOD GATEWAY] ${guild.name}: ${created} created, ${skipped} skipped`);
-            return created > 0 || skipped > 0;
-        } else if (action === 'delete') {
-            const targets = [...(existing?.values() || [])].filter(r => r.name.startsWith(PREFIX));
-            for (const r of targets) { try { await r.delete('AutoMod deactivated'); } catch {} }
-            return true;
-        }
-    } catch (e) { console.log(`[AUTOMOD GATEWAY] ${e.message}`); return false; }
+        if (action === 'delete') return (await native.remove(guild)).ok;
+        let fresh = {};
+        try { guild.client.settings?.delete?.(guild.id); fresh = guild.client.getServerSettings?.(guild.id) || {}; } catch { /* the settings given */ }
+        const r = await native.sync(guild, { ...fresh, ...(settings || {}), autoModEnabled: true });
+        if (!r.ok) console.log(`[AUTOMOD NATIVE] ${guild.id}: ${r.reason || `failed: ${r.failed.join(', ')}`}`);
+        return r.ok || r.created + r.updated > 0;
+    } catch (e) { console.log(`[AUTOMOD NATIVE] ${e.message}`); return false; }
 }
 
 function resolveSetting(s, ...keys) { for (const k of keys) { if (s?.[k] != null && s[k] !== '') return s[k]; } return null; }
@@ -2157,3 +2125,4 @@ function startDigest(client, db) {
 }
 module.exports.startDigest = startDigest;
 module.exports.syncRules = syncRules;
+module.exports.DEFAULT_DOMAIN_WHITELIST = DEFAULT_DOMAIN_WHITELIST;   // lib/native-automod.js: the same sites stay allowed on Discord's side

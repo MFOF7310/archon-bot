@@ -337,5 +337,10 @@
   "admin_statusSub": "Protection, link filtering and appeals.",
   "admin_channelsHint": "In these channels and their threads, AutoMod checks nothing: no strike, no warning. Handy for a spam, commands or links channel.",
   "admin_channelsChanged": "The channel list changed meaning: it now picks the channels AutoMod **ignores**. The old list was emptied so it doesn't do the opposite of what you wanted. Pick the channels to ignore with the Channels button.",
-  "raidAllDesc": "{server} is getting a wave of joins right now, so ARCHON is holding new arrivals back for a few minutes. Try again a little later."
+  "raidAllDesc": "{server} is getting a wave of joins right now, so ARCHON is holding new arrivals back for a few minutes. Try again a little later.",
+  "native_preset": "Your message was blocked: it contains words this server doesn't allow.",
+  "native_scam": "Your message was blocked: it looks like a scam or a dangerous link.",
+  "native_mentions": "Your message was blocked: too many mentions at once.",
+  "native_invites": "Your message was blocked: invites to other servers aren't allowed here.",
+  "native_links": "Your message was blocked: links aren't allowed here, except from approved sites."
 }

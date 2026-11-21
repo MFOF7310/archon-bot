@@ -337,5 +337,10 @@
   "admin_statusSub": "防护、链接过滤和申诉。",
   "admin_channelsHint": "在这些频道及其子区中，AutoMod 不做任何检查：没有处罚，没有警告。适合刷屏、命令或链接频道。",
   "admin_channelsChanged": "频道列表的含义已改变：现在用来选择 AutoMod **忽略**的频道。旧列表已清空，以免产生相反效果。请用「频道」按钮选择要忽略的频道。",
-  "raidAllDesc": "{server} 目前正遭遇大量加入，ARCHON 暂时拦下新成员几分钟。请稍后再试。"
+  "raidAllDesc": "{server} 目前正遭遇大量加入，ARCHON 暂时拦下新成员几分钟。请稍后再试。",
+  "native_preset": "你的消息已被拦截：其中包含本服务器不允许的词语。",
+  "native_scam": "你的消息已被拦截：它看起来像诈骗或危险链接。",
+  "native_mentions": "你的消息已被拦截：一次提及的人太多了。",
+  "native_invites": "你的消息已被拦截：这里不允许发送其他服务器的邀请。",
+  "native_links": "你的消息已被拦截：这里不允许发链接，认可的网站除外。"
 }
