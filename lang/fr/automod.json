@@ -342,5 +342,12 @@
   "native_scam": "Ton message a été bloqué : il ressemble à une arnaque ou à un lien dangereux.",
   "native_mentions": "Ton message a été bloqué : trop de mentions à la fois.",
   "native_invites": "Ton message a été bloqué : les invitations vers d’autres serveurs ne sont pas autorisées ici.",
-  "native_links": "Ton message a été bloqué : les liens ne sont pas autorisés ici, sauf ceux des sites approuvés."
+  "native_links": "Ton message a été bloqué : les liens ne sont pas autorisés ici, sauf ceux des sites approuvés.",
+  "native_statusLabel": "AutoMod de Discord",
+  "native_statusOff": "désactivé (l’AutoMod est coupé)",
+  "native_statusNoPerm": "ARCHON a besoin de Gérer le serveur pour écrire les règles de Discord",
+  "native_statusOn": "{n} actives",
+  "native_statusCovered": "{n} gérées par tes propres règles",
+  "native_statusFull": "{n} bloquées par la limite de Discord",
+  "native_statusMissing": "{n} pas encore en place (dashboard → Modération → Mettre à jour)"
 }

@@ -342,5 +342,12 @@
   "native_scam": "你的消息已被拦截：它看起来像诈骗或危险链接。",
   "native_mentions": "你的消息已被拦截：一次提及的人太多了。",
   "native_invites": "你的消息已被拦截：这里不允许发送其他服务器的邀请。",
-  "native_links": "你的消息已被拦截：这里不允许发链接，认可的网站除外。"
+  "native_links": "你的消息已被拦截：这里不允许发链接，认可的网站除外。",
+  "native_statusLabel": "Discord 自动审核",
+  "native_statusOff": "关闭（自动审核未开启）",
+  "native_statusNoPerm": "ARCHON 需要“管理服务器”权限才能写入 Discord 的规则",
+  "native_statusOn": "{n} 条生效",
+  "native_statusCovered": "{n} 条由你自己的规则处理",
+  "native_statusFull": "{n} 条因 Discord 上限被阻止",
+  "native_statusMissing": "{n} 条尚未设置（控制面板 → 审核 → 更新）"
 }

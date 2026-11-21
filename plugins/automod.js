@@ -1234,6 +1234,18 @@ function appealModal(userId, guildId, user) {
 // ═══════════════════════════════════════════════════════
 //  STATUS CARD (Components V2) — build once, use for slash + prefix
 // ═══════════════════════════════════════════════════════
+// One line about Discord's own AutoMod rules (lib/native-automod.js status), for the status card
+function nativeLine(st, on, _T) {
+    if (!on) return _T('native_statusOff');
+    if (!st.canManage) return _T('native_statusNoPerm');
+    const n = (k) => st.rules.filter((r) => r.state === k).length;
+    const parts = [_T('native_statusOn', { n: n('on') })];
+    if (n('covered')) parts.push(_T('native_statusCovered', { n: n('covered') }));
+    if (n('full')) parts.push(_T('native_statusFull', { n: n('full') }));
+    if (n('missing')) parts.push(_T('native_statusMissing', { n: n('missing') }));
+    return parts.join(' · ');
+}
+
 function buildStatusCard(client, guild, ss, opts = {}) {
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
     const _L = require('../lib/botPerms').langOf({ guild, client });
@@ -1256,6 +1268,7 @@ function buildStatusCard(client, guild, ss, opts = {}) {
         `**${_T('admin_statusLabelLinkPolicy')}** · ${_T('admin_statusLinkPolicyValue', { n: domainList.length })}`,
         `**${_T('admin_statusLabelChannels')}** · ${channelList}`,
         `**${_T('admin_statusLabelAppeals')}** · ${pendingCount > 0 ? _T('admin_statusAppealsValue', { n: pendingCount }) : _T('admin_statusAppealsNone')}`,
+        ...(opts.native ? [`**${_T('native_statusLabel')}** · ${nativeLine(opts.native, on, _T)}`] : []),
     ].join('\n');
 
     const row1 = new ActionRowBuilder().addComponents(
@@ -1840,7 +1853,8 @@ module.exports = {
         }
 
         if (sc === 'status') {
-            return ix.editReply(buildStatusCard(client, ix.guild, ss));
+            const native = await require('../lib/native-automod').status(ix.guild).catch(() => null);
+            return ix.editReply(buildStatusCard(client, ix.guild, ss, { native }));
         }
 
         if (sc === 'enable' || sc === 'disable') {
@@ -1873,12 +1887,10 @@ module.exports = {
                 if (cur?.split(',').includes(role.id)) return ix.editReply({ content: _TA('admin_whitelistAlready'), flags: 1 << 6 });
                 const nw = cur ? `${cur},${role.id}` : role.id;
                 client.updateServerSetting(ix.guild.id, 'automodwhitelist', nw); client.settings.delete(ix.guild.id);
-                if (ss?.autoModEnabled) { await syncRules(ix.guild, 'delete'); await syncRules(ix.guild, 'create', { ...ss, autoModWhitelist: nw }); }
                 return ix.editReply({ content: em('ic_ok', '✅') + ' ' + _TA('admin_whitelistAdded', { role: role.name }), flags: 1 << 6 });
             } else {
                 if (!cur) return ix.editReply({ content: _TA('admin_whitelistEmpty'), flags: 1 << 6 });
                 client.updateServerSetting(ix.guild.id, 'automodwhitelist', null); client.settings.delete(ix.guild.id);
-                if (ss?.autoModEnabled) { await syncRules(ix.guild, 'delete'); await syncRules(ix.guild, 'create', { ...ss, autoModWhitelist: null }); }
                 return ix.editReply({ content: em('ic_ok', '✅') + ' ' + _TA('admin_whitelistCleared'), flags: 1 << 6 });
             }
         }
@@ -1953,7 +1965,8 @@ module.exports = {
         }
 
         if (action === 'status') {
-            return msg.reply(buildStatusCard(client, msg.guild, settings));
+            const native = await require('../lib/native-automod').status(msg.guild).catch(() => null);
+            return msg.reply(buildStatusCard(client, msg.guild, settings, { native }));
         }
         if (action === 'enable' || action === 'on') {
             const cur = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(msg.guild.id);
@@ -1987,12 +2000,10 @@ module.exports = {
                 if (cur?.split(',').includes(role.id)) return msg.reply(_TP('admin_whitelistAlready'));
                 const nw = cur ? `${cur},${role.id}` : role.id;
                 client.updateServerSetting(msg.guild.id, 'automodwhitelist', nw); client.settings.delete(msg.guild.id);
-                if (settings?.autoModEnabled) { await syncRules(msg.guild, 'delete'); await syncRules(msg.guild, 'create', { ...settings, autoModWhitelist: nw }); }
                 return msg.reply(em('ic_ok', '✅') + ' ' + _TP('admin_whitelistAdded', { role: role.name }));
             } else {
                 if (!cur) return msg.reply(_TP('admin_whitelistEmpty'));
                 client.updateServerSetting(msg.guild.id, 'automodwhitelist', null); client.settings.delete(msg.guild.id);
-                if (settings?.autoModEnabled) { await syncRules(msg.guild, 'delete'); await syncRules(msg.guild, 'create', { ...settings, autoModWhitelist: null }); }
                 return msg.reply(em('ic_ok', '✅') + ' ' + _TP('admin_whitelistCleared'));
             }
         }

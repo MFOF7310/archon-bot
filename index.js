@@ -5977,13 +5977,7 @@ apiApp.post('/api/update-config', requireAdmin, (req, res) => {
         try { require('./plugins/welcome.js').dashboardSaved(client, String(guildId), Object.keys(settings)); } catch (e) { console.error('[WELCOME] dashboard hook:', e.message); }
         // Discord's own AutoMod rules follow every AutoMod setting saved from the dashboard (lib/native-automod.js)
         if (Object.keys(settings).some(k => /automod|filter|mention/i.test(k))) {
-            const g = client.guilds.cache.get(String(guildId));
-            if (g) {
-                try { client.settings?.delete?.(String(guildId)); } catch (_) {}
-                const ss = client.getServerSettings?.(String(guildId)) || {};
-                const native = require('./lib/native-automod');
-                (ss.autoModEnabled ? native.sync(g, ss) : native.remove(g)).catch(() => {});
-            }
+            require('./lib/native-automod').schedule(client, String(guildId));
         }
         res.json({ success: true, updated, guildId });
     } catch (err) {
