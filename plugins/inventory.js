@@ -266,6 +266,10 @@ async function handleSell(message, args, client, db, lang, guildId, guildName) {
         
         if (reply && reply.createMessageComponentCollector) {
             const collector = reply.createMessageComponentCollector({ time: 60000 });
+            // nothing picked in time: grey the menu out instead of leaving a dead one (a sale already replaced it)
+            collector.on('end', (collected) => {
+                if (!collected.size) reply.edit({ components: require('../lib/components').disabledCopy(reply) }).catch(() => {});
+            });
             collector.on('collect', async (i) => {
                 if (i.user.id !== userId) return i.reply({ content: t('inventory.menuNotYours', lang) || '❌ This menu is not yours.', flags: 64 }).catch(() => {});
                 const selectedId = i.values[0];

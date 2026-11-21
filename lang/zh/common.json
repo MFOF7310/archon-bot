@@ -37,5 +37,7 @@
   "commandNotFound": "🤔 **哎呀，我不知道这个命令。** 你是不是打错字了？",
   "commandExecuted": "✅ 命令已执行。",
   "noHandler": "❌ 此命令没有执行处理程序。",
-  "appealNotYours": "🔒 此申诉按钮不属于你。"
+  "appealNotYours": "🔒 此申诉按钮不属于你。",
+  "session_ended": "这个已经结束了。再次使用 {cmd} 继续。",
+  "session_not_yours": "这是打开它的人的。自己使用该命令来获取你的。"
 }

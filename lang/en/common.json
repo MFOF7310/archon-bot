@@ -37,5 +37,7 @@
   "commandNotFound": "🤔 **Oops, I don't know that command.** Did you make a typo?",
   "commandExecuted": "✅ Command executed.",
   "noHandler": "❌ This command has no execution handler.",
-  "appealNotYours": "🔒 This appeal button is not for you."
+  "appealNotYours": "🔒 This appeal button is not for you.",
+  "session_ended": "This has ended. Run {cmd} again to continue.",
+  "session_not_yours": "This belongs to the person who opened it. Run the command yourself to get your own."
 }

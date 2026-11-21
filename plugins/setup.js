@@ -7,6 +7,8 @@
 //     and not a role with powerful permissions (every new member would get those)
 //   - the summary says whether ARCHON can really post in the welcome and log channels (the same check as /postcheck)
 //   - what you pick is saved right away, so cancelling or timing out never loses it
+//   - the wizard's state is a stored session (lib/components.js): its buttons keep working after a restart, and once it has
+//     ended (15 minutes without a click) a click greys them out and says to run /setup again
 // ═══════════════════════════════════════════════════════
 const {
     EmbedBuilder, PermissionFlagsBits, SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
@@ -17,9 +19,11 @@ const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components 
 const { icon } = require('../lib/ui/icons');
 const i18n = require('../lib/i18n');
 const canPost = require('../lib/canPost');
+const components = require('../lib/components');
 
 const LANGS = ['en', 'fr', 'zh', 'ar', 'bm'];
-const IDLE_MS = 120000;                                   // two minutes without a click ends the setup
+const IDLE_MS = 15 * 60 * 1000;                           // 15 minutes without a click ends the setup (the session is stored: a restart doesn't)
+const cid = (sid, action, ...args) => components.id('setup', sid, action, ...args);
 const GOLD = 0xfcd116, GREEN = 0x14b53a, AMBER = 0xf59e0b, GREY = 0x8d897f;   // the colours of Mali, plus two quiet ones
 
 // The questions, in order. `setting` is the name client.updateServerSetting already knows; `needsPost` marks the channels ARCHON writes in.
@@ -76,7 +80,7 @@ function suggestFor(guild, step) {
 // ── the screens ──────────────────────────────────────
 // The first screen: where this server stands (lib/setup-checklist.js, the same list Lydia reads), the wizard's
 // Start button, and shortcuts to the panels that fix the rest. Opener id in the shortcuts: only they can drive them.
-function welcomeScreen(lang, guild, client, userId = '0') {
+function welcomeScreen(lang, guild, client, userId = '0', sid = 'preview') {
     const { card } = require('../lib/games/v2');
     const C = (k, v) => T(lang, `check.${k}`, v);
     let res = { items: [], doneCount: 0, total: 0, coreLeft: 0 };
@@ -97,16 +101,16 @@ function welcomeScreen(lang, guild, client, userId = '0') {
     }
     items.push({ rule: true }, { text: C('wizardHint', { total: STEPS.length, start: T(lang, 'start') }) });
     items.push({ row: new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('setup_start').setLabel(T(lang, 'start')).setStyle(ButtonStyle.Success).setEmoji(icon('next', guild)),
-        new ButtonBuilder().setCustomId('setup_cancel').setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary)) });
+        new ButtonBuilder().setCustomId(cid(sid, 'start')).setLabel(T(lang, 'start')).setStyle(ButtonStyle.Success).setEmoji(icon('next', guild)),
+        new ButtonBuilder().setCustomId(cid(sid, 'cancel')).setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary)) });
     items.push({ row: new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`chan:back:${userId}`).setLabel(C('panel_channels')).setStyle(ButtonStyle.Secondary).setEmoji(icon('ch_title', guild)),
         new ButtonBuilder().setCustomId(`roles:back:${userId}`).setLabel(C('panel_roles')).setStyle(ButtonStyle.Secondary).setEmoji(icon('member', guild)),
         new ButtonBuilder().setCustomId(`wel:open:welcome:${userId}`).setLabel(C('panel_welcome')).setStyle(ButtonStyle.Secondary).setEmoji(icon('ch_welcome', guild))) });
     // a copy of the settings, and a way back to zero (it asks first)
     items.push({ row: new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('setup_export').setLabel(C('btn_export')).setStyle(ButtonStyle.Secondary).setEmoji(icon('file', guild)),
-        new ButtonBuilder().setCustomId('setup_reset').setLabel(C('btn_reset')).setStyle(ButtonStyle.Danger).setEmoji(icon('refresh', guild))) });
+        new ButtonBuilder().setCustomId(cid(sid, 'export')).setLabel(C('btn_export')).setStyle(ButtonStyle.Secondary).setEmoji(icon('file', guild)),
+        new ButtonBuilder().setCustomId(cid(sid, 'reset')).setLabel(C('btn_reset')).setStyle(ButtonStyle.Danger).setEmoji(icon('refresh', guild))) });
     return card(res.coreLeft ? AMBER : GREEN, items);
 }
 
@@ -122,31 +126,31 @@ function exportFile(client, guild) {
 }
 
 // Asks before wiping: what goes, what stays, and the advice to export first
-function resetScreen(lang, guild) {
+function resetScreen(lang, guild, sid = 'preview') {
     const { card } = require('../lib/games/v2');
     const C = (k, v) => T(lang, `check.${k}`, v);
     return card(0xE74C3C, [
         { text: `-# ARCHON · ${T(lang, 'title')}\n## ${icon('warn', guild)} ${C('reset_title', { server: safeName(guild.name) })}\n${C('reset_gone')}\n-# ${C('reset_kept')}\n-# ${C('reset_tip')}` },
         { row: new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('setup_reset_ok').setLabel(C('reset_yes')).setStyle(ButtonStyle.Danger),
-            new ButtonBuilder().setCustomId('setup_export').setLabel(C('btn_export')).setStyle(ButtonStyle.Secondary).setEmoji(icon('file', guild)),
-            new ButtonBuilder().setCustomId('setup_reset_no').setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary)) },
+            new ButtonBuilder().setCustomId(cid(sid, 'reset_ok')).setLabel(C('reset_yes')).setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId(cid(sid, 'export')).setLabel(C('btn_export')).setStyle(ButtonStyle.Secondary).setEmoji(icon('file', guild)),
+            new ButtonBuilder().setCustomId(cid(sid, 'reset_no')).setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary)) },
     ]);
 }
 
-function questionScreen(lang, guild, idx, notice, suggestion = suggestFor(guild, STEPS[idx])) {
+function questionScreen(lang, guild, idx, notice, suggestion = suggestFor(guild, STEPS[idx]), sid = 'preview') {
     const step = STEPS[idx];
     const embed = new EmbedBuilder().setColor(GOLD)
         .setTitle(T(lang, `q.${step.key}.title`))
         .setDescription(T(lang, `q.${step.key}.text`) + (notice ? `\n\n⚠️ ${notice}` : ''))
         .setFooter({ text: T(lang, 'footer', { server: safeName(guild.name), n: idx + 1, total: STEPS.length }) });
     const picker = step.kind === 'role' ? new RoleSelectMenuBuilder() : new ChannelSelectMenuBuilder().setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
-    picker.setCustomId('setup_pick').setPlaceholder(T(lang, step.kind === 'role' ? 'placeholderRole' : 'placeholderChannel')).setMinValues(1).setMaxValues(1);
+    picker.setCustomId(cid(sid, 'pick')).setPlaceholder(T(lang, step.kind === 'role' ? 'placeholderRole' : 'placeholderChannel')).setMinValues(1).setMaxValues(1);
     const buttons = new ActionRowBuilder();
-    if (suggestion) buttons.addComponents(new ButtonBuilder().setCustomId(`setup_use:${suggestion.id}`).setLabel(T(lang, 'useSuggestion', { name: suggestion.label }).slice(0, 80)).setStyle(ButtonStyle.Success));
+    if (suggestion) buttons.addComponents(new ButtonBuilder().setCustomId(cid(sid, 'use', suggestion.id)).setLabel(T(lang, 'useSuggestion', { name: suggestion.label }).slice(0, 80)).setStyle(ButtonStyle.Success));
     buttons.addComponents(
-        new ButtonBuilder().setCustomId('setup_skip').setLabel(T(lang, 'skip')).setStyle(ButtonStyle.Secondary).setEmoji(icon('skip', guild)),
-        new ButtonBuilder().setCustomId('setup_cancel').setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary));
+        new ButtonBuilder().setCustomId(cid(sid, 'skip')).setLabel(T(lang, 'skip')).setStyle(ButtonStyle.Secondary).setEmoji(icon('skip', guild)),
+        new ButtonBuilder().setCustomId(cid(sid, 'cancel')).setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary));
     return toV2({ embeds: [embed], components: [new ActionRowBuilder().addComponents(picker), buttons] });
 }
 
@@ -221,26 +225,30 @@ module.exports = {
         await module.exports.startWizard(message, client, lang, false);
     },
 
-    // ── the wizard: one collector for the whole conversation ──
+    // ── the wizard: its state lives in a stored session (lib/components.js), so a restart doesn't kill the buttons ──
     async startWizard(context, client, lang, isSlash) {
         const guild = context.guild;
         const userId = isSlash ? context.user.id : context.author.id;
-        const state = {};
-        let idx = -1;
-
-        let msg;
+        const sid = components.create(client.db, { kind: 'setup', userId, guildId: guild.id, idleMs: IDLE_MS, data: { lang, idx: -1, state: {} } });
         try {
-            const first = welcomeScreen(lang, guild, client, userId);
-            if (isSlash) { await context.reply({ ...first, flags: first.flags | (1 << 6) }); msg = await context.fetchReply(); } else msg = await context.reply(first);
-        } catch (e) { console.error('[SETUP] could not open the wizard:', e.message); return; }
+            const first = welcomeScreen(lang, guild, client, userId, sid);
+            if (isSlash) await context.reply({ ...first, flags: first.flags | (1 << 6) }); else await context.reply(first);
+        } catch (e) { console.error('[SETUP] could not open the wizard:', e.message); }
+    },
 
-        const collector = msg.createMessageComponentCollector({ idle: IDLE_MS });
+    // Every click on the wizard: c:setup:<sid>:<action>[:<id>]
+    async onComponent(i, client, { sid, action, args, session, save, end }) {
+        const guild = i.guild;
+        if (!guild) return;
+        const { lang, state } = session.data;
+        let { idx } = session.data;
+        const userId = session.userId;
         const savedCount = () => Object.keys(state).length;
 
-        const advance = (i) => {
+        const advance = () => {
             idx += 1;
-            if (idx < STEPS.length) return i.update(questionScreen(lang, guild, idx)).catch(() => {});
-            collector.stop('done');
+            if (idx < STEPS.length) { save({ lang, idx, state }); return i.update(questionScreen(lang, guild, idx, null, undefined, sid)).catch(() => {}); }
+            end();
             const warnings = STEPS.filter((s) => s.needsPost && state[s.key]).map((s) => channelWarning(lang, guild, s, state[s.key])).filter(Boolean);
             const low = require('../lib/role-check').lowRoleText(guild, lang);
             if (low) warnings.push(low);
@@ -249,53 +257,42 @@ module.exports = {
             return i.update(summaryScreen(lang, guild, state, warnings, prefix)).catch(() => {});
         };
 
-        collector.on('collect', async (i) => {
-            try {
-                if (i.user.id !== userId) return i.reply({ content: T(lang, 'notYours'), flags: 1 << 6 }).catch(() => {});
-                // a shortcut to another panel: that panel's own handler takes over this message, the wizard steps aside
-                if (!i.customId.startsWith('setup_')) return collector.stop('left');
-                if (i.customId === 'setup_cancel') { collector.stop('cancelled'); return i.update(plainScreen(lang, savedCount() ? 'cancelledSaved' : 'cancelled')).catch(() => {}); }
-                if (i.customId === 'setup_start' && idx === -1) return advance(i);
-                if (i.customId === 'setup_export') {
-                    return i.reply({ content: T(lang, 'check.export_done'), files: [exportFile(client, guild)], flags: 1 << 6 }).catch((e) => console.error('[SETUP] export:', e.message));
-                }
-                // erasing everything at once is the one step that needs Administrator (or the owner)
-                if ((i.customId === 'setup_reset' || i.customId === 'setup_reset_ok')) {
-                    const _no = require('../lib/access').deny(i.member, 'reset', lang);
-                    if (_no) return i.reply({ content: _no, flags: 1 << 6, allowedMentions: { parse: [] } }).catch(() => {});
-                }
-                if (i.customId === 'setup_reset' && idx === -1) return i.update(resetScreen(lang, guild)).catch(() => {});
-                if (i.customId === 'setup_reset_no' && idx === -1) return i.update(welcomeScreen(lang, guild, client, userId)).catch(() => {});
-                if (i.customId === 'setup_reset_ok' && idx === -1) {
-                    try { client.db.prepare('DELETE FROM server_settings WHERE guild_id = ?').run(guild.id); } catch (e) { console.error('[SETUP] reset:', e.message); }
-                    try { client.db.prepare('DELETE FROM server_command_settings WHERE guild_id = ?').run(guild.id); } catch { /* no table */ }
-                    try { client.settings?.delete?.(guild.id); client.invalidateGuildCache?.(guild.id); } catch { /* reloads on next read */ }
-                    console.log(`[SETUP] settings reset for ${guild.id} by ${i.user.id}`);
-                    const back = welcomeScreen(lang, guild, client, userId);
-                    return i.update(back).then(() => i.followUp({ content: T(lang, 'check.reset_done'), flags: 1 << 6 })).catch(() => {});
-                }
-                if (i.customId === 'setup_skip' && idx >= 0) return advance(i);
-                if ((i.customId === 'setup_pick' || i.customId.startsWith('setup_use:')) && idx >= 0) {
-                    const step = STEPS[idx];
-                    const id = i.customId === 'setup_pick' ? i.values[0] : i.customId.split(':')[1];
-                    if (step.kind === 'role') {
-                        const problem = roleProblem(lang, guild, guild.roles.cache.get(id));
-                        if (problem) return i.update(questionScreen(lang, guild, idx, problem, null)).catch(() => {});   // stay on this question
-                    }
-                    client.updateServerSetting(guild.id, step.setting, id);
-                    for (const [k, v] of step.extra || []) client.updateServerSetting(guild.id, k, v);
-                    state[step.key] = id;
-                    return advance(i);
-                }
-            } catch (e) {
-                console.error('[SETUP] step failed:', e.message);
-                if (!i.replied && !i.deferred) i.reply({ content: T(lang, 'error'), flags: 1 << 6 }).catch(() => {});
+        if (action === 'cancel') { end(); return i.update(plainScreen(lang, savedCount() ? 'cancelledSaved' : 'cancelled')).catch(() => {}); }
+        if (action === 'start' && idx === -1) return advance();
+        if (action === 'export') {
+            return i.reply({ content: T(lang, 'check.export_done'), files: [exportFile(client, guild)], flags: 1 << 6 }).catch((e) => console.error('[SETUP] export:', e.message));
+        }
+        // erasing everything at once is the one step that needs Administrator (or the owner)
+        if (action === 'reset' || action === 'reset_ok') {
+            const _no = require('../lib/access').deny(i.member, 'reset', lang);
+            if (_no) return i.reply({ content: _no, flags: 1 << 6, allowedMentions: { parse: [] } }).catch(() => {});
+        }
+        if (action === 'reset' && idx === -1) return i.update(resetScreen(lang, guild, sid)).catch(() => {});
+        if (action === 'reset_no' && idx === -1) return i.update(welcomeScreen(lang, guild, client, userId, sid)).catch(() => {});
+        if (action === 'reset_ok' && idx === -1) {
+            try { client.db.prepare('DELETE FROM server_settings WHERE guild_id = ?').run(guild.id); } catch (e) { console.error('[SETUP] reset:', e.message); }
+            try { client.db.prepare('DELETE FROM server_command_settings WHERE guild_id = ?').run(guild.id); } catch { /* no table */ }
+            try { client.settings?.delete?.(guild.id); client.invalidateGuildCache?.(guild.id); } catch { /* reloads on next read */ }
+            console.log(`[SETUP] settings reset for ${guild.id} by ${i.user.id}`);
+            return i.update(welcomeScreen(lang, guild, client, userId, sid)).then(() => i.followUp({ content: T(lang, 'check.reset_done'), flags: 1 << 6 })).catch(() => {});
+        }
+        if (action === 'skip' && idx >= 0) return advance();
+        if ((action === 'pick' || action === 'use') && idx >= 0) {
+            const step = STEPS[idx];
+            const id = action === 'pick' ? i.values?.[0] : args[0];
+            if (!id) return;
+            if (step.kind === 'role') {
+                const problem = roleProblem(lang, guild, guild.roles.cache.get(id));
+                if (problem) return i.update(questionScreen(lang, guild, idx, problem, null, sid)).catch(() => {});   // stay on this question
             }
-        });
-
-        collector.on('end', async (_, reason) => {
-            if (reason === 'idle') await msg.edit(plainScreen(lang, savedCount() ? 'timeoutSaved' : 'timeout')).catch(() => {});
-        });
+            client.updateServerSetting(guild.id, step.setting, id);
+            for (const [k, v] of step.extra || []) client.updateServerSetting(guild.id, k, v);
+            state[step.key] = id;
+            return advance();
+        }
+        // a click that doesn't fit the current screen (an old copy of the card): show where the wizard is now
+        if (idx === -1) return i.update(welcomeScreen(lang, guild, client, userId, sid)).catch(() => {});
+        return i.update(questionScreen(lang, guild, idx, null, undefined, sid)).catch(() => {});
     },
 
     // Used by the installer's self-test.
@@ -312,3 +309,6 @@ module.exports = {
         return shots.map((s) => JSON.stringify({ flags: s.flags, components: s.components.map((c) => c.toJSON()) }));
     }
 };
+
+// The wizard's buttons and menus (c:setup:…) come back here, even after a restart
+components.register('setup', (ix, client, ctx) => module.exports.onComponent(ix, client, ctx), { command: 'setup' });

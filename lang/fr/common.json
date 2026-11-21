@@ -37,5 +37,7 @@
   "commandNotFound": "🤔 **Oups, je ne connais pas cette commande.** Tu as fait une faute de frappe ?",
   "commandExecuted": "✅ Commande exécutée.",
   "noHandler": "❌ Cette commande n'a pas de gestionnaire d'exécution.",
-  "appealNotYours": "🔒 Ce bouton d'appel ne vous est pas destiné."
+  "appealNotYours": "🔒 Ce bouton d'appel ne vous est pas destiné.",
+  "session_ended": "C’est terminé. Relance {cmd} pour continuer.",
+  "session_not_yours": "Ceci appartient à la personne qui l’a ouvert. Lance la commande toi-même pour avoir le tien."
 }

@@ -602,7 +602,13 @@ module.exports = {
             await interaction.editReply(buildDashboard());
             const msg = await interaction.fetchReply();
 
-            const collector = msg.createMessageComponentCollector({ time: 15 * 60 * 1000 });
+            // 14 minutes: the reply can still be edited (Discord allows 15), so the buttons are greyed out instead of left dead
+            const collector = msg.createMessageComponentCollector({ time: 14 * 60 * 1000 });
+            collector.on('end', async (_, reason) => {
+                if (reason !== 'time') return;
+                const now = await interaction.fetchReply().catch(() => null);
+                if (now) await interaction.editReply({ components: require('../lib/components').disabledCopy(now) }).catch(() => {});
+            });
 
             collector.on('collect', async (i) => {
                 if (i.user.id !== interaction.user.id) {

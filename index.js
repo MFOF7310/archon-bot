@@ -3045,6 +3045,14 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             try { db.prepare("UPDATE global_server_stats SET last_active = strftime('%s','now') WHERE guild_id = ?").run(interaction.guildId); } catch (_) {}
         }
     }
+    // Buttons and menus with a stored session (c:<kind>:<sid>:…, lib/components.js): they work after a restart too
+    if ((interaction.isMessageComponent?.() || interaction.isModalSubmit?.()) && interaction.customId?.startsWith('c:')) {
+        return require('./lib/components').route(interaction, client).catch((e) => console.error('[COMPONENTS]', e.message));
+    }
+    // /setup cards opened before it moved to stored sessions (setup_…): greyed out with "run /setup again"
+    if (interaction.isMessageComponent?.() && interaction.customId?.startsWith('setup_')) {
+        return require('./lib/components').expire(interaction, client, 'setup').catch(() => {});
+    }
     // ── VERIFY PANEL (buttons + modal) — must run before other routers ──
     if ((interaction.isButton?.() || interaction.isModalSubmit?.()) && interaction.customId?.startsWith('vpanel:')) {
         try {
