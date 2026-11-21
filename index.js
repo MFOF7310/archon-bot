@@ -4700,8 +4700,8 @@ apiApp.get('/api/admin/usage', requireAdmin, (req, res) => {
         const has = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'command_events'").get();
         if (!has) return res.json(empty);
         const since = Date.now() - days * 86400000;
-        const totals = db.prepare('SELECT COUNT(*) AS commands, COUNT(DISTINCT user_id) AS people, COUNT(DISTINCT guild_id) AS servers FROM command_events WHERE ts > ?').get(since);
-        const byGuild = db.prepare('SELECT guild_id AS id, COUNT(*) AS commands, COUNT(DISTINCT user_id) AS people, MAX(ts) AS lastAt FROM command_events WHERE ts > ? GROUP BY guild_id ORDER BY commands DESC').all(since);
+        const totals = db.prepare('SELECT COUNT(*) AS commands, COUNT(DISTINCT user_id) AS people, COUNT(DISTINCT guild_id) AS servers FROM command_events WHERE ts > ? AND LENGTH(TRIM(command)) > 0').get(since);
+        const byGuild = db.prepare('SELECT guild_id AS id, COUNT(*) AS commands, COUNT(DISTINCT user_id) AS people, MAX(ts) AS lastAt FROM command_events WHERE ts > ? AND LENGTH(TRIM(command)) > 0 GROUP BY guild_id ORDER BY commands DESC').all(since);
         const servers = byGuild.filter(r => client.guilds.cache.has(r.id)).map(r => {
             const g = client.guilds.cache.get(r.id);
             return { ...r, name: g.name, icon: g.iconURL({ size: 64 }) || null, members: g.memberCount || 0 };
@@ -4711,8 +4711,9 @@ apiApp.get('/api/admin/usage', requireAdmin, (req, res) => {
         const quiet = [...client.guilds.cache.values()].filter(g => !active.has(g.id))
             .map(g => ({ id: g.id, name: g.name, icon: g.iconURL({ size: 64 }) || null, members: g.memberCount || 0, joinedAt: g.joinedTimestamp || null }))
             .sort((a, b) => b.members - a.members);
-        const commands = db.prepare('SELECT command, COUNT(*) AS uses, COUNT(DISTINCT guild_id) AS servers FROM command_events WHERE ts > ? GROUP BY command ORDER BY uses DESC LIMIT 25').all(since);
-        res.json({ days, totals, servers, quiet, commands });
+        const commands = db.prepare('SELECT command, COUNT(*) AS uses, COUNT(DISTINCT guild_id) AS servers FROM command_events WHERE ts > ? AND LENGTH(TRIM(command)) > 0 GROUP BY command ORDER BY uses DESC LIMIT 25').all(since);
+        // Active servers: only those ARCHON is still in (the totals above also count servers it has left)
+        res.json({ days, totals: { ...totals, servers: servers.length }, servers, quiet, commands });
     } catch (err) {
         console.error('[API /api/admin/usage]', err.message);
         res.json(empty);
