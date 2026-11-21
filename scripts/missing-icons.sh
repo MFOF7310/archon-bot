@@ -155,3 +155,6 @@ make ic_arch building-arch
 make ic_food tools-kitchen-2
 make ic_rocket rocket
 make ic_city building-skyscraper
+
+# Lydia's memory card and DM reaction
+make ic_inbox mailbox
