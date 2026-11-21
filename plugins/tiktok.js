@@ -537,6 +537,7 @@ async function sendNotification(client, db, guildId, username, data, type) {
 
         await safeSend('tiktok', channel, card._v2, { throwOnError: true });
         if (type === 'live') lastNotificationTime.set(liveKey(guildId, username), Date.now());
+        if (type === 'live' || type === 'video') require('../lib/alert-log').record(db, guildId, `tiktok_${type}`);
         return true;
     } catch (err) {
         console.error('[TIKTOK] sendNotification failed:', err.message);

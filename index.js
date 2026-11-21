@@ -4706,18 +4706,37 @@ apiApp.get('/api/admin/usage', requireAdmin, (req, res) => {
         const notOwner = skip.length ? ` AND user_id NOT IN (${skip.map(() => '?').join(',')})` : '';
         const totals = db.prepare('SELECT COUNT(*) AS commands, COUNT(DISTINCT user_id) AS people, COUNT(DISTINCT guild_id) AS servers FROM command_events WHERE ts > ? AND LENGTH(TRIM(command)) > 0' + notOwner).get(since, ...skip);
         const byGuild = db.prepare('SELECT guild_id AS id, COUNT(*) AS commands, COUNT(DISTINCT user_id) AS people, MAX(ts) AS lastAt FROM command_events WHERE ts > ? AND LENGTH(TRIM(command)) > 0' + notOwner + ' GROUP BY guild_id ORDER BY commands DESC').all(since, ...skip);
-        const servers = byGuild.filter(r => client.guilds.cache.has(r.id)).map(r => {
-            const g = client.guilds.cache.get(r.id);
-            return { ...r, name: g.name, icon: g.iconURL({ size: 64 }) || null, members: g.memberCount || 0 };
-        });
-        // Servers ARCHON is in where nobody used a command in the period: the ones at risk of removing it
-        const active = new Set(byGuild.map(r => r.id));
+        // ARCHON's own work, which needs no command: AutoMod actions, Lydia replies, members welcomed, verifications,
+        // tickets opened, YouTube/TikTok alerts. Each source is counted per server; a missing table just counts 0.
+        const acts = new Map();   // guild → { automod, lydia, joins, verify, tickets, alerts }
+        const add = (rows, key) => { for (const r of rows) { const a = acts.get(r.id) || { automod: 0, lydia: 0, joins: 0, verify: 0, tickets: 0, alerts: 0 }; a[key] += Number(r.n) || 0; acts.set(r.id, a); } };
+        const tryAll = (sql, ...args) => { try { return db.prepare(sql).all(...args); } catch { return []; } };
+        const notU = (col) => skip.length ? ` AND ${col} NOT IN (${skip.map(() => '?').join(',')})` : '';
+        const sinceS = Math.floor(since / 1000), sinceDay = new Date(since).toISOString().slice(0, 10);
+        add(tryAll('SELECT guild_id AS id, COUNT(*) AS n FROM moderation_logs WHERE moderator_id = ? AND timestamp > ?' + notU('user_id') + ' GROUP BY guild_id', client.user.id, sinceS, ...skip), 'automod');
+        add(tryAll('SELECT guild_id AS id, SUM(n) AS n FROM lydia_usage WHERE day >= ?' + notU('user_id') + ' GROUP BY guild_id', sinceDay, ...skip), 'lydia');
+        add(tryAll('SELECT guild_id AS id, COUNT(*) AS n FROM member_joins WHERE joined_at > ?' + notU('user_id') + ' GROUP BY guild_id', since, ...skip), 'joins');
+        add(tryAll('SELECT guild_id AS id, COUNT(*) AS n FROM verify_events WHERE ts > ?' + notU('user_id') + ' GROUP BY guild_id', sinceS, ...skip), 'verify');
+        add(tryAll('SELECT guild_id AS id, COUNT(*) AS n FROM tickets WHERE created_at > ?' + notU('creator_id') + ' GROUP BY guild_id', since, ...skip), 'tickets');
+        add(tryAll('SELECT guild_id AS id, COUNT(*) AS n FROM alert_events WHERE ts > ? GROUP BY guild_id', since), 'alerts');
+        const sum = (a) => a ? a.automod + a.lydia + a.joins + a.verify + a.tickets + a.alerts : 0;
+
+        const cmdBy = new Map(byGuild.map(r => [r.id, r]));
+        const ids = new Set([...cmdBy.keys(), ...[...acts.keys()].filter(id => sum(acts.get(id)) > 0)]);
+        const servers = [...ids].filter(id => client.guilds.cache.has(id)).map(id => {
+            const g = client.guilds.cache.get(id), c = cmdBy.get(id), a = acts.get(id);
+            return { id, name: g.name, icon: g.iconURL({ size: 64 }) || null, members: g.memberCount || 0,
+                commands: c?.commands || 0, people: c?.people || 0, lastAt: c?.lastAt || 0, actions: sum(a),
+                work: a || { automod: 0, lydia: 0, joins: 0, verify: 0, tickets: 0, alerts: 0 } };
+        }).sort((x, y) => (y.commands + y.actions) - (x.commands + x.actions));
+        // Quiet: ARCHON is there, but nobody typed a command AND it did nothing on its own (the ones at risk of removing it)
+        const active = new Set(servers.map(r => r.id));
         const quiet = [...client.guilds.cache.values()].filter(g => !active.has(g.id))
             .map(g => ({ id: g.id, name: g.name, icon: g.iconURL({ size: 64 }) || null, members: g.memberCount || 0, joinedAt: g.joinedTimestamp || null }))
             .sort((a, b) => b.members - a.members);
         const commands = db.prepare('SELECT command, COUNT(*) AS uses, COUNT(DISTINCT guild_id) AS servers FROM command_events WHERE ts > ? AND LENGTH(TRIM(command)) > 0' + notOwner + ' GROUP BY command ORDER BY uses DESC LIMIT 25').all(since, ...skip);
         // Active servers: only those ARCHON is still in (the totals above also count servers it has left)
-        res.json({ days, totals: { ...totals, servers: servers.length }, servers, quiet, commands });
+        res.json({ days, totals: { ...totals, servers: servers.length, actions: servers.reduce((n, r) => n + r.actions, 0) }, servers, quiet, commands });
     } catch (err) {
         console.error('[API /api/admin/usage]', err.message);
         res.json(empty);

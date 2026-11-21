@@ -384,6 +384,7 @@ async function sendNotification(client, db, guildId, channelId, handle, payload,
         else card = buildLiveEmbed(channelId, payload, handle, client, lang);
         await require('../lib/safeSend').safeSend('youtube', channel, { ...card._v2 }, { throwOnError: true });
         if (type === 'live') lastNotificationTime.set(`${guildId}:${channelId}`, Date.now());
+        if (type === 'live' || type === 'video') require('../lib/alert-log').record(db, guildId, `youtube_${type}`);
         return { ok: true };
     } catch (e) {
         const msg = String(e?.message || e);
