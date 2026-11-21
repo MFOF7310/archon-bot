@@ -100,5 +100,7 @@
   "preset_neon": "نيون",
   "preset_rose": "وردي",
   "preset_dark": "داكن",
-  "themeDefaultWelcome": "افتراضي (لون رتبة العضو، وإلا فالأخضر)"
+  "themeDefaultWelcome": "افتراضي (لون رتبة العضو، وإلا فالأخضر)",
+  "voice_milestone_one": "{icon} أمضى {user} أول **ساعة** له في الصوت على هذا الخادم.",
+  "voice_milestone": "{icon} أمضى {user} حتى الآن **{hours} ساعة** في الصوت على هذا الخادم."
 }

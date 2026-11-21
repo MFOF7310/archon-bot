@@ -100,5 +100,7 @@
   "preset_neon": "Neon",
   "preset_rose": "Rose",
   "preset_dark": "Dark",
-  "themeDefaultWelcome": "default (the member's role colour, otherwise green)"
+  "themeDefaultWelcome": "default (the member's role colour, otherwise green)",
+  "voice_milestone_one": "{icon} {user} has spent their first **hour** in voice on this server.",
+  "voice_milestone": "{icon} {user} has now spent **{hours} hours** in voice on this server."
 }

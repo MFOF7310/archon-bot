@@ -2101,7 +2101,7 @@ client.once(Events.ClientReady, async () => {
 // Store references to plugins that need event hooks
 const leveling = client.commands.get('leveling');
 if (leveling?.onMemberAdd) { client.leveling = leveling; console.log(`${green}[LEVELING]${reset} Event hooks registered`); }
-// Voice XP: a minute in voice with others earns XP and voice time (lib/voice-xp.js)
+// Voice time: a minute in voice with others counts toward /leaderboard type:voice, with a few milestones (lib/voice-xp.js). No XP.
 try { require('./lib/voice-xp').start(client); } catch (e) { console.error('[VOICE XP]', e.message); }
 const welcomeMod = client.commands.get('welcome');
 if (welcomeMod?.onMemberAdd) { client.welcome = welcomeMod; console.log(`${green}[WELCOME]${reset} Event hooks registered`); }
