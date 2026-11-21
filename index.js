@@ -4700,8 +4700,8 @@ apiApp.get('/api/admin/usage', requireAdmin, (req, res) => {
         const has = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'command_events'").get();
         if (!has) return res.json(empty);
         const since = Date.now() - days * 86400000;
-        // The owner's own accounts (tests) are left out, so the page shows real usage. More ids: STATS_EXCLUDE_IDS=id1,id2
-        const skip = [...new Set([process.env.OWNER_ID, '1472519528406847580', ...String(process.env.STATS_EXCLUDE_IDS || '').split(',')]
+        // The owner's own accounts (tests) are left out, so the page shows real usage: OWNER_ID, plus STATS_EXCLUDE_IDS=id1,id2 in .env
+        const skip = [...new Set([process.env.OWNER_ID, ...String(process.env.STATS_EXCLUDE_IDS || '').split(',')]
             .map(v => String(v || '').trim()).filter(v => /^\d{17,20}$/.test(v)))];
         const notOwner = skip.length ? ` AND user_id NOT IN (${skip.map(() => '?').join(',')})` : '';
         const totals = db.prepare('SELECT COUNT(*) AS commands, COUNT(DISTINCT user_id) AS people, COUNT(DISTINCT guild_id) AS servers FROM command_events WHERE ts > ? AND LENGTH(TRIM(command)) > 0' + notOwner).get(since, ...skip);
