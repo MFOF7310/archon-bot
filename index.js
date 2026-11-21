@@ -3630,7 +3630,7 @@ const isTicketComponent = (interaction.isButton() && interaction.customId.starts
     if (interaction.isButton() && interaction.customId?.startsWith('lyr:')) {
         return require('./plugins/lyrics.js').handleComponent(interaction, client).catch((e) => console.error('[LYRICS] button:', e.message));
     }
-    if (interaction.isButton() && interaction.customId?.startsWith('fun:')) {
+    if ((interaction.isButton() || interaction.isStringSelectMenu()) && interaction.customId?.startsWith('fun:')) {
         return require('./lib/fun').handleComponent(interaction, client).catch((e) => console.error('[FUN] button:', e.message));
     }
     if (interaction.isButton() && /^(meme|cat|dog|car)_|^(slapback|resummon)$/.test(interaction.customId || '')) {

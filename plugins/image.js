@@ -5,9 +5,11 @@
 // Unsplash's rules: the photographer is credited with a link, and each photo shown is reported to their download
 // endpoint. NASA: NASA_API_KEY when set (DEMO_KEY allows ~30 calls an hour); a day whose picture is a video is skipped.
 // "Another one" never expires (fun:again:image:<uid>:<category>); someone else pressing it gets their own, privately.
+// "Change theme" (fun:theme:image:<uid>) does the same with the theme picked, shown with ARCHON's own icons.
 // Texts: lang/<l>/funcards.json (img_*).
 // ═══════════════════════════════════════════════════════════════════════════
-const { SlashCommandBuilder } = require('discord.js');
+const { SlashCommandBuilder, ActionRowBuilder, StringSelectMenuBuilder } = require('discord.js');
+const { icon } = require('../lib/ui/icons');
 const fun = require('../lib/fun');
 
 const UNSPLASH = {   // category → search, card colour
@@ -90,6 +92,15 @@ async function unsplash(cat, who) {
     };
 }
 
+// "Change theme" under each photo: ARCHON's own icons (the slash command's list can only show plain emojis)
+function themeMenu(guild, lang, uid, current) {
+    const opts = ['random', ...available()].map((c) => ({
+        label: fun.F(`img_${c}`, lang).slice(0, 100), value: c, emoji: icon(`img_${c}`, guild), default: c === current,
+    }));
+    return new ActionRowBuilder().addComponents(new StringSelectMenuBuilder()
+        .setCustomId(`fun:theme:image:${uid}`).setPlaceholder(fun.F('img_change', lang)).addOptions(opts));
+}
+
 async function funMake(client, { guild, user, lang, arg }) {
     const asked = ALL.includes(arg) || arg === 'random' ? arg : 'random';
     const can = available();
@@ -108,11 +119,12 @@ async function funMake(client, { guild, user, lang, arg }) {
     else if (r.credit) lines.push(fun.F('source', lang, { source: r.credit }));
     return fun.imageCard(guild, lang, {
         color: UNSPLASH[cat]?.[1] || COLORS[cat] || 0xE6A817,
-        title: `${ICON[cat]} ${fun.F(`img_${cat}`, lang)}`,
+        title: `${icon(`img_${cat}`, guild) || ICON[cat]} ${fun.F(`img_${cat}`, lang)}`,
         image: r.image,
         lines,
         again: ['image', user.id, asked],   // "Another one" stays on the theme asked (random stays random)
         link: r.link ? [r.link, fun.F('img_view', lang)] : null,
+        menu: themeMenu(guild, lang, user.id, asked),
     });
 }
 

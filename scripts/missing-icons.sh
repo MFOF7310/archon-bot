@@ -144,3 +144,14 @@ make ic_video movie
 # Every new icon goes to its category in config/emojis.js
 node scripts/emojis-tidy.js
 echo "Done. Now run: pm2 restart Architect-CG223"
+
+# /image themes
+make ic_shuffle arrows-shuffle
+make ic_dog dog
+make ic_cat cat
+make ic_car car
+make ic_leaf leaf
+make ic_arch building-arch
+make ic_food tools-kitchen-2
+make ic_rocket rocket
+make ic_city building-skyscraper

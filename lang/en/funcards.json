@@ -74,5 +74,6 @@
   "qt_resilience": "Resilience",
   "qt_humor": "Humor",
   "qt_attributed": "attributed to {who}",
-  "qt_unknown": "Unknown author"
+  "qt_unknown": "Unknown author",
+  "img_change": "Change theme"
 }
