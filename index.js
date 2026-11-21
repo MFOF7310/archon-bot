@@ -4692,6 +4692,33 @@ apiApp.get('/api/admin/arrivals', requireAdmin, (req, res) => {
     }
 });
 
+// How ARCHON is used across every server (owner dashboard → Usage). From command_events (lib/insights.js, kept 90 days).
+apiApp.get('/api/admin/usage', requireAdmin, (req, res) => {
+    const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 30));
+    const empty = { days, totals: { commands: 0, people: 0, servers: 0 }, servers: [], quiet: [], commands: [] };
+    try {
+        const has = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'command_events'").get();
+        if (!has) return res.json(empty);
+        const since = Date.now() - days * 86400000;
+        const totals = db.prepare('SELECT COUNT(*) AS commands, COUNT(DISTINCT user_id) AS people, COUNT(DISTINCT guild_id) AS servers FROM command_events WHERE ts > ?').get(since);
+        const byGuild = db.prepare('SELECT guild_id AS id, COUNT(*) AS commands, COUNT(DISTINCT user_id) AS people, MAX(ts) AS lastAt FROM command_events WHERE ts > ? GROUP BY guild_id ORDER BY commands DESC').all(since);
+        const servers = byGuild.filter(r => client.guilds.cache.has(r.id)).map(r => {
+            const g = client.guilds.cache.get(r.id);
+            return { ...r, name: g.name, icon: g.iconURL({ size: 64 }) || null, members: g.memberCount || 0 };
+        });
+        // Servers ARCHON is in where nobody used a command in the period: the ones at risk of removing it
+        const active = new Set(byGuild.map(r => r.id));
+        const quiet = [...client.guilds.cache.values()].filter(g => !active.has(g.id))
+            .map(g => ({ id: g.id, name: g.name, icon: g.iconURL({ size: 64 }) || null, members: g.memberCount || 0, joinedAt: g.joinedTimestamp || null }))
+            .sort((a, b) => b.members - a.members);
+        const commands = db.prepare('SELECT command, COUNT(*) AS uses, COUNT(DISTINCT guild_id) AS servers FROM command_events WHERE ts > ? GROUP BY command ORDER BY uses DESC LIMIT 25').all(since);
+        res.json({ days, totals, servers, quiet, commands });
+    } catch (err) {
+        console.error('[API /api/admin/usage]', err.message);
+        res.json(empty);
+    }
+});
+
 // Servers ARCHON is no longer in (owner dashboard). The first call also adds old ones found in the stats table.
 apiApp.get('/api/admin/departures', requireAdmin, (req, res) => {
     try {
