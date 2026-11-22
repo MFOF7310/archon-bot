@@ -9,6 +9,14 @@ const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
 const { resolveEmoji } = require('../lib/emoji-resolver');
 const em = (k, fb) => resolveEmoji(k, global.client) || fb;
+const components = require('../lib/components');
+
+const IDLE_MS = 10 * 60 * 1000;   // the shop's buttons stay usable 10 minutes after the last click
+
+// Items this member owns on this server (purchases are per server)
+function owned(db, userId, guildId) {
+    return new Set(db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND guild_id = ? AND active = 1').all(userId, guildId).map((x) => x.item_id));
+}
 
 // The member's newest numbers: what is in memory while an automatic save is waiting, the database otherwise
 function live(client, db, userId, guildId, userName) {
@@ -39,7 +47,8 @@ module.exports = {
         .setDescription('💎 Spend your Archon Credits on exclusive upgrades'),
 
     // ================= SHARED UI BUILDER =================
-    buildView: (client, userData, ownedItems, lang, guildName, version) => {
+    // sid: the stored session (lib/components.js) behind the menu and buttons, so they keep working after a restart
+    buildView: (client, userData, ownedItems, lang, guildName, version, sid) => {
         const shopItems = client.shopItems || [];
         const balance = userData.credits || 0;
         const level = userData.level || 1;
@@ -71,14 +80,14 @@ module.exports = {
         });
 
         const menu = new StringSelectMenuBuilder()
-            .setCustomId('shop_select')
+            .setCustomId(components.id('shop', sid, 'buy'))
             .setPlaceholder(t('shop.placeholder', lang))
             .addOptions(createOptions(ownedItems, level));
 
         const row = new ActionRowBuilder().addComponents(menu);
         const buttonRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId('shop_inventory').setLabel(t('shop.inventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('inventory')),
-            new ButtonBuilder().setCustomId('shop_refresh').setLabel(t('shop.refresh', lang)).setStyle(ButtonStyle.Success).setEmoji(icon('refresh'))
+            new ButtonBuilder().setCustomId(components.id('shop', sid, 'inv')).setLabel(t('shop.inventory', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('inventory')),
+            new ButtonBuilder().setCustomId(components.id('shop', sid, 'refresh')).setLabel(t('shop.refresh', lang)).setStyle(ButtonStyle.Success).setEmoji(icon('refresh'))
         );
 
         const container = new ContainerBuilder().setAccentColor(0xf1c40f);
@@ -93,218 +102,94 @@ module.exports = {
         return { view: { components: [container], flags: MessageFlags.IsComponentsV2 }, menu, buttonRow };
     },
 
+    // The card for this member, with a new session behind its menu and buttons
+    open: (client, db, user, guild, lang) => {
+        const guildId = guild?.id || 'DM';
+        const sid = components.create(db, { kind: 'shop', userId: user.id, guildId, data: { lang }, idleMs: IDLE_MS });
+        const userData = live(client, db, user.id, guildId, user.username);
+        return module.exports.buildView(client, userData, owned(db, user.id, guildId), lang, guild?.name?.toUpperCase() || 'ARCHON CG-223', client.version || '1.7.0', sid).view;
+    },
+
     // ================= PREFIX COMMAND =================
-    run: async (client, message, args, db, serverSettings, usedCommand) => {
-        const guildId = message.guild?.id || 'DM';
-        const lang = pickLang(client, guildId, message);
-        const version = client.version || '1.7.0';
-        const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
-        const userId = message.author.id;
-        const userName = message.author.username;
-
-        const userData = live(client, db, userId, guildId, userName);
-
-        const inventory = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
-        const ownedItems = new Set(inventory.map(i => i.item_id));
-
-        const { view, menu, buttonRow } = module.exports.buildView(client, userData, ownedItems, lang, guildName, version);
-        const reply = await message.reply(view).catch(() => null);
-        if (!reply) return;
-
-        const collector = reply.createMessageComponentCollector({ time: 180000 });
-
-        collector.on('collect', async (i) => {
-            if (i.user.id !== userId) return i.reply({ content: t('shop.accessDenied', lang), flags: 64 }).catch(() => {});
-            try { await i.deferUpdate(); } catch (e) { return; }
-
-            if (i.customId === 'shop_inventory') {
-                collector.stop();
-                const invCmd = client.commands.get('inventory');
-                const fakeMsg = { 
-                    author: i.user, guild: i.guild, channel: i.channel, 
-                    reply: async (opts) => i.followUp(typeof opts === 'string' ? { content: opts } : opts) 
-                };
-                if (invCmd) return invCmd.run(client, fakeMsg, [], db, serverSettings, 'inventory', lang).catch(e => console.error('[SHOP TO INV ERROR]', e));
-                return;
-            }
-
-            if (i.customId === 'shop_refresh') {
-                try {
-                    const freshData = live(client, db, userId, guildId, userName);
-                    const freshInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
-                    const freshOwned = new Set(freshInv.map(x => x.item_id));
-                    const freshView = module.exports.buildView(client, freshData, freshOwned, lang, guildName, version);
-                    return await i.editReply(freshView.view);
-                } catch (e) {
-                    console.error('[SHOP REFRESH ERROR]', e);
-                    return i.followUp({ content: em('ic_off', '❌') + ' Failed to refresh shop.', flags: 64 }).catch(() => {});
-                }
-            }
-
-            if (i.customId === 'shop_select') {
-                const selectedId = i.values[0];
-                const selectedItem = (client.shopItems || []).find(item => item.id === selectedId);
-                if (!selectedItem) return;
-
-                const fd = live(client, db, userId, guildId, userName);
-                const curBal = fd?.credits || 0;
-                const curLvl = fd?.level || 1;
-
-                if (selectedItem.requirement?.level && curLvl < selectedItem.requirement.level) {
-                    return i.followUp({ content: t('shop.levelRequirement', lang, { level: selectedItem.requirement.level, current: curLvl }), flags: 64 }).catch(() => {});
-                }
-                if (curBal < selectedItem.price) {
-                    return i.followUp({ content: t('shop.insufficientFunds', lang, { price: selectedItem.price.toLocaleString(), balance: curBal.toLocaleString() }), flags: 64 }).catch(() => {});
-                }
-
-                const bonusXP = selectedItem.effect?.xp || 0;
-                const bonusCredits = selectedItem.effect?.credits || 0;
-                const newCredits = curBal - selectedItem.price + bonusCredits;
-                const newXP = (fd?.xp || 0) + bonusXP;
-                const newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
-
-                // One safe change: the price, the bonuses and the protection land together, in memory and in the database
-                // (the old direct write was put back by the next automatic save: the item was free)
-                const paid = pay(client, db, userId, guildId, selectedItem, newLevel);
-                if (!paid) {
-                    return i.followUp({ content: t('shop.insufficientFunds', lang, { price: selectedItem.price.toLocaleString(), balance: curBal.toLocaleString() }), flags: 64 }).catch(() => {});
-                }
-
-                const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, selectedId);
-                if (ex) {
-                    db.prepare('UPDATE user_inventory SET quantity = quantity + 1, active = 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, selectedId);
-                } else {
-                    db.prepare('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity, active) VALUES (?, ?, ?, 1, 1)').run(userId, guildId, selectedId);
-                }
-
-                const itemName = selectedItem[lang]?.name || selectedItem.en.name;
-                const successContainer = new ContainerBuilder().setAccentColor(0x2ecc71);
-                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', em('ic_ok', '✅'))} ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji} ${itemName}**`));
-                successContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('shop.pricePaid', lang)}:** \`-${selectedItem.price.toLocaleString()}\` ${em('coins', '🪙')}\n` + (bonusCredits > 0 ? `**${t('shop.bonusReceived', lang)}:** \`+${bonusCredits.toLocaleString()}\` ${em('coins', '🪙')}\n` : '') + (selectedItem.effect?.streak_protection ? `**${em('shield', '🛡️')} ${t('shop.streakProtectionLine', lang)}**\n` : '') + (bonusXP > 0 ? `**${em('XP', '✨')} ${t('shop.xpBonusLine', lang, { amount: bonusXP })}**\n` : '') + `**${t('shop.newBalance', lang)}:** \`${newCredits.toLocaleString()}\` ${em('coins', '🪙')}`));
-                
-                await i.followUp({ components: [successContainer], flags: 64 | MessageFlags.IsComponentsV2 }).catch(() => {});
-
-                const finalData = live(client, db, userId, guildId, userName);
-                const finalInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
-                const finalOwned = new Set(finalInv.map(x => x.item_id));
-                const finalView = module.exports.buildView(client, finalData, finalOwned, lang, guildName, version);
-                await i.editReply(finalView.view).catch(() => {});
-            }
-        });
-
-        collector.on('end', async () => {
-            try { 
-                menu.setDisabled(true);
-                buttonRow.components.forEach(b => b.setDisabled(true));
-                await reply.edit({ components: [new ContainerBuilder().addActionRowComponents(new ActionRowBuilder().addComponents(menu)).addActionRowComponents(buttonRow)], flags: MessageFlags.IsComponentsV2 }).catch(() => {}); 
-            } catch (e) {}
-        });
+    run: async (client, message, args, db) => {
+        const lang = pickLang(client, message.guild?.id || 'DM', message);
+        await message.reply(module.exports.open(client, db, message.author, message.guild, lang)).catch(() => null);
     },
 
     // ================= SLASH COMMAND =================
     // opts.private: the shop opens for this member only (the Shop button of /credit)
     execute: async (interaction, client, opts) => {
         await interaction.deferReply(opts && opts.private === true ? { flags: 64 } : {});
-        const guildId = interaction.guild?.id || 'DM';
-        const lang = pickLang(client, guildId, interaction);
-        const version = client.version || '1.7.0';
-        const guildName = interaction.guild?.name?.toUpperCase() || 'ARCHON CG-223';
-        const userId = interaction.user.id;
-        const userName = interaction.user.username;
+        const lang = pickLang(client, interaction.guild?.id || 'DM', interaction);
+        await interaction.editReply(module.exports.open(client, client.db, interaction.user, interaction.guild, lang)).catch(() => null);
+    },
+
+    // ================= BUTTONS AND MENU (c:shop:<sid>:buy | inv | refresh) =================
+    onComponent: async (i, client, { sid, action, session }) => {
         const db = client.db;
+        const userId = i.user.id;
+        const userName = i.user.username;
+        const guildId = session.guildId || i.guild?.id || 'DM';
+        const lang = session.data.lang || pickLang(client, guildId, i);
+        const guildName = i.guild?.name?.toUpperCase() || 'ARCHON CG-223';
+        const version = client.version || '1.7.0';
+        const redraw = () => module.exports.buildView(client, live(client, db, userId, guildId, userName), owned(db, userId, guildId), lang, guildName, version, sid).view;
 
-        const userData = live(client, db, userId, guildId, userName);
+        if (action === 'refresh') return i.update(redraw());
 
-        const inventory = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
-        const ownedItems = new Set(inventory.map(i => i.item_id));
+        await i.deferUpdate().catch(() => {});
 
-        const { view, menu, buttonRow } = module.exports.buildView(client, userData, ownedItems, lang, guildName, version);
-        const reply = await interaction.editReply(view).catch(() => null);
-        if (!reply) return;
+        if (action === 'inv') {
+            const invCmd = client.commands.get('inventory');
+            if (!invCmd) return;
+            const fakeMsg = { author: i.user, guild: i.guild, channel: i.channel, reply: async (o) => i.followUp(typeof o === 'string' ? { content: o } : o) };
+            return invCmd.run(client, fakeMsg, [], db, client.getServerSettings?.(guildId), 'inventory', lang).catch((e) => console.error('[SHOP] inventory:', e.message));
+        }
 
-        const collector = reply.createMessageComponentCollector({ time: 180000 });
+        if (action !== 'buy') return;
+        const selectedId = i.values?.[0];
+        const selectedItem = (client.shopItems || []).find((item) => item.id === selectedId);
+        if (!selectedItem) return;
 
-        collector.on('collect', async (i) => {
-            if (i.user.id !== userId) return i.reply({ content: t('shop.accessDenied', lang), flags: 64 }).catch(() => {});
-            try { await i.deferUpdate(); } catch (e) { return; }
+        const fd = live(client, db, userId, guildId, userName);
+        const curBal = fd?.credits || 0;
+        const curLvl = fd?.level || 1;
 
-            if (i.customId === 'shop_inventory') {
-                collector.stop();
-                const invCmd = client.commands.get('inventory');
-                if (invCmd) {
-                    const fakeMsg = { author: interaction.user, guild: interaction.guild, channel: interaction.channel, reply: async (o) => i.followUp(o) };
-                    return await invCmd.run(client, fakeMsg, [], db, client.getServerSettings(guildId), 'inventory');
-                }
-                return;
-            }
+        if (selectedItem.requirement?.level && curLvl < selectedItem.requirement.level) {
+            await i.editReply(redraw()).catch(() => {});   // the menu forgets the choice, so the same item can be picked again
+            return i.followUp({ content: t('shop.levelRequirement', lang, { level: selectedItem.requirement.level, current: curLvl }), flags: 64 }).catch(() => {});
+        }
+        if (curBal < selectedItem.price) {
+            await i.editReply(redraw()).catch(() => {});
+            return i.followUp({ content: t('shop.insufficientFunds', lang, { price: selectedItem.price.toLocaleString(), balance: curBal.toLocaleString() }), flags: 64 }).catch(() => {});
+        }
 
-            if (i.customId === 'shop_refresh') {
-                const freshData = live(client, db, userId, guildId, userName);
-                const freshInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
-                const freshOwned = new Set(freshInv.map(x => x.item_id));
-                const freshView = module.exports.buildView(client, freshData, freshOwned, lang, guildName, version);
-                return await i.editReply(freshView.view).catch(() => {});
-            }
+        const bonusXP = selectedItem.effect?.xp || 0;
+        const bonusCredits = selectedItem.effect?.credits || 0;
+        const newCredits = curBal - selectedItem.price + bonusCredits;
+        const newXP = (fd?.xp || 0) + bonusXP;
+        const newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
 
-            if (i.customId === 'shop_select') {
-                const selectedId = i.values[0];
-                const selectedItem = (client.shopItems || []).find(item => item.id === selectedId);
-                if (!selectedItem) return;
+        // One safe change: the price, the bonuses and the protection land together, in memory and in the database
+        // (the old direct write was put back by the next automatic save: the item was free)
+        if (!pay(client, db, userId, guildId, selectedItem, newLevel)) {
+            await i.editReply(redraw()).catch(() => {});
+            return i.followUp({ content: t('shop.insufficientFunds', lang, { price: selectedItem.price.toLocaleString(), balance: curBal.toLocaleString() }), flags: 64 }).catch(() => {});
+        }
 
-                const fd = live(client, db, userId, guildId, userName);
-                const curBal = fd?.credits || 0;
-                const curLvl = fd?.level || 1;
+        const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, selectedId);
+        if (ex) db.prepare('UPDATE user_inventory SET quantity = quantity + 1, active = 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, selectedId);
+        else db.prepare('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity, active) VALUES (?, ?, ?, 1, 1)').run(userId, guildId, selectedId);
 
-                if (selectedItem.requirement?.level && curLvl < selectedItem.requirement.level) {
-                    return i.followUp({ content: t('shop.levelRequirement', lang, { level: selectedItem.requirement.level, current: curLvl }), flags: 64 }).catch(() => {});
-                }
-                if (curBal < selectedItem.price) {
-                    return i.followUp({ content: t('shop.insufficientFunds', lang, { price: selectedItem.price.toLocaleString(), balance: curBal.toLocaleString() }), flags: 64 }).catch(() => {});
-                }
+        const itemName = selectedItem[lang]?.name || selectedItem.en?.name || selectedItem.name || selectedItem.id;
+        const successContainer = new ContainerBuilder().setAccentColor(0x2ecc71);
+        successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', em('ic_ok', '✅'))} ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji || ''} ${itemName}**`));
+        successContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+        successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('shop.pricePaid', lang)}:** \`-${selectedItem.price.toLocaleString()}\` ${em('coins', '🪙')}\n` + (bonusCredits > 0 ? `**${t('shop.bonusReceived', lang)}:** \`+${bonusCredits.toLocaleString()}\` ${em('coins', '🪙')}\n` : '') + (selectedItem.effect?.streak_protection ? `**${em('shield', '🛡️')} ${t('shop.streakProtectionLine', lang)}**\n` : '') + (bonusXP > 0 ? `**${em('XP', '✨')} ${t('shop.xpBonusLine', lang, { amount: bonusXP })}**\n` : '') + `**${t('shop.newBalance', lang)}:** \`${newCredits.toLocaleString()}\` ${em('coins', '🪙')}`));
 
-                const bonusXP = selectedItem.effect?.xp || 0;
-                const bonusCredits = selectedItem.effect?.credits || 0;
-                const newCredits = curBal - selectedItem.price + bonusCredits;
-                const newXP = (fd?.xp || 0) + bonusXP;
-                const newLevel = Math.floor(0.1 * Math.sqrt(newXP)) + 1;
-
-                // One safe change: the price, the bonuses and the protection land together, in memory and in the database
-                // (the old direct write was put back by the next automatic save: the item was free)
-                const paid = pay(client, db, userId, guildId, selectedItem, newLevel);
-                if (!paid) {
-                    return i.followUp({ content: t('shop.insufficientFunds', lang, { price: selectedItem.price.toLocaleString(), balance: curBal.toLocaleString() }), flags: 64 }).catch(() => {});
-                }
-
-                const ex = db.prepare('SELECT quantity FROM user_inventory WHERE user_id = ? AND guild_id = ? AND item_id = ?').get(userId, guildId, selectedId);
-                if (ex) {
-                    db.prepare('UPDATE user_inventory SET quantity = quantity + 1, active = 1 WHERE user_id = ? AND guild_id = ? AND item_id = ?').run(userId, guildId, selectedId);
-                } else {
-                    db.prepare('INSERT INTO user_inventory (user_id, guild_id, item_id, quantity, active) VALUES (?, ?, ?, 1, 1)').run(userId, guildId, selectedId);
-                }
-
-                const itemName = selectedItem[lang]?.name || selectedItem.en.name;
-                const successContainer = new ContainerBuilder().setAccentColor(0x2ecc71);
-                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${em('small_check', em('ic_ok', '✅'))} ${t('shop.purchaseComplete', lang)}\n**${selectedItem.emoji} ${itemName}**`));
-                successContainer.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
-                successContainer.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${t('shop.pricePaid', lang)}:** \`-${selectedItem.price.toLocaleString()}\` ${em('coins', '🪙')}\n` + (bonusCredits > 0 ? `**${t('shop.bonusReceived', lang)}:** \`+${bonusCredits.toLocaleString()}\` ${em('coins', '🪙')}\n` : '') + (selectedItem.effect?.streak_protection ? `**${em('shield', '🛡️')} ${t('shop.streakProtectionLine', lang)}**\n` : '') + (bonusXP > 0 ? `**${em('XP', '✨')} ${t('shop.xpBonusLine', lang, { amount: bonusXP })}**\n` : '') + `**${t('shop.newBalance', lang)}:** \`${newCredits.toLocaleString()}\` ${em('coins', '🪙')}`));
-                
-                await i.followUp({ components: [successContainer], flags: 64 | MessageFlags.IsComponentsV2 }).catch(() => {});
-
-                const finalData = live(client, db, userId, guildId, userName);
-                const finalInv = db.prepare('SELECT item_id FROM user_inventory WHERE user_id = ? AND active = 1').all(userId);
-                const finalOwned = new Set(finalInv.map(x => x.item_id));
-                const finalView = module.exports.buildView(client, finalData, finalOwned, lang, guildName, version);
-                await i.editReply(finalView.view).catch(() => {});
-            }
-        });
-
-        collector.on('end', async () => {
-            try { 
-                menu.setDisabled(true);
-                buttonRow.components.forEach(b => b.setDisabled(true));
-                await interaction.editReply({ components: [new ContainerBuilder().addActionRowComponents(new ActionRowBuilder().addComponents(menu)).addActionRowComponents(buttonRow)], flags: MessageFlags.IsComponentsV2 }).catch(() => {}); 
-            } catch (e) {}
-        });
+        await i.followUp({ components: [successContainer], flags: 64 | MessageFlags.IsComponentsV2 }).catch(() => {});
+        await i.editReply(redraw()).catch(() => {});
     }
 };
+
+components.register('shop', (ix, client, ctx) => module.exports.onComponent(ix, client, ctx), { command: 'shop' });
