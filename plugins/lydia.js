@@ -119,6 +119,15 @@ async function handleLydiaMessage(message, client, database) {
   if (now - (userCooldowns.get(message.author.id) || 0) < CFG.COOLDOWN_TIME) return;
   if (channelCooldowns.has(message.channel.id) && now - channelCooldowns.get(message.channel.id) < CFG.CHANNEL_COOLDOWN) return;
   if (!client.lydiaChannels?.[message.channel.id]) return;
+  // A prefix command (".ask …", ".8ball …") is for that command: Lydia doesn't answer it too
+  {
+    const _prefix = String(lydiaSettings?.prefix || '.');
+    const _txt = String(message.content || '');
+    if (_prefix && _txt.startsWith(_prefix)) {
+      const _cmd = _txt.slice(_prefix.length).trim().split(/\s+/)[0]?.toLowerCase();
+      if (_cmd && (client.commands?.get(_cmd) || client.commands?.find?.((c) => Array.isArray(c.aliases) && c.aliases.includes(_cmd)))) return;
+    }
+  }
   // Only messages addressed to the bot start the cooldowns (any chat in the channel used to block the next real question)
   {
     const _name = (getBotName(message) || 'Archon').toLowerCase();
@@ -171,6 +180,17 @@ async function handleLydiaMessage(message, client, database) {
     if (message.attachments?.size > 0) {
       const att = message.attachments.first();
       if (att.contentType?.startsWith('image/')) imageUrl = att.url;
+    }
+    // A reply: she reads the message it answers (its words and its picture, ARCHON's own cards included)
+    if (message.reference?.messageId) {
+      const ref = await message.fetchReference().catch(() => null);
+      if (ref) {
+        const card = require('../lib/message-text').cardText(ref);
+        const quotedText = [String(ref.content || '').trim(), card.text].filter(Boolean).join('\n').replace(/\s+/g, ' ').slice(0, 800);
+        if (!imageUrl) imageUrl = [...(ref.attachments?.values?.() || [])].find((a) => /^image\//.test(a.contentType || ''))?.url || card.image || null;
+        const who = ref.author ? `${ref.author.globalName || ref.author.username}${ref.author.bot ? ' (a bot)' : ''}` : 'someone';
+        if (quotedText || imageUrl) userPrompt = `[Replying to ${who}: "${quotedText || '(a picture)'}"${imageUrl ? ' — the picture is attached' : ''}]\n${userPrompt}`;
+      }
     }
 
     if (!userPrompt.trim()) {

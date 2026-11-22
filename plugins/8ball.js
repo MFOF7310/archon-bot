@@ -33,7 +33,7 @@ function funMake(client, { guild, user, lang, arg, priv }) {
 
 module.exports = {
     name: '8ball',
-    aliases: ['eightball', 'ask'],
+    aliases: ['eightball'],   // .ask is Ask Archon now (plugins/ask.js)
     description: 'Ask the magic 8-ball a question',
     category: 'FUN',
     cooldown: 2000,

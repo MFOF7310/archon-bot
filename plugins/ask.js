@@ -107,7 +107,7 @@ function answerCard(lang, { asked, answer, who, left, owner }) {
     ]);
 }
 
-async function answer(interaction, client, { question, imageUrl = null, quoted = null, priv = false, by = null }) {
+async function answer(interaction, client, { question, imageUrl = null, quoted = null, priv = false, by = null, label = null }) {
     const lang = langOf(interaction);
     const uid = interaction.user.id;
     const owner = uid === process.env.OWNER_ID;
@@ -135,7 +135,7 @@ async function answer(interaction, client, { question, imageUrl = null, quoted =
     const who = interaction.user.globalName || interaction.user.username;
     const left = Math.max(0, DAILY - n - 1);
     console.log(`[ASK] ${interaction.user.username} (${quoted ? 'message' : 'question'}) · ${left} left today`);
-    return interaction.editReply(answerCard(lang, { asked: quoted ? `"${quoted}"` : question, answer: text, who, left, owner })).catch(() => {});
+    return interaction.editReply(answerCard(lang, { asked: label || (quoted ? `"${quoted}"` : question), answer: text, who, left, owner })).catch(() => {});
 }
 
 const { cardText } = require('../lib/message-text');
@@ -150,15 +150,18 @@ module.exports = {
     data: new SlashCommandBuilder().setName('ask').setDescription('Ask Archon AI anything, anywhere')
         .setDescriptionLocalizations({ fr: 'Pose une question à l’IA Archon, où que tu sois' })
         .addStringOption((o) => o.setName('question').setDescription('Your question').setRequired(true).setMaxLength(1000))
-        .addBooleanOption((o) => o.setName('private').setDescription('Only you see the answer').setRequired(false)),
+        .addBooleanOption((o) => o.setName('private').setDescription('Only you see the answer').setRequired(false))
+        .addAttachmentOption((o) => o.setName('image').setDescription('A picture to ask about').setDescriptionLocalizations({ fr: 'Une image à propos de laquelle demander' }).setRequired(false)),
 
     // The message menu, sent with the commands (lib/slash-payload.js reads `menus`)
     menus: [{ type: 3, name: MENU, name_localizations: { fr: 'Demander à Archon' } }],
 
     async execute(interaction, client) {
+        const att = interaction.options.getAttachment?.('image');
         return answer(interaction, client, {
             question: interaction.options.getString('question'),
             priv: interaction.options.getBoolean('private') === true,
+            imageUrl: att && /^image\//.test(att.contentType || '') ? att.url : null,
         });
     },
 
@@ -177,6 +180,32 @@ module.exports = {
         return answer(interaction, client, { quoted: textPart || '(a picture)', imageUrl: img, by });
     },
 
-    // ".ask" in a server is still the 8-ball
-    run: (client, message, args, ...rest) => client.commands.get('8ball')?.run?.(client, message, args, ...rest),
+    // ".ask <question>": Ask Archon, like /ask (the 8-ball is .8ball). Replying to a message asks about it, picture included.
+    async run(client, message, args) {
+        let lang = 'en';
+        try { const l = require('../lib/pick-lang').pickLang(client, message.guild?.id, message, message.author.id); if (LANGS[l]) lang = l; } catch { /* English */ }
+        let reply = null;
+        // the same answer() as the slash command, on a message: no private replies, a typing dot while it thinks
+        const ctx = {
+            user: message.author, guild: message.guild, guildId: message.guildId, locale: lang,
+            reply: (p) => message.reply({ ...p, flags: undefined, allowedMentions: { parse: [] } }),
+            deferReply: () => message.channel?.sendTyping?.().catch(() => {}),
+            editReply: async (p) => { reply = reply ? await reply.edit(p) : await message.reply({ ...p, allowedMentions: { parse: [] } }); return reply; },
+        };
+        let question = args.join(' ').trim();
+        let imageUrl = [...(message.attachments?.values?.() || [])].find((a) => /^image\//.test(a.contentType || ''))?.url || null;
+        let quoted = null, by = null;
+        if (message.reference?.messageId) {
+            const ref = await message.fetchReference().catch(() => null);
+            if (ref) {
+                const card = cardText(ref);
+                quoted = [String(ref.content || '').trim(), card.text].filter(Boolean).join('\n').slice(0, 1500) || '(a picture)';
+                imageUrl = imageUrl || [...(ref.attachments?.values?.() || [])].find((a) => /^image\//.test(a.contentType || ''))?.url || card.image || null;
+                by = ref.author ? `${ref.author.globalName || ref.author.username}${ref.author.bot ? ' (a bot or app)' : ''}` : null;
+            }
+        }
+        if (!question && !quoted && !imageUrl) return message.reply({ content: `${icon('warn')} ${T(lang, 'empty')}`, allowedMentions: { parse: [] } }).catch(() => {});
+        if (quoted && question) quoted = `${quoted}\n\n[Their question about it: ${question}]`;
+        return answer(ctx, client, quoted ? { quoted, imageUrl, by, label: question || null } : { question: question || '(about this picture)', imageUrl });
+    },
 };
