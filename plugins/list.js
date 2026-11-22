@@ -58,14 +58,23 @@ function getCategoryStats(client) {
     return { commandsPerCategory: stats, totalAliases };
 }
 
-// ================= 🎁 SURPRISE: FAVORITES STORAGE =================
-const userFavorites = new Map(); // userId -> Set of command names
-
-function getFavorites(userId) {
-    if (!userFavorites.has(userId)) {
-        userFavorites.set(userId, new Set());
-    }
-    return userFavorites.get(userId);
+// ================= FAVORITES (kept in the database, so a restart doesn't lose them) =================
+let favReady = false;
+function favTable(db) {
+    if (favReady) return;
+    db.prepare('CREATE TABLE IF NOT EXISTS list_favorites (user_id TEXT NOT NULL, command TEXT NOT NULL, PRIMARY KEY (user_id, command))').run();
+    favReady = true;
+}
+function getFavorites(db, userId) {
+    favTable(db);
+    return new Set(db.prepare('SELECT command FROM list_favorites WHERE user_id = ?').all(String(userId)).map((r) => r.command));
+}
+// Adds or removes one favorite; true when it is now a favorite
+function toggleFavorite(db, userId, command) {
+    favTable(db);
+    const had = db.prepare('DELETE FROM list_favorites WHERE user_id = ? AND command = ?').run(String(userId), command).changes > 0;
+    if (!had) db.prepare('INSERT INTO list_favorites (user_id, command) VALUES (?, ?)').run(String(userId), command);
+    return !had;
 }
 
 // ================= 🎁 SURPRISE: COMMAND OF THE DAY =================
@@ -314,6 +323,77 @@ function createCommandDetailEmbed(client, cmd, prefix, lang, t, version, guildNa
     return embed;
 }
 
+// ================= ONE CARD, DRAWN FROM ITS STATE =================
+// The card's state lives in a stored session (lib/components.js), so its buttons keep working after a restart.
+const components = require('../lib/components');
+const { pickLang } = require('../lib/pick-lang');
+const IDLE_MS = 10 * 60 * 1000;   // usable 10 minutes after the last click
+
+function ctxOf(client, guild, settings, lang) {
+    return {
+        t: loadT(lang),
+        prefix: settings?.prefix || process.env.PREFIX || '.',
+        version: client.version || '1.8.0',
+        guildName: guild?.name?.toUpperCase() || 'ARCHON CG-223',
+        guildIcon: guild?.iconURL?.() || client.user.displayAvatarURL()
+    };
+}
+
+// state: { lang, view: main | all | category | favorites | detail, page, compact, category, cmd }
+function render(client, s, c, sid, favorites) {
+    const { t } = c;
+    const lang = s.lang;
+    const id = (action, ...a) => components.id('list', sid, action, ...a);
+    const back = () => new ButtonBuilder().setCustomId(id('back')).setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀');
+
+    if (s.view === 'all') {
+        const { embed, totalPages } = createAllCommandsEmbed(client, c.prefix, lang, t, c.version, c.guildName, c.guildIcon, s.page || 1, !!s.compact);
+        const page = Math.min(s.page || 1, totalPages);
+        const rows = [];
+        if (totalPages > 1) rows.push(new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(id('prev')).setEmoji(icon('page_prev')).setStyle(ButtonStyle.Secondary).setDisabled(page <= 1),
+            new ButtonBuilder().setCustomId(id('page')).setLabel(`${page}/${totalPages}`).setStyle(ButtonStyle.Primary).setDisabled(true),
+            new ButtonBuilder().setCustomId(id('next')).setEmoji(icon('page_next')).setStyle(ButtonStyle.Secondary).setDisabled(page >= totalPages)));
+        rows.push(new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(id('toggle')).setLabel(s.compact ? t.normalView : t.compactView).setStyle(ButtonStyle.Secondary).setEmoji('📱'),
+            back()));
+        return { content: null, embeds: [embed], components: rows };
+    }
+    if (s.view === 'category') {
+        return { content: null, embeds: [createCategoryEmbed(client, s.category, c.prefix, lang, t, c.version, c.guildName, c.guildIcon)], components: [new ActionRowBuilder().addComponents(back())] };
+    }
+    if (s.view === 'favorites') {
+        return { content: null, embeds: [createFavoritesEmbed(client, favorites, c.prefix, lang, t, c.version, c.guildName, c.guildIcon)], components: [new ActionRowBuilder().addComponents(back())] };
+    }
+    if (s.view === 'detail') {
+        const cmd = client.commands.get(s.cmd);
+        if (cmd) {
+            const isFav = favorites.has(cmd.name);
+            const fav = new ButtonBuilder().setCustomId(id('fav', cmd.name)).setLabel(isFav ? t.removeFavorite : t.addFavorite)
+                .setStyle(isFav ? ButtonStyle.Danger : ButtonStyle.Success).setEmoji(icon('star'));
+            return { content: null, embeds: [createCommandDetailEmbed(client, cmd, c.prefix, lang, t, c.version, c.guildName, c.guildIcon, isFav)], components: [new ActionRowBuilder().addComponents(fav, back())] };
+        }
+    }
+
+    // main
+    const categorized = getCommandsByCategory(client);
+    const options = Object.entries(CATEGORY_CONFIG)
+        .filter(([key]) => categorized[key]?.length > 0)
+        .map(([key, config]) => ({
+            label: `${config.emoji} ${config.name[lang] || config.name.en}`.substring(0, 100),
+            value: key,
+            description: `${categorized[key]?.length || 0} ${t.commandsWord}`.substring(0, 100),
+            emoji: config.emoji
+        }));
+    options.unshift({ label: `📚 ${t.allCommands}`.substring(0, 100), value: 'ALL', description: `${client.commands.size} ${t.commandsWord} total`.substring(0, 100), emoji: '📚' });
+    if (favorites.size > 0) options.unshift({ label: `⭐ ${t.favorites} (${favorites.size})`.substring(0, 100), value: 'FAVORITES', description: `${t.favoriteCommands}`.substring(0, 100), emoji: '⭐' });
+    const menu = new StringSelectMenuBuilder().setCustomId(id('cat')).setPlaceholder(t.selectCategory).addOptions(options.slice(0, 25));
+    const buttons = new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(id('compact')).setLabel(t.compactView).setStyle(ButtonStyle.Secondary).setEmoji('📱'),
+        new ButtonBuilder().setCustomId(id('refresh')).setLabel(t.refresh).setStyle(ButtonStyle.Secondary).setEmoji(icon('refresh')));
+    return { content: null, embeds: [createMainEmbed(client, c.prefix, lang, t, c.version, c.guildName, c.guildIcon, favorites)], components: [new ActionRowBuilder().addComponents(menu), buttons] };
+}
+
 // ================= MAIN EXPORT =================
 module.exports = {
     name: 'list',
@@ -325,431 +405,90 @@ module.exports = {
     examples: ['.list', '.list gaming', '.list profile', '.list shop'],
 
 
+    // ================= PREFIX COMMAND =================
     run: async (client, message, args, db, serverSettings, usedCommand, lang) => {
         try {
-            
-            const t = loadT(lang);
-            const effectivePrefix = serverSettings?.prefix || process.env.PREFIX || '.';
-            const version = client.version || '1.8.0';
-            const guildName = message.guild?.name?.toUpperCase() || 'ARCHON CG-223';
-            const guildIcon = message.guild?.iconURL() || client.user.displayAvatarURL();
+            lang = lang || pickLang(client, message.guild?.id || 'DM', message);
+            const c = ctxOf(client, message.guild, serverSettings, lang);
             const userId = message.author.id;
-            
-            const favorites = getFavorites(userId);
-            let isCompact = false;
-            let currentPage = 1;
-            let currentView = 'main';
-            let currentCategory = null;
-            let searchResults = null;
-            
-            // ================= HANDLE ARGUMENTS =================
+
             if (args[0]) {
                 const searchTerm = args.join(' ').toLowerCase();
-                
-                // Check if it's a category
-                const categories = Object.keys(CATEGORY_CONFIG);
-                const matchedCategory = categories.find(c => 
-                    c.toLowerCase() === searchTerm || 
-                    CATEGORY_CONFIG[c].name.en.toLowerCase() === searchTerm ||
-                    CATEGORY_CONFIG[c].name.fr.toLowerCase() === searchTerm
-                );
-                
+
+                // a category
+                const matchedCategory = Object.keys(CATEGORY_CONFIG).find((k) =>
+                    k.toLowerCase() === searchTerm || CATEGORY_CONFIG[k].name.en.toLowerCase() === searchTerm || CATEGORY_CONFIG[k].name.fr.toLowerCase() === searchTerm);
                 if (matchedCategory) {
-                    const embed = createCategoryEmbed(client, matchedCategory, effectivePrefix, lang, t, version, guildName, guildIcon);
-                    return message.reply({ embeds: [embed] }).catch(() => {});
+                    return message.reply({ embeds: [createCategoryEmbed(client, matchedCategory, c.prefix, lang, c.t, c.version, c.guildName, c.guildIcon)] }).catch(() => {});
                 }
-                
-                // Check if it's a specific command
-                const cmd = client.commands.get(searchTerm) || 
-                            client.commands.find(c => c.aliases && c.aliases.includes(searchTerm));
-                
+
+                // a command: its details, with Favorite and Back
+                const cmd = client.commands.get(searchTerm) || client.commands.find((x) => x.aliases && x.aliases.includes(searchTerm));
                 if (cmd) {
-                    const isFav = favorites.has(cmd.name);
-                    const embed = createCommandDetailEmbed(client, cmd, effectivePrefix, lang, t, version, guildName, guildIcon, isFav);
-                    
-                    const favButton = new ButtonBuilder()
-                        .setCustomId(`list_fav_${cmd.name}`)
-                        .setLabel(isFav ? t.removeFavorite : t.addFavorite)
-                        .setStyle(isFav ? ButtonStyle.Danger : ButtonStyle.Success)
-                        .setEmoji(icon('star'));
-                    
-                    const backButton = new ButtonBuilder()
-                        .setCustomId('list_back')
-                        .setLabel(t.back)
-                        .setStyle(ButtonStyle.Secondary)
-                        .setEmoji('◀');
-                    
-                    const row = new ActionRowBuilder().addComponents(favButton, backButton);
-                    
-                    const reply = await message.reply({ embeds: [embed], components: [row] }).catch(() => {});
-                    
-                    if (!reply) return;
-                    
-                    const collector = reply.createMessageComponentCollector({ time: 120000 });
-                    
-                    collector.on('collect', async (i) => {
-                        if (i.user.id !== userId) {
-                            return i.reply({ content: t.accessDenied, flags: 64 });
-                        }
-                        
-                        await i.deferUpdate();
-                        
-                        if (i.customId === 'list_back') {
-                            const mainEmbed = createMainEmbed(client, effectivePrefix, lang, t, version, guildName, guildIcon, favorites);
-                            const mainComponents = buildMainComponents(t, lang, favorites);
-                            await i.editReply({ embeds: [mainEmbed], components: mainComponents });
-                            collector.stop();
-                            return;
-                        }
-                        
-                        if (i.customId === `list_fav_${cmd.name}`) {
-                            if (favorites.has(cmd.name)) {
-                                favorites.delete(cmd.name);
-                            } else {
-                                favorites.add(cmd.name);
-                            }
-                            userFavorites.set(userId, favorites);
-                            
-                            const newIsFav = favorites.has(cmd.name);
-                            const newEmbed = createCommandDetailEmbed(client, cmd, effectivePrefix, lang, t, version, guildName, guildIcon, newIsFav);
-                            const newFavButton = new ButtonBuilder()
-                                .setCustomId(`list_fav_${cmd.name}`)
-                                .setLabel(newIsFav ? t.removeFavorite : t.addFavorite)
-                                .setStyle(newIsFav ? ButtonStyle.Danger : ButtonStyle.Success)
-                                .setEmoji(icon('star'));
-                            
-                            const newRow = new ActionRowBuilder().addComponents(newFavButton, backButton);
-                            await i.editReply({ embeds: [newEmbed], components: [newRow] });
-                            
-                            await i.followUp({ 
-                                content: newIsFav ? t.favoriteAdded : t.favoriteRemoved, 
-                                flags: 64 
-                            });
-                        }
-                    });
-                    
-                    return;
+                    const state = { lang, view: 'detail', cmd: cmd.name, page: 1, compact: false };
+                    const sid = components.create(db, { kind: 'list', userId, guildId: message.guild?.id, data: state, idleMs: IDLE_MS });
+                    return message.reply(render(client, state, c, sid, getFavorites(db, userId))).catch(() => {});
                 }
-                
-                // Search results
-                searchResults = searchCommands(client, searchTerm);
-                const embed = createSearchResultsEmbed(client, searchTerm, searchResults, effectivePrefix, lang, t, version, guildName, guildIcon);
-                return message.reply({ embeds: [embed] }).catch(() => {});
+
+                // a search
+                const results = searchCommands(client, searchTerm);
+                return message.reply({ embeds: [createSearchResultsEmbed(client, searchTerm, results, c.prefix, lang, c.t, c.version, c.guildName, c.guildIcon)] }).catch(() => {});
             }
-            
-            // ================= MAIN MENU =================
-            const buildMainComponents = (t, lang, favs) => {
-                const categorized = getCommandsByCategory(client);
-                
-                const categoryOptions = Object.entries(CATEGORY_CONFIG)
-                    .filter(([key]) => categorized[key]?.length > 0)
-                    .map(([key, config]) => ({
-                        label: `${config.emoji} ${config.name[lang]}`.substring(0, 100),
-                        value: key,
-                        description: `${categorized[key]?.length || 0} ${t.commandsWord}`.substring(0, 100),
-                        emoji: config.emoji
-                    }));
-                
-                categoryOptions.unshift({
-                    label: `📚 ${t.allCommands}`.substring(0, 100),
-                    value: 'ALL',
-                    description: `${client.commands.size} ${t.commandsWord} total`.substring(0, 100),
-                    emoji: '📚'
-                });
-                
-                if (favs && favs.size > 0) {
-                    categoryOptions.unshift({
-                        label: `⭐ ${t.favorites} (${favs.size})`.substring(0, 100),
-                        value: 'FAVORITES',
-                        description: `${t.favoriteCommands}`.substring(0, 100),
-                        emoji: '⭐'
-                    });
-                }
-                
-                const categoryMenu = new StringSelectMenuBuilder()
-                    .setCustomId('list_category')
-                    .setPlaceholder(t.selectCategory)
-                    .addOptions(categoryOptions.slice(0, 25));
-                
-                const menuRow = new ActionRowBuilder().addComponents(categoryMenu);
-                
-                const buttonRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder().setCustomId('list_compact').setLabel(t.compactView).setStyle(ButtonStyle.Secondary).setEmoji('📱'),
-                    new ButtonBuilder().setCustomId('list_refresh').setLabel(t.refresh).setStyle(ButtonStyle.Secondary).setEmoji(icon('refresh'))
-                );
-                
-                return [menuRow, buttonRow];
-            };
-            
-            const mainEmbed = createMainEmbed(client, effectivePrefix, lang, t, version, guildName, guildIcon, favorites);
-            const mainComponents = buildMainComponents(t, lang, favorites);
-            
-            const response = await message.reply({
-                content: `> **${t.loading}**`,
-                embeds: [mainEmbed],
-                components: mainComponents
-            }).catch(() => null);
-            
-            if (!response) return;
-            
-            // ================= COLLECTOR =================
-            const collector = response.createMessageComponentCollector({ time: 300000 });
-            
-            collector.on('collect', async (i) => {
-                if (i.user.id !== userId) {
-                    return i.reply({ content: t.accessDenied, flags: 64 }).catch(() => {});
-                }
-                
-                try {
-                    if (!i.deferred && !i.replied) {
-                        await i.deferUpdate();
-                    }
-                } catch (e) {}
-                
-                try {
-                    // Handle Category Selection
-                    if (i.isStringSelectMenu() && i.customId === 'list_category') {
-                        const selected = i.values[0];
-                        
-                        if (selected === 'FAVORITES') {
-                            const embed = createFavoritesEmbed(client, favorites, effectivePrefix, lang, t, version, guildName, guildIcon);
-                            const backRow = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder().setCustomId('list_back').setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀')
-                            );
-                            await i.editReply({ content: null, embeds: [embed], components: [backRow] });
-                            currentView = 'favorites';
-                            return;
-                        }
-                        
-                        if (selected === 'ALL') {
-                            const { embed, totalPages } = createAllCommandsEmbed(
-                                client, effectivePrefix, lang, t, version, guildName, guildIcon, 1, isCompact
-                            );
-                            currentPage = 1;
-                            currentView = 'all';
-                            
-                            const components = [];
-                            if (totalPages > 1) {
-                                const navRow = new ActionRowBuilder().addComponents(
-                                    new ButtonBuilder().setCustomId('list_prev').setEmoji(icon('page_prev')).setStyle(ButtonStyle.Secondary).setDisabled(true),
-                                    new ButtonBuilder().setCustomId('list_page').setLabel(`${currentPage}/${totalPages}`).setStyle(ButtonStyle.Primary).setDisabled(true),
-                                    new ButtonBuilder().setCustomId('list_next').setEmoji(icon('page_next')).setStyle(ButtonStyle.Secondary).setDisabled(totalPages === 1)
-                                );
-                                components.push(navRow);
-                            }
-                            
-                            const actionRow = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder().setCustomId('list_compact_toggle').setLabel(isCompact ? t.normalView : t.compactView).setStyle(ButtonStyle.Secondary).setEmoji('📱'),
-                                new ButtonBuilder().setCustomId('list_back').setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀')
-                            );
-                            components.push(actionRow);
-                            
-                            await i.editReply({ content: null, embeds: [embed], components });
-                        } else {
-                            const embed = createCategoryEmbed(client, selected, effectivePrefix, lang, t, version, guildName, guildIcon);
-                            currentCategory = selected;
-                            currentView = 'category';
-                            
-                            const backRow = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder().setCustomId('list_back').setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀')
-                            );
-                            
-                            await i.editReply({ content: null, embeds: [embed], components: [backRow] });
-                        }
-                        return;
-                    }
-                    
-                    // Handle Back Button
-                    if (i.customId === 'list_back') {
-                        const newEmbed = createMainEmbed(client, effectivePrefix, lang, t, version, guildName, guildIcon, favorites);
-                        const newComponents = buildMainComponents(t, lang, favorites);
-                        await i.editReply({ content: `> **${t.loading}**`, embeds: [newEmbed], components: newComponents });
-                        currentView = 'main';
-                        currentPage = 1;
-                        return;
-                    }
-                    
-                    // Handle Refresh
-                    if (i.customId === 'list_refresh') {
-                        const newEmbed = createMainEmbed(client, effectivePrefix, lang, t, version, guildName, guildIcon, favorites);
-                        await i.editReply({ embeds: [newEmbed] });
-                        return;
-                    }
-                    
-                    // Handle Compact Toggle
-                    if (i.customId === 'list_compact') {
-                        isCompact = true;
-                        const { embed, totalPages } = createAllCommandsEmbed(
-                            client, effectivePrefix, lang, t, version, guildName, guildIcon, 1, isCompact
-                        );
-                        currentPage = 1;
-                        currentView = 'all';
-                        
-                        const components = [];
-                        if (totalPages > 1) {
-                            const navRow = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder().setCustomId('list_prev').setEmoji(icon('page_prev')).setStyle(ButtonStyle.Secondary).setDisabled(true),
-                                new ButtonBuilder().setCustomId('list_page').setLabel(`${currentPage}/${totalPages}`).setStyle(ButtonStyle.Primary).setDisabled(true),
-                                new ButtonBuilder().setCustomId('list_next').setEmoji(icon('page_next')).setStyle(ButtonStyle.Secondary).setDisabled(totalPages === 1)
-                            );
-                            components.push(navRow);
-                        }
-                        
-                        const actionRow = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder().setCustomId('list_compact_toggle').setLabel(t.normalView).setStyle(ButtonStyle.Secondary).setEmoji('📱'),
-                            new ButtonBuilder().setCustomId('list_back').setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀')
-                        );
-                        components.push(actionRow);
-                        
-                        await i.editReply({ embeds: [embed], components });
-                        return;
-                    }
-                    
-                    if (i.customId === 'list_compact_toggle') {
-                        isCompact = !isCompact;
-                        let embed, totalPages;
-                        
-                        if (currentView === 'all') {
-                            const result = createAllCommandsEmbed(client, effectivePrefix, lang, t, version, guildName, guildIcon, currentPage, isCompact);
-                            embed = result.embed;
-                            totalPages = result.totalPages;
-                        } else {
-                            const result = createAllCommandsEmbed(client, effectivePrefix, lang, t, version, guildName, guildIcon, 1, isCompact);
-                            embed = result.embed;
-                            totalPages = result.totalPages;
-                            currentPage = 1;
-                        }
-                        
-                        const components = [];
-                        if (totalPages > 1) {
-                            const navRow = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder().setCustomId('list_prev').setEmoji(icon('page_prev')).setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 1),
-                                new ButtonBuilder().setCustomId('list_page').setLabel(`${currentPage}/${totalPages}`).setStyle(ButtonStyle.Primary).setDisabled(true),
-                                new ButtonBuilder().setCustomId('list_next').setEmoji(icon('page_next')).setStyle(ButtonStyle.Secondary).setDisabled(currentPage === totalPages)
-                            );
-                            components.push(navRow);
-                        }
-                        
-                        const actionRow = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder().setCustomId('list_compact_toggle').setLabel(isCompact ? t.normalView : t.compactView).setStyle(ButtonStyle.Secondary).setEmoji('📱'),
-                            new ButtonBuilder().setCustomId('list_back').setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀')
-                        );
-                        components.push(actionRow);
-                        
-                        await i.editReply({ embeds: [embed], components });
-                        return;
-                    }
-                    
-                    // Handle Pagination
-                    if (i.customId === 'list_prev' || i.customId === 'list_next') {
-                        const newPage = i.customId === 'list_prev' ? currentPage - 1 : currentPage + 1;
-                        const { embed, totalPages } = createAllCommandsEmbed(
-                            client, effectivePrefix, lang, t, version, guildName, guildIcon, newPage, isCompact
-                        );
-                        currentPage = newPage;
-                        
-                        const components = [];
-                        if (totalPages > 1) {
-                            const navRow = new ActionRowBuilder().addComponents(
-                                new ButtonBuilder().setCustomId('list_prev').setEmoji(icon('page_prev')).setStyle(ButtonStyle.Secondary).setDisabled(currentPage === 1),
-                                new ButtonBuilder().setCustomId('list_page').setLabel(`${currentPage}/${totalPages}`).setStyle(ButtonStyle.Primary).setDisabled(true),
-                                new ButtonBuilder().setCustomId('list_next').setEmoji(icon('page_next')).setStyle(ButtonStyle.Secondary).setDisabled(currentPage === totalPages)
-                            );
-                            components.push(navRow);
-                        }
-                        
-                        const actionRow = new ActionRowBuilder().addComponents(
-                            new ButtonBuilder().setCustomId('list_compact_toggle').setLabel(isCompact ? t.normalView : t.compactView).setStyle(ButtonStyle.Secondary).setEmoji('📱'),
-                            new ButtonBuilder().setCustomId('list_back').setLabel(t.back).setStyle(ButtonStyle.Secondary).setEmoji('◀')
-                        );
-                        components.push(actionRow);
-                        
-                        await i.editReply({ content: null, embeds: [embed], components });
-                        return;
-                    }
-                    
-                    // Handle Favorite button in command detail
-                    if (i.customId?.startsWith('list_fav_')) {
-                        const cmdName = i.customId.replace('list_fav_', '');
-                        const cmd = client.commands.get(cmdName);
-                        
-                        if (!cmd) return;
-                        
-                        if (favorites.has(cmdName)) {
-                            favorites.delete(cmdName);
-                        } else {
-                            favorites.add(cmdName);
-                        }
-                        userFavorites.set(userId, favorites);
-                        
-                        const newIsFav = favorites.has(cmdName);
-                        const newEmbed = createCommandDetailEmbed(client, cmd, effectivePrefix, lang, t, version, guildName, guildIcon, newIsFav);
-                        
-                        const favButton = new ButtonBuilder()
-                            .setCustomId(`list_fav_${cmdName}`)
-                            .setLabel(newIsFav ? t.removeFavorite : t.addFavorite)
-                            .setStyle(newIsFav ? ButtonStyle.Danger : ButtonStyle.Success)
-                            .setEmoji(icon('star'));
-                        
-                        const backButton = new ButtonBuilder()
-                            .setCustomId('list_back')
-                            .setLabel(t.back)
-                            .setStyle(ButtonStyle.Secondary)
-                            .setEmoji('◀');
-                        
-                        const newRow = new ActionRowBuilder().addComponents(favButton, backButton);
-                        
-                        await i.editReply({ embeds: [newEmbed], components: [newRow] });
-                        
-                        await i.followUp({ 
-                            content: newIsFav ? t.favoriteAdded : t.favoriteRemoved, 
-                            flags: 64 
-                        });
-                        return;
-                    }
-                } catch (err) {
-                    console.error(`${red}[LIST ERROR]${reset}`, err.message);
-                }
-            });
-            
-            collector.on('end', async () => {
-                try {
-                    const disabledComponents = mainComponents.map(row => {
-                        const newRow = new ActionRowBuilder();
-                        row.components.forEach(comp => {
-                            const disabledComp = ButtonBuilder.from(comp).setDisabled(true);
-                            newRow.addComponents(disabledComp);
-                        });
-                        return newRow;
-                    });
-                    await response.edit({ components: disabledComponents }).catch(() => {});
-                } catch (e) {}
-            });
-            
+
+            const state = { lang, view: 'main', page: 1, compact: false };
+            const sid = components.create(db, { kind: 'list', userId, guildId: message.guild?.id, data: state, idleMs: IDLE_MS });
+            return message.reply(render(client, state, c, sid, getFavorites(db, userId))).catch(() => {});
         } catch (error) {
             console.error(`${red}[LIST FATAL]${reset}`, error);
             return message.reply({ content: `${em('ic_off', '❌')} Command failed.` }).catch(() => {});
         }
     },
 
-    // ================= SLASH COMMAND EXECUTION =================
+    // ================= SLASH COMMAND =================
     execute: async (interaction, client) => {
-        const lang = (interaction.guild ? client.getServerSettings(interaction.guild.id) : { language: 'en' })?.language || 'en';
+        const lang = pickLang(client, interaction.guild?.id || 'DM', interaction);
         const query = interaction.options.getString('query');
-        
         await interaction.deferReply();
-        
         const fakeMessage = {
-            author: interaction.user,
-            guild: interaction.guild,
-            channel: interaction.channel,
+            author: interaction.user, guild: interaction.guild, channel: interaction.channel,
             reply: async (options) => interaction.editReply(options),
             react: () => Promise.resolve()
         };
-        
         const serverSettings = interaction.guild ? client.getServerSettings(interaction.guild.id) : { prefix: '.' };
-        const args = query ? [query] : [];
-        
-        await module.exports.run(client, fakeMessage, args, client.db, serverSettings, 'list');
+        await module.exports.run(client, fakeMessage, query ? [query] : [], client.db, serverSettings, 'list', lang);
+    },
+
+    // ================= BUTTONS AND MENU (c:list:<sid>:<action>[:<arg>]) =================
+    onComponent: async (i, client, { sid, action, args, session, save }) => {
+        const db = client.db;
+        const s = { ...session.data };
+        const lang = s.lang || pickLang(client, i.guild?.id || 'DM', i);
+        const settings = i.guild ? client.getServerSettings?.(i.guild.id) : null;
+        const c = ctxOf(client, i.guild, settings, lang);
+        const total = () => createAllCommandsEmbed(client, c.prefix, lang, c.t, c.version, c.guildName, c.guildIcon, 1, !!s.compact).totalPages;
+
+        if (action === 'cat') {
+            const v = i.values?.[0];
+            if (v === 'FAVORITES') Object.assign(s, { view: 'favorites' });
+            else if (v === 'ALL') Object.assign(s, { view: 'all', page: 1 });
+            else Object.assign(s, { view: 'category', category: v });
+        } else if (action === 'back') Object.assign(s, { view: 'main', page: 1 });
+        else if (action === 'compact') Object.assign(s, { view: 'all', page: 1, compact: true });
+        else if (action === 'toggle') { s.compact = !s.compact; s.page = Math.min(s.page || 1, total()); }
+        else if (action === 'prev') s.page = Math.max(1, (s.page || 1) - 1);
+        else if (action === 'next') s.page = Math.min(total(), (s.page || 1) + 1);
+        else if (action === 'fav') {
+            const name = args[0];
+            if (!client.commands.get(name)) return i.deferUpdate().catch(() => {});
+            const now = toggleFavorite(db, i.user.id, name);
+            save(s);
+            await i.update(render(client, s, c, sid, getFavorites(db, i.user.id)));
+            return i.followUp({ content: now ? c.t.favoriteAdded : c.t.favoriteRemoved, flags: 64 }).catch(() => {});
+        }
+        // 'refresh' just draws the same view again with fresh numbers
+        save(s);
+        return i.update(render(client, s, c, sid, getFavorites(db, i.user.id)));
     }
 };
+
+components.register('list', (ix, client, ctx) => module.exports.onComponent(ix, client, ctx), { command: 'list' });

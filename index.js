@@ -3058,6 +3058,10 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     if (interaction.isMessageComponent?.() && ['shop_select', 'shop_inventory', 'shop_refresh'].includes(interaction.customId)) {
         return require('./lib/components').expire(interaction, client, 'shop').catch(() => {});
     }
+    // /list cards opened before it moved to stored sessions (list_…): greyed out with "run /list again"
+    if (interaction.isMessageComponent?.() && /^list_(category|back|refresh|compact|compact_toggle|prev|next|page|fav_.+)$/.test(interaction.customId || '')) {
+        return require('./lib/components').expire(interaction, client, 'list').catch(() => {});
+    }
     // ── VERIFY PANEL (buttons + modal) — must run before other routers ──
     if ((interaction.isButton?.() || interaction.isModalSubmit?.()) && interaction.customId?.startsWith('vpanel:')) {
         try {
