@@ -23,6 +23,9 @@ const { extractFiles, stripFakeLinks } = require('../lib/lydia/files');
 const lydiaActions = require('./lydia-actions');
 const { isElevated: _isElevated } = (() => { try { return require('./automod'); } catch { return { isElevated: () => false }; } })();
 
+// Short acknowledgements: "ok", "merci", "thanks", "d'accord", "cool", "👍", "haha"… alone, without a question
+const SHORT_ACK = /^(?:ok(?:ay|i|ey)?|d'?accord|dac|merci(?: beaucoup| bien)?|thanks?(?: you)?|thx|ty|cool|super|nice|parfait|top|g[eé]nial|great|good|bien|yes|oui|ouais|yep|yup|lol|mdr|ha(?:ha)+|ah+|oh+|wow|bravo|gg|noted|not[eé]|compris|got it|[\p{Extended_Pictographic}\u200d\ufe0f]+)(?:[\s,!.…]+(?:ok|merci|thanks|chef|boss|bro|frr?|[\p{Extended_Pictographic}\u200d\ufe0f]+))*[\s!.…]*$/iu;
+
 
 
 // ─── Plan limits (free: CFG.FREE_* · Premium: none) ─────────────────────────
@@ -167,6 +170,8 @@ async function handleLydiaMessage(message, client, database) {
     }
 
     const theme = detectTheme(userPrompt || 'hello');
+    // What the person actually typed, before the quoted message is added below (used to spot a short "ok" / "merci")
+    const said = userPrompt.trim();
 
     thinkingMsg = await message.reply({
       components: [buildEmbed(null, message, { isThinking: true, theme, lang: uiLang })],
@@ -337,6 +342,12 @@ async function handleLydiaMessage(message, client, database) {
           ? `\n\n[SERVER RULES — the real text of this server's rules, read by ARCHON just now from ${rules.where}. Rely on it and never say you can't see the rules. When asked for a summary, give the main points in a few short lines in the member's language, without adding rules that aren't there. Quote a rule only if they ask about a specific one.]\n${rules.text}`
           : `\n\n[This server has no rules ARCHON can read (none saved with /rules set, and no readable rules channel). Say so plainly; an admin can add them with /rules set or set a rules channel in /channels.]`;
       } catch (e) { console.error('[LYDIA] rules:', e.message); }
+    }
+
+    // A short acknowledgement ("ok", "merci", "👍") gets a short answer: one line, no new topic.
+    // A real question or a longer message keeps the normal length.
+    if (SHORT_ACK.test(said)) {
+      fullSystem += `\n\n[This message is only a short acknowledgement. Answer in one short sentence (15 words at most), in the same tone and language. Don't bring back earlier topics, don't explain, don't list anything.]`;
     }
 
     const aiResult = await generateAIResponse(fullSystem, finalPrompt, history, imageUrl, theme, message.guild?.id ?? null);
