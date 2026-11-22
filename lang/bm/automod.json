@@ -113,7 +113,7 @@
   "admin_domainsDefaultLabel": "Autorisés par défaut",
   "admin_domainsCustomLabel": "Ajoutés manuellement",
   "admin_domainsCustomNone": "Aucun — uniquement les défauts",
-  "admin_domainsHint": "Utilise `/automod domains add <domaine>` pour en autoriser un nouveau, ou `remove <domaine>` pour le retirer.",
+  "admin_domainsHint": "Touche Ajouter pour autoriser un site, ou Retirer pour l'enlever de ta liste.",
   "admin_domainsBack": "Retour au statut",
   "admin_appealsBack": "Retour au statut",
   "admin_domainsBtnAdd": "Ajouter un domaine",

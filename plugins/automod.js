@@ -274,82 +274,6 @@ function isElevated(member) {   // about the person AutoMod looks at, not who ru
 // ═══════════════════════════════════════════════════════
 // RAID DETECTION ENGINE
 // ═══════════════════════════════════════════════════════
-// ─── Domain list, channel list and raid card (shared by /automod and .automod) ───
-function domainsAction(guildId, action, domain, settings, client, t) {
-    const cur = settings?.autoModDomains || '';
-    const list = parseDomainWhitelist(cur);
-    if (!action || action === 'list') {
-        const custom = list.length ? list.map(d => '`' + d + '`').join(', ') : t('dom_noneCustom');
-        const defaults = [...DEFAULT_DOMAIN_WHITELIST].filter(d => !d.startsWith('www.')).slice(0, 14).join(', ');
-        return v2card(C.BLURPLE, [
-            { text: `## ${EMOJIS.ic_settings || '🔗'} ${t('dom_title')}` },
-            { rule: true },
-            { text: `**${t('dom_custom')}**\n${custom}` },
-            { text: `**${t('dom_defaults')}**\n-# ${defaults}…` },
-        ]);
-    }
-    if (action === 'add') {
-        if (!domain) return t('dom_needDomain');
-        if (list.includes(domain)) return t('dom_already', { domain });
-        client.updateServerSetting(guildId, 'automoddomains', cur ? `${cur},${domain}` : domain); client.settings.delete(guildId);
-        return t('dom_added', { domain });
-    }
-    if (action === 'remove') {
-        if (!domain) return t('dom_needDomain');
-        if (!list.includes(domain)) return t('dom_notListed', { domain });
-        client.updateServerSetting(guildId, 'automoddomains', list.filter(d => d !== domain).join(',') || null); client.settings.delete(guildId);
-        return t('dom_removed', { domain });
-    }
-    if (action === 'reset') {
-        client.updateServerSetting(guildId, 'automoddomains', null); client.settings.delete(guildId);
-        return t('dom_reset');
-    }
-    return t('dom_usage');
-}
-
-function channelsAction(guildId, action, ch, settings, client, t) {
-    const raw = settings?.automodChannels || settings?.automod_channels || '';
-    const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
-    if (!action || action === 'list') {
-        const where = list.length ? list.map(c => `<#${c}>`).join(' ') : t('chan_all');
-        return v2card(C.BLURPLE, [
-            { text: `## ${EMOJIS.ic_channel || '#️⃣'} ${t('chan_title')}` },
-            { rule: true },
-            { text: t('chan_activeIn', { channels: where }) },
-        ]);
-    }
-    if (action === 'add') {
-        if (!ch) return t('chan_needChannel');
-        if (list.includes(ch.id)) return t('chan_already', { channel: `<#${ch.id}>` });
-        client.updateServerSetting(guildId, 'automodchannels', raw ? `${raw},${ch.id}` : ch.id); client.settings.delete(guildId);
-        return t('chan_added', { channel: `<#${ch.id}>` });
-    }
-    if (action === 'remove') {
-        if (!ch) return t('chan_needChannel');
-        if (!list.includes(ch.id)) return t('chan_notListed', { channel: `<#${ch.id}>` });
-        client.updateServerSetting(guildId, 'automodchannels', list.filter(c => c !== ch.id).join(',') || null); client.settings.delete(guildId);
-        return t('chan_removed', { channel: `<#${ch.id}>` });
-    }
-    if (action === 'clear') {
-        client.updateServerSetting(guildId, 'automodchannels', null); client.settings.delete(guildId);
-        return t('chan_cleared');
-    }
-    return t('chan_usage');
-}
-
-function raidCard(db, gid, t) {
-    const s = db.prepare('SELECT raid_enabled, raid_threshold, raid_window, raid_min_age_days FROM server_settings WHERE guild_id = ?').get(gid) || {};
-    const on = !!s.raid_enabled;
-    const age = s.raid_min_age_days
-        ? t('raid_minAgeOn', { age: t(Number(s.raid_min_age_days) === 1 ? 'daysOne' : 'daysMany', { n: s.raid_min_age_days }) })
-        : t('raid_minAgeOff');
-    return v2card(on ? C.GREEN : C.GREY, [
-        { text: `## ${EMOJIS.ic_role || '🛡️'} ${t('raid_title')}\n${on ? (EMOJIS.ic_on || '🟢') : (EMOJIS.ic_toggle_off || EMOJIS.ic_off || '🔴')} ${t(on ? 'raid_isOn' : 'raid_isOff')}` },
-        { rule: true },
-        { text: `${t('raid_trigger', { n: s.raid_threshold || 5, s: s.raid_window || 30 })}\n${age}` },
-    ]);
-}
-
 const raidJoinLog = new Map(); // guildId => [timestamps]
 const raidActive = new Map();  // guildId => true/false
 
@@ -1246,52 +1170,131 @@ function nativeLine(st, on, _T) {
     return parts.join(' · ');
 }
 
+// What AutoMod did on this server in the last 7 days (its own actions and Discord's rules), most frequent first
+function weekActivity(client, guildId) {
+    try {
+        const since = Math.floor(Date.now() / 1000) - 7 * 86400;
+        const rows = client.db.prepare("SELECT reason FROM moderation_logs WHERE guild_id = ? AND moderator_id = ? AND timestamp >= ? AND (reason LIKE 'AutoMod:%' OR reason LIKE 'Discord AutoMod:%')")
+            .all(guildId, client.user.id, since);
+        const by = new Map();
+        for (const r of rows) {
+            const k = String(r.reason).startsWith('Discord AutoMod:') ? '__native' : typeFromReason(r.reason);
+            by.set(k, (by.get(k) || 0) + 1);
+        }
+        return { total: rows.length, top: [...by].sort((a, b) => b[1] - a[1]).slice(0, 3) };
+    } catch { return { total: 0, top: [] }; }
+}
+
+// The /automod card. Off: what it does and one button to turn it on. On: what it did this week, what it watches,
+// and its settings as Discord menus (log channel, exempt roles, ignored channels). Lines and buttons only show
+// when they apply. Its buttons are routed by id (automod_status_* / automod_select_*), so they work after a restart.
 function buildStatusCard(client, guild, ss, opts = {}) {
-    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags, RoleSelectMenuBuilder, ChannelSelectMenuBuilder, ChannelType } = require('discord.js');
     const _L = require('../lib/botPerms').langOf({ guild, client });
     const _T = (k, v) => require('../lib/i18n').t('automod.' + k, _L, v);
-    const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
-    const wl = ss?.autoModWhitelist;
-    const domainList = parseDomainWhitelist(ss?.autoModDomains);
-    if (client.db) migrateIgnoredChannels(client.db);
-    const ign = ignoredChannels(ss);
-    const channelList = ign.length ? ign.map(c => `<#${c}>`).join(' ') : _T('admin_statusAllChannels');
-    const channelsNotice = client.db ? takeChannelsNotice(client.db, guild.id) : false;
-    const pendingCount = formatPendingAppeals(guild.id).length;
     const on = !!ss?.autoModEnabled;
+    const pending = formatPendingAppeals(guild.id).length;
+    const dashBtn = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel(_T('card_btnDashboard')).setURL(`https://archon223.com/dashboard/${guild.id}`);
+    const appealsBtn = () => new ButtonBuilder().setCustomId('automod_status_appeals').setLabel(_T('admin_btnAppeals')).setEmoji(iconObj('staff', null, '⚖️')).setStyle(ButtonStyle.Secondary);
 
-    const body = [
-        `**${_T('admin_statusLabelStatus')}** · ${on ? _T('admin_statusEnabled') : _T('admin_statusDisabled')}`,
-        `**${_T('admin_statusLabelSensitivity')}** · ${(ss?.autoModSensitivity || 'medium').toUpperCase()}`,
-        `**${_T('admin_statusLabelLog')}** · ${logId ? `<#${logId}>` : _T('admin_statusNotConfigured')}`,
-        `**${_T('admin_statusLabelExempt')}** · ${wl ? wl.split(',').map(r => `<@&${r}>`).join(' ') : _T('admin_statusNone')}`,
-        `**${_T('admin_statusLabelLinkPolicy')}** · ${_T('admin_statusLinkPolicyValue', { n: domainList.length })}`,
-        `**${_T('admin_statusLabelChannels')}** · ${channelList}`,
-        `**${_T('admin_statusLabelAppeals')}** · ${pendingCount > 0 ? _T('admin_statusAppealsValue', { n: pendingCount }) : _T('admin_statusAppealsNone')}`,
+    if (!on) {
+        const row = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('automod_status_enable').setLabel(_T('admin_btnEnable')).setEmoji(icon('ok')).setStyle(ButtonStyle.Success),
+            ...(pending ? [appealsBtn()] : []),
+            dashBtn,
+        );
+        const view = v2card(0x95a5a6, [
+            { text: `## ${ui.em('automod', '🛡️')} ${_T('card_offTitle')}\n${_T('card_offBody')}` },
+            ...(pending ? [{ text: `-# ${_T(pending === 1 ? 'card_appealsOne' : 'card_appeals', { n: pending })}` }] : []),
+            { row },
+        ]);
+        return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
+    }
+
+    if (client.db) migrateIgnoredChannels(client.db);
+    const channelsNotice = client.db ? takeChannelsNotice(client.db, guild.id) : false;
+    const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
+    const exempt = String(ss?.autoModWhitelist || '').split(',').map((r) => r.trim()).filter((r) => r && guild.roles.cache.has(r));
+    const ignored = ignoredChannels(ss).filter((c) => guild.channels.cache.has(c));
+    const domains = parseDomainWhitelist(ss?.autoModDomains);
+    const week = weekActivity(client, guild.id);
+
+    // this week
+    const weekText = week.total
+        ? `${_T(week.total === 1 ? 'card_weekOne' : 'card_week', { n: week.total })}\n-# ${_T('card_weekTop', {
+            list: week.top.map(([k, n]) => `${k === '__native' ? _T('native_statusLabel') : ruleName({ type: k }, _T)} ${n}`).join(' · ') })}`
+        : `-# ${_T('card_weekNone')}`;
+
+    // what it watches
+    const watch = [
+        ss?.linkFilterEnabled
+            ? `**${_T('card_linksLabel')}** · ${_T(domains.length ? 'card_linksOnPlus' : 'card_linksOn', { n: domains.length })}`
+            : `**${_T('card_linksLabel')}** · ${_T('card_linksOff')}`,
+        ...(ss?.inviteFilterEnabled ? [`**${_T('card_invitesLabel')}** · ${_T('card_invitesOn')}`] : []),
         ...(opts.native ? [`**${_T('native_statusLabel')}** · ${nativeLine(opts.native, on, _T)}`] : []),
     ].join('\n');
 
-    const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_status_domains').setLabel(_T('admin_btnDomains')).setEmoji(icon('globe')).setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_status_channels').setLabel(_T('admin_btnChannels')).setEmoji(iconObj('ic_channel', null, '📢')).setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_status_log').setLabel(_T('admin_btnLog')).setEmoji(iconObj('note', null, '📋')).setStyle(ButtonStyle.Primary),
-    );
-    const row2 = new ActionRowBuilder().addComponents(
+    const textTypes = [ChannelType.GuildText, ChannelType.GuildAnnouncement];
+    const logSel = new ChannelSelectMenuBuilder().setCustomId('automod_select_logch').setPlaceholder(_T('card_logPick'))
+        .setChannelTypes(textTypes).setMinValues(0).setMaxValues(1);
+    if (logId && guild.channels.cache.has(String(logId))) logSel.setDefaultChannels(String(logId));
+    const exemptSel = new RoleSelectMenuBuilder().setCustomId('automod_select_exempt').setPlaceholder(_T('card_exemptPick')).setMinValues(0).setMaxValues(20);
+    if (exempt.length) exemptSel.setDefaultRoles(...exempt.slice(0, 20));
+    const ignoreSel = new ChannelSelectMenuBuilder().setCustomId('automod_select_ignore').setPlaceholder(_T('card_ignorePick'))
+        .setChannelTypes([...textTypes, ChannelType.GuildForum, ChannelType.GuildVoice]).setMinValues(0).setMaxValues(25);
+    if (ignored.length) ignoreSel.setDefaultChannels(...ignored.slice(0, 25));
+
+    const buttons = new ActionRowBuilder().addComponents(
+        ...(ss?.linkFilterEnabled ? [new ButtonBuilder().setCustomId('automod_status_domains').setLabel(_T('admin_btnDomains')).setEmoji(icon('globe')).setStyle(ButtonStyle.Secondary)] : []),
         new ButtonBuilder().setCustomId('automod_status_raid').setLabel(_T('admin_btnRaid')).setEmoji(iconObj('shield', null, '🛡️')).setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('automod_status_appeals').setLabel(_T('admin_btnAppeals')).setEmoji(iconObj('staff', null, '⚖️')).setStyle(ButtonStyle.Secondary),
+        ...(pending ? [appealsBtn()] : []),
+        dashBtn,
+        new ButtonBuilder().setCustomId('automod_status_disable').setLabel(_T('admin_btnDisable')).setEmoji(icon('no')).setStyle(ButtonStyle.Danger),
     );
 
-    const view = v2card(on ? 0x2ecc71 : 0x95a5a6, [
-        { text: `## ${ui.em('automod', '🛡️')} AutoMod\n*${_T('admin_statusSub')}*` },
+    const view = v2card(0x2ecc71, [
+        { text: `## ${ui.em('automod', '🛡️')} AutoMod\n-# ${_T('card_onSub')}` },
         ...(channelsNotice ? [{ text: `> ${_T('admin_channelsChanged')}` }] : []),
         { rule: true },
-        { text: body },
+        { text: weekText },
+        ...(pending ? [{ text: _T(pending === 1 ? 'card_appealsOne' : 'card_appeals', { n: pending }) }] : []),
         { rule: true },
-        { text: `-# ${_T('admin_statusHint', { cmd: cmdSlash(client, 'automod domains', { guild }) })}` },
-        { row: row1 },
-        { row: row2 },
+        { text: watch },
+        { rule: true },
+        { text: `**${_T('card_logLabel')}**${logId ? '' : `\n-# ${_T('card_logNone')}`}` },
+        { row: new ActionRowBuilder().addComponents(logSel) },
+        { text: `**${_T('card_exemptLabel')}**\n-# ${_T('card_exemptHint')}` },
+        { row: new ActionRowBuilder().addComponents(exemptSel) },
+        { text: `**${_T('card_ignoreLabel')}**` },
+        { row: new ActionRowBuilder().addComponents(ignoreSel) },
+        { rule: true },
+        { row: buttons },
     ]);
     return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
+}
+
+// The card with fresh settings and the state of Discord's own rules
+async function statusView(client, guild) {
+    client.settings?.delete?.(guild.id);
+    const ss = client.getServerSettings(guild.id);
+    const native = ss?.autoModEnabled ? await require('../lib/native-automod').status(guild).catch(() => null) : null;
+    return buildStatusCard(client, guild, ss, { native });
+}
+
+// Turns AutoMod on or off (the setting, then Discord's own rules). { already } | { missing: [...] } | { ok }
+async function setEnabled(client, guild, en) {
+    const cur = !!client.getServerSettings(guild.id)?.autoModEnabled;
+    if (en === cur) return { already: true };
+    if (en) {
+        const me = guild.members.me;
+        const missing = ['ManageGuild', 'ManageMessages', 'ModerateMembers'].filter((p) => !me?.permissions.has(PermissionsBitField.Flags[p]));
+        if (missing.length) return { missing };
+    }
+    client.db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(guild.id);
+    client.db.prepare("UPDATE server_settings SET automod_enabled = ?, updated_at = strftime('%s','now') WHERE guild_id = ?").run(en ? 1 : 0, guild.id);
+    client.settings.delete(guild.id);
+    await syncRules(guild, en ? 'create' : 'delete', client.getServerSettings(guild.id));
+    return { ok: true };
 }
 
 
@@ -1487,57 +1490,11 @@ function buildDomainsCard(client, guild, ss) {
         new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(iconObj('ic_back', null, '↩️')).setStyle(ButtonStyle.Secondary),
     );
     const view = v2card(0x2ecc71, [
-        { text: `## ${ui.em('globe', '🌐')} ${_T('admin_domainsTitle')}\n*Allowed link destinations for non-moderators.*` },
+        { text: `## ${ui.em('globe', '🌐')} ${_T('admin_domainsTitle')}\n*${_T('card_domainsSub')}*` },
         { rule: true },
         { text: `**${_T('admin_domainsDefaultLabel')}**\n${[...DEFAULT_DOMAIN_WHITELIST].slice(0, 12).join(', ')}, …\n\n**${_T('admin_domainsCustomLabel')}**\n${customList}` },
         { rule: true },
         { text: `-# ${_T('admin_domainsHint')}` },
-        { row: row1 },
-        { row: row2 },
-    ]);
-    return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
-}
-
-function buildChannelsCard(client, guild, ss) {
-    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
-    const _T = (k, v) => _adminT(client, guild, k, v);
-    const list = ignoredChannels(ss);
-    const body = list.length ? list.map(c => `<#${c}>`).join(' ') : _T('admin_channelsAllChannels');
-    const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_channels_add').setLabel(_T('admin_btnAdd')).setEmoji(iconObj('ic_add', null, '➕')).setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_channels_remove').setLabel(_T('admin_btnRemove')).setEmoji(iconObj('ic_remove', null, '➖')).setStyle(ButtonStyle.Secondary),
-        new ButtonBuilder().setCustomId('automod_channels_clear').setLabel(_T('admin_btnClear')).setEmoji(iconObj('ic_trash', null, '🗑️')).setStyle(ButtonStyle.Danger),
-    );
-    const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(iconObj('ic_back', null, '↩️')).setStyle(ButtonStyle.Secondary),
-    );
-    const view = v2card(0x2ecc71, [
-        { text: `## 📢 ${_T('admin_channelsTitle')}\n*${_T('admin_channelsHint')}*` },
-        { rule: true },
-        { text: `**${_T('admin_channelsActiveLabel')}**\n${body}` },
-        { rule: true },
-        { row: row1 },
-        { row: row2 },
-    ]);
-    return { ...view, flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral };
-}
-
-function buildLogCard(client, guild, ss) {
-    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
-    const _T = (k, v) => _adminT(client, guild, k, v);
-    const logId = resolveSetting(ss, 'autoModLogChannel', 'automodlog', 'modlog', 'log');
-    const row1 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_log_set').setLabel(_T('admin_btnSetLog')).setEmoji(iconObj('ic_pin', null, '📌')).setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('automod_log_remove').setLabel(_T('admin_btnRemoveLog')).setEmoji(iconObj('ic_trash', null, '🗑️')).setStyle(ButtonStyle.Secondary),
-    );
-    const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(iconObj('ic_back', null, '↩️')).setStyle(ButtonStyle.Secondary),
-    );
-    const view = v2card(0x2ecc71, [
-        { text: `## 📋 ${_T('admin_logTitle')}\n*Where AutoMod sends its action reports.*` },
-        { rule: true },
-        { text: `**${_T('admin_logCurrentLabel')}** · ${logId ? `<#${logId}>` : _T('admin_statusNotConfigured')}` },
-        { rule: true },
         { row: row1 },
         { row: row2 },
     ]);
@@ -1561,7 +1518,7 @@ function buildRaidCard(client, guild, db) {
         new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_btnBack')).setEmoji(iconObj('ic_back', null, '↩️')).setStyle(ButtonStyle.Secondary),
     );
     const view = v2card(enabled ? 0x2ecc71 : 0x95a5a6, [
-        { text: `## ${ui.em('eagle', '🛡️')} ${_T('admin_raidTitle')}\n*High-threshold protection against coordinated joins.*` },
+        { text: `## ${ui.em('eagle', '🛡️')} ${_T('admin_raidTitle')}\n*${_T('card_raidSub')}*` },
         { rule: true },
         { text: `**${_T('admin_raidStatusLabel')}** · ${enabled ? _T('admin_raidEnabled') : _T('admin_raidDisabled')}\n**${_T('admin_raidTriggerLabel')}** · ${s.raid_threshold || 5} joins / ${s.raid_window || 30}s\n**${_T('admin_raidMinAgeLabel')}** · ${s.raid_min_age_days ? _T('admin_raidDays', { n: s.raid_min_age_days }) : _T('admin_raidMinAgeDisabled')}` },
         { rule: true },
@@ -1594,33 +1551,10 @@ async function handleAdminButton(interaction, client) {
         return interaction.update(buildDomainsCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
     }
 
-    // ── Channels ──
-    if (id === 'automod_channels_add') {
-        const sel = new ChannelSelectMenuBuilder().setCustomId('automod_select_channels_add').setPlaceholder(_T('admin_channelsSelectAdd')).setChannelTypes([ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.GuildForum, ChannelType.GuildVoice]).setMinValues(1).setMaxValues(1);
-        return interaction.update({ components: [new ActionRowBuilder().addComponents(sel)], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
-    }
-    if (id === 'automod_channels_remove') {
-        const raw = ss?.automodChannels || ss?.automod_channels || '';
-        const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
-        if (!list.length) return interaction.reply({ content: _T('admin_channelsAllChannels'), flags: 64 });
-        const sel = new ChannelSelectMenuBuilder().setCustomId('automod_select_channels_remove').setPlaceholder(_T('admin_channelsSelectRemove')).setChannelTypes([ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.GuildForum, ChannelType.GuildVoice]).setMinValues(1).setMaxValues(1);
-        return interaction.update({ components: [new ActionRowBuilder().addComponents(sel)], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
-    }
-    if (id === 'automod_channels_clear') {
-        client.updateServerSetting(interaction.guild.id, 'automodchannels', null);
-        client.settings.delete(interaction.guild.id);
-        return interaction.update(buildChannelsCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
-    }
-
-    // ── Log ──
-    if (id === 'automod_log_set') {
-        const sel = new ChannelSelectMenuBuilder().setCustomId('automod_select_log').setPlaceholder(_T('admin_logSelect')).setChannelTypes([ChannelType.GuildText, ChannelType.GuildAnnouncement]).setMinValues(1).setMaxValues(1);
-        return interaction.update({ components: [new ActionRowBuilder().addComponents(sel)], flags: MessageFlags.IsComponentsV2 | MessageFlags.Ephemeral });
-    }
-    if (id === 'automod_log_remove') {
-        client.updateServerSetting(interaction.guild.id, 'automodlog', null);
-        client.settings.delete(interaction.guild.id);
-        return interaction.update(buildLogCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
+    // Channels and log are menus on the card now: an old card's buttons just open the new card
+    if (id.startsWith('automod_channels_') || id.startsWith('automod_log_')) {
+        await interaction.deferUpdate().catch(() => {});
+        return interaction.editReply(await statusView(client, interaction.guild));
     }
 
     // ── Raid ──
@@ -1687,39 +1621,15 @@ async function handleAdminModal(interaction, client) {
 async function handleAdminSelect(interaction, client) {
     { const _no = require('../lib/access').deny(interaction.member, 'automod', require('../lib/botPerms').langOf(interaction)); if (_no) return interaction.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
     const id = interaction.customId;
-    const _T = (k, v) => _adminT(client, interaction.guild, k, v);
-    const picked = interaction.values?.[0];
-    if (!picked) return interaction.update(buildStatusCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
-
-    const ss = client.getServerSettings(interaction.guild.id);
-
-    if (id === 'automod_select_channels_add') {
-        const raw = ss?.automodChannels || ss?.automod_channels || '';
-        const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
-        if (list.includes(picked)) { await interaction.update(buildChannelsCard(client, interaction.guild, ss)); return interaction.followUp({ content: _T('admin_channelsAlready', { id: picked }), flags: 64 }); }
-        const nw = raw ? `${raw},${picked}` : picked;
-        client.updateServerSetting(interaction.guild.id, 'automodchannels', nw);
-        client.settings.delete(interaction.guild.id);
-        await interaction.update(buildChannelsCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
-        return interaction.followUp({ content: _T('admin_channelsAdded', { id: picked }), flags: 64 });
-    }
-    if (id === 'automod_select_channels_remove') {
-        const raw = ss?.automodChannels || ss?.automod_channels || '';
-        const list = raw ? raw.split(',').map(c => c.trim()).filter(Boolean) : [];
-        if (!list.includes(picked)) { await interaction.update(buildChannelsCard(client, interaction.guild, ss)); return interaction.followUp({ content: _T('admin_channelsNotIn', { id: picked }), flags: 64 }); }
-        const nw = list.filter(c => c !== picked).join(',');
-        client.updateServerSetting(interaction.guild.id, 'automodchannels', nw || null);
-        client.settings.delete(interaction.guild.id);
-        await interaction.update(buildChannelsCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
-        return interaction.followUp({ content: _T('admin_channelsRemoved', { id: picked }), flags: 64 });
-    }
-    if (id === 'automod_select_log') {
-        client.updateServerSetting(interaction.guild.id, 'automodlog', picked);
-        client.settings.delete(interaction.guild.id);
-        await interaction.update(buildLogCard(client, interaction.guild, client.getServerSettings(interaction.guild.id)));
-        return interaction.followUp({ content: _T('admin_logSet', { id: picked }), flags: 64 });
-    }
-    return false;
+    const gid = interaction.guild.id;
+    const values = interaction.values || [];
+    const KEYS = { automod_select_logch: 'automodlog', automod_select_exempt: 'automodwhitelist', automod_select_ignore: 'automodchannels' };
+    await interaction.deferUpdate().catch(() => {});
+    // An empty choice clears the setting (no log channel, no exempt role, no ignored channel).
+    // The card's menus set the whole list; Discord's own rules follow by themselves (lib/native-automod.schedule).
+    if (KEYS[id]) client.updateServerSetting(gid, KEYS[id], values.length ? values.join(',') : null);
+    // anything else is a menu from an older card: show the new one
+    return interaction.editReply(await statusView(client, interaction.guild));
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1728,7 +1638,7 @@ async function handleAdminSelect(interaction, client) {
 async function handleStatusButton(interaction, client) {
     { const _no = require('../lib/access').deny(interaction.member, 'automod', require('../lib/botPerms').langOf(interaction)); if (_no) return interaction.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
     const id = interaction.customId;
-    const STATUS_IDS = ['automod_status_domains', 'automod_status_channels', 'automod_status_log', 'automod_status_raid', 'automod_status_appeals', 'automod_status_back'];
+    const STATUS_IDS = ['automod_status_domains', 'automod_status_channels', 'automod_status_log', 'automod_status_raid', 'automod_status_appeals', 'automod_status_back', 'automod_status_enable', 'automod_status_disable'];
     if (!STATUS_IDS.includes(id)) return false;
 
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
@@ -1740,20 +1650,22 @@ async function handleStatusButton(interaction, client) {
         new ButtonBuilder().setCustomId('automod_status_back').setLabel(_T('admin_domainsBack')).setEmoji(iconObj('ic_back', null, '↩️')).setStyle(ButtonStyle.Secondary)
     );
 
-    if (id === 'automod_status_back') {
-        return interaction.update(buildStatusCard(client, interaction.guild, ss));
+    // Turn on / off from the card; the card redraws itself
+    if (id === 'automod_status_enable' || id === 'automod_status_disable') {
+        await interaction.deferUpdate().catch(() => {});
+        const r = await setEnabled(client, interaction.guild, id === 'automod_status_enable');
+        if (r.missing) await interaction.followUp({ content: _T('admin_enableMissing', { list: r.missing.map((p) => '`' + p + '`').join(', ') }), flags: 64 }).catch(() => {});
+        return interaction.editReply(await statusView(client, interaction.guild));
+    }
+
+    // Back, and the old Channels / Log buttons (now menus on the card)
+    if (id === 'automod_status_back' || id === 'automod_status_channels' || id === 'automod_status_log') {
+        await interaction.deferUpdate().catch(() => {});
+        return interaction.editReply(await statusView(client, interaction.guild));
     }
 
     if (id === 'automod_status_domains') {
         return interaction.update(buildDomainsCard(client, interaction.guild, ss));
-    }
-
-    if (id === 'automod_status_channels') {
-        return interaction.update(buildChannelsCard(client, interaction.guild, ss));
-    }
-
-    if (id === 'automod_status_log') {
-        return interaction.update(buildLogCard(client, interaction.guild, ss));
     }
 
     if (id === 'automod_status_raid') {
@@ -1763,7 +1675,7 @@ async function handleStatusButton(interaction, client) {
     if (id === 'automod_status_appeals') {
         const pending = formatPendingAppeals(interaction.guild.id);
         const items = [
-            { text: `## ${ui.em('mod_sign', '⚖️')} ${_T('admin_appealsHeader', { n: pending.length })}\n*Pending appeals waiting for your decision.*` },
+            { text: `## ${ui.em('mod_sign', '⚖️')} ${_T('admin_appealsHeader', { n: pending.length })}\n*${_T('card_appealsSub')}*` },
             { rule: true },
         ];
         if (pending.length === 0) {
@@ -1786,7 +1698,7 @@ module.exports = {
     isElevated,
     name: 'automod', category: 'MODERATION', aliases: ['am', 'modai'],
     description: '🛡️ Discord-native AutoMod system with timeouts, AI toxicity detection, domain-based link blocking, image spam detection, @everyone protection, and appeals.',
-    usage: '.automod [status|enable|disable|sensitivity|whitelist|domains|log|channels|appeals]',
+    usage: '.automod [status|enable|disable|appeals]',
     cooldown: 3000,
 
     // ── FIX 4: Added 'appeals' subcommand to slash builder ──
@@ -1795,21 +1707,7 @@ module.exports = {
         addSubcommand(s => s.setName('status').setDescription('View AutoMod status')).
         addSubcommand(s => s.setName('enable').setDescription('Enable AutoMod')).
         addSubcommand(s => s.setName('disable').setDescription('Disable AutoMod')).
-        addSubcommand(s => s.setName('appeals').setDescription('View and manage pending appeals')).
-        addSubcommand(s => s.setName('sensitivity').setDescription('Set sensitivity').addStringOption(o => o.setName('level').setDescription('Level').setRequired(true).addChoices({name:'🟢 Low',value:'low'},{name:'🟡 Medium',value:'medium'},{name:'🔴 High',value:'high'}))).
-        addSubcommand(s => s.setName('whitelist').setDescription('Whitelist role').addRoleOption(o => o.setName('role').setDescription('Role (skip to clear)').setRequired(false))).
-        addSubcommand(s => s.setName('domains').setDescription('Manage allowed link domains').addStringOption(o => o.setName('action').setDescription('add, remove, list, or reset').setRequired(true).addChoices({name:'📋 List allowed domains',value:'list'},{name:'➕ Add domain',value:'add'},{name:'➖ Remove domain',value:'remove'},{name:'🔄 Reset to defaults',value:'reset'})).addStringOption(o => o.setName('domain').setDescription('Domain to add/remove (e.g., example.com)').setRequired(false))).
-        addSubcommand(s => s.setName('log').setDescription('Set log channel').addChannelOption(o => o.setName('channel').setDescription('Channel').setRequired(true))).
-        addSubcommand(s => s.setName('channels').setDescription('Restrict AutoMod to specific channels').addStringOption(o => o.setName('action').setDescription('add, remove, list, or clear').setRequired(true).addChoices({name:'📋 List restricted channels',value:'list'},{name:'➕ Add channel',value:'add'},{name:'➖ Remove channel',value:'remove'},{name:'🔄 Clear all',value:'clear'})).addChannelOption(o => o.setName('channel').setDescription('Channel to add/remove').setRequired(false))).
-        addSubcommand(s => s.setName('raid').setDescription('🛡️ Configure raid detection').
-            addStringOption(o => o.setName('action').setDescription('Action').setRequired(true).addChoices(
-                {name:'🟢 Enable', value:'enable'},
-                {name:'🔴 Disable', value:'disable'},
-                {name:'📊 Status', value:'status'},
-                {name:'⚙️ Set threshold', value:'threshold'},
-                {name:'👶 Min account age', value:'minage'}
-            )).
-            addIntegerOption(o => o.setName('value').setDescription('Value for threshold or min age').setRequired(false))),
+        addSubcommand(s => s.setName('appeals').setDescription('View and manage pending appeals')),
 
     execute: async (ix, client) => {
         { const _no = require('../lib/access').deny(ix.member, 'automod', require('../lib/botPerms').langOf(ix)); if (_no) return ix.reply({ content: _no, flags: 64, allowedMentions: { parse: [] } }); }
@@ -1852,83 +1750,12 @@ module.exports = {
             return ix.editReply({ ..._v2.card(C.BLURPLE, items), flags: 1 << 6 });
         }
 
-        if (sc === 'status') {
-            const native = await require('../lib/native-automod').status(ix.guild).catch(() => null);
-            return ix.editReply(buildStatusCard(client, ix.guild, ss, { native }));
-        }
-
+        // status, enable, disable: the card (enable and disable redraw it in its new state)
         if (sc === 'enable' || sc === 'disable') {
-            const en = sc === 'enable';
-            const cur = ss?.autoModEnabled;
-            if (en === !!cur) return ix.editReply({ content: _TA(en ? 'admin_enableAlready' : 'admin_disableAlready'), flags: 1 << 6 });
-            if (en) {
-                const me = ix.guild.members.me;
-                const missing = ['ManageGuild', 'ManageMessages', 'ModerateMembers'].filter(p => !me.permissions.has(PermissionsBitField.Flags[p]));
-                if (missing.length) return ix.editReply({ content: _TA('admin_enableMissing', { list: missing.map(p => '`' + p + '`').join(', ') }), flags: 1 << 6 });
-            }
-            client.db.prepare("UPDATE server_settings SET automod_enabled = ?, updated_at = strftime('%s','now') WHERE guild_id = ?").run(en ? '1' : '0', ix.guild.id);
-            client.settings.delete(ix.guild.id);
-            const e = new EmbedBuilder().setColor(en ? C.GREEN : C.GREY).setAuthor({ name: 'AutoMod', iconURL: client.user.displayAvatarURL() }).setDescription(_TA(en ? 'admin_enableOk' : 'admin_disableOk', { cmd: cmdSlash(client, 'automod domains', { guild: ix.guild }) })).setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
-            await ix.editReply(toV2({ embeds: [e], flags: 1 << 6 }));
-            await syncRules(ix.guild, en ? 'create' : 'delete', ss);
-            return;
+            const r = await setEnabled(client, ix.guild, sc === 'enable');
+            if (r.missing) return ix.editReply({ content: _TA('admin_enableMissing', { list: r.missing.map((p) => '`' + p + '`').join(', ') }) });
         }
-
-        if (sc === 'sensitivity') {
-            const lv = ix.options.getString('level');
-            client.updateServerSetting(ix.guild.id, 'automodsensitivity', lv);
-            client.settings.delete(ix.guild.id);
-            return ix.editReply({ content: em('ic_ok', '✅') + ' ' + _TA('admin_sensitivitySet', { level: lv.toUpperCase() }), flags: 1 << 6 });
-        }
-        if (sc === 'whitelist') {
-            const role = ix.options.getRole('role');
-            const cur = ss?.autoModWhitelist;
-            if (role) {
-                if (cur?.split(',').includes(role.id)) return ix.editReply({ content: _TA('admin_whitelistAlready'), flags: 1 << 6 });
-                const nw = cur ? `${cur},${role.id}` : role.id;
-                client.updateServerSetting(ix.guild.id, 'automodwhitelist', nw); client.settings.delete(ix.guild.id);
-                return ix.editReply({ content: em('ic_ok', '✅') + ' ' + _TA('admin_whitelistAdded', { role: role.name }), flags: 1 << 6 });
-            } else {
-                if (!cur) return ix.editReply({ content: _TA('admin_whitelistEmpty'), flags: 1 << 6 });
-                client.updateServerSetting(ix.guild.id, 'automodwhitelist', null); client.settings.delete(ix.guild.id);
-                return ix.editReply({ content: em('ic_ok', '✅') + ' ' + _TA('admin_whitelistCleared'), flags: 1 << 6 });
-            }
-        }
-        if (sc === 'domains') {
-            const out = domainsAction(ix.guild.id, ix.options.getString('action'), ix.options.getString('domain')?.toLowerCase().trim(), ss, client, _TA);
-            return ix.editReply(typeof out === 'string' ? { content: out, flags: 64 } : { ...out, flags: out.flags | 64 });
-        }
-        if (sc === 'channels') {
-            const out = channelsAction(ix.guild.id, ix.options.getString('action'), ix.options.getChannel('channel'), ss, client, _TA);
-            return ix.editReply(typeof out === 'string' ? { content: out, flags: 64 } : { ...out, flags: out.flags | 64 });
-        }
-        if (sc === 'log') {
-            const ch = ix.options.getChannel('channel');
-            client.updateServerSetting(ix.guild.id, 'automodlog', ch.id); client.settings.delete(ix.guild.id);
-            return ix.editReply({ content: require('../lib/botPerms').channelText(ix.guild, ch, ix), flags: 1 << 6 });
-        }
-
-        // ── RAID DETECTION HANDLER (Premium) ──
-        if (sc === 'raid') {
-            const action = ix.options.getString('action');
-            const value = ix.options.getInteger('value');
-            const gid = ix.guild.id;
-            const db = client.db;
-            const { isPremium } = require('./premium.js');
-            if (!isPremium(db, gid) && action !== 'status') {
-                return ix.editReply({ content: _TA('raid_premiumOnly', { cmd: cmdSlash(client, 'premium status', { guild: ix.guild }) }), flags: 64 });
-            }
-            db.prepare(`INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)`).run(gid);
-            if (action === 'enable') db.prepare(`UPDATE server_settings SET raid_enabled = 1 WHERE guild_id = ?`).run(gid);
-            if (action === 'disable') db.prepare(`UPDATE server_settings SET raid_enabled = 0 WHERE guild_id = ?`).run(gid);
-            if (action === 'threshold') {
-                if (!value) return ix.editReply({ content: _TA('raid_needValue'), flags: 64 });
-                db.prepare(`UPDATE server_settings SET raid_threshold = ? WHERE guild_id = ?`).run(value, gid);
-            }
-            if (action === 'minage') db.prepare(`UPDATE server_settings SET raid_min_age_days = ? WHERE guild_id = ?`).run(value || 0, gid);
-            const card = raidCard(db, gid, _TA);
-            return ix.editReply({ ...card, flags: card.flags | 64 });
-        }
+        return ix.editReply(await statusView(client, ix.guild));
     },
 
     run: async (client, msg, args, db, ss) => {
@@ -1964,63 +1791,13 @@ module.exports = {
             return msg.reply(_v2.card(C.BLURPLE, items));
         }
 
-        if (action === 'status') {
-            const native = await require('../lib/native-automod').status(msg.guild).catch(() => null);
-            return msg.reply(buildStatusCard(client, msg.guild, settings, { native }));
+        // on / off, then the card; any other word (status, domains, log…) opens the card, where every setting is
+        if (['enable', 'on', 'disable', 'off'].includes(action)) {
+            const r = await setEnabled(client, msg.guild, action === 'enable' || action === 'on');
+            if (r.missing) return msg.reply(_TP('admin_enableMissing', { list: r.missing.map((p) => '`' + p + '`').join(', ') }));
         }
-        if (action === 'enable' || action === 'on') {
-            const cur = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(msg.guild.id);
-            if (cur?.automod_enabled === 1) return msg.reply(_TP('admin_enableAlready'));
-            const me = msg.guild.members.me;
-            const missing = ['ManageGuild', 'ManageMessages', 'ModerateMembers'].filter(p => !me.permissions.has(PermissionsBitField.Flags[p]));
-            if (missing.length) return msg.reply(_TP('admin_enableMissing', { list: missing.map(p => '`' + p + '`').join(', ') }));
-            client.db.prepare("UPDATE server_settings SET automod_enabled = 1 WHERE guild_id = ?").run(msg.guild.id);
-            client.settings.delete(msg.guild.id);
-            const synced = await syncRules(msg.guild, 'create', settings);
-            return msg.reply(_TP('admin_enableOk', { cmd: cmdSlash(client, 'automod domains', { guild: msg.guild }) }));
-        }
-        if (action === 'disable' || action === 'off') {
-            const cur = client.db.prepare('SELECT automod_enabled FROM server_settings WHERE guild_id = ?').get(msg.guild.id);
-            if (cur?.automod_enabled === 0) return msg.reply(_TP('admin_disableAlready'));
-            await syncRules(msg.guild, 'delete');
-            client.db.prepare("UPDATE server_settings SET automod_enabled = 0 WHERE guild_id = ?").run(msg.guild.id);
-            client.settings.delete(msg.guild.id);
-            return msg.reply(_TP('admin_disableOk', { cmd: cmdSlash(client, 'automod domains', { guild: msg.guild }) }));
-        }
-        if (action === 'sensitivity') {
-            const lv = args[1]?.toLowerCase();
-            if (!['low', 'medium', 'high'].includes(lv)) return msg.reply(_TP('sens_usage'));
-            client.updateServerSetting(msg.guild.id, 'automodsensitivity', lv); client.settings.delete(msg.guild.id);
-            return msg.reply(em('ic_ok', '✅') + ' ' + _TP('admin_sensitivitySet', { level: lv.toUpperCase() }));
-        }
-        if (action === 'whitelist') {
-            const role = msg.mentions.roles.first();
-            const cur = settings?.autoModWhitelist;
-            if (role) {
-                if (cur?.split(',').includes(role.id)) return msg.reply(_TP('admin_whitelistAlready'));
-                const nw = cur ? `${cur},${role.id}` : role.id;
-                client.updateServerSetting(msg.guild.id, 'automodwhitelist', nw); client.settings.delete(msg.guild.id);
-                return msg.reply(em('ic_ok', '✅') + ' ' + _TP('admin_whitelistAdded', { role: role.name }));
-            } else {
-                if (!cur) return msg.reply(_TP('admin_whitelistEmpty'));
-                client.updateServerSetting(msg.guild.id, 'automodwhitelist', null); client.settings.delete(msg.guild.id);
-                return msg.reply(em('ic_ok', '✅') + ' ' + _TP('admin_whitelistCleared'));
-            }
-        }
-        if (action === 'domains') {
-            return msg.reply(domainsAction(msg.guild.id, args[1]?.toLowerCase(), args[2]?.toLowerCase().trim(), settings, client, _TP));
-        }
-        if (action === 'channels') {
-            const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[2]);
-            return msg.reply(channelsAction(msg.guild.id, args[1]?.toLowerCase(), ch, settings, client, _TP));
-        }
-        if (action === 'log') {
-            const ch = msg.mentions.channels.first() || msg.guild.channels.cache.get(args[1]);
-            if (!ch) return msg.reply(em('ic_off', '❌') + ' Mention a channel.');
-            client.updateServerSetting(msg.guild.id, 'automodlog', ch.id); client.settings.delete(msg.guild.id);
-            return msg.reply(require('../lib/botPerms').channelText(msg.guild, ch, msg));
-        }
-        return msg.reply(_TP('usage'));
+        const view = await statusView(client, msg.guild);
+        return msg.reply({ ...view, flags: view.flags & ~64 });   // a prefix reply can't be private
     },
 
     async handleMessage(message, client, db) {
