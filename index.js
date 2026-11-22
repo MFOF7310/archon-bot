@@ -3046,6 +3046,10 @@ safeOn(Events.InteractionCreate, async (interaction) => {
             try { db.prepare("UPDATE global_server_stats SET last_active = strftime('%s','now') WHERE guild_id = ?").run(interaction.guildId); } catch (_) {}
         }
     }
+    // The old .list command was removed (/help does the same): its cards grey out with "run /help"
+    if (interaction.isMessageComponent?.() && /^(list_(category|back|refresh|compact|compact_toggle|prev|next|page|fav_.+)|c:list:.*)$/.test(interaction.customId || '')) {
+        return require('./lib/components').expire(interaction, client, 'help').catch(() => {});
+    }
     // Buttons and menus with a stored session (c:<kind>:<sid>:…, lib/components.js): they work after a restart too
     if ((interaction.isMessageComponent?.() || interaction.isModalSubmit?.()) && interaction.customId?.startsWith('c:')) {
         return require('./lib/components').route(interaction, client).catch((e) => console.error('[COMPONENTS]', e.message));
@@ -3057,10 +3061,6 @@ safeOn(Events.InteractionCreate, async (interaction) => {
     // /shop cards opened before it moved to stored sessions: greyed out with "run /shop again"
     if (interaction.isMessageComponent?.() && ['shop_select', 'shop_inventory', 'shop_refresh'].includes(interaction.customId)) {
         return require('./lib/components').expire(interaction, client, 'shop').catch(() => {});
-    }
-    // /list cards opened before it moved to stored sessions (list_…): greyed out with "run /list again"
-    if (interaction.isMessageComponent?.() && /^list_(category|back|refresh|compact|compact_toggle|prev|next|page|fav_.+)$/.test(interaction.customId || '')) {
-        return require('./lib/components').expire(interaction, client, 'list').catch(() => {});
     }
     // ── VERIFY PANEL (buttons + modal) — must run before other routers ──
     if ((interaction.isButton?.() || interaction.isModalSubmit?.()) && interaction.customId?.startsWith('vpanel:')) {
