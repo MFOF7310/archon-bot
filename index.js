@@ -5914,6 +5914,39 @@ apiApp.get('/api/ticket-stats/:guildId', requireAdmin, async (req, res) => {
     } catch (e) { console.error(`[TICKET-API] stats guild=${req.params.guildId}:`, e.message); res.status(500).json({ error: 'internal' }); }
 });
 
+// A new text channel from a dashboard picker ("Create #logs"). private: only ARCHON, the person who made it and
+// the server's admins see it (for logs). At most 5 a minute per server.
+const _chanCreates = new Map();
+apiApp.post('/api/channels/:guildId/create', requireAdmin, async (req, res) => {
+    try {
+        const { userId, name, private: priv } = req.body || {};
+        const a = await verifyActor(req.params.guildId, userId);
+        if (a.error) return res.status(a.code).json({ error: a.error });
+        const g = a.guild;
+        const { PermissionsBitField: P, ChannelType } = require('discord.js');
+        const me = g.members.me;
+        if (!me?.permissions.has(P.Flags.ManageChannels)) return res.status(403).json({ error: 'bot_missing_manage_channels' });
+        const recent = (_chanCreates.get(g.id) || []).filter((t) => Date.now() - t < 60000);
+        if (recent.length >= 5) return res.status(429).json({ error: 'too_many', retryAfter: 60 });
+        // Discord's channel name rules: lowercase, no spaces, 1-100 characters
+        const clean = String(name || '').toLowerCase().normalize('NFKC').replace(/\s+/g, '-').replace(/[^\p{L}\p{N}_-]/gu, '').replace(/-+/g, '-').replace(/^-|-$/g, '').slice(0, 90) || 'archon';
+        const ch = await g.channels.create({
+            name: clean, type: ChannelType.GuildText, reason: `Created from the ARCHON dashboard by ${a.member.user.tag}`,
+            permissionOverwrites: priv ? [
+                { id: g.roles.everyone.id, deny: [P.Flags.ViewChannel] },
+                { id: me.id, allow: [P.Flags.ViewChannel, P.Flags.SendMessages, P.Flags.EmbedLinks, P.Flags.AttachFiles, P.Flags.ReadMessageHistory] },
+                { id: a.member.id, allow: [P.Flags.ViewChannel, P.Flags.SendMessages, P.Flags.ReadMessageHistory] },
+            ] : undefined,
+        });
+        recent.push(Date.now()); _chanCreates.set(g.id, recent);
+        console.log(`[CHANNELS-API] created #${ch.name} (${priv ? 'private' : 'public'}) guild=${g.id} by=${a.member.id}`);
+        res.json({ id: ch.id, name: ch.name });
+    } catch (e) {
+        console.error(`[CHANNELS-API] create guild=${req.params.guildId}:`, e.message);
+        res.status(500).json({ error: 'create_failed' });
+    }
+});
+
 apiApp.post('/api/ticket-config/:guildId/create-channels', requireAdmin, async (req, res) => {
     try {
         const { userId } = req.body || {};
