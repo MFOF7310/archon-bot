@@ -140,6 +140,6 @@ Want to help? Read [TRANSLATING.md](TRANSLATING.md). Bug reports and ideas are w
 
 ARCHON CG-223 is written by **Moussa Fofana** ([@MFOF7310](https://github.com/MFOF7310)) in Bamako, Mali. It isn't a fork: it was built from scratch, entirely from a Samsung Galaxy Z Fold through Termux and SSH.
 
-Questions or feedback: join the [Eagle Community](https://discord.gg/NFSMFJajp9) on Discord.
+Questions or feedback: join the [Archon Support](https://discord.gg/NFSMFJajp9) on Discord.
 
 <p align="center">MIT licence · see <a href="LICENSE">LICENSE</a></p>
