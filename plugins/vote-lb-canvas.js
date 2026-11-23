@@ -102,14 +102,14 @@ async function buildVoteLBCanvas(entries, guildName, botAvatarURL) {
         ctx.lineWidth = 2;
         ctx.stroke();
     } catch(e) {
-        ctx.font = 'bold 36px DejaVuBold';
+        ctx.font = 'bold 36px DejaVuBold, "Noto Sans Arabic", "Noto Sans CJK SC"';
         ctx.fillStyle = '#FFD700';
         ctx.textAlign = 'left';
         ctx.fillText('#', 25, 65);
     }
 
     // Title
-    ctx.font = 'bold 26px DejaVuBold';
+    ctx.font = 'bold 26px DejaVuBold, "Noto Sans Arabic", "Noto Sans CJK SC"';
     ctx.fillStyle = '#ffffff';
     ctx.fillText('Top Voters', 90, 52);
 
@@ -158,7 +158,7 @@ async function buildVoteLBCanvas(entries, guildName, botAvatarURL) {
 
         // Rank medal
         if (i < 3) {
-            ctx.font = 'bold 16px DejaVuBold';
+            ctx.font = 'bold 16px DejaVuBold, "Noto Sans Arabic", "Noto Sans CJK SC"';
             ctx.fillStyle = MEDAL_COLORS[i];
             ctx.textAlign = 'center';
             ctx.fillText(MEDAL_LABELS[i], 42, centerY + 6);
@@ -172,7 +172,7 @@ async function buildVoteLBCanvas(entries, guildName, botAvatarURL) {
 
         // Username
         const nameColor = i === 0 ? '#FFD700' : i === 1 ? '#C0C0C0' : i === 2 ? '#CD7F32' : '#ffffff';
-        ctx.font = i < 3 ? 'bold 14px DejaVuBold' : '13px DejaVuMono';
+        ctx.font = i < 3 ? 'bold 14px DejaVuBold, "Noto Sans Arabic", "Noto Sans CJK SC"' : '13px DejaVuMono';
         ctx.fillStyle = nameColor;
         const displayName = (entry.username || 'Unknown').substring(0, 20);
         ctx.fillText(displayName, 110, centerY + 5);

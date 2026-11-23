@@ -103,7 +103,7 @@ async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}) {
     roundRect(ctx, 20 * SCALE, 18 * SCALE, 110 * SCALE, 28 * SCALE, 6 * SCALE);
     ctx.fill();
     ctx.fillStyle = t.accent;
-    ctx.font = `bold ${11 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${11 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(t.label, 75 * SCALE, 32 * SCALE);
@@ -145,25 +145,25 @@ async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}) {
 
     // Level number
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${52 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${52 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillText(`LEVEL ${level}`, tx, CH / 2 - 22 * SCALE);
 
     // Username
     ctx.fillStyle = t.accent;
-    ctx.font = `${26 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `${26 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     const name = user.username.length > 20 ? user.username.substring(0, 19) + '\u2026' : user.username;
     ctx.fillText(name, tx, CH / 2 + 24 * SCALE);
 
     // XP text
     ctx.fillStyle = 'rgba(255,255,255,0.45)';
-    ctx.font = `${12 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `${12 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.fillText(`${xpCurrent.toLocaleString()} / ${xpNeeded.toLocaleString()} XP`, tx, CH / 2 + 54 * SCALE);
 
     // Branding
     ctx.fillStyle = 'rgba(255,255,255,0.2)';
-    ctx.font = `${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `${10 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.textAlign = 'right';
     ctx.fillText('ARCHON CG-223', CW - 25 * SCALE, 30 * SCALE);
 
@@ -184,7 +184,7 @@ async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}) {
     ctx.fill();
     ctx.restore();
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = `bold ${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${10 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.textAlign = 'left';
     ctx.fillText(`${Math.round(prog * 100)}%`, barX + barW + 10 * SCALE, barY + 8 * SCALE);
 
@@ -261,7 +261,7 @@ async function renderRankCard(user, rank, level, totalXP, theme = {}) {
     roundRect(ctx, 20 * SCALE, 15 * SCALE, 85 * SCALE, 28 * SCALE, 6 * SCALE);
     ctx.fill();
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${11 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${11 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(`RANK #${rank}`, 62 * SCALE, 29 * SCALE);
@@ -270,24 +270,24 @@ async function renderRankCard(user, rank, level, totalXP, theme = {}) {
 
     // Username
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${28 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${28 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.textAlign = 'left';
     const nm = user.username.length > 22 ? user.username.substring(0, 21) + '\u2026' : user.username;
     ctx.fillText(nm, tx, CH / 2 - 35 * SCALE);
 
     // Level
     ctx.fillStyle = t.accent;
-    ctx.font = `bold ${20 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${20 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.fillText(`Level ${level}`, tx, CH / 2 - 5 * SCALE);
 
     // XP
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.font = `bold ${13 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${13 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.fillText(`${xpCur.toLocaleString()} / ${xpNeed.toLocaleString()} XP`, tx, CH / 2 + 22 * SCALE);
 
     // Total XP
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.font = `${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `${10 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.fillText(`Total: ${Math.floor(totalXP).toLocaleString()} XP`, tx, CH / 2 + 42 * SCALE);
 
     // Progress bar
@@ -307,14 +307,14 @@ async function renderRankCard(user, rank, level, totalXP, theme = {}) {
     ctx.fill();
     ctx.restore();
     ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = `bold ${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `bold ${10 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.textAlign = 'left';
     ctx.fillText(`${Math.round(prog * 100)}%`, bx + bw + 10 * SCALE, by + 8 * SCALE);
 
     // Branding
     ctx.fillStyle = 'rgba(255,255,255,0.15)';
     ctx.textAlign = 'right';
-    ctx.font = `${10 * SCALE}px "Liberation Sans", Arial, sans-serif`;
+    ctx.font = `${10 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.fillText('ARCHON CG-223', CW - 20 * SCALE, 25 * SCALE);
 
     return c.encode('png');

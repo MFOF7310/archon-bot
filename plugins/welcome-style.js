@@ -282,7 +282,7 @@ async function renderWelcomeCard(member, count, cfg) {
 
     // Username
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${34 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
+    ctx.font = `bold ${34 * SCALE}px "Chakra Petch", "DejaVu Sans", "Noto Sans Arabic", "Noto Sans CJK SC", sans-serif`;
     ctx.textAlign = 'left';
     const name = member.user.username.length > 18
         ? member.user.username.substring(0, 17) + '\u2026'
@@ -291,7 +291,7 @@ async function renderWelcomeCard(member, count, cfg) {
 
     // Label
     ctx.fillStyle = accent;
-    ctx.font = `bold ${11 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
+    ctx.font = `bold ${11 * SCALE}px "Chakra Petch", "DejaVu Sans", "Noto Sans Arabic", "Noto Sans CJK SC", sans-serif`;
     ctx.letterSpacing = `${2 * SCALE}px`;
     ctx.fillText('AW BISIMILA [MLI] -- ARCHON CG-223', tx, CH * 0.52);
     ctx.letterSpacing = '0px';
@@ -300,7 +300,7 @@ async function renderWelcomeCard(member, count, cfg) {
     const age = accountAgeShort(member.user.createdTimestamp);
     const isNew = (Date.now() - member.user.createdTimestamp) < 604800000;
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.font = `${10 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
+    ctx.font = `${10 * SCALE}px "Chakra Petch", "DejaVu Sans", "Noto Sans Arabic", "Noto Sans CJK SC", sans-serif`;
     ctx.fillText(
         `${ordinal(count)} member  \u00b7  ${isNew ? '[NEW] ' : ''}${age} old account`,
         tx, CH * 0.72
@@ -309,7 +309,7 @@ async function renderWelcomeCard(member, count, cfg) {
     // Milestone badge
     if (isMilestone100 || isMilestone500 || isMilestone1000) {
         ctx.fillStyle = accent;
-        ctx.font = `bold ${10 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
+        ctx.font = `bold ${10 * SCALE}px "Chakra Petch", "DejaVu Sans", "Noto Sans Arabic", "Noto Sans CJK SC", sans-serif`;
         ctx.fillText(`\uD83C\uDF96\uFE0F ${ordinal(count).toUpperCase()} MEMBER`, tx, CH * 0.86);
     }
 
@@ -342,7 +342,7 @@ async function renderWelcomeCard(member, count, cfg) {
 
     // Bottom right — server name
     ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.font = `${6.5 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
+    ctx.font = `${6.5 * SCALE}px "Chakra Petch", "DejaVu Sans", "Noto Sans Arabic", "Noto Sans CJK SC", sans-serif`;
     ctx.textAlign = 'right';
     const sName = member.guild.name.length > 24
         ? member.guild.name.substring(0, 23) + '\u2026'
@@ -422,7 +422,7 @@ async function renderGoodbyeCard(member, duration, roleCount) {
 
     // Username
     ctx.fillStyle = '#ffffff';
-    ctx.font = `bold ${34 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
+    ctx.font = `bold ${34 * SCALE}px "Chakra Petch", "DejaVu Sans", "Noto Sans Arabic", "Noto Sans CJK SC", sans-serif`;
     ctx.textAlign = 'left';
     const name = member.user.username.length > 18
         ? member.user.username.substring(0, 17) + '\u2026'
@@ -431,7 +431,7 @@ async function renderGoodbyeCard(member, duration, roleCount) {
 
     // DEPARTURE LOG label
     ctx.fillStyle = '#ff4757';
-    ctx.font = `bold ${11 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
+    ctx.font = `bold ${11 * SCALE}px "Chakra Petch", "DejaVu Sans", "Noto Sans Arabic", "Noto Sans CJK SC", sans-serif`;
     ctx.letterSpacing = `${2 * SCALE}px`;
     ctx.fillText('AW KANBE [MLI] -- ARCHON CG-223', tx, CH * 0.52);
     ctx.letterSpacing = '0px';
@@ -439,7 +439,7 @@ async function renderGoodbyeCard(member, duration, roleCount) {
     // Duration + roles
     const dur = duration || '?';
     ctx.fillStyle = 'rgba(255,255,255,0.55)';
-    ctx.font = `${10 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
+    ctx.font = `${10 * SCALE}px "Chakra Petch", "DejaVu Sans", "Noto Sans Arabic", "Noto Sans CJK SC", sans-serif`;
     ctx.fillText(
         `Stayed: ${dur}  \u00b7  ${roleCount} role${roleCount !== 1 ? 's' : ''} removed`,
         tx, CH * 0.72
@@ -447,7 +447,7 @@ async function renderGoodbyeCard(member, duration, roleCount) {
 
     // Watermarks
     ctx.fillStyle = 'rgba(255,255,255,0.18)';
-    ctx.font = `${6.5 * SCALE}px "Chakra Petch", "DejaVu Sans", sans-serif`;
+    ctx.font = `${6.5 * SCALE}px "Chakra Petch", "DejaVu Sans", "Noto Sans Arabic", "Noto Sans CJK SC", sans-serif`;
     ctx.textAlign = 'right';
     const sName = member.guild.name.length > 24
         ? member.guild.name.substring(0, 23) + '\u2026'

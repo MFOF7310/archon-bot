@@ -339,7 +339,7 @@ async function buildProfileCard(target, client, db, guildId, guild, lang) {
     ctx.strokeStyle = rankColor;
     ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.font = 'bold 13px DejaVuBold';
+    ctx.font = 'bold 13px DejaVuBold, "Noto Sans Arabic", "Noto Sans CJK SC"';
     ctx.fillStyle = rankColor;
     ctx.textAlign = 'center';
     ctx.fillText(`${level}`, badgeX, badgeY + 5);
