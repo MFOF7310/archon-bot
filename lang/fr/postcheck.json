@@ -41,7 +41,8 @@
     "automod": "AutoMod",
     "verify": "vérification",
     "test": "message de test",
-    "ticket-log": "transcription de ticket"
+    "ticket-log": "transcription de ticket",
+    "tempvoice": "salons vocaux temporaires"
   },
   "alertBtnCheck": "Vérifier à nouveau",
   "alertBtnMute": "Mute 7 jours",
@@ -142,5 +143,8 @@
   "checkedShort": "vérifié {when}",
   "secHierarchy": "**Où se trouve mon rôle**",
   "lowRole": "Mon rôle **{bot}** est sous tes {above} rôles. Je peux publier normalement, mais je ne peux pas encore donner de rôles, exclure temporairement, expulser ni bannir.",
-  "lowRoleFix": "Pour corriger : Paramètres du serveur → Rôles, puis fais glisser **{bot}** au-dessus des rôles que je dois donner (par exemple {roles})."
+  "lowRoleFix": "Pour corriger : Paramètres du serveur → Rôles, puis fais glisser **{bot}** au-dessus des rôles que je dois donner (par exemple {roles}).",
+  "titles": {
+    "tempvoice": "Je ne peux pas supprimer les salons vocaux temporaires vides"
+  }
 }

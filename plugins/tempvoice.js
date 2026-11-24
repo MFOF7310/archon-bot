@@ -8,8 +8,10 @@
 // ═══════════════════════════════════════════════════════════════════════════
 const {
     SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, UserSelectMenuBuilder, ModalBuilder,
-    TextInputBuilder, TextInputStyle, PermissionFlagsBits: P, MessageFlags, ChannelType,
+    TextInputBuilder, TextInputStyle, PermissionFlagsBits: P, MessageFlags, ChannelType, OverwriteType,
 } = require('discord.js');
+const canPost = require('../lib/canPost');
+const postProblems = require('../lib/postProblems');
 const { t } = require('../lib/i18n');
 const { icon } = require('../lib/ui/icons');
 const v2 = require('../lib/games/v2');
@@ -98,7 +100,19 @@ async function createRoom(client, member, hub) {
     let ch;
     try {
         // created in the hub's category with its permissions; the owner may always connect (even once locked)
-        ch = await guild.channels.create({ name, type: ChannelType.GuildVoice, parent, userLimit: hub.user_limit || 0, bitrate: hubCh?.bitrate, reason: `Temporary room for ${member.user.username}` });
+        const base = { name, type: ChannelType.GuildVoice, parent, userLimit: hub.user_limit || 0, bitrate: hubCh?.bitrate, reason: `Temporary room for ${member.user.username}` };
+        // A private category would hide the new room from ARCHON too, and then it can't delete it once empty
+        // ("Missing Access"). In that case the room gets the category's permissions plus ARCHON's own access.
+        const parentCh = parent ? guild.channels.cache.get(parent) : null;
+        const me = guild.members.me;
+        if (parentCh && me && missingIn(guild, parentCh).length) {
+            const own = NEEDS.filter(([, bit]) => me.permissions.has(bit)).map(([, bit]) => bit);   // Discord refuses more than ARCHON has
+            const copy = [...parentCh.permissionOverwrites.cache.values()].filter((o) => o.id !== me.id)
+                .map((o) => ({ id: o.id, type: o.type, allow: o.allow.bitfield, deny: o.deny.bitfield }));
+            ch = await guild.channels.create({ ...base, permissionOverwrites: [...copy, { id: me.id, type: OverwriteType.Member, allow: own }] })
+                .catch((e) => { console.warn(`[TEMPVOICE] guild=${guild.id} create with own access failed: ${e.message}`); return null; });
+        }
+        if (!ch) ch = await guild.channels.create(base);
         await ch.permissionOverwrites.edit(member.id, guest(ch)).catch(() => {});
     } catch (e) {
         console.warn(`[TEMPVOICE] guild=${guild.id} create failed: ${e.message}`);
@@ -125,14 +139,38 @@ async function createRoom(client, member, hub) {
     }
 }
 
+// An empty room ARCHON could not delete: tell the server's admins what to fix (log channel, else the owner's DMs,
+// at most once a day; the dashboard shows it too). Points to the category when that is where the block is.
+function reportStuck(ch, err) {
+    try {
+        const guild = ch.guild, me = guild.members.me;
+        const needed = canPost.neededFor('tempvoice');
+        const inCat = ch.parent ? canPost.diagnose(guild, ch.parent, me, needed) : { ok: true };
+        let d = inCat.ok ? canPost.diagnose(guild, ch, me, needed) : inCat;
+        // the checks see nothing wrong (the cache is behind): go by what Discord answered
+        if (d.ok) d = err?.code === 50001 ? { reason: 'private', missing: ['View Channel'] } : { reason: 'role_block', missing: ['Manage Channels'] };
+        postProblems.failed(guild, 'tempvoice', inCat.ok ? ch.id : ch.parentId, d, err?.code || null);
+    } catch (e) { console.warn('[TEMPVOICE] report:', e.message); }
+}
+
+// Forgets the room; with deleteChannel, deletes it first. If Discord refuses, the room stays on the list
+// (the 10-minute sweep tries again) and the admins are told. Returns false when the room is still there.
 async function removeRoom(client, channelId, deleteChannel) {
     const room = rooms.get(channelId);
+    const ch = deleteChannel ? client.channels.cache.get(channelId) : null;
+    if (ch) {
+        const err = await ch.delete('Temporary room is empty').then(() => null).catch((e) => e);
+        if (err && err.code !== 10003) {   // 10003: already deleted
+            console.warn(`[TEMPVOICE] guild=${ch.guild.id} delete ${channelId}: ${err.message}`);
+            reportStuck(ch, err);
+            return false;
+        }
+        postProblems.sent(ch.guild, 'tempvoice');
+    }
     rooms.delete(channelId);
     try { client.db.prepare('DELETE FROM tempvoice_rooms WHERE channel_id = ?').run(channelId); } catch { /* table gone */ }
-    if (!deleteChannel) return;
-    const ch = client.channels.cache.get(channelId);
-    if (ch) await ch.delete('Temporary room is empty').catch((e) => console.warn(`[TEMPVOICE] delete ${channelId}: ${e.message}`));
-    if (room) console.log(`[TEMPVOICE] guild=${room.guild_id} room closed`);
+    if (room && deleteChannel) console.log(`[TEMPVOICE] guild=${room.guild_id} room closed`);
+    return true;
 }
 
 // someone left a room: empty → delete; owner gone → the longest-present member takes over

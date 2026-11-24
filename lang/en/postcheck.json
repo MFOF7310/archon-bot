@@ -41,7 +41,8 @@
     "automod": "AutoMod",
     "verify": "verification",
     "test": "test message",
-    "ticket-log": "ticket transcript"
+    "ticket-log": "ticket transcript",
+    "tempvoice": "temporary voice rooms"
   },
   "alertBtnCheck": "Check again",
   "alertBtnMute": "Mute 7 days",
@@ -142,5 +143,8 @@
   "checkedShort": "checked {when}",
   "secHierarchy": "**Where my role sits**",
   "lowRole": "My role **{bot}** is under all {above} of your roles. I can post normally, but I can't give roles, time out, kick or ban anyone yet.",
-  "lowRoleFix": "To fix it: Server Settings → Roles, then drag **{bot}** above the roles I should give (for example {roles})."
+  "lowRoleFix": "To fix it: Server Settings → Roles, then drag **{bot}** above the roles I should give (for example {roles}).",
+  "titles": {
+    "tempvoice": "I can't delete empty temporary voice rooms"
+  }
 }
