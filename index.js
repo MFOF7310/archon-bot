@@ -3586,6 +3586,11 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return require('./plugins/music.js').handlePanelButton(interaction, client)
             .catch(e => console.error('[MUSIC BUTTON]', e.message));
     }
+    // The "track not available" card: open the library or shuffle it (answers the person who clicked)
+    if (interaction.isButton() && interaction.customId.startsWith('mlf_')) {
+        return require('./plugins/music.js').handleFallbackButton(interaction, client)
+            .catch(e => console.error('[MUSIC FALLBACK]', e.message));
+    }
 
 // ================= TICKET SYSTEM COMPONENTS (Select Menu + Buttons + Modals) =================
 const isTicketComponent = (interaction.isButton() && interaction.customId.startsWith('ticket_')) ||

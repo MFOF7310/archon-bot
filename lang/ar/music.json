@@ -133,5 +133,18 @@
   "lib_shuffle": "عشوائي",
   "lib_searchHint": "بحث: {cmd} search:<كلمات>",
   "lib_pickHint": "المقاطع المختارة تنضم إلى القائمة فورًا",
-  "lib_closed": "تم إغلاق المكتبة. افتحها مجددًا بـ {cmd}."
+  "lib_closed": "تم إغلاق المكتبة. افتحها مجددًا بـ {cmd}.",
+  "lib_homeSub2": "**{n} مقطع** تعمل دائمًا. شغّل مجلدًا بنقرة واحدة، أو تصفّحه في الأسفل.",
+  "lib_browse": "تصفّح مجلدًا",
+  "lib_shuffleAll": "خلط الكل",
+  "lib_play": "تشغيل",
+  "lib_moreFolders": "{n} مجلدات أخرى في القائمة أدناه.",
+  "lib_open": "فتح المكتبة",
+  "track_unavailable": "هذا المقطع غير متاح حاليًا.",
+  "track_unavailable_next": "ننتقل إلى التالي ({count}/5).",
+  "track_unavailable_tip": "مقاطع المكتبة تعمل دائمًا.",
+  "folder_empty_named": "{icon} المجلد **{folder}** فارغ.",
+  "folder_loading": "{icon} جارٍ تحميل **{n} مقطع** من **{folder}**…",
+  "folder_failed": "{icon} تعذّر تحميل هذا المجلد. حاول مرة أخرى بعد قليل.",
+  "lib_noResults": "لا شيء في المكتبة يطابق \"{term}\"."
 }

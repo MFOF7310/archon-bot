@@ -133,5 +133,18 @@
   "lib_shuffle": "Shuffle",
   "lib_searchHint": "Search: {cmd} search:<words>",
   "lib_pickHint": "Picked tracks join the queue right away",
-  "lib_closed": "This library is closed. Open it again with {cmd}."
+  "lib_closed": "This library is closed. Open it again with {cmd}.",
+  "lib_homeSub2": "**{n} tracks** that always play. Start a folder in one tap, or browse it below.",
+  "lib_browse": "Browse a folder",
+  "lib_shuffleAll": "Shuffle all",
+  "lib_play": "Play",
+  "lib_moreFolders": "{n} more folders in the menu below.",
+  "lib_open": "Open the library",
+  "track_unavailable": "This track isn't available right now.",
+  "track_unavailable_next": "Moving on to the next one ({count}/5).",
+  "track_unavailable_tip": "The library's tracks always play.",
+  "folder_empty_named": "{icon} The folder **{folder}** is empty.",
+  "folder_loading": "{icon} Loading **{n} tracks** from **{folder}**…",
+  "folder_failed": "{icon} This folder couldn't be loaded. Try again in a moment.",
+  "lib_noResults": "Nothing in the library matches \"{term}\"."
 }

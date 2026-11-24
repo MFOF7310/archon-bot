@@ -133,5 +133,18 @@
   "lib_shuffle": "Mélanger",
   "lib_searchHint": "Recherche : {cmd} search:<mots>",
   "lib_pickHint": "Les morceaux choisis rejoignent la file tout de suite",
-  "lib_closed": "Cette bibliothèque est fermée. Rouvre-la avec {cmd}."
+  "lib_closed": "Cette bibliothèque est fermée. Rouvre-la avec {cmd}.",
+  "lib_homeSub2": "**{n} morceaux** qui marchent à coup sûr. Lance un dossier en un clic, ou parcours-le plus bas.",
+  "lib_browse": "Parcourir un dossier",
+  "lib_shuffleAll": "Tout mélanger",
+  "lib_play": "Lancer",
+  "lib_moreFolders": "{n} autres dossiers dans le menu ci-dessous.",
+  "lib_open": "Ouvrir la bibliothèque",
+  "track_unavailable": "Ce morceau n'est pas disponible pour le moment.",
+  "track_unavailable_next": "On passe au suivant ({count}/5).",
+  "track_unavailable_tip": "Les morceaux de la bibliothèque marchent à coup sûr.",
+  "folder_empty_named": "{icon} Le dossier **{folder}** est vide.",
+  "folder_loading": "{icon} Chargement de **{n} morceaux** depuis **{folder}**…",
+  "folder_failed": "{icon} Ce dossier n'a pas pu être chargé. Réessaie dans un instant.",
+  "lib_noResults": "Rien dans la bibliothèque ne correspond à « {term} »."
 }

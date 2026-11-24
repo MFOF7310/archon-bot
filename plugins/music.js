@@ -1314,27 +1314,25 @@ async function playNext(q) {
         q._consecutiveErrors = (q._consecutiveErrors || 0) + 1;
         if (q._consecutiveErrors >= 5) {
             q._consecutiveErrors = 0;
-            const giveUpEmbed = new EmbedBuilder().setColor(ARCHON.red)
-                .setAuthor({ name: `${em('music', '🎵')} ARCHON Music`, iconURL: q._client?.user?.displayAvatarURL() })
-                .setDescription(t('music.too_many_errors', lang, { cmd_play: mention(global.client, 'music', 'play') }));
-            await q.textChannel?.send(toV2({ embeds: [giveUpEmbed] })).catch(() => {});
+            const giveUp = trackFailCard(lang, 5, true);
+            if (q._errorMsg) { await q._errorMsg.edit(giveUp).catch(() => { q._errorMsg = null; }); }
+            if (!q._errorMsg) await q.textChannel?.send(giveUp).catch(() => {});
+            q._errorMsg = null;
             q.autoplay = false;
             return;
         }
 
-        const errEmbed = new EmbedBuilder().setColor(ARCHON.red)
-            .setAuthor({ name: `${em('music', '🎵')} ARCHON Music`, iconURL: q._client?.user?.displayAvatarURL() })
-            .setDescription(t('music.track_error', lang, { count: q._consecutiveErrors }));
+        const failCard = trackFailCard(lang, q._consecutiveErrors, false);
         if (q.persistentMsg) {
             await q.persistentMsg.delete().catch(() => {});
             q.persistentMsg = null; q.panelMsgId = null;
         }
         // Edit existing error message instead of spamming new ones
         if (q._errorMsg) {
-            await q._errorMsg.edit(fit(q._errorMsg, { embeds: [errEmbed] })).catch(() => { q._errorMsg = null; });
+            await q._errorMsg.edit(failCard).catch(() => { q._errorMsg = null; });
         }
         if (!q._errorMsg) {
-            q._errorMsg = await q.textChannel?.send(toV2({ embeds: [errEmbed] })).catch(() => null);
+            q._errorMsg = await q.textChannel?.send(failCard).catch(() => null);
         }
         setTimeout(() => playNext(q), 2000);
     }
@@ -1403,6 +1401,221 @@ async function ensureConnection(q) {
 }
 
 // ═══════════════════════════════════════════════════════
+// MUSIC LIBRARY — data/music-library.json (optional file, kept off GitHub)
+// ═══════════════════════════════════════════════════════
+const LIB_HOME_PLAY_MAX = 8;   // folders that get their own Play button on the home page (the rest stay in the menu)
+
+function loadLibrary() {
+    try { return require('../data/music-library.json'); } catch (e) { return null; }
+}
+// Menu options need an emoji object: ARCHON's own icon when set, else the standard one
+const optEmoji = (key, fb) => { const o = iconObj(key, null, null); return o && typeof o === 'object' ? o : { name: fb }; };
+const libClean = (x) => String(x || '').replace(/^[\u{1F3B5}\u{1F3B6}]\s*/u, '').trim();
+
+// Queues a list of library tracks for the person who clicked: first one joins voice, the rest follow.
+// notify(text) answers that person once, privately.
+async function queueLibraryTracks(ix, client, tracks, label, lang, notify) {
+    const vc = ix.member?.voice?.channel;
+    if (!vc) return notify(t('music.pick_voice_first', lang));
+    const list = [...tracks];
+    if (!list.length) return notify(t('music.folder_empty', lang));
+    for (let x = list.length - 1; x > 0; x--) {
+        const y = Math.floor(Math.random() * (x + 1));
+        [list[x], list[y]] = [list[y], list[x]];
+    }
+    const qNow = getQueue(ix.guild.id);
+    const cap = Math.max(0, 50 - (qNow?.tracks.length || 0));
+    const batch = list.slice(0, cap);
+    if (!batch.length) return notify(t('music.shuffle_queue_full', lang));
+    await notify(t('music.shuffle_loaded', lang, { count: batch.length, folder: label }));
+    for (const trk of batch) {
+        await handlePlay(ix.guild.id, ix.guild, vc, ix.channel, trk.query || trk.title, ix.user.username, client,
+            async () => null, ix.user.id);
+    }
+}
+
+// The library card. ix must already be deferred (privately). search: optional words from /music library search:
+async function openLibrary(ix, client, lang, search = '') {
+    const lib = loadLibrary();
+    if (!lib || !lib.length) return ix.editReply({ content: t('music.library_unavailable', lang) }).catch(() => {});
+
+    const PER_PAGE = 10;
+    const folders = [];
+    const folderMap = new Map();
+    for (const tr of lib) {
+        const f = tr.folder || '🎵 Other';
+        if (!folderMap.has(f)) { folderMap.set(f, []); folders.push(f); }
+        folderMap.get(f).push(tr);
+    }
+
+    const searchTerm = search.trim().toLowerCase();
+    const state = { folder: searchTerm ? '__search__' : null, page: 1, search: searchTerm, userId: ix.user.id, viewTracks: [] };
+    const where = ix.channel || null;
+    const L_ = (k, v) => t(`music.lib_${k}`, lang, v);
+    const cmd = mention(global.client, 'music', 'library');
+
+    const resolveTracks = () => {
+        if (state.folder === '__all__') return lib;
+        if (state.folder === '__liked__') return getUserLikes(state.userId);
+        if (state.folder === '__search__') return lib.filter(tr => `${tr.title} ${tr.query || ''}`.toLowerCase().includes(state.search));
+        return folderMap.get(state.folder) || lib;
+    };
+    const viewLabel = () => state.folder === '__all__' ? L_('all')
+        : state.folder === '__liked__' ? L_('liked')
+        : state.folder === '__search__' ? L_('results', { term: state.search, n: resolveTracks().length })
+        : state.folder;
+
+    const render = (ended = false) => {
+        const c = new ContainerBuilder().setAccentColor(ARCHON.cyan);
+        const likedCount = getUserLikes(state.userId).length;
+        const q = getQueue(ix.guildId);   // read each time, so "now playing" stays current
+        const nowLine = q?.currentTrack ? `${icon('music', where)} ${libClean(q.currentTrack.title).substring(0, 70)}` : `${icon('mc_stop', where)} ${L_('nothing')}`;
+
+        const folderMenu = new StringSelectMenuBuilder().setCustomId('mlb_folder').setPlaceholder(L_('browse')).setDisabled(ended);
+        if (likedCount > 0) folderMenu.addOptions({ label: L_('liked').slice(0, 100), value: '__liked__', emoji: optEmoji('mc_love_this', '❤️'), description: L_('nTracks', { n: likedCount }) });
+        folderMenu.addOptions({ label: L_('all').slice(0, 100), value: '__all__', emoji: optEmoji('music', '🎵'), description: L_('nTracks', { n: lib.length }) });
+        for (const f of folders.slice(0, likedCount > 0 ? 23 : 24)) {
+            folderMenu.addOptions({ label: f.substring(0, 100), value: f, description: L_('nTracks', { n: folderMap.get(f).length }) });
+        }
+
+        // ── Home: one tap to listen ──
+        if (state.folder === null) {
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${icon('mc_library', where)} ${L_('title')}\n${L_('homeSub2', { n: lib.length })}`));
+            const top = [new ButtonBuilder().setCustomId('mlb_shuffle_all').setLabel(L_('shuffleAll')).setEmoji(icon('mc_shuffle', where)).setStyle(ButtonStyle.Success).setDisabled(ended)];
+            if (likedCount > 0) top.push(new ButtonBuilder().setCustomId('mlb_liked').setLabel(L_('liked').slice(0, 80)).setEmoji(icon('mc_like', where)).setStyle(ButtonStyle.Secondary).setDisabled(ended));
+            c.addActionRowComponents(new ActionRowBuilder().addComponents(...top));
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+            folders.slice(0, LIB_HOME_PLAY_MAX).forEach((f, n) => {
+                c.addSectionComponents(new SectionBuilder()
+                    .addTextDisplayComponents(new TextDisplayBuilder().setContent(`${f} · \`${folderMap.get(f).length}\``))
+                    .setButtonAccessory(new ButtonBuilder().setCustomId(`mlb_play:${n}`).setLabel(L_('play')).setEmoji(icon('mc_play', where)).setStyle(ButtonStyle.Secondary).setDisabled(ended)));
+            });
+            if (folders.length > LIB_HOME_PLAY_MAX) {
+                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${L_('moreFolders', { n: folders.length - LIB_HOME_PLAY_MAX })}`));
+            }
+            c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
+             .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${tx('music.now_playing', lang)}** · ${nowLine}`))
+             .addActionRowComponents(new ActionRowBuilder().addComponents(folderMenu))
+             .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${ended ? L_('closed', { cmd }) : L_('searchHint', { cmd })}`));
+            return { components: [c], flags: V2, allowedMentions: NO_PINGS };
+        }
+
+        // ── Inside a folder: the tracks live in the menu (no second copy of the list) ──
+        const tracks = resolveTracks();
+        state.viewTracks = tracks;
+        const totalPages = Math.max(1, Math.ceil(tracks.length / PER_PAGE));
+        state.page = Math.min(Math.max(1, state.page), totalPages);
+        const slice = tracks.slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE);
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`## ${viewLabel()}\n-# ${L_('pageOf', { page: state.page, total: totalPages, n: tracks.length })}`))
+         .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${tx('music.now_playing', lang)}** · ${nowLine}`));
+        if (tracks.length) {
+            const pickMenu = new StringSelectMenuBuilder().setCustomId('mlb_pick').setPlaceholder(L_('pickTracks')).setMinValues(1).setMaxValues(Math.min(slice.length, 10)).setDisabled(ended);
+            slice.forEach((tr, n) => {
+                const num = String((state.page - 1) * PER_PAGE + n + 1).padStart(2, '0');
+                pickMenu.addOptions({ label: `${num} · ${libClean(tr.title)}`.substring(0, 100), value: String((state.page - 1) * PER_PAGE + n), description: String(tr.folder || '').substring(0, 100) || undefined });
+            });
+            c.addActionRowComponents(new ActionRowBuilder().addComponents(pickMenu));
+        } else {
+            c.addTextDisplayComponents(new TextDisplayBuilder().setContent(state.folder === '__search__' ? L_('noResults', { term: state.search }) : t('music.liked_empty', lang)));
+        }
+        const nav = [];
+        if (totalPages > 1) {
+            nav.push(new ButtonBuilder().setCustomId('mlb_prev').setLabel(L_('prev')).setEmoji(icon('page_prev', where)).setStyle(ButtonStyle.Secondary).setDisabled(ended || state.page <= 1));
+            nav.push(new ButtonBuilder().setCustomId('mlb_next').setLabel(L_('next')).setEmoji(icon('page_next', where)).setStyle(ButtonStyle.Secondary).setDisabled(ended || state.page >= totalPages));
+        }
+        nav.push(new ButtonBuilder().setCustomId('mlb_home').setLabel(L_('folders')).setEmoji(icon('mc_folder', where)).setStyle(ButtonStyle.Secondary).setDisabled(ended));
+        nav.push(new ButtonBuilder().setCustomId('mlb_shuffle').setLabel(L_('shuffle')).setEmoji(icon('mc_shuffle', where)).setStyle(ButtonStyle.Success).setDisabled(ended || !tracks.length));
+        c.addActionRowComponents(new ActionRowBuilder().addComponents(...nav));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${ended ? L_('closed', { cmd }) : L_('pickHint')}`));
+        return { components: [c], flags: V2, allowedMentions: NO_PINGS };
+    };
+
+    const msg = await ix.editReply(render()).catch((e) => { console.log('[LIBRARY] open:', e.message); return null; });
+    if (!msg) return;
+
+    // A private reply can only be changed through its interaction, and that link lasts 15 minutes: close a bit before
+    const collector = msg.createMessageComponentCollector({ time: 14 * 60 * 1000 });
+    collector.on('collect', async (i) => {
+        const once = (content) => i.followUp({ content, flags: 64 }).catch(() => {});
+        try {
+            if (i.customId === 'mlb_folder') {
+                state.folder = i.values[0]; state.page = 1;
+                return i.update(render()).catch(() => {});
+            }
+            if (i.customId === 'mlb_liked') {
+                state.folder = '__liked__'; state.page = 1;
+                return i.update(render()).catch(() => {});
+            }
+            if (i.customId === 'mlb_prev' || i.customId === 'mlb_next') {
+                state.page += i.customId === 'mlb_next' ? 1 : -1;
+                return i.update(render()).catch(() => {});
+            }
+            if (i.customId === 'mlb_home') {
+                state.folder = null; state.page = 1;
+                return i.update(render()).catch(() => {});
+            }
+            if (!i.member?.voice?.channel) {
+                return i.reply({ content: t('music.pick_voice_first', lang), flags: 64 }).catch(() => {});
+            }
+            await i.deferUpdate().catch(() => {});
+            if (i.customId === 'mlb_pick') {
+                let first = true;
+                for (const v of i.values) {
+                    const tr = state.viewTracks[parseInt(v, 10)];
+                    if (!tr) continue;
+                    await handlePlay(ix.guild.id, ix.guild, i.member.voice.channel, ix.channel, tr.query || tr.title, i.user.username, client,
+                        async (opts) => { if (first) { first = false; await i.followUp({ ...opts, flags: (opts.flags || 0) | 64 }).catch(() => {}); } return null; },
+                        i.user.id);
+                }
+                return;
+            }
+            if (i.customId === 'mlb_shuffle') return queueLibraryTracks(i, client, resolveTracks(), viewLabel(), lang, once);
+            if (i.customId === 'mlb_shuffle_all') return queueLibraryTracks(i, client, lib, L_('all'), lang, once);
+            if (i.customId.startsWith('mlb_play:')) {
+                const f = folders[parseInt(i.customId.split(':')[1], 10)];
+                if (!f) return;
+                return queueLibraryTracks(i, client, folderMap.get(f) || [], f, lang, once);
+            }
+        } catch (e) { console.log('[LIBRARY]', e.message); }
+    });
+    collector.on('end', () => { ix.editReply(render(true)).catch(() => {}); });
+}
+
+// The card shown when a track can't be played: says so plainly and points to the library, whose tracks do play.
+function trackFailCard(lang, count, giveUp) {
+    const where = null;
+    const c = new ContainerBuilder().setAccentColor(ARCHON.orange)
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(giveUp
+            ? t('music.too_many_errors', lang, { cmd_play: mention(global.client, 'music', 'play') })
+            : `**${t('music.track_unavailable', lang)}**\n${t('music.track_unavailable_next', lang, { count })}`));
+    if (loadLibrary()?.length) {
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${t('music.track_unavailable_tip', lang)}`))
+         .addActionRowComponents(new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('mlf_library').setLabel(t('music.lib_open', lang)).setEmoji(icon('mc_library', where)).setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('mlf_shuffle').setLabel(t('music.lib_shuffleAll', lang)).setEmoji(icon('mc_shuffle', where)).setStyle(ButtonStyle.Secondary),
+         ));
+    }
+    return { components: [c], flags: V2, allowedMentions: NO_PINGS };
+}
+
+// Buttons on that card (routed from index.js): they answer the person who clicked, privately.
+async function handleFallbackButton(i, client) {
+    const lang = require('../lib/pick-lang').pickLang(client, i.guildId, i, i.user?.id);
+    if (i.customId === 'mlf_library') {
+        await i.deferReply({ flags: 64 }).catch(() => {});
+        return openLibrary(i, client, lang);
+    }
+    if (i.customId === 'mlf_shuffle') {
+        const lib = loadLibrary();
+        if (!lib?.length) return i.reply({ content: t('music.library_unavailable', lang), flags: 64 }).catch(() => {});
+        if (!i.member?.voice?.channel) return i.reply({ content: t('music.pick_voice_first', lang), flags: 64 }).catch(() => {});
+        await i.deferReply({ flags: 64 }).catch(() => {});
+        return queueLibraryTracks(i, client, lib, t('music.lib_all', lang), lang, (content) => i.editReply({ content }).catch(() => {}));
+    }
+    return i.deferUpdate().catch(() => {});
+}
+
+// ═══════════════════════════════════════════════════════
 // PLAY HELPER
 // ═══════════════════════════════════════════════════════
 async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requestedBy, client, replyFn, requestedById) {
@@ -1415,7 +1628,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
         try {
             const lib = require('../data/music-library.json');
             const tracks = lib.filter(t => t.folder === folderName);
-            if (!tracks.length) return replyFn({ content: `${EMOJIS.mc_folder} Folder **${folderName}** is empty.` });
+            if (!tracks.length) return replyFn({ content: t('music.folder_empty_named', lang, { icon: icon('mc_folder', textChannel), folder: folderName }) });
 
             // Use existing handlePlay flow for first track to properly join voice
             const shuffled = [...tracks].sort(() => Math.random() - 0.5);
@@ -1423,7 +1636,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             const rest = shuffled.slice(1);
 
             // Queue the rest first so they're ready after first track loads
-            await replyFn({ content: `${EMOJIS.mc_folder} Loading **${tracks.length} tracks** from **${folderName}**… 🎶` });
+            await replyFn({ content: t('music.folder_loading', lang, { icon: icon('mc_folder', textChannel), n: tracks.length, folder: folderName }) });
 
             // Play first track through normal flow (handles voice join + player setup)
             await handlePlay(guildId, guild, voiceChannel, textChannel, firstTrack.query, requestedBy, client,
@@ -1438,7 +1651,7 @@ async function handlePlay(guildId, guild, voiceChannel, textChannel, query, requ
             }
         } catch(e) {
             console.error('[MUSIC FOLDER]', e.message);
-            replyFn({ content: `${em('ic_off', '❌')} Could not load folder: ${e.message}` });
+            replyFn({ content: t('music.folder_failed', lang, { icon: icon('no', textChannel) }) });
         }
         return;
     }
@@ -1614,7 +1827,7 @@ module.exports = {
 
     // Export utilities for other plugins
     getQueue, createQueue, destroyQueue, buildNowPlayingEmbed, autoCleanOldPanels,
-    buildControls, buildQueueEmbed, buildQueueCard, updatePersistentPanel, handlePanelButton,
+    buildControls, buildQueueEmbed, buildQueueCard, updatePersistentPanel, handlePanelButton, handleFallbackButton, openLibrary,
     ARCHON, progressBar, formatTime,
 
     data: new SlashCommandBuilder()
@@ -1936,163 +2149,7 @@ module.exports = {
 
         // ── LIBRARY ──
         if (sub === 'library') {
-            let lib;
-            try { lib = require('../data/music-library.json'); }
-            catch(e) { return interaction.editReply({ content: t('music.library_unavailable', lang) }); }
-
-            const { StringSelectMenuBuilder: SSM, ActionRowBuilder: ARB, ButtonBuilder: BB, ButtonStyle: BS } = require('discord.js');
-            const PER_PAGE = 10;
-
-            // Folder catalog (order of first appearance, with counts)
-            const folders = [];
-            const folderMap = new Map();
-            for (const t of lib) {
-                const f = t.folder || '🎵 Other';
-                if (!folderMap.has(f)) { folderMap.set(f, []); folders.push(f); }
-                folderMap.get(f).push(t);
-            }
-
-            const searchTerm = (interaction.options.getString('search') || '').trim().toLowerCase();
-            const state = { folder: searchTerm ? '__search__' : null, page: 1, search: searchTerm, userId: interaction.user.id, viewTracks: [] };
-
-            const resolveTracks = () => {
-                if (state.folder === '__all__') return lib;
-                if (state.folder === '__liked__') return getUserLikes(state.userId);
-                if (state.folder === '__search__') return lib.filter(t => `${t.title} ${t.query || ''}`.toLowerCase().includes(state.search));
-                return folderMap.get(state.folder) || lib;
-            };
-
-            // The library card (Components V2): folders on the home page, a page of 10 tracks inside a folder.
-            // Menus can't show custom emojis in their placeholder (they came out as <:music:…>): plain words there.
-            const clean = (x) => String(x || '').replace(/^[\u{1F3B5}\u{1F3B6}]\s*/u, '').trim();
-            const L_ = (k, v) => t(`music.lib_${k}`, lang, v);
-            const renderLibrary = (ended = false) => {
-                const c = new ContainerBuilder().setAccentColor(ARCHON.cyan);
-                const likedCount = getUserLikes(state.userId).length;
-                const nowLine = q?.currentTrack ? `${icon('music', interaction)} ${clean(q.currentTrack.title).substring(0, 70)}` : `${em('mc_stop', '⏹️')} ${L_('nothing')}`;
-
-                const folderMenu = new SSM().setCustomId('mlb_folder').setPlaceholder(L_('pickFolder')).setDisabled(ended);
-                if (likedCount > 0) folderMenu.addOptions({ label: L_('liked').slice(0, 100), value: '__liked__', emoji: '❤️', description: L_('nTracks', { n: likedCount }), default: state.folder === '__liked__' });
-                folderMenu.addOptions({ label: L_('all').slice(0, 100), value: '__all__', emoji: '🎵', description: L_('nTracks', { n: lib.length }), default: state.folder === '__all__' });
-                for (const f of folders.slice(0, likedCount > 0 ? 23 : 24)) {
-                    folderMenu.addOptions({ label: f.substring(0, 100), value: f, description: L_('nTracks', { n: folderMap.get(f).length }), default: state.folder === f });
-                }
-
-                if (state.folder === null) {
-                    const overview = folders.map((f) => `${f} · \`${folderMap.get(f).length}\``).join('\n');
-                    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON · ${L_('eyebrow')}\n## 📚 ${L_('title')}\n${L_('homeSub', { n: lib.length, folders: folders.length })}`))
-                     .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(overview.slice(0, 3000)))
-                     .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${tx('music.now_playing', lang)}** · ${nowLine}`))
-                     .addActionRowComponents(new ARB().addComponents(folderMenu))
-                     .addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 · ${L_('searchHint', { cmd: mention(global.client, 'music', 'library') })}`));
-                    return { components: [c], flags: V2, allowedMentions: NO_PINGS };
-                }
-
-                const tracks = resolveTracks();
-                state.viewTracks = tracks;
-                const totalPages = Math.max(1, Math.ceil(tracks.length / PER_PAGE));
-                state.page = Math.min(Math.max(1, state.page), totalPages);
-                const slice = tracks.slice((state.page - 1) * PER_PAGE, state.page * PER_PAGE);
-                const list = slice.map((tr, n) => `\`${String((state.page - 1) * PER_PAGE + n + 1).padStart(2, ' ')}\` ${clean(tr.title).substring(0, 70)}`).join('\n');
-                const viewTitle = state.folder === '__all__' ? `🎵 ${L_('all')}`
-                    : state.folder === '__liked__' ? `❤️ ${L_('liked')}`
-                    : state.folder === '__search__' ? `🔍 ${L_('results', { term: state.search, n: tracks.length })}`
-                    : state.folder;
-                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ARCHON · ${L_('eyebrow')}\n## ${viewTitle}\n-# ${L_('pageOf', { page: state.page, total: totalPages, n: tracks.length })}`))
-                 .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(tracks.length ? list : t('music.liked_empty', lang)))
-                 .addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small))
-                 .addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${tx('music.now_playing', lang)}** · ${nowLine}`));
-                if (tracks.length) {
-                    const pickMenu = new SSM().setCustomId('mlb_pick').setPlaceholder(L_('pickTracks')).setMinValues(1).setMaxValues(Math.min(slice.length, 10)).setDisabled(ended);
-                    slice.forEach((tr, n) => pickMenu.addOptions({ label: clean(tr.title).substring(0, 100) || '—', value: String((state.page - 1) * PER_PAGE + n), description: String(tr.folder || '').substring(0, 100) || undefined }));
-                    c.addActionRowComponents(new ARB().addComponents(pickMenu));
-                }
-                c.addActionRowComponents(new ARB().addComponents(folderMenu));
-                c.addActionRowComponents(new ARB().addComponents(
-                    new BB().setCustomId('mlb_prev').setLabel(L_('prev')).setEmoji(icon('page_prev', interaction)).setStyle(BS.Secondary).setDisabled(ended || state.page <= 1),
-                    new BB().setCustomId('mlb_next').setLabel(L_('next')).setEmoji(icon('page_next', interaction)).setStyle(BS.Primary).setDisabled(ended || state.page >= totalPages),
-                    new BB().setCustomId('mlb_home').setLabel(L_('folders')).setEmoji('📚').setStyle(BS.Secondary).setDisabled(ended),
-                    new BB().setCustomId('mlb_shuffle').setLabel(L_('shuffle')).setEmoji('🔀').setStyle(BS.Success).setDisabled(ended || !tracks.length),
-                ));
-                c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# BAMAKO_223 🇲🇱 · ${ended ? L_('closed', { cmd: mention(global.client, 'music', 'library') }) : L_('pickHint')}`));
-                return { components: [c], flags: V2, allowedMentions: NO_PINGS };
-            };
-
-            const msg = await interaction.editReply(renderLibrary());
-            if (!msg) return;
-
-            const collector = msg.createMessageComponentCollector({ time: 15 * 60 * 1000 });
-            collector.on('collect', async (i) => {
-                try {
-                    if (i.customId === 'mlb_folder') {
-                        state.folder = i.values[0] === '__all__' ? '__all__' : i.values[0];
-                        state.page = 1;
-                        await i.update(renderLibrary()).catch(() => {});
-                    } else if (i.customId === 'mlb_prev' || i.customId === 'mlb_next') {
-                        state.page += i.customId === 'mlb_next' ? 1 : -1;
-                        await i.update(renderLibrary()).catch(() => {});
-                    } else if (i.customId === 'mlb_home') {
-                        state.folder = null; state.page = 1;
-                        await i.update(renderLibrary()).catch(() => {});
-                    } else if (i.customId === 'mlb_pick') {
-                        if (!i.member?.voice?.channel) {
-                            return i.reply({ content: t('music.pick_voice_first', lang), flags: 64 }).catch(() => {});
-                        }
-                        await i.deferUpdate().catch(() => {});
-                        let first = true;
-                        for (const v of i.values) {
-                            const t = state.viewTracks[parseInt(v)];
-                            if (!t) continue;
-                            await handlePlay(
-                                interaction.guild.id, interaction.guild,
-                                i.member.voice.channel, interaction.channel,
-                                t.query || t.title, i.user.username, client,
-                                async (opts) => {
-                                    if (first) { first = false; await i.followUp({ ...opts, flags: 64 }).catch(() => {}); }
-                                    return null;
-                                },
-                                i.user.id
-                            );
-                        }
-                    } else if (i.customId === 'mlb_shuffle') {
-                        if (!i.member?.voice?.channel) {
-                            return i.reply({ content: t('music.shuffle_voice_first', lang), flags: 64 }).catch(() => {});
-                        }
-                        const tracks = [...resolveTracks()];
-                        if (!tracks.length) return i.reply({ content: t('music.folder_empty', lang), flags: 64 }).catch(() => {});
-                        // Fisher-Yates
-                        for (let x = tracks.length - 1; x > 0; x--) {
-                            const y = Math.floor(Math.random() * (x + 1));
-                            [tracks[x], tracks[y]] = [tracks[y], tracks[x]];
-                        }
-                        const qNow = getQueue(interaction.guild.id);
-                        const cap = Math.max(0, 50 - (qNow?.tracks.length || 0));
-                        const batch = tracks.slice(0, cap);
-                        if (!batch.length) return i.reply({ content: t('music.shuffle_queue_full', lang), flags: 64 }).catch(() => {});
-                        await i.deferUpdate().catch(() => {});
-                        let first = true;
-                        for (const trk of batch) {
-                            await handlePlay(
-                                interaction.guild.id, interaction.guild,
-                                i.member.voice.channel, interaction.channel,
-                                trk.query || trk.title, i.user.username, client,
-                                async (opts) => {
-                                    if (first) {
-                                        first = false;
-                                        await i.followUp({ content: t('music.shuffle_loaded', lang, { count: batch.length, folder: state.folder === '__liked__' ? `❤️ ${L_('liked')}` : state.folder === '__all__' ? `🎵 ${L_('all')}` : state.folder }), flags: 64 }).catch(() => {});
-                                    }
-                                    return null;
-                                },
-                                i.user.id
-                            );
-                        }
-                    }
-                } catch (e) { console.log('[LIBRARY]', e.message); }
-            });
-            collector.on('end', () => { try { msg.edit(renderLibrary(true)).catch(() => {}); } catch (e) {} });
+            return openLibrary(interaction, client, lang, interaction.options.getString('search') || '');
         }
 
     }

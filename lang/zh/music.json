@@ -133,5 +133,18 @@
   "lib_shuffle": "随机播放",
   "lib_searchHint": "搜索：{cmd} search:<关键词>",
   "lib_pickHint": "选中的歌曲会立即加入队列",
-  "lib_closed": "音乐库已关闭。用 {cmd} 重新打开。"
+  "lib_closed": "音乐库已关闭。用 {cmd} 重新打开。",
+  "lib_homeSub2": "**{n} 首**一定能播放的歌曲。一键播放文件夹，或在下方浏览。",
+  "lib_browse": "浏览文件夹",
+  "lib_shuffleAll": "全部随机",
+  "lib_play": "播放",
+  "lib_moreFolders": "下方菜单中还有 {n} 个文件夹。",
+  "lib_open": "打开音乐库",
+  "track_unavailable": "这首歌暂时无法播放。",
+  "track_unavailable_next": "正在切到下一首（{count}/5）。",
+  "track_unavailable_tip": "音乐库里的歌曲一定能播放。",
+  "folder_empty_named": "{icon} 文件夹 **{folder}** 是空的。",
+  "folder_loading": "{icon} 正在从 **{folder}** 加载 **{n} 首**…",
+  "folder_failed": "{icon} 无法加载这个文件夹，请稍后再试。",
+  "lib_noResults": "音乐库中没有与“{term}”匹配的歌曲。"
 }
