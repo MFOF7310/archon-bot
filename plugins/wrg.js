@@ -304,11 +304,8 @@ const CATEGORY_ALIASES = {
 const findKey = (map, word) => Object.keys(map).find((k) => map[k].includes(String(word || '').toLowerCase())) || null;
 
 // ── Rewards: speed and streak multipliers ────────────────────────────────
-// XP is a third of the old amounts: the games share one daily cap of 1,000 XP per player and server
-// (lib/games/progress.js), and 2 or 3 wins used to fill it. Now about ten rewarded rounds fit in a day.
-const XP_SCALE = 1 / 3;
 function calcRewards(tier, wordLen, solveTimeMs, streakCount) {
-    const base = (tier.xpBase + (wordLen * 10) + tier.xpBonus) * XP_SCALE;
+    const base = tier.xpBase + (wordLen * 10) + tier.xpBonus;
     const credits = tier.creditBase + (wordLen * 2) + tier.creditBonus;
     const speedMult = solveTimeMs <= tier.speedWindow ? 2 : solveTimeMs <= tier.speedWindow * 2 ? 1.5 : 1;
     const streakMult = streakCount >= 5 ? 2 : streakCount >= 3 ? 1.5 : 1;
