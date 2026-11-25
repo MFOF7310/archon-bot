@@ -105,9 +105,12 @@ function allChannels(guild, db, lang, hint, where) {
         ? permBad.map((p) => `${icon('no', where)} **${p.name}** · ${T('neededFor', lang, { feature: T('features.' + p.feature, lang) })}`)
         : [`${icon('ok', where)} ${T('sumPermsOk', lang, { n: h.permissions.length })}`];
     const roleBad = h.roles.filter((r) => r.status !== 'ok');
-    const roleLines = !h.roles.length ? [] : roleBad.length
-        ? [`-# ${T('countIn', lang, { ok: h.roles.length - roleBad.length, total: h.roles.length })}`,
+    const gaps = h.roleGaps || [];   // not set while the rest of its series is (often deleted in Discord, then unset)
+    const roleTotal = h.roles.length + gaps.length;
+    const roleLines = !roleTotal ? [] : (roleBad.length || gaps.length)
+        ? [`-# ${T('countIn', lang, { ok: h.roles.length - roleBad.length, total: roleTotal })}`,
             ...roleBad.map((r) => `${icon('no', where)} **${label(r.setting, lang)}**${r.roleName ? ` · @${r.roleName}` : ''} — ${r.status === 'above' ? T('roleAbove', lang) : T('roleMissing', lang)}`),
+            ...gaps.map((r) => `${icon('warn', where)} **${label(r.setting, lang)}** — ${T('roleUnset', lang)}`),
             `-# ${T('fixRoles', lang, { cmd: cmd('roles') })}`]
         : [`${icon('ok', where)} ${T('sumRolesOk', lang, { n: h.roles.length })}`];
     const failLines = (h.failures || []).map((f) => `${icon('no', where)} **${f.label}** · ${at(f.channelId)} · ${T('failureLine', lang, { count: f.count, when: `<t:${Math.floor(f.lastAt / 1000)}:R>` })}`);

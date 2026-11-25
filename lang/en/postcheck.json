@@ -153,5 +153,6 @@
   "sumPermsOk": "All {n} permissions are in place",
   "sumRolesOk": "All {n} roles are in place",
   "fixChannels": "Change a channel with {cmd}",
-  "fixRoles": "Pick another role with {cmd}"
+  "fixRoles": "Pick another role with {cmd}",
+  "roleUnset": "not set, while the rest of its series is"
 }

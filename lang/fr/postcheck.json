@@ -153,5 +153,6 @@
   "sumPermsOk": "Les {n} permissions sont en place",
   "sumRolesOk": "Les {n} rôles sont en place",
   "fixChannels": "Change un salon avec {cmd}",
-  "fixRoles": "Choisis un autre rôle avec {cmd}"
+  "fixRoles": "Choisis un autre rôle avec {cmd}",
+  "roleUnset": "pas défini, alors que le reste de la série l'est"
 }

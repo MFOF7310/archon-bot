@@ -153,5 +153,6 @@
   "sumPermsOk": "全部 {n} 项权限已就绪",
   "sumRolesOk": "全部 {n} 个身份组已就绪",
   "fixChannels": "用 {cmd} 更换频道",
-  "fixRoles": "用 {cmd} 选择其他身份组"
+  "fixRoles": "用 {cmd} 选择其他身份组",
+  "roleUnset": "未设置，而同系列的其他身份组已设置"
 }
