@@ -114,7 +114,7 @@ function welcomeScreen(lang, guild, client, userId = '0', sid = 'preview') {
         // what's left is shown in full; what's done fits in one line (a long list of ticks is skipped, not read)
         const todo = list.filter((i) => !i.done), done = list.filter((i) => i.done);
         const body = !todo.length
-            ? `${icon('ok', guild)} ${C('levelAllDone', { n: done.length })}`
+            ? `${icon('ok', guild)} ${C(done.length === 1 ? 'levelAllDoneOne' : 'levelAllDone', { n: done.length })}`
             : [...todo.map(line), ...(done.length ? [`-# ${icon('ok', guild)} ${C('alsoDone', { list: done.map((i) => C(`item_${i.key}`)).join(', ') })}`] : [])].join('\n');
         items.push({ rule: true }, { text: `### ${C(`level_${level}`)}\n${body}` });
     }

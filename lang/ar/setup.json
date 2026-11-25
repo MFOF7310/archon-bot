@@ -104,7 +104,8 @@
     "levelAllDone": "كلها جاهزة ({n})",
     "alsoDone": "جاهز بالفعل: {list}",
     "wizardHintLeft": "**بقي {n} سؤال**: {start} يسأل عنها فقط.",
-    "wizardAllSet": "الأساسيات الـ {total} في المساعد مضبوطة. **{redo}** لتغييرها."
+    "wizardAllSet": "الأساسيات الـ {total} في المساعد مضبوطة. **{redo}** لتغييرها.",
+    "levelAllDoneOne": "جاهز"
   },
   "redo": "إعادة المساعد"
 }

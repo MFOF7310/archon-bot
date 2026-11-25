@@ -104,7 +104,8 @@
     "levelAllDone": "All {n} are ready",
     "alsoDone": "Already ready: {list}",
     "wizardHintLeft": "**{n} question(s) left**: {start} asks only those.",
-    "wizardAllSet": "The wizard's {total} essentials are set. **{redo}** to change them."
+    "wizardAllSet": "The wizard's {total} essentials are set. **{redo}** to change them.",
+    "levelAllDoneOne": "It's ready"
   },
   "redo": "Redo the wizard"
 }
