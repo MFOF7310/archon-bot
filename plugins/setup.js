@@ -126,12 +126,14 @@ function welcomeScreen(lang, guild, client, userId = '0', sid = 'preview') {
         : C('wizardAllSet', { total: STEPS.length, redo: T(lang, 'redo') });
     items.push({ rule: true }, { text: hint });
     items.push({ row: new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(cid(sid, 'start')).setLabel(T(lang, left ? 'start' : 'redo')).setStyle(left ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(icon(left ? 'next' : 'refresh', guild)),
-        new ButtonBuilder().setCustomId(cid(sid, 'cancel')).setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary)) });
+        new ButtonBuilder().setCustomId(cid(sid, 'start')).setLabel(T(lang, left ? 'start' : 'redo')).setStyle(left ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(icon(left ? 'next' : 'refresh', guild))) });
+    // the panels stay one tap away; the ones with something left to fix are blue, so the eye goes there first
+    const toFix = new Set(res.items.filter((it) => !it.done).map((it) => it.panel));
+    const style = (panel) => (toFix.has(panel) ? ButtonStyle.Primary : ButtonStyle.Secondary);
     items.push({ row: new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`chan:back:${userId}`).setLabel(C('panel_channels')).setStyle(ButtonStyle.Secondary).setEmoji(icon('ch_title', guild)),
-        new ButtonBuilder().setCustomId(`roles:back:${userId}`).setLabel(C('panel_roles')).setStyle(ButtonStyle.Secondary).setEmoji(icon('member', guild)),
-        new ButtonBuilder().setCustomId(`wel:open:welcome:${userId}`).setLabel(C('panel_welcome')).setStyle(ButtonStyle.Secondary).setEmoji(icon('ch_welcome', guild))) });
+        new ButtonBuilder().setCustomId(`chan:back:${userId}`).setLabel(C('panel_channels')).setStyle(style('channels')).setEmoji(icon('ch_title', guild)),
+        new ButtonBuilder().setCustomId(`roles:back:${userId}`).setLabel(C('panel_roles')).setStyle(style('roles')).setEmoji(icon('member', guild)),
+        new ButtonBuilder().setCustomId(`wel:open:welcome:${userId}`).setLabel(C('panel_welcome')).setStyle(style('welcome')).setEmoji(icon('ch_welcome', guild))) });
     // a copy of the settings, and a way back to zero (it asks first)
     items.push({ row: new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(cid(sid, 'export')).setLabel(C('btn_export')).setStyle(ButtonStyle.Secondary).setEmoji(icon('file', guild)),
