@@ -79,5 +79,10 @@
   "ev_mod_manual_desc": "如果设置了管理日志，则发送到管理日志",
   "events_saved": "已保存。服务器日志现在记录：{list}",
   "events_none": "仅 ARCHON 的提醒",
-  "events_note": "只有 ARCHON 仍保存在内存中的消息（3 小时内发送，且在上次重启之后）才会显示删除或编辑记录。"
+  "events_note": "只有 ARCHON 仍保存在内存中的消息（3 小时内发送，且在上次重启之后）才会显示删除或编辑记录。",
+  "ignore_placeholder": "服务器日志不跟踪的频道",
+  "ignored_line": "不跟踪：{list}",
+  "ignored_none": "所有频道都会被跟踪",
+  "ignore_saved": "已保存。不跟踪：{list}",
+  "ignore_saved_none": "已保存。所有频道重新被跟踪。"
 }

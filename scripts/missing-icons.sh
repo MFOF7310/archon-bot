@@ -163,4 +163,7 @@ make ic_rank1 medal "#E6A817"
 make ic_rank2 medal "#B4B2A9"
 make ic_rank3 medal "#CD7F32"
 
+# server log: channels it does not follow
+make ic_eye_off eye-off
+
 echo "Done. Now run: pm2 restart Architect-CG223"

@@ -3876,10 +3876,12 @@ safeOn(Events.GuildRoleDelete, async (role) => { require('./lib/role-cleanup').o
 safeOn(Events.ChannelDelete, async (channel) => { require('./lib/channel-cleanup').onDelete(channel, client); });
 safeOn(Events.ThreadDelete, async (thread) => { require('./lib/channel-cleanup').onDelete(thread, client); });
 
-// Server log: deleted and edited messages, bans and kicks done in Discord itself (lib/server-log.js)
-safeOn(Events.MessageDelete, (message) => { require('./lib/server-log').onDelete(message, client); });
-safeOn(Events.MessageUpdate, (before, after) => { require('./lib/server-log').onEdit(before, after, client); });
-safeOn(Events.GuildAuditLogEntryCreate, (entry, guild) => { require('./lib/server-log').onAudit(entry, guild, client); });
+// Server log: deleted and edited messages, bans and kicks done in Discord itself (lib/server-log.js).
+// Loaded here, at start, so it sees every delete ARCHON makes from the first one (those are left out of the log).
+const serverLog = require('./lib/server-log');
+safeOn(Events.MessageDelete, (message) => serverLog.onDelete(message, client));
+safeOn(Events.MessageUpdate, (before, after) => serverLog.onEdit(before, after, client));
+safeOn(Events.GuildAuditLogEntryCreate, (entry, guild) => serverLog.onAudit(entry, guild, client));
 
 // A moderator verified someone by hand in Discord (gave the verified role or took the unverified one): the welcome
 // card that waited for their verification goes out now. afterVerify sends it once at most.

@@ -79,5 +79,10 @@
   "ev_mod_manual_desc": "Goes to the moderation log when there is one",
   "events_saved": "Saved. The server log now records: {list}",
   "events_none": "nothing more than ARCHON's alerts",
-  "events_note": "Deleted and edited messages show only when ARCHON still has them in memory (sent less than 3 hours before, and since its last restart)."
+  "events_note": "Deleted and edited messages show only when ARCHON still has them in memory (sent less than 3 hours before, and since its last restart).",
+  "ignore_placeholder": "Channels the server log doesn't follow",
+  "ignored_line": "Not followed: {list}",
+  "ignored_none": "Every channel is followed",
+  "ignore_saved": "Saved. Not followed: {list}",
+  "ignore_saved_none": "Saved. Every channel is followed again."
 }

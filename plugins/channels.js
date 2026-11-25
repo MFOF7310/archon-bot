@@ -12,6 +12,7 @@ const { pickLang } = require('../lib/pick-lang');
 const { icon } = require('../lib/ui/icons');
 const canPost = require('../lib/canPost');
 const serverLog = require('../lib/server-log');
+const EV_ICON = { msg_delete: 'trash', msg_edit: 'edit', mod_manual: 'gavel' };
 
 const ACCENT = 0x00B4D8;
 const V2 = MessageFlags.IsComponentsV2;
@@ -152,9 +153,19 @@ function editView(guild, db, lang, ownerId, key, problem, notice) {
             .setPlaceholder(cut(L('events_placeholder', lang), 150))
             .setMinValues(0).setMaxValues(serverLog.KINDS.length)
             .addOptions(serverLog.KINDS.map((k) => ({
-                label: cut(L(`ev_${k}`, lang), 100), value: k, default: on.has(k),
+                label: cut(L(`ev_${k}`, lang), 100), value: k, default: on.has(k), emoji: icon(EV_ICON[k], guild),
                 description: k === 'mod_manual' ? cut(L('ev_mod_manual_desc', lang), 100) : undefined,
             })))));
+        // channels it doesn't follow (deleted and edited messages; a thread follows its parent)
+        const skip = serverLog.ignored(db, guild.id).filter((id) => guild.channels.cache.has(id));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${icon('eye_off', guild)} ${skip.length ? L('ignored_line', lang, { list: skip.map((id) => `<#${id}>`).join(' ') }) : L('ignored_none', lang)}`));
+        const ignore = new ChannelSelectMenuBuilder()
+            .setCustomId(`chan:ignore:log:${ownerId}`)
+            .setPlaceholder(cut(L('ignore_placeholder', lang), 150))
+            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement, ChannelType.GuildVoice, ChannelType.GuildForum)
+            .setMinValues(0).setMaxValues(25);
+        if (skip.length) ignore.setDefaultChannels(...skip);
+        c.addActionRowComponents(new ActionRowBuilder().addComponents(ignore));
     }
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`chan:back:${ownerId}`).setLabel(L('btn_back', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('back', guild)),
@@ -266,6 +277,14 @@ module.exports = {
             console.log(`[CHANNELS] guild=${guild.id} by=${interaction.user.id} log_events=${list.join(',') || 'none'}`);
             const names = list.length ? list.map((k) => L(`ev_${k}`, lang)).join(', ') : L('events_none', lang);
             return update(editView(guild, client.db, lang, ownerId, 'log', null, L('events_saved', lang, { list: names })));
+        }
+        if (action === 'ignore') {
+            let list;
+            try { list = serverLog.setIgnored(client.db, guild.id, interaction.values || []); }
+            catch (e) { console.error('[CHANNELS] log ignore:', e.message); return update(editView(guild, client.db, lang, ownerId, 'log', L('save_failed', lang))); }
+            console.log(`[CHANNELS] guild=${guild.id} by=${interaction.user.id} log_ignore=${list.length}`);
+            return update(editView(guild, client.db, lang, ownerId, 'log', null,
+                list.length ? L('ignore_saved', lang, { list: list.map((id) => `<#${id}>`).join(' ') }) : L('ignore_saved_none', lang)));
         }
         const key = parts[2];
         if (!BY_KEY[key]) return deny('expired');

@@ -16,5 +16,9 @@
   "reason": "Raison : {reason}",
   "no_reason": "aucune raison donnée",
   "by_hand": "Fait dans Discord, pas via ARCHON",
-  "user_id": "ID membre {id}"
+  "user_id": "ID membre {id}",
+  "deleted_many": "{n} messages supprimés",
+  "edited_many": "{n} messages modifiés",
+  "within": "en {s} secondes",
+  "more": "+{n} autres"
 }

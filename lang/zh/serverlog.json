@@ -16,5 +16,9 @@
   "reason": "原因：{reason}",
   "no_reason": "未提供原因",
   "by_hand": "在 Discord 中直接操作，而非通过 ARCHON",
-  "user_id": "用户 ID {id}"
+  "user_id": "用户 ID {id}",
+  "deleted_many": "{n} 条消息已删除",
+  "edited_many": "{n} 条消息已编辑",
+  "within": "{s} 秒内",
+  "more": "还有 {n} 条"
 }

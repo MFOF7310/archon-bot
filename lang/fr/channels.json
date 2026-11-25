@@ -79,5 +79,10 @@
   "ev_mod_manual_desc": "Va dans le journal de modération s'il y en a un",
   "events_saved": "Enregistré. Le journal enregistre maintenant : {list}",
   "events_none": "seulement les alertes d'ARCHON",
-  "events_note": "Les messages supprimés ou modifiés n'apparaissent que si ARCHON les a encore en mémoire (envoyés il y a moins de 3 heures, et depuis son dernier redémarrage)."
+  "events_note": "Les messages supprimés ou modifiés n'apparaissent que si ARCHON les a encore en mémoire (envoyés il y a moins de 3 heures, et depuis son dernier redémarrage).",
+  "ignore_placeholder": "Salons que le journal ne suit pas",
+  "ignored_line": "Non suivis : {list}",
+  "ignored_none": "Tous les salons sont suivis",
+  "ignore_saved": "Enregistré. Non suivis : {list}",
+  "ignore_saved_none": "Enregistré. Tous les salons sont de nouveau suivis."
 }

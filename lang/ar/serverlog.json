@@ -16,5 +16,9 @@
   "reason": "السبب: {reason}",
   "no_reason": "لم يُذكر سبب",
   "by_hand": "تم في Discord مباشرة، وليس عبر ARCHON",
-  "user_id": "معرّف العضو {id}"
+  "user_id": "معرّف العضو {id}",
+  "deleted_many": "تم حذف {n} رسائل",
+  "edited_many": "تم تعديل {n} رسائل",
+  "within": "خلال {s} ثانية",
+  "more": "+{n} أخرى"
 }
