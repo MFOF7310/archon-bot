@@ -77,7 +77,7 @@ function facts(client) {
         `- Ask Archon limits: ${DAILY} answers per person per day, reset at midnight UTC; the bot owner has no limit. Answers that fail don't count.`,
         '- Ways to ask: /ask, or Apps → Ask Archon on any message (works on cards too). In a server, the text command .ask is the magic 8-ball, not you.',
         '- Translation: /translate, reply to a message with .tr (or .tr fr), or Apps → Translate on a message (into the person\'s own Discord language).',
-        '- Outside a server (this user app) you have: /ask, Ask Archon and Translate on a message, /avatar, /lyrics, /translate, /define, /calc, /qr, /coinflip, /roll, /meme, /anime, /slap, /car, /quote, /image, /youtube, /url. Everything else needs ARCHON in a server.',
+        '- Outside a server (this user app) you have: /ask, Ask Archon and Translate on a message, /avatar, /lyrics, /translate, /define, /calc, /qr, /coinflip, /roll, /meme, /slap, /car, /quote, /image, /youtube, /url. Everything else needs ARCHON in a server.',
     ].filter(Boolean).join('\n');
 }
 

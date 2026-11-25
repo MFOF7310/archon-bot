@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-// /image <category> — a photo by theme, as a fun-pack card (lib/fun): the same look and buttons as /car or /anime
+// /image <category> — a photo by theme, as a fun-pack card (lib/fun): the same look and buttons as /car or /meme
 //   dog (Dog CEO) · cat (TheCatAPI) · space (NASA picture of the day) · car, nature, architecture, food, cyberpunk
 //   (Unsplash, needs UNSPLASH_ACCESS_KEY) · random (only among the themes that can answer)
 // Unsplash's rules: the photographer is credited with a link, and each photo shown is reported to their download

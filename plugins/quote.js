@@ -1,4 +1,4 @@
-// /quote [category] — a quote as a fun-pack card (lib/fun): the same look and buttons as /car or /anime.
+// /quote [category] — a quote as a fun-pack card (lib/fun): the same look and buttons as /car or /meme.
 // The quotes are in English; in another language the card shows a translation (MyMemory, like /translate) with the
 // original underneath. Quotes widely credited to someone who probably never said them are marked "attributed to".
 // The old "sources" (books, speeches, years) were not checked and are gone.
