@@ -106,5 +106,6 @@
   "give_once": "يُبلَّغ مرة كل 6 ساعات لهذا الدور",
   "backfill_title": "مُنحت أدوار المكافأة للأعضاء الذين استحقوها من قبل:",
   "backfill_one": "عضو واحد",
-  "backfill_many": "{n} أعضاء"
+  "backfill_many": "{n} أعضاء",
+  "count_of": "{ok} من {total}"
 }

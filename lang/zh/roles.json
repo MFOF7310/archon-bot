@@ -106,5 +106,6 @@
   "give_once": "同一角色每 6 小时只提示一次",
   "backfill_title": "已向早已达成条件的成员授予奖励角色：",
   "backfill_one": "1 名成员",
-  "backfill_many": "{n} 名成员"
+  "backfill_many": "{n} 名成员",
+  "count_of": "{ok}/{total}"
 }

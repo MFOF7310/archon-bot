@@ -106,5 +106,6 @@
   "give_once": "signalé une fois toutes les 6 heures pour ce rôle",
   "backfill_title": "Rôles de récompense donnés aux membres qui les avaient déjà mérités :",
   "backfill_one": "1 membre",
-  "backfill_many": "{n} membres"
+  "backfill_many": "{n} membres",
+  "count_of": "{ok} sur {total}"
 }

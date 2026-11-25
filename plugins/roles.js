@@ -9,6 +9,7 @@ const {
 const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
 const R = require('../lib/role-rules');
+const { icon } = require('../lib/ui/icons');
 
 const ACCENT = 0x2b9bb0;
 const V2 = MessageFlags.IsComponentsV2;
@@ -89,18 +90,40 @@ async function createEconomyRoles(guild, db, lang, actor) {
     return { next, made, reused };
 }
 
-// How a slot reads in the overview: the role, or "Not set", plus a short warning when the saved role can't be used
-function slotLine(guild, slot, saved, lang) {
+// How a slot reads in the overview, with its state icon (the same marks as /postcheck and /channels):
+// ok · no (deleted, or ARCHON can't give it) · warn (missing from a series the server uses) · dot_off (not set, optional)
+const SERIES_GROUPS = new Set(['daily', 'levels']);
+function slotState(guild, slot, saved) {
     let value = saved[slot.key];
     let fromEnv = false;
     if (!value && slot.env && guild.id === process.env.GUILD_ID && process.env[slot.env]) { value = process.env[slot.env]; fromEnv = true; }
-    if (!value) return `**${label(slot.key, lang)}** · ${t('roles.not_set', lang)}`;
+    if (!value) {
+        const seriesUsed = SERIES_GROUPS.has(slot.group) && R.SLOTS.some((s) => s.group === slot.group && saved[s.key]);
+        return { state: seriesUsed ? 'gap' : 'unset' };
+    }
     const role = guild.roles.cache.get(value);
-    if (!role) return `**${label(slot.key, lang)}** · \`${t('roles.status_missing', lang)}\``;
+    if (!role) return { state: 'gone' };
     const err = R.checkRole(guild, role, slot.profile, null);
-    const env = fromEnv ? ` (${t('roles.from_env', lang)})` : '';
-    const warn = err ? `\n-# ${t('roles.status_unsafe_line', lang, { reason: R.reasonText(err, lang) })}` : '';
-    return `**${label(slot.key, lang)}** · <@&${role.id}>${env}${warn}`;
+    return { state: err ? 'unsafe' : 'ok', role, err, fromEnv };
+}
+const MARK = { ok: 'ok', gone: 'no', unsafe: 'no', gap: 'warn', unset: 'dot_off' };
+function slotLine(guild, slot, saved, lang) {
+    const st = slotState(guild, slot, saved);
+    const mark = icon(MARK[st.state], guild);
+    const name = `**${label(slot.key, lang)}**`;
+    if (st.state === 'unset') return `${mark} ${name} · ${t('roles.not_set', lang)}`;
+    if (st.state === 'gap') return `${mark} ${name} · ${t('roles.not_set', lang)}`;
+    if (st.state === 'gone') return `${mark} ${name} · ${t('roles.status_missing', lang)}`;
+    const env = st.fromEnv ? ` (${t('roles.from_env', lang)})` : '';
+    const warn = st.err ? `\n-# ${t('roles.status_unsafe_line', lang, { reason: R.reasonText(st.err, lang) })}` : '';
+    return `${mark} ${name} · <@&${st.role.id}>${env}${warn}`;
+}
+// "2 of 4" next to a group's title, once at least one of its roles is set
+function groupCount(guild, group, saved, lang) {
+    const slots = R.SLOTS.filter((s) => s.group === group);
+    const states = slots.map((s) => slotState(guild, s, saved).state);
+    if (states.every((x) => x === 'unset')) return '';
+    return ` · ${t('roles.count_of', lang, { ok: states.filter((x) => x === 'ok').length, total: slots.length })}`;
 }
 
 function mainView(guild, db, lang, ownerId, notice) {
@@ -111,7 +134,7 @@ function mainView(guild, db, lang, ownerId, notice) {
     for (const g of R.GROUPS) {
         c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
         const lines = R.SLOTS.filter(s => s.group === g).map(s => slotLine(guild, s, saved, lang));
-        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${iconFor(g)} ${t(`roles.${g}`, lang)}\n${lines.join('\n')}`));
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`### ${iconFor(g)} ${t(`roles.${g}`, lang)}${groupCount(guild, g, saved, lang)}\n${lines.join('\n')}`));
     }
     c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
     c.addActionRowComponents(new ActionRowBuilder().addComponents(

@@ -106,5 +106,6 @@
   "give_once": "told once every 6 hours for this role",
   "backfill_title": "Reward roles given to members who had already earned them:",
   "backfill_one": "1 member",
-  "backfill_many": "{n} members"
+  "backfill_many": "{n} members",
+  "count_of": "{ok} of {total}"
 }
