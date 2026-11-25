@@ -16,6 +16,10 @@ const COLOR = { live: 0x378ADD, won: 0x1D9E75, lost: 0xE74C3C };
 
 // ── Words ─────────────────────────────────────────────────────────────────
 function sanitize(word) { return String(word).toUpperCase().trim().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^A-Z]/g, ''); }
+function shuffleList(arr) {
+    for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
+    return arr;
+}
 function shuffle(word) {
     const arr = word.split('');
     for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; }
@@ -379,6 +383,21 @@ function render(g, lang) {
 // ── A game ───────────────────────────────────────────────────────────────
 const activeGames = new Map();   // channel → game
 
+// Words come out of a shuffled bag per server, category, tier and language: every word once before any comes back,
+// and the first of a new round is never the last of the previous one (a plain random pick gave the same word 3 times in a row)
+const bags = new Map();   // key → { left: [...], last }
+function nextWord(key, list) {
+    let b = bags.get(key);
+    if (!b || !b.left.length) {
+        const left = shuffleList([...list]);
+        if (b?.last && left.length > 1 && left[left.length - 1] === b.last) left.unshift(left.pop());
+        b = { left, last: b?.last || null };
+        bags.set(key, b);
+    }
+    b.last = b.left.pop();
+    return b.last;
+}
+
 // send(payload) posts the card and returns the message (a channel message, or the slash command's reply)
 async function startGame(client, { channel, guild, user, lang, tierKey, catKey, send }) {
     const db = client.db;
@@ -387,7 +406,7 @@ async function startGame(client, { channel, guild, user, lang, tierKey, catKey, 
     const cat = CATEGORIES[catKey] || CATEGORIES[DEFAULT_CATEGORY];
     const wordLang = lang === 'fr' ? 'fr' : 'en';
     const list = cat.words[wordLang]?.[tierKey] || cat.words.en[tierKey] || cat.words.en.rookie;
-    const word = sanitize(list[Math.floor(Math.random() * list.length)]);
+    const word = sanitize(nextWord(`${guild?.id || channel.id}:${catKey}:${tierKey}:${wordLang}`, list));
     const gid = guild?.id || 'DM';
     const g = {
         channel, tier, tierKey: TIERS[tierKey] ? tierKey : 'rookie', catKey: CATEGORIES[catKey] ? catKey : DEFAULT_CATEGORY,
