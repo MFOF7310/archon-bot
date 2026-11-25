@@ -117,5 +117,9 @@
   "btn_clear_all": "Tout effacer",
   "clear_confirm_title": "Effacer tous les avertissements actifs de {user} ?",
   "clear_confirm_body": "Ses avertissements actifs sont retirés. L'historique garde une ligne qui dit que c'est fait.",
-  "clear_log": "Tous les avertissements actifs de {user} ont été effacés."
+  "clear_log": "Tous les avertissements actifs de {user} ont été effacés.",
+  "act_block": "Message bloqué",
+  "act_timeout": "Timeout",
+  "act_appeal_accepted": "Recours accepté",
+  "act_appeal_refused": "Recours refusé"
 }

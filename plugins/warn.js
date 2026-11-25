@@ -87,7 +87,10 @@ function historyCard(db, guild, user, lang, ctx, actorId, notice = null) {
     const t = now();
     const active = db.prepare('SELECT id, reason, created_at FROM warnings WHERE guild_id = ? AND user_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC').all(guild.id, user.id, t);
     const total = db.prepare('SELECT COUNT(*) AS n FROM warnings WHERE guild_id = ? AND user_id = ?').get(guild.id, user.id).n;
-    const logs = db.prepare("SELECT id, action, reason, moderator_id, timestamp FROM moderation_logs WHERE guild_id = ? AND user_id = ? AND action != 'warn' ORDER BY timestamp DESC LIMIT 6").all(guild.id, user.id);
+    // what happened to this member: not their warnings (above), nor settings changes or channel actions written
+    // under their id (config, set, purge, slowmode…)
+    const NOT_SANCTIONS = ['warn', 'config', 'set', 'purge', 'slowmode', 'warning_action', 'raid_action'];
+    const logs = db.prepare(`SELECT id, action, reason, moderator_id, timestamp FROM moderation_logs WHERE guild_id = ? AND user_id = ? AND action NOT IN (${NOT_SANCTIONS.map(() => '?').join(', ')}) ORDER BY timestamp DESC LIMIT 6`).all(guild.id, user.id, ...NOT_SANCTIONS);
     const name = (a) => { const k = `act_${a}`; const v = M.T(k, lang); return v === `mod.${k}` ? a : v; };
     const c = M.card({ look: active.length ? 'warn' : 'info', title: M.T('hist_title', lang, { user: M.safe(user.username) }), avatar: M.avatarOf(user), ctx,
         lines: [[null, M.T('hist_sub', lang, { active: active.length, total, logs: logs.length })]] });

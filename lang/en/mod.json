@@ -117,5 +117,9 @@
   "btn_clear_all": "Clear all",
   "clear_confirm_title": "Clear all of {user}'s active warnings?",
   "clear_confirm_body": "Their active warnings are removed. The history keeps a line saying it was done.",
-  "clear_log": "All active warnings of {user} were cleared."
+  "clear_log": "All active warnings of {user} were cleared.",
+  "act_block": "Message blocked",
+  "act_timeout": "Timeout",
+  "act_appeal_accepted": "Appeal accepted",
+  "act_appeal_refused": "Appeal refused"
 }
