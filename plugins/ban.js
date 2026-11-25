@@ -82,7 +82,10 @@ async function doUnban(client, guild, actor, userId, reason, lang, ctx) {
     await guild.members.unban(userId, M.auditReason(reason, actor));
     const caseId = M.record(db, { guildId: guild.id, userId, moderatorId: actor.id, action: 'unban', reason });
     const user = ban.user;
-    const invite = rejoinInvite(db, guild.id);
+    // the way back: the same logic as verification (saved link, else a lasting one, else one made once);
+    // when none is possible, lib/rejoin-invite tells the admins what blocks it
+    ensureInviteColumn(db);
+    const invite = await require('../lib/rejoin-invite').rejoinUrl(db, guild) || rejoinInvite(db, guild.id);
     const dmCard = M.card({ look: 'unban', title: M.T('unban_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_reason', lang), M.safe(reason)], invite ? [null, M.T('unban_dm_rejoin', lang)] : null], ctx });
     let sent = false;
     try {
