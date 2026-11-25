@@ -1,0 +1,9 @@
+{
+  "onlyYou": "Only {user} can confirm. This expires in 10 minutes.",
+  "cancel": "Cancel",
+  "cancelled": "Cancelled. Nothing was changed.",
+  "failed": "That couldn't be done. Nothing was changed; try again in a moment.",
+  "done": "Done.",
+  "logTitle": "Confirmed action",
+  "logBy": "Confirmed by {user}"
+}

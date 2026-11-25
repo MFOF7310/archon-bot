@@ -116,7 +116,9 @@
     "restore_badFile": "这不是用“导出”生成的设置文件。",
     "restore_otherServer": "这个副本来自另一个服务器（{name}），只能在那里恢复。",
     "restore_empty": "这个副本中没有可以在这里恢复的内容。",
-    "restore_failed": "恢复失败，请稍后再试。"
+    "restore_failed": "恢复失败，请稍后再试。",
+    "log_reset": "本服务器上 ARCHON 的所有设置已被清除。",
+    "log_restore": "已从 {when} 的副本恢复 {n} 项设置。"
   },
   "redo": "重新运行向导",
   "close": "关闭",

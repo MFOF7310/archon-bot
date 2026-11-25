@@ -116,7 +116,9 @@
     "restore_badFile": "Ce n'est pas un fichier de réglages fait avec Exporter.",
     "restore_otherServer": "Cette copie vient d'un autre serveur ({name}). Elle ne peut être restaurée que là-bas.",
     "restore_empty": "Rien dans cette copie ne peut être restauré ici.",
-    "restore_failed": "La restauration n'a pas pu se faire. Réessaie dans un instant."
+    "restore_failed": "La restauration n'a pas pu se faire. Réessaie dans un instant.",
+    "log_reset": "Tous les réglages d'ARCHON sur ce serveur ont été effacés.",
+    "log_restore": "{n} réglages ont été restaurés depuis la copie du {when}."
   },
   "redo": "Relancer l'assistant",
   "close": "Fermer",

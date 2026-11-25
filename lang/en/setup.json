@@ -116,7 +116,9 @@
     "restore_badFile": "This isn't a settings file made with Export.",
     "restore_otherServer": "This copy comes from another server ({name}). It can only be restored there.",
     "restore_empty": "Nothing in this copy can be restored here.",
-    "restore_failed": "The restore couldn't be done. Try again in a moment."
+    "restore_failed": "The restore couldn't be done. Try again in a moment.",
+    "log_reset": "Every ARCHON setting on this server was erased.",
+    "log_restore": "{n} settings were restored from the copy of {when}."
   },
   "redo": "Redo the wizard",
   "close": "Close",
