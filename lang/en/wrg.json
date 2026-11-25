@@ -31,5 +31,7 @@
   "found": "{user} found {word}",
   "timeUp": "Time's up",
   "wordWas": "Nobody found it. The word was **{word}** (scrambled: `{scrambled}`).",
-  "busy": "A word game is already running in this channel. Wait for it to end."
+  "busy": "A word game is already running in this channel. Wait for it to end.",
+  "stakeCredits": "+{credits} credits · ×2 if found within {secs} s",
+  "paidCredits": "+{credits} credits"
 }

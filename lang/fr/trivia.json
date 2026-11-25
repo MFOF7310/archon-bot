@@ -51,5 +51,6 @@
     "hard": "Difficile"
   },
   "menuNext": "{xp} XP avant le niveau {next}",
-  "menuReward": "Jusqu'à **+{credits} crédits** et **+{xp} XP**"
+  "menuReward": "Jusqu'à **+{credits} crédits** et **+{xp} XP**",
+  "menuRewardCredits": "Jusqu'à **+{credits} crédits**"
 }

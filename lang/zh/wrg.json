@@ -31,5 +31,7 @@
   "found": "{user} 猜出了 {word}",
   "timeUp": "时间到",
   "wordWas": "没有人猜出。答案是 **{word}**（打乱后：`{scrambled}`）。",
-  "busy": "本频道已有一局单词游戏在进行，请等它结束。"
+  "busy": "本频道已有一局单词游戏在进行，请等它结束。",
+  "stakeCredits": "+{credits} 积分 · {secs} 秒内找到 ×2",
+  "paidCredits": "+{credits} 积分"
 }

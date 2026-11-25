@@ -133,7 +133,7 @@ function successCard(t, { user, name, gid, got, data, settings, on, now }) {
     if (reached) line += ` · ${t('milestoneReached', { n: streak })}`;
     else if (ms) line += ` · ${ms.role ? t('nextMilestoneRole', { n: ms.days, role: `<@&${ms.role}>` }) : t('nextMilestone', { n: ms.days })}`;
     const items = [
-        { thumbnail: [`## ${t('title', { credits: fmt(got.credits), xp: fmt(got.xp) })}\n-# ${t('sub', { name })}`, user.displayAvatarURL({ extension: 'png', size: 128 })] },
+        { thumbnail: [`## ${t(got.xp ? 'title' : 'titleCredits', { credits: fmt(got.credits), xp: fmt(got.xp) })}\n-# ${t('sub', { name })}`, user.displayAvatarURL({ extension: 'png', size: 128 })] },
         { rule: true },
         { text: `${line}\n${strip(streak)}` },
         { text: `${t('balance', { credits: fmt(data.credits), level: data.level })}\n-# ${t('next', { when: ts(now + DAY), deadline: ts(now + 2 * DAY, 't') })}` },
@@ -185,7 +185,9 @@ async function claim(client, { user, member, guild, channel, lang }) {
         const bonusCredits = streak > 1 ? Math.min(streak * 10, 100) : 10;
         // The dashboard's daily bonus (it used to be ignored: everyone got 100)
         const base = Math.max(0, parseInt(settings.dailyBonus ?? settings.daily_bonus, 10) || 200);
-        const got = { xp: BASE_XP + bonusXP, credits: base + bonusCredits };
+        // leveling turned off on this server: the daily pays credits only (no XP, no level from it)
+        const levelingOn = settings.leveling_enabled !== 0;
+        const got = { xp: levelingOn ? BASE_XP + bonusXP : 0, credits: base + bonusCredits };
 
         const xp = Number(data.xp || 0) + got.xp;
         const updated = {

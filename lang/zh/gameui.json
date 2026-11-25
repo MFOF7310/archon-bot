@@ -23,5 +23,6 @@
     "cyberSpecialist": "网络专家",
     "bkoCommander": "BKO 指挥官",
     "systemArchitect": "系统架构师"
-  }
+  },
+  "rewardCredits": "+{credits} 积分"
 }

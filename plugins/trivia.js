@@ -115,6 +115,7 @@ function menuScreen(s, o = {}) {
   const diff = DIFFICULTIES[s.diff];
   const cat = CATEGORIES[s.cat];
   const reward = maxReward(diff);
+  if (!progress.levelingOn(s.client, s.guildId)) reward.xp = 0;   // leveling off: credits only
   const num = (n) => Number(n).toLocaleString(s.lang === 'fr' ? 'fr-FR' : 'en-US');
   const title = String(Q('title')).replace(/^\S+\s+/, '');   // the title's own emoji is replaced by ARCHON's icon
   const lines = [
@@ -128,7 +129,7 @@ function menuScreen(s, o = {}) {
     `${ok(cat.emoji, cat.plain)} **${Q(`categories.${s.cat}`)}**   ·   ${ok(diff.emoji, diff.plain)} **${Q(`difficulties.${s.diff}`)}**`,
     `-# ${Q('difficultyInfo', { questions: diff.questions, seconds: diff.seconds })}`,
     '',
-    `${ok(E.coins, '🪙')} ${Q('menuReward', { credits: num(reward.credits), xp: num(reward.xp) })}`,
+    `${ok(E.coins, '🪙')} ${Q(reward.xp ? 'menuReward' : 'menuRewardCredits', { credits: num(reward.credits), xp: num(reward.xp) })}`,
     `-# ${Q('menuHow')}`,
   ];
   if (o.note) pick.push('', o.note);

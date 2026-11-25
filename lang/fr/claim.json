@@ -26,5 +26,6 @@
   "profileBody": "XP **{xp}** · crédits **{credits}**\nSérie **{streak}** jours · record **{best}**\n**{total}** bonus du jour récupérés",
   "error": "Ton bonus n'est pas passé. Réessaie dans un instant.",
   "btnGoChannel": "Récupérer dans #{channel}",
-  "btnGoServer": "Ouvrir le serveur"
+  "btnGoServer": "Ouvrir le serveur",
+  "titleCredits": "+{credits} crédits"
 }

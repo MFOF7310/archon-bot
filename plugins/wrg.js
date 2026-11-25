@@ -342,6 +342,7 @@ function render(g, lang) {
 
     if (g.phase === 'live') {
         const est = calcRewards(g.tier, g.word.length, Infinity, g.starterStreak);
+        if (!progress.levelingOn(g.channel?.client, g.channel?.guild?.id)) est.xp = 0;   // leveling off: credits only
         return card(COLOR.live, [
             { text: `${head} · ${T(lang, 'startedBy', { user: `<@${g.starterId}>` })}\n## ${icon('puzzle', where)} ${T(lang, 'title')}` },
             { text: `# \`${g.scrambled.split('').join(' ')}\`` },
@@ -350,7 +351,7 @@ function render(g, lang) {
                 `${icon('clock', where)} ${T(lang, 'ends', { when: `<t:${Math.floor(g.endsAt / 1000)}:R>`, n: g.word.length })}`,
             ].filter(Boolean).join('\n') },
             { rule: true },
-            { text: `${icon('coin', where)} ${T(lang, 'stake', { xp: fmt(est.xp, lang), credits: fmt(est.credits, lang), secs: g.tier.speedWindow / 1000 })}\n-# ${T(lang, 'howTo')}` },
+            { text: `${icon('coin', where)} ${T(lang, est.xp ? 'stake' : 'stakeCredits', { xp: fmt(est.xp, lang), credits: fmt(est.credits, lang), secs: g.tier.speedWindow / 1000 })}\n-# ${T(lang, 'howTo')}` },
         ]);
     }
 
@@ -360,7 +361,7 @@ function render(g, lang) {
         if (r.streak >= 2) lines.push(`${icon('flame', where)} ${T(lang, 'streak', { n: r.streak })}${r.streakMult > 1 ? ` · ×${r.streakMult}` : ''}`);
         const paid = r.paid.capped && !r.paid.xp && !r.paid.credits
             ? T(lang, 'capped')
-            : `**${T(lang, 'paid', { xp: fmt(r.paid.xp, lang), credits: fmt(r.paid.credits, lang) })}**${r.paid.capped ? ` · ${T(lang, 'cappedPart')}` : ''}`;
+            : `**${T(lang, r.paid.xp ? 'paid' : 'paidCredits', { xp: fmt(r.paid.xp, lang), credits: fmt(r.paid.credits, lang) })}**${r.paid.capped ? ` · ${T(lang, 'cappedPart')}` : ''}`;
         const after = [`${icon('coin', where)} ${paid}`];
         if (r.levelUp) after.push(`${icon('ch_levelup', where)} ${T(lang, 'levelUp', { n: r.level })}`);
         after.push(`-# ${levelLine(lang, r.xp, r.level)}`);

@@ -23,5 +23,6 @@
     "cyberSpecialist": "خبير سيبراني",
     "bkoCommander": "قائد BKO",
     "systemArchitect": "مهندس النظام"
-  }
+  },
+  "rewardCredits": "+{credits} رصيد"
 }

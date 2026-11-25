@@ -26,5 +26,6 @@
   "profileBody": "XP **{xp}** · 积分 **{credits}**\n连续 **{streak}** 天 · 最高 **{best}**\n已领取 **{total}** 次每日奖励",
   "error": "奖励领取失败，请稍后再试。",
   "btnGoChannel": "在 #{channel} 领取",
-  "btnGoServer": "打开服务器"
+  "btnGoServer": "打开服务器",
+  "titleCredits": "+{credits} 积分"
 }

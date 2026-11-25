@@ -26,5 +26,6 @@
   "profileBody": "XP **{xp}** · credits **{credits}**\nStreak **{streak}** days · best **{best}**\n**{total}** daily bonuses claimed",
   "error": "Your bonus didn't go through. Try again in a moment.",
   "btnGoChannel": "Claim in #{channel}",
-  "btnGoServer": "Open the server"
+  "btnGoServer": "Open the server",
+  "titleCredits": "+{credits} credits"
 }

@@ -31,5 +31,7 @@
   "found": "{user} a trouvé {word}",
   "timeUp": "Temps écoulé",
   "wordWas": "Personne n'a trouvé. Le mot était **{word}** (mélangé : `{scrambled}`).",
-  "busy": "Une partie est déjà en cours dans ce salon. Attends qu'elle se termine."
+  "busy": "Une partie est déjà en cours dans ce salon. Attends qu'elle se termine.",
+  "stakeCredits": "+{credits} crédits · ×2 si trouvé en moins de {secs} s",
+  "paidCredits": "+{credits} crédits"
 }

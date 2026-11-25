@@ -23,5 +23,6 @@
     "cyberSpecialist": "Cyber Specialist",
     "bkoCommander": "BKO Commander",
     "systemArchitect": "System Architect"
-  }
+  },
+  "rewardCredits": "+{credits} credits"
 }

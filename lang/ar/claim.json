@@ -26,5 +26,6 @@
   "profileBody": "XP **{xp}** · الرصيد **{credits}**\nالسلسلة **{streak}** أيام · الأفضل **{best}**\n**{total}** مكافأة يومية مستلمة",
   "error": "لم تنجح المكافأة. حاول مرة أخرى بعد قليل.",
   "btnGoChannel": "استلم في #{channel}",
-  "btnGoServer": "افتح الخادم"
+  "btnGoServer": "افتح الخادم",
+  "titleCredits": "+{credits} رصيد"
 }
