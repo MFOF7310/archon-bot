@@ -40,7 +40,7 @@
   "hint_rules": "Montré aux nouveaux sur leur carte de bienvenue. ARCHON ne fait qu'y renvoyer.",
   "hint_general": "Là où les nouveaux sont invités à se présenter. ARCHON ne fait qu'y renvoyer.",
   "hint_modlog": "Bans, expulsions, avertissements, mises en sourdine et résultats de vérification y sont enregistrés.",
-  "hint_log": "Les alertes d'ARCHON (un salon où il ne peut pas écrire, une permission manquante) et les nettoyages de messages.",
+  "hint_log": "Les alertes d'ARCHON (un salon où il ne peut pas écrire, une permission manquante), les nettoyages de messages, et ce que tu choisis ci-dessous : messages supprimés ou modifiés, bans et expulsions faits dans Discord.",
   "hint_ticket": "Les tickets fermés y sont enregistrés en fichier de transcription.",
   "hint_daily": "Rappels de récompense quotidienne et vœux d'anniversaire.",
   "hint_levelup": "Messages et bannières de passage de niveau. Sans salon, ARCHON répond là où le membre parlait.",
@@ -71,5 +71,13 @@
   "recommended": "conseillé",
   "optional_daily": "Vide : /claim marche dans tous les salons. Choisi : /claim seulement dans celui-là.",
   "label_votes": "Votes",
-  "hint_votes": "Une petite carte quand un membre vote pour ARCHON sur Top.gg, avec un bouton pour que les autres votent aussi."
+  "hint_votes": "Une petite carte quand un membre vote pour ARCHON sur Top.gg, avec un bouton pour que les autres votent aussi.",
+  "events_placeholder": "Ce que le journal enregistre",
+  "ev_msg_delete": "Messages supprimés",
+  "ev_msg_edit": "Messages modifiés",
+  "ev_mod_manual": "Bans et expulsions faits dans Discord",
+  "ev_mod_manual_desc": "Va dans le journal de modération s'il y en a un",
+  "events_saved": "Enregistré. Le journal enregistre maintenant : {list}",
+  "events_none": "seulement les alertes d'ARCHON",
+  "events_note": "Les messages supprimés ou modifiés n'apparaissent que si ARCHON les a encore en mémoire (envoyés il y a moins de 3 heures, et depuis son dernier redémarrage)."
 }

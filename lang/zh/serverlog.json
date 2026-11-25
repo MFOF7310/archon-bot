@@ -1,0 +1,20 @@
+{
+  "deleted_title": "消息已删除",
+  "edited_title": "消息已编辑",
+  "where": "{user} 在 {channel}",
+  "before": "编辑前",
+  "after": "编辑后",
+  "empty": "无文字",
+  "attachments": "附件：{list}",
+  "ids": "用户 ID {user} · 消息 ID {message}",
+  "jump": "查看消息",
+  "ban_title": "成员已被封禁",
+  "unban_title": "成员已解除封禁",
+  "kick_title": "成员已被踢出",
+  "by": "操作者：{mod}",
+  "someone": "某人",
+  "reason": "原因：{reason}",
+  "no_reason": "未提供原因",
+  "by_hand": "在 Discord 中直接操作，而非通过 ARCHON",
+  "user_id": "用户 ID {id}"
+}

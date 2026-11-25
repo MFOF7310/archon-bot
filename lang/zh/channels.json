@@ -40,7 +40,7 @@
   "hint_rules": "显示在新成员的欢迎卡片上。ARCHON 只会链接到这里。",
   "hint_general": "新成员会被邀请到这里打招呼。ARCHON 只会链接到这里。",
   "hint_modlog": "封禁、踢出、警告、禁言和验证结果都会记录在这里。",
-  "hint_log": "ARCHON 自己的提醒（无法发言的频道、缺少的权限）以及消息清理记录。",
+  "hint_log": "ARCHON 自己的提醒（无法发言的频道、缺少的权限）、消息清理记录，以及你在下方选择的内容：被删除或编辑的消息、在 Discord 中直接进行的封禁和踢出。",
   "hint_ticket": "关闭的工单会以记录文件的形式保存在这里。",
   "hint_daily": "每日奖励提醒和生日祝福。",
   "hint_levelup": "升级消息和里程碑横幅。没有设置时，ARCHON 会在成员聊天的地方回复。",
@@ -71,5 +71,13 @@
   "recommended": "建议设置",
   "optional_daily": "留空：/claim 在所有频道都可用。设置后：/claim 只能在该频道使用。",
   "label_votes": "投票",
-  "hint_votes": "成员在 Top.gg 为 ARCHON 投票时发送一张小卡片，并附带按钮方便其他人也去投票。"
+  "hint_votes": "成员在 Top.gg 为 ARCHON 投票时发送一张小卡片，并附带按钮方便其他人也去投票。",
+  "events_placeholder": "服务器日志记录的内容",
+  "ev_msg_delete": "被删除的消息",
+  "ev_msg_edit": "被编辑的消息",
+  "ev_mod_manual": "在 Discord 中进行的封禁和踢出",
+  "ev_mod_manual_desc": "如果设置了管理日志，则发送到管理日志",
+  "events_saved": "已保存。服务器日志现在记录：{list}",
+  "events_none": "仅 ARCHON 的提醒",
+  "events_note": "只有 ARCHON 仍保存在内存中的消息（3 小时内发送，且在上次重启之后）才会显示删除或编辑记录。"
 }

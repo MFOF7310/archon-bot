@@ -42,7 +42,8 @@
     "verify": "التحقق",
     "test": "رسالة اختبار",
     "ticket-log": "نسخة التذكرة",
-    "tempvoice": "الغرف الصوتية المؤقتة"
+    "tempvoice": "الغرف الصوتية المؤقتة",
+    "serverlog": "سجل الخادم"
   },
   "alertBtnCheck": "تحقق مرة أخرى",
   "alertBtnMute": "كتم 7 أيام",

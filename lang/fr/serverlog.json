@@ -1,0 +1,20 @@
+{
+  "deleted_title": "Message supprimé",
+  "edited_title": "Message modifié",
+  "where": "{user} dans {channel}",
+  "before": "Avant",
+  "after": "Après",
+  "empty": "pas de texte",
+  "attachments": "Pièces jointes : {list}",
+  "ids": "ID membre {user} · ID message {message}",
+  "jump": "Voir le message",
+  "ban_title": "Membre banni",
+  "unban_title": "Membre débanni",
+  "kick_title": "Membre expulsé",
+  "by": "Par {mod}",
+  "someone": "quelqu'un",
+  "reason": "Raison : {reason}",
+  "no_reason": "aucune raison donnée",
+  "by_hand": "Fait dans Discord, pas via ARCHON",
+  "user_id": "ID membre {id}"
+}

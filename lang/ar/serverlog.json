@@ -1,0 +1,20 @@
+{
+  "deleted_title": "تم حذف رسالة",
+  "edited_title": "تم تعديل رسالة",
+  "where": "{user} في {channel}",
+  "before": "قبل",
+  "after": "بعد",
+  "empty": "بدون نص",
+  "attachments": "المرفقات: {list}",
+  "ids": "معرّف العضو {user} · معرّف الرسالة {message}",
+  "jump": "عرض الرسالة",
+  "ban_title": "تم حظر عضو",
+  "unban_title": "تم رفع الحظر عن عضو",
+  "kick_title": "تم طرد عضو",
+  "by": "بواسطة {mod}",
+  "someone": "شخص ما",
+  "reason": "السبب: {reason}",
+  "no_reason": "لم يُذكر سبب",
+  "by_hand": "تم في Discord مباشرة، وليس عبر ARCHON",
+  "user_id": "معرّف العضو {id}"
+}

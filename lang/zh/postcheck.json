@@ -42,7 +42,8 @@
     "verify": "验证",
     "test": "测试消息",
     "ticket-log": "工单记录",
-    "tempvoice": "临时语音频道"
+    "tempvoice": "临时语音频道",
+    "serverlog": "服务器日志"
   },
   "alertBtnCheck": "再次检查",
   "alertBtnMute": "静音 7 天",

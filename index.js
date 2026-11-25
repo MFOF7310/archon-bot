@@ -118,14 +118,16 @@ const client = new Client({
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.GuildVoiceStates,
-        GatewayIntentBits.AutoModerationExecution   // messages Discord's own AutoMod blocked with ARCHON's rules (lib/native-automod.js)
+        GatewayIntentBits.AutoModerationExecution,  // messages Discord's own AutoMod blocked with ARCHON's rules (lib/native-automod.js)
+        GatewayIntentBits.GuildModeration,          // audit log entries: bans and kicks done in Discord itself (lib/server-log.js)
+        GatewayIntentBits.GuildInvites,             // inviteCreate for lib/invite-tracker.js (without it the event never came)
     ],
     partials: [Partials.Channel, Partials.Message, Partials.User, Partials.GuildMember],
-    // Messages are the only cache that grows with activity (by default up to 200 per channel, kept forever), and
-    // nothing in ARCHON reads old messages (no messageDelete/messageUpdate logs, no messages.cache): keep a few
-    // recent ones per channel and drop any older than 15 minutes. Members, roles and channels keep the defaults.
-    makeCache: Options.cacheWithLimits({ ...Options.DefaultMakeCacheSettings, MessageManager: 25 }),
-    sweepers: { ...Options.DefaultSweeperSettings, messages: { interval: 300, lifetime: 900 } },
+    // Messages are the only cache that grows with activity (by default up to 200 per channel, kept forever).
+    // The server log (lib/server-log.js) can only show a deleted or edited message ARCHON still has in memory:
+    // keep the last 100 per channel, for 3 hours. Members, roles and channels keep the defaults.
+    makeCache: Options.cacheWithLimits({ ...Options.DefaultMakeCacheSettings, MessageManager: 100 }),
+    sweepers: { ...Options.DefaultSweeperSettings, messages: { interval: 600, lifetime: 10800 } },
 });
 
 // ================= SECURE EVENT LISTENER DEDUPLICATION (FIX #15) =================
@@ -3873,6 +3875,11 @@ safeOn(Events.GuildRoleDelete, async (role) => { require('./lib/role-cleanup').o
 // the same for channels (and threads used as one): lib/channel-cleanup
 safeOn(Events.ChannelDelete, async (channel) => { require('./lib/channel-cleanup').onDelete(channel, client); });
 safeOn(Events.ThreadDelete, async (thread) => { require('./lib/channel-cleanup').onDelete(thread, client); });
+
+// Server log: deleted and edited messages, bans and kicks done in Discord itself (lib/server-log.js)
+safeOn(Events.MessageDelete, (message) => { require('./lib/server-log').onDelete(message, client); });
+safeOn(Events.MessageUpdate, (before, after) => { require('./lib/server-log').onEdit(before, after, client); });
+safeOn(Events.GuildAuditLogEntryCreate, (entry, guild) => { require('./lib/server-log').onAudit(entry, guild, client); });
 
 // A moderator verified someone by hand in Discord (gave the verified role or took the unverified one): the welcome
 // card that waited for their verification goes out now. afterVerify sends it once at most.

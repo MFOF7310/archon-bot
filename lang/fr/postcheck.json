@@ -42,7 +42,8 @@
     "verify": "vérification",
     "test": "message de test",
     "ticket-log": "transcription de ticket",
-    "tempvoice": "salons vocaux temporaires"
+    "tempvoice": "salons vocaux temporaires",
+    "serverlog": "journal du serveur"
   },
   "alertBtnCheck": "Vérifier à nouveau",
   "alertBtnMute": "Mute 7 jours",

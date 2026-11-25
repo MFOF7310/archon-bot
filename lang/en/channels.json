@@ -40,7 +40,7 @@
   "hint_rules": "Shown to new members on their welcome card. ARCHON only links to it.",
   "hint_general": "Where new members are invited to say hi. ARCHON only links to it.",
   "hint_modlog": "Bans, kicks, warnings, timeouts and verification results are recorded here.",
-  "hint_log": "ARCHON's own alerts (a channel it can't post in, a missing permission) and message clean-ups.",
+  "hint_log": "ARCHON's own alerts (a channel it can't post in, a missing permission), message clean-ups, and what you choose below: deleted or edited messages, bans and kicks done in Discord itself.",
   "hint_ticket": "Closed tickets are saved here as a transcript file.",
   "hint_daily": "Daily reward reminders and birthday wishes.",
   "hint_levelup": "Level-up messages and milestone banners. Without one, ARCHON answers where the member was talking.",
@@ -71,5 +71,13 @@
   "recommended": "recommended",
   "optional_daily": "Empty: /claim works in every channel. Set: /claim only works there.",
   "label_votes": "Votes",
-  "hint_votes": "A small card when a member votes for ARCHON on Top.gg, with a button so others can vote too."
+  "hint_votes": "A small card when a member votes for ARCHON on Top.gg, with a button so others can vote too.",
+  "events_placeholder": "What the server log records",
+  "ev_msg_delete": "Deleted messages",
+  "ev_msg_edit": "Edited messages",
+  "ev_mod_manual": "Bans and kicks done in Discord",
+  "ev_mod_manual_desc": "Goes to the moderation log when there is one",
+  "events_saved": "Saved. The server log now records: {list}",
+  "events_none": "nothing more than ARCHON's alerts",
+  "events_note": "Deleted and edited messages show only when ARCHON still has them in memory (sent less than 3 hours before, and since its last restart)."
 }

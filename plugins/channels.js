@@ -11,6 +11,7 @@ const { t } = require('../lib/i18n');
 const { pickLang } = require('../lib/pick-lang');
 const { icon } = require('../lib/ui/icons');
 const canPost = require('../lib/canPost');
+const serverLog = require('../lib/server-log');
 
 const ACCENT = 0x00B4D8;
 const V2 = MessageFlags.IsComponentsV2;
@@ -119,7 +120,7 @@ function mainView(guild, db, lang, ownerId, notice) {
     return { components: [c] };
 }
 
-function editView(guild, db, lang, ownerId, key, problem) {
+function editView(guild, db, lang, ownerId, key, problem, notice) {
     const slot = BY_KEY[key];
     const saved = readAll(db, guild.id);
     const st = stateOf(guild, slot, saved, lang);
@@ -134,6 +135,7 @@ function editView(guild, db, lang, ownerId, key, problem) {
     if (st.state === 'warn') body += `\n${icon('warn', guild)} ${st.why}`;
     c.addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
     if (problem) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`> ${problem}`));
+    if (notice) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${icon('ok', guild)} ${notice}`));
     const picker = new ChannelSelectMenuBuilder()
         .setCustomId(`chan:pick:${key}:${ownerId}`)
         .setPlaceholder(cut(L('channel_placeholder', lang), 150))
@@ -141,6 +143,19 @@ function editView(guild, db, lang, ownerId, key, problem) {
         .setMinValues(1).setMaxValues(1);
     if (st.id && guild.channels.cache.has(st.id) && saved[slot.col]) picker.setDefaultChannels(st.id);
     c.addActionRowComponents(new ActionRowBuilder().addComponents(picker));
+    // the server log: what it records besides ARCHON's own alerts (lib/server-log.js)
+    if (key === 'log') {
+        const on = serverLog.enabled(db, guild.id);
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${L('events_note', lang)}`));
+        c.addActionRowComponents(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder()
+            .setCustomId(`chan:events:log:${ownerId}`)
+            .setPlaceholder(cut(L('events_placeholder', lang), 150))
+            .setMinValues(0).setMaxValues(serverLog.KINDS.length)
+            .addOptions(serverLog.KINDS.map((k) => ({
+                label: cut(L(`ev_${k}`, lang), 100), value: k, default: on.has(k),
+                description: k === 'mod_manual' ? cut(L('ev_mod_manual_desc', lang), 100) : undefined,
+            })))));
+    }
     c.addActionRowComponents(new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`chan:back:${ownerId}`).setLabel(L('btn_back', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('back', guild)),
         new ButtonBuilder().setCustomId(`chan:clear:${key}:${ownerId}`).setLabel(L('btn_clear', lang)).setStyle(ButtonStyle.Danger).setDisabled(!saved[slot.col])));
@@ -244,6 +259,14 @@ module.exports = {
             return BY_KEY[key] ? update(editView(guild, client.db, lang, ownerId, key)) : deny('expired');
         }
         if (action === 'back') return update(mainView(guild, client.db, lang, ownerId));
+        if (action === 'events') {
+            let list;
+            try { list = serverLog.setEnabled(client.db, guild.id, interaction.values || []); }
+            catch (e) { console.error('[CHANNELS] log events:', e.message); return update(editView(guild, client.db, lang, ownerId, 'log', L('save_failed', lang))); }
+            console.log(`[CHANNELS] guild=${guild.id} by=${interaction.user.id} log_events=${list.join(',') || 'none'}`);
+            const names = list.length ? list.map((k) => L(`ev_${k}`, lang)).join(', ') : L('events_none', lang);
+            return update(editView(guild, client.db, lang, ownerId, 'log', null, L('events_saved', lang, { list: names })));
+        }
         const key = parts[2];
         if (!BY_KEY[key]) return deny('expired');
         if (action === 'pick' || action === 'clear') {
