@@ -94,7 +94,7 @@ function suggestFor(guild, step) {
 // ── the screens ──────────────────────────────────────
 // The first screen: where this server stands (lib/setup-checklist.js, the same list Lydia reads), the wizard's
 // Start button, and shortcuts to the panels that fix the rest. Opener id in the shortcuts: only they can drive them.
-function welcomeScreen(lang, guild, client, userId = '0', sid = 'preview') {
+function welcomeScreen(lang, guild, client, userId = '0', sid = 'preview', pub = false) {
     const { card } = require('../lib/games/v2');
     const C = (k, v) => T(lang, `check.${k}`, v);
     let res = { items: [], doneCount: 0, total: 0, coreLeft: 0 };
@@ -126,7 +126,9 @@ function welcomeScreen(lang, guild, client, userId = '0', sid = 'preview') {
         : C('wizardAllSet', { total: STEPS.length, redo: T(lang, 'redo') });
     items.push({ rule: true }, { text: hint });
     items.push({ row: new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(cid(sid, 'start')).setLabel(T(lang, left ? 'start' : 'redo')).setStyle(left ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(icon(left ? 'next' : 'refresh', guild))) });
+        new ButtonBuilder().setCustomId(cid(sid, 'start')).setLabel(T(lang, left ? 'start' : 'redo')).setStyle(left ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(icon(left ? 'next' : 'refresh', guild)),
+        // the prefix command's card is public and stays in the channel: it can be closed (/setup's is private: Discord's Dismiss)
+        ...(pub ? [new ButtonBuilder().setCustomId(cid(sid, 'cancel')).setLabel(T(lang, 'close')).setStyle(ButtonStyle.Secondary)] : [])) });
     // the panels stay one tap away; the ones with something left to fix are blue, so the eye goes there first
     const toFix = new Set(res.items.filter((it) => !it.done).map((it) => it.panel));
     const style = (panel) => (toFix.has(panel) ? ButtonStyle.Primary : ButtonStyle.Secondary);
@@ -150,6 +152,43 @@ function exportFile(client, guild) {
     const clean = Object.fromEntries(Object.entries(settings).filter(([, v]) => v !== null && v !== ''));
     const body = { server: { id: guild.id, name: guild.name }, exportedAt: new Date().toISOString(), settings: clean, commands };
     return { attachment: Buffer.from(JSON.stringify(body, null, 2), 'utf-8'), name: `archon-settings-${guild.id}.json` };
+}
+
+// ── restore: put back a copy made with Export, on the same server only ──
+// Guard rails: the file must come from this server; only columns that exist are written (never guild_id);
+// a channel or role that no longer exists is left out and named; nothing is written before the admin confirms.
+const SNOW = /^\d{17,20}$/;
+async function readRestore(client, guild, attachment) {
+    if (!attachment) return { error: 'restore_noFile' };
+    if (attachment.size > 200_000 || !/\.json$/i.test(attachment.name || '')) return { error: 'restore_badFile' };
+    let body;
+    try { const res = await fetch(attachment.url); body = JSON.parse(await res.text()); } catch { return { error: 'restore_badFile' }; }
+    if (!body || typeof body.settings !== 'object' || !body.server) return { error: 'restore_badFile' };
+    if (String(body.server.id) !== guild.id) return { error: 'restore_otherServer', vars: { name: safeName(body.server.name || '?') } };
+    let cols = [];
+    try { cols = client.db.prepare('PRAGMA table_info(server_settings)').all().map((c) => c.name); } catch { return { error: 'restore_failed' }; }
+    const apply = {}, gone = [];
+    for (const [k, v] of Object.entries(body.settings)) {
+        if (!cols.includes(k) || ['guild_id', 'updated_at'].includes(k)) continue;
+        if (v !== null && !['string', 'number'].includes(typeof v)) continue;
+        if (typeof v === 'string' && SNOW.test(v) && /(channel|role|category)/i.test(k) && !guild.channels.cache.has(v) && !guild.roles.cache.has(v)) { gone.push(k); continue; }
+        apply[k] = v;
+    }
+    if (!Object.keys(apply).length) return { error: 'restore_empty' };
+    return { apply, gone, exportedAt: body.exportedAt || null };
+}
+
+function restoreScreen(lang, guild, r, sid) {
+    const { card } = require('../lib/games/v2');
+    const C = (k, v) => T(lang, `check.${k}`, v);
+    const when = r.exportedAt ? `<t:${Math.floor(new Date(r.exportedAt).getTime() / 1000)}:f>` : '?';
+    const goneLine = r.gone.length ? `\n${icon('warn', guild)} ${C('restore_gone', { n: r.gone.length, list: r.gone.slice(0, 8).map((k) => `\`${k}\``).join(', ') })}` : '';
+    return card(AMBER, [
+        { text: `-# ARCHON · ${T(lang, 'title')}\n## ${icon('refresh', guild)} ${C('restore_title', { server: safeName(guild.name) })}\n${C('restore_body', { n: Object.keys(r.apply).length, when })}${goneLine}\n-# ${C('restore_note')}` },
+        { row: new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId(cid(sid, 'restore_ok')).setLabel(C('restore_yes')).setStyle(ButtonStyle.Success).setEmoji(icon('ok', guild)),
+            new ButtonBuilder().setCustomId(cid(sid, 'restore_no')).setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary)) },
+    ]);
 }
 
 // Asks before wiping: what goes, what stays, and the advice to export first
@@ -233,7 +272,9 @@ module.exports = {
         .setName('setup')
         .setDescription('🧙‍♂️ Launch the interactive server setup wizard')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild | PermissionFlagsBits.ManageRoles)
-        .setDescriptionLocalizations({ fr: '🧙‍♂️ Lancer l\'assistant de configuration interactif' }),
+        .setDescriptionLocalizations({ fr: '🧙‍♂️ Lancer l\'assistant de configuration interactif' })
+        .addAttachmentOption((o) => o.setName('restore').setDescription('A settings file made with Export, to put this server\'s settings back').setRequired(false)
+            .setDescriptionLocalizations({ fr: 'Un fichier fait avec Exporter, pour remettre les réglages de ce serveur' })),
 
     // ── slash command ──
     async execute(interaction, client) {
@@ -241,6 +282,8 @@ module.exports = {
         if (!interaction.guild) return interaction.reply({ content: T(lang, 'guildOnly'), flags: 1 << 6 }).catch(() => {});
         // the wizard picks channels and the member role: Manage Server + Manage Roles (lib/access), like /roles
         { const _no = require('../lib/access').deny(interaction.member, 'roles', lang); if (_no) return interaction.reply({ content: _no, flags: 1 << 6, allowedMentions: { parse: [] } }).catch(() => {}); }
+        const file = interaction.options.getAttachment?.('restore');
+        if (file) return module.exports.startRestore(interaction, client, lang, file, true);
         await module.exports.startWizard(interaction, client, lang, true);
     },
 
@@ -249,16 +292,33 @@ module.exports = {
         const lang = pickLang(client, message.guild?.id, null);
         if (!message.guild) return message.reply(T(lang, 'guildOnly')).catch(() => {});
         { const _no = require('../lib/access').deny(message.member, 'roles', lang); if (_no) return message.reply({ content: _no, allowedMentions: { parse: [] } }).catch(() => {}); }
+        if (String(args?.[0] || '').toLowerCase() === 'restore') return module.exports.startRestore(message, client, lang, message.attachments?.first?.(), false);
         await module.exports.startWizard(message, client, lang, false);
+    },
+
+    // Restore: Administrator (or the owner) only, like Reset; checks the file, then asks before writing anything
+    async startRestore(context, client, lang, file, isSlash) {
+        const guild = context.guild;
+        const member = context.member;
+        const answer = (content) => (isSlash ? context.reply({ content, flags: 1 << 6, allowedMentions: { parse: [] } }) : context.reply({ content, allowedMentions: { parse: [] } })).catch(() => {});
+        const _no = require('../lib/access').deny(member, 'reset', lang);
+        if (_no) return answer(_no);
+        if (isSlash) await context.deferReply({ flags: 1 << 6 }).catch(() => {});
+        const r = await readRestore(client, guild, file);
+        const send = (p) => (isSlash ? context.editReply(p) : context.reply(p)).catch(() => {});
+        if (r.error) return send({ content: T(lang, `check.${r.error}`, r.vars || {}), allowedMentions: { parse: [] } });
+        const userId = isSlash ? context.user.id : context.author.id;
+        const sid = components.create(client.db, { kind: 'setup', userId, guildId: guild.id, idleMs: IDLE_MS, data: { lang, idx: -1, state: {}, pub: !isSlash, restore: r } });
+        return send(restoreScreen(lang, guild, r, sid));
     },
 
     // ── the wizard: its state lives in a stored session (lib/components.js), so a restart doesn't kill the buttons ──
     async startWizard(context, client, lang, isSlash) {
         const guild = context.guild;
         const userId = isSlash ? context.user.id : context.author.id;
-        const sid = components.create(client.db, { kind: 'setup', userId, guildId: guild.id, idleMs: IDLE_MS, data: { lang, idx: -1, state: {} } });
+        const sid = components.create(client.db, { kind: 'setup', userId, guildId: guild.id, idleMs: IDLE_MS, data: { lang, idx: -1, state: {}, pub: !isSlash } });
         try {
-            const first = welcomeScreen(lang, guild, client, userId, sid);
+            const first = welcomeScreen(lang, guild, client, userId, sid, !isSlash);
             if (isSlash) await context.reply({ ...first, flags: first.flags | (1 << 6) }); else await context.reply(first);
         } catch (e) { console.error('[SETUP] could not open the wizard:', e.message); }
     },
@@ -306,13 +366,33 @@ module.exports = {
             if (_no) return i.reply({ content: _no, flags: 1 << 6, allowedMentions: { parse: [] } }).catch(() => {});
         }
         if (action === 'reset' && idx === -1) return i.update(resetScreen(lang, guild, sid)).catch(() => {});
-        if (action === 'reset_no' && idx === -1) return i.update(welcomeScreen(lang, guild, client, userId, sid)).catch(() => {});
+        if (action === 'restore_no') { end(); return i.update(plainScreen(lang, 'restoreCancelled')).catch(() => {}); }
+        if (action === 'restore_ok' && session.data.restore) {
+            const _no = require('../lib/access').deny(i.member, 'reset', lang);
+            if (_no) return i.reply({ content: _no, flags: 1 << 6, allowedMentions: { parse: [] } }).catch(() => {});
+            const { apply } = session.data.restore;
+            let done = 0;
+            try {
+                client.db.prepare('INSERT OR IGNORE INTO server_settings (guild_id) VALUES (?)').run(guild.id);
+                const cols = client.db.prepare('PRAGMA table_info(server_settings)').all().map((c) => c.name);
+                for (const [k, v] of Object.entries(apply)) {
+                    if (!cols.includes(k) || k === 'guild_id') continue;
+                    client.db.prepare(`UPDATE server_settings SET ${k} = ? WHERE guild_id = ?`).run(v, guild.id);
+                    done++;
+                }
+            } catch (e) { console.error('[SETUP] restore:', e.message); }
+            try { client.settings?.delete?.(guild.id); client.invalidateGuildCache?.(guild.id); } catch { /* reloads on next read */ }
+            console.log(`[SETUP] settings restored for ${guild.id} by ${i.user.id}: ${done} values`);
+            save({ lang, idx: -1, state: {}, pub: !!session.data.pub });   // back to the overview, whose buttons keep working
+            return i.update(welcomeScreen(lang, guild, client, userId, sid, !!session.data.pub)).then(() => i.followUp({ content: T(lang, 'check.restore_done', { n: done }), flags: 1 << 6 })).catch(() => {});
+        }
+        if (action === 'reset_no' && idx === -1) return i.update(welcomeScreen(lang, guild, client, userId, sid, !!session.data.pub)).catch(() => {});
         if (action === 'reset_ok' && idx === -1) {
             try { client.db.prepare('DELETE FROM server_settings WHERE guild_id = ?').run(guild.id); } catch (e) { console.error('[SETUP] reset:', e.message); }
             try { client.db.prepare('DELETE FROM server_command_settings WHERE guild_id = ?').run(guild.id); } catch { /* no table */ }
             try { client.settings?.delete?.(guild.id); client.invalidateGuildCache?.(guild.id); } catch { /* reloads on next read */ }
             console.log(`[SETUP] settings reset for ${guild.id} by ${i.user.id}`);
-            return i.update(welcomeScreen(lang, guild, client, userId, sid)).then(() => i.followUp({ content: T(lang, 'check.reset_done'), flags: 1 << 6 })).catch(() => {});
+            return i.update(welcomeScreen(lang, guild, client, userId, sid, !!session.data.pub)).then(() => i.followUp({ content: T(lang, 'check.reset_done'), flags: 1 << 6 })).catch(() => {});
         }
         if (action === 'skip' && idx >= 0) return advance();
         if ((action === 'pick' || action === 'use') && idx >= 0) {
@@ -329,7 +409,7 @@ module.exports = {
             return advance();
         }
         // a click that doesn't fit the current screen (an old copy of the card): show where the wizard is now
-        if (idx === -1) return i.update(welcomeScreen(lang, guild, client, userId, sid)).catch(() => {});
+        if (idx === -1) return i.update(welcomeScreen(lang, guild, client, userId, sid, !!session.data.pub)).catch(() => {});
         return i.update(questionScreen(lang, guild, idx, null, undefined, sid, ...at())).catch(() => {});
     },
 
