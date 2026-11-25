@@ -61,7 +61,7 @@ async function addWarning(client, guild, actor, user, reason, lang, ctx) {
     const caseId = M.record(db, { guildId: guild.id, userId: user.id, moderatorId: actor.id, action: 'warn', reason, warningId: id });
     const count = activeCount(db, guild.id, user.id);
     const { max } = limits(db, guild.id);
-    const sent = await M.dm(user, M.card({ look: 'warn', title: M.T('warn_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_reason', lang), M.safe(reason)], [M.T('l_warnings', lang), `${count} / ${max}`]], ctx }));
+    const sent = await M.dm(user, require('../lib/appeals').attach(M.card({ look: 'warn', title: M.T('warn_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_reason', lang), M.safe(reason)], [M.T('l_warnings', lang), `${count} / ${max}`]], ctx }), guild.id, caseId, lang));
     const auto = await autoAction(client, guild, member, count, lang, ctx);
     const lines = [
         [M.T('l_member', lang), M.who(user)],

@@ -59,7 +59,7 @@ async function doBan(client, guild, actor, user, reason, deleteSeconds, lang, ct
     const db = client.db;
     const caseId = M.record(db, { guildId: guild.id, userId: user.id, moderatorId: actor.id, action: 'ban', reason });
     // The message has to go out before the ban: afterwards ARCHON shares no server with them
-    const sent = await M.dm(user, M.card({ look: 'ban', title: M.T('ban_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_reason', lang), M.safe(reason)]], ctx }));
+    const sent = await M.dm(user, require('../lib/appeals').attach(M.card({ look: 'ban', title: M.T('ban_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_reason', lang), M.safe(reason)]], ctx }), guild.id, caseId, lang));
     await guild.members.ban(user.id, { reason: M.auditReason(reason, actor), deleteMessageSeconds: deleteSeconds });
     const lines = [
         [M.T('l_member', lang), M.who(user)],

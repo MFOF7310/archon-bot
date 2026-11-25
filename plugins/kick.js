@@ -10,7 +10,7 @@ async function doKick(client, guild, actor, member, reason, lang, ctx) {
 
     const caseId = M.record(client.db, { guildId: guild.id, userId: member.id, moderatorId: actor.id, action: 'kick', reason });
     // Sent first: once kicked, ARCHON may share no server with them
-    const sent = await M.dm(member.user, M.card({ look: 'kick', title: M.T('kick_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_reason', lang), M.safe(reason)]], ctx }));
+    const sent = await M.dm(member.user, require('../lib/appeals').attach(M.card({ look: 'kick', title: M.T('kick_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_reason', lang), M.safe(reason)]], ctx }), guild.id, caseId, lang));
     try {
         await member.kick(M.auditReason(reason, actor));
     } catch (e) {

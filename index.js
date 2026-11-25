@@ -3588,6 +3588,10 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return require('./plugins/music.js').handlePanelButton(interaction, client)
             .catch(e => console.error('[MUSIC BUTTON]', e.message));
     }
+    // Appeals for sanctions given with ARCHON's commands (lib/appeals.js): the member's button and form, the staff's decision
+    if ((interaction.isButton() || interaction.isModalSubmit()) && interaction.customId.startsWith('mapl:')) {
+        return require('./lib/appeals').handle(interaction, client).catch(e => console.error('[APPEALS]', e.message));
+    }
     // The "track not available" card: open the library or shuffle it (answers the person who clicked)
     if (interaction.isButton() && interaction.customId.startsWith('mlf_')) {
         return require('./plugins/music.js').handleFallbackButton(interaction, client)

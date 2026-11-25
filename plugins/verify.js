@@ -148,26 +148,11 @@ async function panelLink(guild, db, lang) {
     } catch { return null; }
 }
 
-// A lasting invite to come back after a kick: the saved one if it still works, else a new one, else the vanity link
+// A lasting invite to come back after a kick (lib/rejoin-invite: the saved one, else one made once, else the vanity link)
 async function rejoinRow(db, guild, lang) {
-    try {
-        let url = db.prepare('SELECT server_invite FROM server_settings WHERE guild_id = ?').get(guild.id)?.server_invite || null;
-        if (url && !await guild.client.fetchInvite(url).catch(() => null)) url = null;
-        if (!url) {
-            const me = guild.members.me || await guild.members.fetchMe().catch(() => null);
-            const channel = me && (guild.systemChannel || guild.channels.cache.find((c) => c.type === 0 && c.permissionsFor(me)?.has('CreateInstantInvite')));
-            if (channel && channel.permissionsFor(me)?.has('CreateInstantInvite')) {
-                const invite = await channel.createInvite({ maxAge: 0, maxUses: 0, unique: false, reason: 'Verification rejoin' }).catch(() => null);
-                if (invite) {
-                    url = invite.url;
-                    try { db.prepare('UPDATE server_settings SET server_invite = ? WHERE guild_id = ?').run(url, guild.id); } catch { /* kept for this time only */ }
-                }
-            }
-        }
-        if (!url && guild.vanityURLCode) url = `https://discord.gg/${guild.vanityURLCode}`;
-        if (!url) return null;
-        return new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel(T(lang, 'btnRejoin')).setURL(url).setEmoji(icon('ch_welcome')));
-    } catch { return null; }
+    const url = await require('../lib/rejoin-invite').rejoinUrl(db, guild);
+    if (!url) return null;
+    return new ActionRowBuilder().addComponents(new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel(T(lang, 'btnRejoin')).setURL(url).setEmoji(icon('ch_welcome')));
 }
 
 // ─── letting a member in, or out ─────────────────────────────────────────

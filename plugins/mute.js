@@ -24,7 +24,7 @@ async function doMute(client, guild, actor, member, ms, reason, lang, ctx) {
     }
     const end = Math.floor((Date.now() + ms) / 1000);
     const caseId = M.record(client.db, { guildId: guild.id, userId: member.id, moderatorId: actor.id, action: 'mute', reason: `${reason} (${M.formatDuration(ms, 'en')})` });
-    const sent = await M.dm(member.user, M.card({ look: 'mute', title: M.T('mute_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_until', lang), `<t:${end}:f>`], [M.T('l_reason', lang), M.safe(reason)]], ctx }));
+    const sent = await M.dm(member.user, require('../lib/appeals').attach(M.card({ look: 'mute', title: M.T('mute_dm_title', lang, { server: M.safe(guild.name) }), lines: [[M.T('l_until', lang), `<t:${end}:f>`], [M.T('l_reason', lang), M.safe(reason)]], ctx }), guild.id, caseId, lang));
     const lines = [
         [M.T('l_member', lang), M.who(member.user)],
         [M.T('l_moderator', lang), `<@${actor.id}>`],
