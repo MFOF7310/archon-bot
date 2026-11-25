@@ -143,7 +143,6 @@ make ic_video movie
 
 # Every new icon goes to its category in config/emojis.js
 node scripts/emojis-tidy.js
-echo "Done. Now run: pm2 restart Architect-CG223"
 
 # /image themes
 make ic_shuffle arrows-shuffle
@@ -158,3 +157,10 @@ make ic_city building-skyscraper
 
 # Lydia's memory card and DM reaction
 make ic_inbox mailbox
+
+# vote leaderboard podium (gold, silver, bronze)
+make ic_rank1 medal "#E6A817"
+make ic_rank2 medal "#B4B2A9"
+make ic_rank3 medal "#CD7F32"
+
+echo "Done. Now run: pm2 restart Architect-CG223"

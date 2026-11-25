@@ -44,7 +44,7 @@ const T = {
   statsTitle: 'Vote stats', votesMonth: '{votes} · {month} this month', here: 'On this server', allServers: 'All servers: {votes} · {month} this month', monthNote: 'The monthly count goes back to 0 on the 1st (UTC), like on Top.gg.', credits: '{n} earned',
   rank: 'Rank **#{n}** on this server', unranked: 'Not ranked yet',
   topTitle: 'Top voters', topEmpty: 'Nobody has voted here yet.', topEmptyMonth: 'Nobody has voted here this month yet.',
-  periodMonth: 'This month', periodAll: 'All time', youRank: '**{name}**: #{rank} · {votes}', youGap: '{n} more to pass #{rank}', youLead: 'Top of the board', youUnranked: "**{name}** isn't on the board yet. One vote is enough to join.",
+  periodMonth: 'This month', periodAll: 'All time', youRank: '**{name}**: #{rank} · {votes}', youGap: '{n} more votes to pass #{rank}', youLead: 'Top of the board', youUnranked: "**{name}** isn't on the board yet. One vote is enough to join.",
   waitTitle: 'Your next vote opens {when}', waitLeft: 'Time left: **{left}**', waitAt: 'You can vote again on {full}.',
   waitLive: 'The countdown updates by itself in Discord.', hm: '{h} h {m} min', mOnly: '{m} min', readyNow: 'You can vote now',
   statusTitle: 'Vote system', statusMode: 'Mode: **{mode}**',
@@ -74,7 +74,7 @@ const T = {
   statsTitle: 'Statistiques de vote', votesMonth: '{votes} · {month} ce mois-ci', here: 'Sur ce serveur', allServers: 'Tous serveurs : {votes} · {month} ce mois-ci', monthNote: 'Le compteur du mois repart à 0 le 1er (UTC), comme sur Top.gg.', credits: '{n} gagnés',
   rank: 'Rang **#{n}** sur ce serveur', unranked: 'Pas encore classé',
   topTitle: 'Meilleurs votants', topEmpty: "Personne n'a encore voté ici.", topEmptyMonth: "Personne n'a encore voté ici ce mois-ci.",
-  periodMonth: 'Ce mois-ci', periodAll: 'Depuis toujours', youRank: '**{name}** : #{rank} · {votes}', youGap: 'encore {n} pour passer #{rank}', youLead: 'En tête du classement', youUnranked: "**{name}** n'est pas encore classé. Un seul vote suffit pour y entrer.",
+  periodMonth: 'Ce mois-ci', periodAll: 'Depuis toujours', youRank: '**{name}** : #{rank} · {votes}', youGap: 'Encore {n} pour passer #{rank}', youLead: 'En tête du classement', youUnranked: "**{name}** n'est pas encore classé. Un seul vote suffit pour y entrer.",
   waitTitle: 'Ton prochain vote ouvre {when}', waitLeft: 'Temps restant : **{left}**', waitAt: 'Tu pourras voter de nouveau : {full}.',
   waitLive: 'Le compte à rebours se met à jour tout seul dans Discord.', hm: '{h} h {m} min', mOnly: '{m} min', readyNow: 'Tu peux voter maintenant',
   statusTitle: 'Système de vote', statusMode: 'Mode : **{mode}**',
@@ -391,7 +391,8 @@ async function topCard(client, db, gid, lang, where, guildName, opts = {}) {
     const line = (i) => {
         const streak = streaks.get(rows[i].user_id) || 0;
         const tail = `${amount(rows[i].votes, 'vote', lang)}${streak > 0 ? ` · ${I('streak')} ${amount(streak, 'day', lang)}` : ''}`;
-        return i < 3 ? `${I('rank' + (i + 1))} **${nameAt(i)}** · ${tail}` : `-# \`#${i + 1}\` ${nameAt(i)} · ${tail}`;
+        // podium: name, then votes and streak in small type under it; #4 and below on one line each
+        return i < 3 ? `${I('rank' + (i + 1))} **${nameAt(i)}**\n-# ${tail}` : `\`#${i + 1}\` ${nameAt(i)} · ${tail}`;
     };
 
     const head = `### ${I('trophy')} ${t.topTitle}\n-# ${guildName ? `${esc(guildName)} · ` : ''}${period === 'month' ? t.periodMonth : t.periodAll}`;
@@ -399,7 +400,7 @@ async function topCard(client, db, gid, lang, where, guildName, opts = {}) {
     const items = [avatar ? { thumbnail: [head, avatar] } : { text: head }, { rule: true }];
     if (!rows.length) items.push({ text: period === 'month' ? t.topEmptyMonth : t.topEmpty });
     else {
-        items.push({ text: rows.slice(0, 3).map((_, i) => line(i)).join('\n') });
+        rows.slice(0, 3).forEach((_, i) => items.push({ text: line(i) }));   // one block each: Discord spaces them
         if (rows.length > 3) items.push({ text: rows.slice(3).map((_, i) => line(i + 3)).join('\n') });
     }
 
@@ -412,7 +413,7 @@ async function topCard(client, db, gid, lang, where, guildName, opts = {}) {
         if (k < 0) you = fill(t.youUnranked, { name });
         else {
             you = fill(t.youRank, { name, rank: k + 1, votes: amount(all[k].votes, 'vote', lang) });
-            you += ' · ' + (k === 0 ? t.youLead : fill(t.youGap, { n: all[k - 1].votes - all[k].votes + 1, rank: k }));
+            you += '\n-# ' + (k === 0 ? t.youLead : fill(t.youGap, { n: all[k - 1].votes - all[k].votes + 1, rank: k }));
         }
         items.push({ rule: true }, { text: you });
     }
