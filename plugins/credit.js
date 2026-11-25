@@ -59,16 +59,25 @@ function balanceCard(client, guild, viewer, target, targetMember, lang) {
     const items = [{ thumbnail: [head, target.displayAvatarURL({ extension: 'png', size: 128 })] }];
 
     if (own) {
+        // Recent activity: transfers and vote rewards together, newest first, 2 lines
+        // (transfers.timestamp is in ms, vote_claims.claim_date in seconds)
         let moves = [];
         try {
             moves = client.db.prepare('SELECT sender_id, receiver_id, amount, timestamp FROM transfers WHERE guild_id = ? AND (sender_id = ? OR receiver_id = ?) ORDER BY timestamp DESC LIMIT 2')
-                .all(guild.id, target.id, target.id);
+                .all(guild.id, target.id, target.id).map((m) => ({ ...m, at: Math.floor(m.timestamp / 1000) }));
         } catch { moves = []; }
+        try {
+            const votes = client.db.prepare('SELECT reward, claim_date FROM vote_claims WHERE guild_id = ? AND user_id = ? AND reward > 0 ORDER BY claim_date DESC LIMIT 2')
+                .all(guild.id, target.id).map((v) => ({ vote: true, amount: v.reward, at: v.claim_date }));
+            moves = moves.concat(votes).sort((a, b) => b.at - a.at).slice(0, 2);
+        } catch { /* no votes table yet */ }
         if (moves.length) {
             items.push({ rule: true });
             items.push({ text: `-# ${w.t('moves')}\n` + moves.map((m) => {
+                const when = `<t:${m.at}:R>`;
+                if (m.vote) return w.t('moveVote', { amount: w.money(m.amount), when });
                 const out = m.sender_id === target.id;
-                return w.t(out ? 'moveOut' : 'moveIn', { amount: w.money(m.amount), user: `<@${out ? m.receiver_id : m.sender_id}>`, when: `<t:${Math.floor(m.timestamp / 1000)}:R>` });
+                return w.t(out ? 'moveOut' : 'moveIn', { amount: w.money(m.amount), user: `<@${out ? m.receiver_id : m.sender_id}>`, when });
             }).join('\n') });
         }
         items.push({ row: new ActionRowBuilder().addComponents(
