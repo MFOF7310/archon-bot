@@ -166,4 +166,7 @@ make ic_rank3 medal "#CD7F32"
 # server log: channels it does not follow
 make ic_eye_off eye-off
 
+# /roles: a setting left empty on purpose (grey, seen on light and dark themes)
+make ic_minus minus "#888780"
+
 echo "Done. Now run: pm2 restart Architect-CG223"

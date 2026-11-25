@@ -91,7 +91,7 @@ async function createEconomyRoles(guild, db, lang, actor) {
 }
 
 // How a slot reads in the overview, with its state icon (the same marks as /postcheck and /channels):
-// ok · no (deleted, or ARCHON can't give it) · warn (missing from a series the server uses) · dot_off (not set, optional)
+// ok · no (deleted, or ARCHON can't give it) · warn (missing from a series the server uses) · unset (not set, optional)
 const SERIES_GROUPS = new Set(['daily', 'levels']);
 function slotState(guild, slot, saved) {
     let value = saved[slot.key];
@@ -106,7 +106,7 @@ function slotState(guild, slot, saved) {
     const err = R.checkRole(guild, role, slot.profile, null);
     return { state: err ? 'unsafe' : 'ok', role, err, fromEnv };
 }
-const MARK = { ok: 'ok', gone: 'no', unsafe: 'no', gap: 'warn', unset: 'dot_off' };
+const MARK = { ok: 'ok', gone: 'no', unsafe: 'no', gap: 'warn', unset: 'unset' };
 function slotLine(guild, slot, saved, lang) {
     const st = slotState(guild, slot, saved);
     const mark = icon(MARK[st.state], guild);
@@ -118,8 +118,10 @@ function slotLine(guild, slot, saved, lang) {
     const warn = st.err ? `\n-# ${t('roles.status_unsafe_line', lang, { reason: R.reasonText(st.err, lang) })}` : '';
     return `${mark} ${name} · <@&${st.role.id}>${env}${warn}`;
 }
-// "2 of 4" next to a group's title, once at least one of its roles is set
+// "4 of 5" next to a series' title (daily, levels), once one of its roles is set. Other groups have no count:
+// their roles are each optional, so "1 of 2" would read as a problem when it isn't one.
 function groupCount(guild, group, saved, lang) {
+    if (!SERIES_GROUPS.has(group)) return '';
     const slots = R.SLOTS.filter((s) => s.group === group);
     const states = slots.map((s) => slotState(guild, s, saved).state);
     if (states.every((x) => x === 'unset')) return '';
