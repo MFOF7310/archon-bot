@@ -147,5 +147,11 @@
   "lowRoleFix": "Pour corriger : Paramètres du serveur → Rôles, puis fais glisser **{bot}** au-dessus des rôles que je dois donner (par exemple {roles}).",
   "titles": {
     "tempvoice": "Je ne peux pas supprimer les salons vocaux temporaires vides"
-  }
+  },
+  "countIn": "{ok} sur {total} en place",
+  "sumChannelsOk": "Les {n} salons fonctionnent",
+  "sumPermsOk": "Les {n} permissions sont en place",
+  "sumRolesOk": "Les {n} rôles sont en place",
+  "fixChannels": "Change un salon avec {cmd}",
+  "fixRoles": "Choisis un autre rôle avec {cmd}"
 }

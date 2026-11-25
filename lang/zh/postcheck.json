@@ -147,5 +147,11 @@
   "lowRoleFix": "修复方法：服务器设置 → 身份组，然后把 **{bot}** 拖到我需要分配的身份组之上（例如 {roles}）。",
   "titles": {
     "tempvoice": "我无法删除空的临时语音频道"
-  }
+  },
+  "countIn": "{total} 项中 {ok} 项正常",
+  "sumChannelsOk": "全部 {n} 个频道正常",
+  "sumPermsOk": "全部 {n} 项权限已就绪",
+  "sumRolesOk": "全部 {n} 个身份组已就绪",
+  "fixChannels": "用 {cmd} 更换频道",
+  "fixRoles": "用 {cmd} 选择其他身份组"
 }

@@ -89,18 +89,27 @@ function allChannels(guild, db, lang, hint, where) {
     const bot = botName(guild.members.me);
     const at = (id) => (id ? `<#${id}>` : T('alertNoChannel', lang));
 
-    const chLines = h.channels.map((c) => {
+    // A health check shows what's wrong: a section that's all fine is one line, a problem is named with how to fix it.
+    // (/channels and /roles list everything, set or not.)
+    const cmd = (name) => slash(guild.client || global.client, name, { guild });
+    const chBad = h.channels.filter((c) => c.status !== 'ok' || c.soft?.length).map((c) => {
         const name = `**${label(c.setting, lang)}**${c.detail ? ` (${c.detail})` : ''} · ${at(c.channelId)}`;
         if (c.status !== 'ok') return `${icon('no', where)} ${name} — ${shortWhy(c, lang, bot)}`;
-        if (c.soft?.length) return `${icon('warn', where)} ${name} — ${T('short.soft', lang, { perms: cp.localize(c.soft, lang).join(', ') })}`;
-        return `${icon('ok', where)} ${name}`;
+        return `${icon('warn', where)} ${name} — ${T('short.soft', lang, { perms: cp.localize(c.soft, lang).join(', ') })}`;
     });
-    const permLines = h.permissions.map((p) => `${icon(p.ok ? 'ok' : 'no', where)} **${p.name}** · ${T('neededFor', lang, { feature: T('features.' + p.feature, lang) })}`);
-    const roleLines = h.roles.map((r) => {
-        const name = `**${label(r.setting, lang)}**${r.roleName ? ` · @${r.roleName}` : ''}`;
-        if (r.status === 'ok') return `${icon('ok', where)} ${name}`;
-        return `${icon('no', where)} ${name} — ${r.status === 'above' ? T('roleAbove', lang) : T('roleMissing', lang)}`;
-    });
+    const chLines = !h.channels.length ? [] : chBad.length
+        ? [`-# ${T('countIn', lang, { ok: h.channels.filter((c) => c.status === 'ok').length, total: h.channels.length })}`, ...chBad, `-# ${T('fixChannels', lang, { cmd: cmd('channels') })}`]
+        : [`${icon('ok', where)} ${T('sumChannelsOk', lang, { n: h.channels.length })} · ${cmd('channels')}`];
+    const permBad = h.permissions.filter((p) => !p.ok);
+    const permLines = !h.permissions.length ? [] : permBad.length
+        ? permBad.map((p) => `${icon('no', where)} **${p.name}** · ${T('neededFor', lang, { feature: T('features.' + p.feature, lang) })}`)
+        : [`${icon('ok', where)} ${T('sumPermsOk', lang, { n: h.permissions.length })}`];
+    const roleBad = h.roles.filter((r) => r.status !== 'ok');
+    const roleLines = !h.roles.length ? [] : roleBad.length
+        ? [`-# ${T('countIn', lang, { ok: h.roles.length - roleBad.length, total: h.roles.length })}`,
+            ...roleBad.map((r) => `${icon('no', where)} **${label(r.setting, lang)}**${r.roleName ? ` · @${r.roleName}` : ''} — ${r.status === 'above' ? T('roleAbove', lang) : T('roleMissing', lang)}`),
+            `-# ${T('fixRoles', lang, { cmd: cmd('roles') })}`]
+        : [`${icon('ok', where)} ${T('sumRolesOk', lang, { n: h.roles.length })}`];
     const failLines = (h.failures || []).map((f) => `${icon('no', where)} **${f.label}** · ${at(f.channelId)} · ${T('failureLine', lang, { count: f.count, when: `<t:${Math.floor(f.lastAt / 1000)}:R>` })}`);
 
     const problems = h.summary.problems;
