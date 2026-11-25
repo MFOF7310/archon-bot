@@ -105,5 +105,6 @@
   "dm_no": "non envoyé (MP fermés)",
   "public_note": "Visible dans le salon.",
   "btn_confirm_cancelled": "Annulé",
-  "l_target_user": "Utilisateur"
+  "l_target_user": "Utilisateur",
+  "usage_unban": "Utilisation : `.unban <ID du membre> [raison]` · ou `/unban` en tapant son nom."
 }

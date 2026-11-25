@@ -105,5 +105,6 @@
   "dm_no": "no (DMs closed)",
   "public_note": "Shown to the channel.",
   "btn_confirm_cancelled": "Cancelled",
-  "l_target_user": "User"
+  "l_target_user": "User",
+  "usage_unban": "Usage: `.unban <user id> [reason]` · or `/unban` and type their name."
 }

@@ -119,7 +119,7 @@ function saveInvite(client, guild, link, lang) {
 
 module.exports = {
     name: 'ban',
-    aliases: ['banish', 'permaban', 'hammer', 'bannir', 'unban', 'pardon', 'debannir', 'setinvite', 'getinvite'],
+    aliases: ['banish', 'permaban', 'hammer', 'bannir', 'setinvite', 'getinvite'],   // unban: plugins/unban.js
     description: 'Ban or unban members, and set the invite unbanned members get',
     category: 'MODERATION',
     usage: '.ban @member [reason] | .unban <user id> [reason] | .ban setinvite <link> | .ban getinvite',
@@ -130,43 +130,20 @@ module.exports = {
         .setName('ban')
         .setDescription('Ban or unban members')
         .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
-        .addSubcommand(s => s.setName('ban').setDescription('Ban a member (asks for confirmation)')
-            .addUserOption(o => o.setName('user').setDescription('Who to ban (they don\'t need to be in the server)').setRequired(true))
-            .addStringOption(o => o.setName('reason').setDescription('Why (shown to them and in the audit log)').setMaxLength(400))
-            .addStringOption(o => o.setName('delete_messages').setDescription('Also delete their recent messages')
-                .addChoices({ name: 'None', value: 'none' }, { name: 'Last hour', value: '1h' }, { name: 'Last 24 hours', value: '24h' }, { name: 'Last 7 days', value: '7d' })))
-        .addSubcommand(s => s.setName('unban').setDescription('Unban someone')
-            .addStringOption(o => o.setName('user_id').setDescription('Their user ID').setRequired(true).setMinLength(17).setMaxLength(20))
-            .addStringOption(o => o.setName('reason').setDescription('Why').setMaxLength(400)))
-        .addSubcommand(s => s.setName('setinvite').setDescription('Set the invite unbanned members get to come back')
-            .addStringOption(o => o.setName('invite').setDescription('A discord.gg invite link').setRequired(true)))
-        .addSubcommand(s => s.setName('getinvite').setDescription('See the invite unbanned members get')),
+        // One command, no subcommands (they forced "/ban ban"). Unban is /unban (plugins/unban.js). The link back in is
+        // found or made by ARCHON (lib/rejoin-invite); a fixed one can still be set with .ban setinvite <link>.
+        .addUserOption(o => o.setName('user').setDescription('Who to ban (they don\'t need to be in the server)').setRequired(true))
+        .addStringOption(o => o.setName('reason').setDescription('Why (shown to them and in the audit log)').setMaxLength(400))
+        .addStringOption(o => o.setName('delete_messages').setDescription('Also delete their recent messages')
+            .addChoices({ name: 'None', value: 'none' }, { name: 'Last hour', value: '1h' }, { name: 'Last 24 hours', value: '24h' }, { name: 'Last 7 days', value: '7d' })),
 
     execute: async (interaction, client) => {
         const guild = interaction.guild;
         const lang = M.langFor(client, interaction);
         const actor = await guild.members.fetch(interaction.user.id).catch(() => null);
-        const sub = interaction.options.getSubcommand();
-
-        if (sub === 'getinvite') return M.respond(interaction, { components: [inviteView(client.db, guild, lang, interaction)] }, { ephemeral: true });
         if (!M.hasPerm(actor, PermissionFlagsBits.BanMembers)) return M.fail(interaction, M.T('no_perm', lang, { perm: 'Ban Members' }), lang);
 
-        if (sub === 'setinvite') {
-            const r = saveInvite(client, guild, interaction.options.getString('invite'), lang);
-            if (r.error) return M.fail(interaction, r.error, lang);
-            return M.respond(interaction, { components: [M.card({ look: 'info', title: M.T('invite_title', lang), lines: [[null, M.T('invite_set', lang, { invite: r.invite })]], ctx: interaction })] }, { ephemeral: true });
-        }
-
-        if (sub === 'unban') {
-            const id = String(interaction.options.getString('user_id') || '').replace(/[<@!>]/g, '');
-            if (!M.SNOWFLAKE.test(id)) return M.fail(interaction, M.T('not_banned', lang), lang);
-            await interaction.deferReply();
-            const r = await doUnban(client, guild, actor, id, M.cleanReason(interaction.options.getString('reason'), lang), lang, interaction);
-            if (r.error) return interaction.editReply({ content: r.error, allowedMentions: { parse: [] } });
-            return interaction.editReply({ components: [r.card], flags: M.V2, allowedMentions: { parse: [] } });
-        }
-
-        // ban: check everything, then ask
+        // check everything, then ask
         const user = interaction.options.getUser('user');
         const problem = await precheck(guild, actor, user, lang, interaction);
         if (problem) return M.fail(interaction, problem, lang);
@@ -197,12 +174,6 @@ module.exports = {
         if (!M.SNOWFLAKE.test(id)) return message.reply({ content: M.T('usage_ban', lang), allowedMentions: { parse: [] } }).catch(() => {});
         const reason = M.cleanReason(args.slice(1).join(' '), lang);
 
-        if (['unban', 'pardon', 'debannir'].includes(used)) {
-            const r = await doUnban(client, guild, actor, id, reason, lang, message);
-            if (r.error) return M.fail(message, r.error, lang);
-            return M.respond(message, { components: [r.card] });
-        }
-
         const user = await client.users.fetch(id).catch(() => null);
         if (!user) return M.fail(message, M.T('not_member', lang), lang);
         const problem = await precheck(guild, actor, user, lang, message);
@@ -211,6 +182,8 @@ module.exports = {
         const ask = M.card({ look: 'ban', title: M.T('ban_confirm_title', lang, { user: M.safe(user.username) }), lines: [[null, M.T('ban_confirm_text', lang)], [M.T('l_reason', lang), M.safe(reason)]], avatar: M.avatarOf(user), ctx: message });
         return message.reply({ components: [ask, confirmRow(nonce, actor.id, lang)], flags: M.V2, allowedMentions: { parse: [] } }).catch(() => {});
     },
+
+    _doUnban: (...a) => doUnban(...a),   // plugins/unban.js
 
     // The two confirmation buttons. The moderator's id is in the button; the ban details stay on the bot.
     handleComponent: async (interaction, client) => {

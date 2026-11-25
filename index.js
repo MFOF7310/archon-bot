@@ -1855,7 +1855,7 @@ const MODULE_MAP = {
     leveling:   ['rank','leaderboard','level','xp'],
     tickets:    ['ticket','newticket','closeticket'],
     music:      ['music','play','skip','stop','queue','loop','lyrics','nowplaying','pause','resume','volume'],
-    moderation: ['ban','kick','mute','unmute','warn','warnings','clear','slowmode','purge'],
+    moderation: ['ban','unban','kick','mute','unmute','warn','warnings','clear','slowmode','purge'],
     codm:       ['scrim','scrims','meta','weapon','gun','tier','tierlist','randommeta','codm','pick','arme','build','builds','mybuild','classe','war','wars','clanwar','guerre'],
 };
 const FLAG_MAP = {
