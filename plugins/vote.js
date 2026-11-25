@@ -14,7 +14,6 @@ const { icon } = require('../lib/ui/icons');
 
 // ================= ENGINE IMPORTS =================
 const voteSync = require('./votesync.js');
-const { buildVoteLBCanvas } = require('./vote-lb-canvas.js');
 
 // Same numbers as votesync.processVote / calculateReward
 const COOLDOWN = 43200;          // 12 h between two claimed votes, counted over every server
@@ -44,7 +43,8 @@ const T = {
   checkFail: "I can't check your vote right now. Try again in a moment.", processFail: "Your vote couldn't be saved. Try again later.",
   statsTitle: 'Vote stats', votesMonth: '{votes} · {month} this month', here: 'On this server', allServers: 'All servers: {votes} · {month} this month', monthNote: 'The monthly count goes back to 0 on the 1st (UTC), like on Top.gg.', credits: '{n} earned',
   rank: 'Rank **#{n}** on this server', unranked: 'Not ranked yet',
-  topTitle: 'Top voters', topEmpty: 'Nobody has voted here yet.',
+  topTitle: 'Top voters', topEmpty: 'Nobody has voted here yet.', topEmptyMonth: 'Nobody has voted here this month yet.',
+  periodMonth: 'This month', periodAll: 'All time', youRank: '**{name}**: #{rank} · {votes}', youGap: '{n} more to pass #{rank}', youLead: 'Top of the board', youUnranked: "**{name}** isn't on the board yet. One vote is enough to join.",
   waitTitle: 'Your next vote opens {when}', waitLeft: 'Time left: **{left}**', waitAt: 'You can vote again on {full}.',
   waitLive: 'The countdown updates by itself in Discord.', hm: '{h} h {m} min', mOnly: '{m} min', readyNow: 'You can vote now',
   statusTitle: 'Vote system', statusMode: 'Mode: **{mode}**',
@@ -73,7 +73,8 @@ const T = {
   checkFail: "Je n'arrive pas à vérifier ton vote pour l'instant. Réessaie dans un moment.", processFail: "Ton vote n'a pas pu être enregistré. Réessaie plus tard.",
   statsTitle: 'Statistiques de vote', votesMonth: '{votes} · {month} ce mois-ci', here: 'Sur ce serveur', allServers: 'Tous serveurs : {votes} · {month} ce mois-ci', monthNote: 'Le compteur du mois repart à 0 le 1er (UTC), comme sur Top.gg.', credits: '{n} gagnés',
   rank: 'Rang **#{n}** sur ce serveur', unranked: 'Pas encore classé',
-  topTitle: 'Meilleurs votants', topEmpty: "Personne n'a encore voté ici.",
+  topTitle: 'Meilleurs votants', topEmpty: "Personne n'a encore voté ici.", topEmptyMonth: "Personne n'a encore voté ici ce mois-ci.",
+  periodMonth: 'Ce mois-ci', periodAll: 'Depuis toujours', youRank: '**{name}** : #{rank} · {votes}', youGap: 'encore {n} pour passer #{rank}', youLead: 'En tête du classement', youUnranked: "**{name}** n'est pas encore classé. Un seul vote suffit pour y entrer.",
   waitTitle: 'Ton prochain vote ouvre {when}', waitLeft: 'Temps restant : **{left}**', waitAt: 'Tu pourras voter de nouveau : {full}.',
   waitLive: 'Le compte à rebours se met à jour tout seul dans Discord.', hm: '{h} h {m} min', mOnly: '{m} min', readyNow: 'Tu peux voter maintenant',
   statusTitle: 'Système de vote', statusMode: 'Mode : **{mode}**',
@@ -102,7 +103,8 @@ const T = {
   checkFail: '暂时无法检查你的投票，请稍后再试。', processFail: '投票没能保存，请稍后再试。',
   statsTitle: '投票统计', votesMonth: '{votes} · 本月 {month} 次', here: '本服务器', allServers: '所有服务器：{votes} · 本月 {month} 次', monthNote: '本月计数在每月 1 日（UTC）清零，与 Top.gg 相同。', credits: '已获得 {n}',
   rank: '本服务器排名 **#{n}**', unranked: '暂未上榜',
-  topTitle: '投票排行榜', topEmpty: '这里还没有人投票。',
+  topTitle: '投票排行榜', topEmpty: '这里还没有人投票。', topEmptyMonth: '本月这里还没有人投票。',
+  periodMonth: '本月', periodAll: '全部', youRank: '**{name}**：第 {rank} 名 · {votes}', youGap: '再投 {n} 次即可超过第 {rank} 名', youLead: '排行榜第一', youUnranked: '**{name}** 还没有上榜。投一票就能上榜。',
   waitTitle: '下次投票：{when}', waitLeft: '剩余时间：**{left}**', waitAt: '可再次投票的时间：{full}。',
   waitLive: '倒计时会在 Discord 中自动更新。', hm: '{h} 小时 {m} 分钟', mOnly: '{m} 分钟', readyNow: '现在就可以投票',
   statusTitle: '投票系统', statusMode: '模式：**{mode}**',
@@ -131,7 +133,8 @@ const T = {
   checkFail: 'لا أستطيع التحقق من تصويتك الآن. حاول بعد قليل.', processFail: 'تعذّر حفظ تصويتك. حاول لاحقًا.',
   statsTitle: 'إحصائيات التصويت', votesMonth: '{votes} · {month} هذا الشهر', here: 'على هذا الخادم', allServers: 'كل الخوادم: {votes} · {month} هذا الشهر', monthNote: 'يعود عدّاد الشهر إلى 0 في اليوم الأول (UTC)، كما في Top.gg.', credits: '{n} مكتسب',
   rank: 'الترتيب **#{n}** في هذا السيرفر', unranked: 'غير مصنف بعد',
-  topTitle: 'أكثر المصوّتين', topEmpty: 'لم يصوّت أحد هنا بعد.',
+  topTitle: 'أكثر المصوّتين', topEmpty: 'لم يصوّت أحد هنا بعد.', topEmptyMonth: 'لم يصوّت أحد هنا هذا الشهر بعد.',
+  periodMonth: 'هذا الشهر', periodAll: 'منذ البداية', youRank: '**{name}**: #{rank} · {votes}', youGap: 'باقي {n} لتتجاوز #{rank}', youLead: 'في صدارة الترتيب', youUnranked: '**{name}** ليس في الترتيب بعد. صوت واحد يكفي للدخول.',
   waitTitle: 'تصويتك التالي {when}', waitLeft: 'الوقت المتبقي: **{left}**', waitAt: 'يمكنك التصويت مجددًا: {full}.',
   waitLive: 'العداد يتحدّث تلقائيًا في ديسكورد.', hm: '{h} س {m} د', mOnly: '{m} د', readyNow: 'يمكنك التصويت الآن',
   statusTitle: 'نظام التصويت', statusMode: 'الوضع: **{mode}**',
@@ -362,32 +365,65 @@ function statsCard(s, rank, lang, where, who, guildName) {
         { text: `-# ${t.monthNote}` }]);
 }
 
-// The leaderboard as text (the image is the canvas below; this is its stand-in and the answer of the slash portal button)
-async function topCard(client, db, gid, lang, where, guildName) {
-    const t = L(lang), I = (k) => icon(k, where);
-    const rows = topRows(db, gid);
-    const medals = ['🥇', '🥈', '🥉'];
-    const lines = [];
-    for (let i = 0; i < rows.length; i++) {
-        lines.push(`${medals[i] || `\`#${i + 1}\``} **${esc(await nameOf(client, rows[i].user_id))}** · ${amount(rows[i].total_votes, 'vote', lang)}`);
-    }
-    return card(COLOR.gold, [
-        { text: `### ${I('trophy')} ${t.topTitle}${guildName ? `\n-# ${esc(guildName)}` : ''}` },
-        { rule: true },
-        { text: lines.length ? lines.join('\n') : t.topEmpty },
-    ]);
+// ================= LEADERBOARD (one card for the command and the portal button) =================
+// period 'month': this server's votes since the 1st (UTC), counted from vote_claims (always current);
+// 'all': this server's total. viewerId: whose place the last line shows.
+function boardRows(db, gid, period) {
+    try {
+        if (period === 'month') {
+            const d = new Date(), since = Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) / 1000);
+            return db.prepare(`SELECT user_id, COUNT(*) AS votes, MIN(claim_date) AS first FROM vote_claims
+                WHERE guild_id = ? AND claim_date >= ? GROUP BY user_id ORDER BY votes DESC, first ASC`).all(gid, since);
+        }
+        return db.prepare('SELECT user_id, total_votes AS votes FROM user_votes WHERE guild_id = ? AND total_votes > 0 ORDER BY total_votes DESC, last_vote_date ASC').all(gid);
+    } catch (e) { console.error('[VOTE LB]', e.message); return []; }
 }
 
-async function lbImage(client, db, gid, guildName) {
-    try {
-        const rows = topRows(db, gid);
-        const entries = await Promise.all(rows.map(async (row) => ({ ...row, username: await nameOf(client, row.user_id, false) })));
-        const img = await buildVoteLBCanvas(entries, guildName || 'ARCHON', client.user.displayAvatarURL({ size: 128 }));
-        return new AttachmentBuilder(img, { name: 'vote-leaderboard.png' });
-    } catch (e) {
-        console.error('[VOTE LB CANVAS]', e.message);
-        return null;
+async function topCard(client, db, gid, lang, where, guildName, opts = {}) {
+    const t = L(lang), I = (k) => icon(k, where);
+    const period = opts.period === 'all' ? 'all' : 'month';
+    const viewerId = opts.viewerId || where?.user?.id || where?.author?.id || null;
+    const all = boardRows(db, gid, period);
+    const rows = all.slice(0, 10);
+    const streaks = new Map(topRows(db, gid).map((r) => [r.user_id, r.current_streak || 0]));
+    const users = await Promise.all(rows.map((r) => client.users.fetch(r.user_id).catch(() => null)));
+    const nameAt = (i) => esc(users[i]?.globalName || users[i]?.username || 'Unknown');
+    const line = (i) => {
+        const streak = streaks.get(rows[i].user_id) || 0;
+        const tail = `${amount(rows[i].votes, 'vote', lang)}${streak > 0 ? ` · ${I('streak')} ${amount(streak, 'day', lang)}` : ''}`;
+        return i < 3 ? `${I('rank' + (i + 1))} **${nameAt(i)}** · ${tail}` : `-# \`#${i + 1}\` ${nameAt(i)} · ${tail}`;
+    };
+
+    const head = `### ${I('trophy')} ${t.topTitle}\n-# ${guildName ? `${esc(guildName)} · ` : ''}${period === 'month' ? t.periodMonth : t.periodAll}`;
+    const avatar = users[0]?.displayAvatarURL?.({ extension: 'png', size: 128 });
+    const items = [avatar ? { thumbnail: [head, avatar] } : { text: head }, { rule: true }];
+    if (!rows.length) items.push({ text: period === 'month' ? t.topEmptyMonth : t.topEmpty });
+    else {
+        items.push({ text: rows.slice(0, 3).map((_, i) => line(i)).join('\n') });
+        if (rows.length > 3) items.push({ text: rows.slice(3).map((_, i) => line(i + 3)).join('\n') });
     }
+
+    // the viewer's own place, and how far the next one is
+    if (viewerId) {
+        const k = all.findIndex((r) => r.user_id === viewerId);
+        const me = await client.users.fetch(viewerId).catch(() => null);
+        const name = esc(me?.globalName || me?.username || 'Unknown');
+        let you;
+        if (k < 0) you = fill(t.youUnranked, { name });
+        else {
+            you = fill(t.youRank, { name, rank: k + 1, votes: amount(all[k].votes, 'vote', lang) });
+            you += ' · ' + (k === 0 ? t.youLead : fill(t.youGap, { n: all[k - 1].votes - all[k].votes + 1, rank: k }));
+        }
+        items.push({ rule: true }, { text: you });
+    }
+
+    const other = period === 'month' ? 'all' : 'month';
+    items.push({ row: new ActionRowBuilder().addComponents(
+        voteButton(client, t, where, gid),
+        new ButtonBuilder().setCustomId(`vote_lbp:${other}:${viewerId || '0'}_slash`).setLabel(other === 'month' ? t.periodMonth : t.periodAll)
+            .setEmoji(icon(other === 'month' ? 'clock' : 'trophy', where)).setStyle(ButtonStyle.Secondary),
+    ) });
+    return card(COLOR.gold, items);
 }
 
 // How long until the next vote (the portal's "Time left" button)
@@ -472,8 +508,7 @@ module.exports = {
 
         // ---- LEADERBOARD (the image, or the same list as text when the image cannot be drawn) ----
         if (sub === 'lb' || sub === 'leaderboard' || sub === 'top') {
-            const file = await lbImage(client, db, gid, message.guild.name);
-            return message.reply(file ? { files: [file] } : await topCard(client, db, gid, lang, message, message.guild.name)).catch(() => {});
+            return message.reply(await topCard(client, db, gid, lang, message, message.guild.name)).catch(() => {});
         }
 
         // ---- ADMIN DIAGNOSTIC ----
@@ -541,8 +576,7 @@ module.exports = {
         // ---- LEADERBOARD ----
         if (sub === 'leaderboard') {
             await interaction.deferReply();
-            const file = await lbImage(client, db, gid, interaction.guild.name);
-            return interaction.editReply(file ? { files: [file] } : await topCard(client, db, gid, lang, interaction, interaction.guild.name));
+            return interaction.editReply(await topCard(client, db, gid, lang, interaction, interaction.guild.name));
         }
 
         // ---- STATUS (admin) ----
@@ -589,6 +623,16 @@ module.exports = {
                 return interaction.update({ components: rows, flags: MessageFlags.IsComponentsV2 }).catch(() => interaction.reply({ content: on ? t.remindedOn : t.remindedOff }).catch(() => {}));
             }
             return interaction.reply({ ...note, flags: MessageFlags.Ephemeral });
+        }
+
+        if (id.startsWith('vote_lbp:')) {
+            const [, period, owner] = id.replace(/_slash$/, '').split(':');
+            if (owner === uid) {
+                await interaction.deferUpdate().catch(() => {});
+                return interaction.editReply(await topCard(client, db, gid, lang, interaction, interaction.guild?.name, { period, viewerId: uid })).catch(() => {});
+            }
+            await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+            return interaction.editReply(await topCard(client, db, gid, lang, interaction, interaction.guild?.name, { period, viewerId: uid }));
         }
 
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
