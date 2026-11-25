@@ -3588,6 +3588,10 @@ safeOn(Events.InteractionCreate, async (interaction) => {
         return require('./plugins/music.js').handlePanelButton(interaction, client)
             .catch(e => console.error('[MUSIC BUTTON]', e.message));
     }
+    // /warn history: Remove one warning, Clear all (plugins/warn.js)
+    if (interaction.isButton() && interaction.customId.startsWith('warnx:')) {
+        return require('./plugins/warn').handleComponent(interaction, client).catch(e => console.error('[WARN] button:', e.message));
+    }
     // Appeals for sanctions given with ARCHON's commands (lib/appeals.js): the member's button and form, the staff's decision
     if ((interaction.isButton() || interaction.isModalSubmit()) && interaction.customId.startsWith('mapl:')) {
         return require('./lib/appeals').handle(interaction, client).catch(e => console.error('[APPEALS]', e.message));

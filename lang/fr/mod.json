@@ -96,7 +96,7 @@
   "usage_ban": "Utilisation : `.ban @membre [raison]` · `.unban <id> [raison]` · `.ban setinvite <lien>` · `.ban getinvite`",
   "usage_kick": "Utilisation : `.kick @membre [raison]`",
   "usage_mute": "Utilisation : `.mute @membre 10m [raison]` · `.unmute @membre`",
-  "usage_warn": "Utilisation : `.warn @membre [raison]` · `.warnings @membre` · `.clearwarn @membre` · `.removewarn <id>` · `.modlogs @membre`",
+  "usage_warn": "Utilisation : `.warn @membre [raison]` · `.warnings @membre` (dossier, avec boutons Retirer) · `.clearwarn @membre` · `.removewarn <id>`",
   "usage_clear": "Utilisation : `.clear 20` ou `.clear 20 @membre`",
   "usage_slowmode": "Utilisation : `.slowmode 10s` ou `.slowmode off`",
   "already_banned": "Cette personne est déjà bannie.",
@@ -106,5 +106,16 @@
   "public_note": "Visible dans le salon.",
   "btn_confirm_cancelled": "Annulé",
   "l_target_user": "Utilisateur",
-  "usage_unban": "Utilisation : `.unban <ID du membre> [raison]` · ou `/unban` en tapant son nom."
+  "usage_unban": "Utilisation : `.unban <ID du membre> [raison]` · ou `/unban` en tapant son nom.",
+  "hist_title": "Dossier de {user}",
+  "hist_sub": "{active} avertissements actifs · {total} au total · {logs} autres sanctions affichées",
+  "hist_active": "Avertissements actifs",
+  "hist_none_active": "Aucun en ce moment.",
+  "hist_logs": "Historique de modération",
+  "hist_none_logs": "Rien d'autre au dossier.",
+  "btn_remove": "Retirer",
+  "btn_clear_all": "Tout effacer",
+  "clear_confirm_title": "Effacer tous les avertissements actifs de {user} ?",
+  "clear_confirm_body": "Ses avertissements actifs sont retirés. L'historique garde une ligne qui dit que c'est fait.",
+  "clear_log": "Tous les avertissements actifs de {user} ont été effacés."
 }

@@ -77,25 +77,39 @@ async function addWarning(client, guild, actor, user, reason, lang, ctx) {
     return { card: make() };
 }
 
-function listView(db, guild, user, lang, ctx) {
+// /warn history: active warnings first, each with its Remove button, then the moderation history; Clear all goes
+// through lib/confirm. The opener's id is in every button: only they can use it (and Timeout Members is checked again).
+const SHOWN = 5;
+function historyCard(db, guild, user, lang, ctx, actorId, notice = null) {
     M.ensureTables(db);
-    const rows = db.prepare('SELECT id, reason, created_at, expires_at, active FROM warnings WHERE guild_id = ? AND user_id = ? ORDER BY created_at DESC').all(guild.id, user.id);
-    if (!rows.length) return M.card({ look: 'info', title: M.T('warn_list_title', lang, { user: M.safe(user.username) }), lines: [[null, M.T('warn_list_none', lang, { user: M.safe(user.username) })]], avatar: M.avatarOf(user), ctx });
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle, TextDisplayBuilder, SeparatorBuilder, SeparatorSpacingSize, SectionBuilder, ThumbnailBuilder } = require('discord.js');
+    const { icon } = require('../lib/ui/icons');
     const t = now();
-    const state = (w) => (!w.active ? 'state_removed' : w.expires_at && w.expires_at <= t ? 'state_expired' : 'state_active');
-    const lines = rows.slice(0, 10).map((w) => [null, `\`${w.id}\` · ${M.safe(String(w.reason || '').slice(0, 120))} · <t:${w.created_at}:d> · ${M.T(state(w), lang)}`]);
-    if (rows.length > 10) lines.push([null, `-# ${M.T('warn_list_more', lang, { n: rows.length - 10 })}`]);
-    const active = rows.filter((w) => state(w) === 'state_active').length;
-    return M.card({ look: active ? 'warn' : 'info', title: M.T('warn_list_title', lang, { user: M.safe(user.username) }), lines: [[M.T('l_warnings', lang), String(active)], ...lines], avatar: M.avatarOf(user), ctx });
-}
-
-function historyView(db, guild, user, lang, ctx) {
-    M.ensureTables(db);
-    const rows = db.prepare('SELECT id, action, reason, moderator_id, timestamp FROM moderation_logs WHERE guild_id = ? AND user_id = ? ORDER BY timestamp DESC LIMIT 10').all(guild.id, user.id);
-    if (!rows.length) return M.card({ look: 'info', title: M.T('modlogs_title', lang, { user: M.safe(user.username) }), lines: [[null, M.T('modlogs_none', lang, { user: M.safe(user.username) })]], avatar: M.avatarOf(user), ctx });
+    const active = db.prepare('SELECT id, reason, created_at FROM warnings WHERE guild_id = ? AND user_id = ? AND active = 1 AND (expires_at IS NULL OR expires_at > ?) ORDER BY created_at DESC').all(guild.id, user.id, t);
+    const total = db.prepare('SELECT COUNT(*) AS n FROM warnings WHERE guild_id = ? AND user_id = ?').get(guild.id, user.id).n;
+    const logs = db.prepare("SELECT id, action, reason, moderator_id, timestamp FROM moderation_logs WHERE guild_id = ? AND user_id = ? AND action != 'warn' ORDER BY timestamp DESC LIMIT 6").all(guild.id, user.id);
     const name = (a) => { const k = `act_${a}`; const v = M.T(k, lang); return v === `mod.${k}` ? a : v; };
-    const lines = rows.map((r) => [null, `**${name(r.action)}** · <t:${r.timestamp}:d> · <@${r.moderator_id}>${r.reason ? ` · ${M.safe(String(r.reason).slice(0, 100))}` : ''} · #${r.id}`]);
-    return M.card({ look: 'info', title: M.T('modlogs_title', lang, { user: M.safe(user.username) }), lines, avatar: M.avatarOf(user), ctx });
+    const c = M.card({ look: active.length ? 'warn' : 'info', title: M.T('hist_title', lang, { user: M.safe(user.username) }), avatar: M.avatarOf(user), ctx,
+        lines: [[null, M.T('hist_sub', lang, { active: active.length, total, logs: logs.length })]] });
+    if (notice) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`${icon('ok', ctx)} ${notice}`));
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    if (!active.length) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${M.T('hist_active', lang)}**\n${M.T('hist_none_active', lang)}`));
+    else {
+        c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${M.T('hist_active', lang)}**`));
+        for (const w of active.slice(0, SHOWN)) {
+            c.addSectionComponents(new SectionBuilder()
+                .addTextDisplayComponents(new TextDisplayBuilder().setContent(`${M.safe(String(w.reason || '').slice(0, 120))}\n-# <t:${w.created_at}:R>`))
+                .setButtonAccessory(new ButtonBuilder().setCustomId(`warnx:rm:${w.id}:${user.id}:${actorId}`).setLabel(M.T('btn_remove', lang)).setStyle(ButtonStyle.Secondary).setEmoji(icon('x', ctx))));
+        }
+        if (active.length > SHOWN) c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`-# ${M.T('warn_list_more', lang, { n: active.length - SHOWN })}`));
+    }
+    c.addSeparatorComponents(new SeparatorBuilder().setDivider(true).setSpacing(SeparatorSpacingSize.Small));
+    c.addTextDisplayComponents(new TextDisplayBuilder().setContent(`**${M.T('hist_logs', lang)}**\n${logs.length
+        ? logs.map((r) => `-# **${name(r.action)}** · <t:${r.timestamp}:R> · <@${r.moderator_id}>${r.reason ? ` · ${M.safe(String(r.reason).slice(0, 80))}` : ''}`).join('\n')
+        : M.T('hist_none_logs', lang)}`));
+    if (active.length > 1) c.addActionRowComponents(new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(`warnx:clear:${user.id}:${actorId}`).setLabel(M.T('btn_clear_all', lang)).setStyle(ButtonStyle.Danger).setEmoji(icon('trash', ctx))));
+    return c;
 }
 
 function clearWarnings(client, guild, actor, user, lang) {
@@ -120,6 +134,18 @@ function removeWarning(client, guild, actor, id, lang) {
     return { text: M.T('warn_removed', lang, { id: clean }) };
 }
 
+require('../lib/confirm').define('warn.clear', {
+    access: 'timeout',
+    run: async (ix, client, data, lang) => {
+        const user = await client.users.fetch(data.userId).catch(() => null);
+        if (!user) return {};
+        const r = clearWarnings(client, ix.guild, ix.member, user, lang);
+        const { card } = require('../lib/games/v2');
+        return { cleared: r.error ? 0 : 1, payload: card(r.error ? 0x8D897F : 0x2ECC71, [{ text: r.error || r.text }]) };
+    },
+    log: (lang, data, res) => (res.cleared ? M.T('clear_log', lang, { user: `<@${data.userId}>` }) : null),
+});
+
 module.exports = {
     name: 'warn',
     aliases: ['w', 'warning', 'warnings', 'modlogs', 'clearwarn', 'removewarn', 'avertir', 'avertissement', 'historique'],
@@ -136,13 +162,9 @@ module.exports = {
         .addSubcommand(s => s.setName('add').setDescription('Warn a member')
             .addUserOption(o => o.setName('target').setDescription('Member').setRequired(true))
             .addStringOption(o => o.setName('reason').setDescription('Why').setMaxLength(400)))
-        .addSubcommand(s => s.setName('list').setDescription('See a member\'s warnings')
-            .addUserOption(o => o.setName('target').setDescription('Member').setRequired(true)))
-        .addSubcommand(s => s.setName('clear').setDescription('Clear a member\'s active warnings')
-            .addUserOption(o => o.setName('target').setDescription('Member').setRequired(true)))
-        .addSubcommand(s => s.setName('remove').setDescription('Remove one warning by its ID')
-            .addStringOption(o => o.setName('id').setDescription('Warning ID, like W-1A2B3C').setRequired(true).setMaxLength(40)))
-        .addSubcommand(s => s.setName('modlogs').setDescription('See a member\'s moderation history')
+        // list, clear, remove and modlogs became one card: /warn history (remove and clear are buttons on it)
+        .addSubcommand(s => s.setName('history').setDescription('A member\'s warnings and moderation history')
+            .setDescriptionLocalizations({ fr: 'Les avertissements et l\'historique de modération d\'un membre' })
             .addUserOption(o => o.setName('target').setDescription('Member').setRequired(true))),
 
     execute: async (interaction, client) => {
@@ -153,13 +175,7 @@ module.exports = {
         const sub = interaction.options.getSubcommand();
         const user = interaction.options.getUser('target');
 
-        if (sub === 'list') return M.respond(interaction, { components: [listView(client.db, guild, user, lang, interaction)] }, { ephemeral: true });
-        if (sub === 'modlogs') return M.respond(interaction, { components: [historyView(client.db, guild, user, lang, interaction)] }, { ephemeral: true });
-        if (sub === 'clear' || sub === 'remove') {
-            const r = sub === 'clear' ? clearWarnings(client, guild, actor, user, lang) : removeWarning(client, guild, actor, interaction.options.getString('id'), lang);
-            if (r.error) return M.fail(interaction, r.error, lang);
-            return M.respond(interaction, { components: [M.card({ look: 'info', title: r.text, ctx: interaction })] }, { ephemeral: true });
-        }
+        if (sub === 'history') return M.respond(interaction, { components: [historyCard(client.db, guild, user, lang, interaction, interaction.user.id)] }, { ephemeral: true });
         await interaction.deferReply();
         const r = await addWarning(client, guild, actor, user, M.cleanReason(interaction.options.getString('reason'), lang), lang, interaction);
         if (r.error) {
@@ -167,6 +183,33 @@ module.exports = {
             return interaction.followUp({ components: [M.card({ look: 'error', title: M.T('refused', lang), lines: [[null, r.error]], ctx: interaction })], flags: M.V2 | 64, allowedMentions: { parse: [] } });
         }
         return interaction.editReply({ components: [r.card], flags: M.V2, allowedMentions: { parse: [] } });
+    },
+
+    // The history card's buttons: warnx:rm:<warning>:<user>:<opener> and warnx:clear:<user>:<opener>
+    handleComponent: async (interaction, client) => {
+        const guild = interaction.guild;
+        if (!guild) return;
+        const lang = M.langFor(client, interaction);
+        const parts = interaction.customId.split(':');
+        const actorId = parts[parts.length - 1];
+        if (interaction.user.id !== actorId) return interaction.reply({ content: M.T('not_yours', lang), flags: 64 }).catch(() => {});
+        const actor = await guild.members.fetch(actorId).catch(() => null);
+        if (!M.hasPerm(actor, PermissionFlagsBits.ModerateMembers)) return interaction.reply({ content: M.T('no_perm', lang, { perm: 'Timeout Members' }), flags: 64 }).catch(() => {});
+        const user = await client.users.fetch(parts[parts[1] === 'rm' ? 3 : 2]).catch(() => null);
+        if (!user) return interaction.reply({ content: M.T('expired', lang), flags: 64 }).catch(() => {});
+        if (parts[1] === 'rm') {
+            const r = removeWarning(client, guild, actor, parts[2], lang);
+            if (r.error) return interaction.reply({ content: r.error, flags: 64, allowedMentions: { parse: [] } }).catch(() => {});
+            return interaction.update({ components: [historyCard(client.db, guild, user, lang, interaction, actorId, r.text)], flags: M.V2, allowedMentions: { parse: [] } }).catch(() => {});
+        }
+        if (parts[1] === 'clear') {
+            return interaction.reply({ ...require('../lib/confirm').card(client, {
+                action: 'warn.clear', userId: actorId, guild, lang, where: interaction, danger: true,
+                title: M.T('clear_confirm_title', lang, { user: M.safe(user.username) }), body: M.T('clear_confirm_body', lang),
+                yes: M.T('btn_clear_all', lang), data: { userId: user.id },
+            }), flags: M.V2 | 64 }).catch(() => {});
+        }
+        return interaction.deferUpdate().catch(() => {});
     },
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
@@ -187,8 +230,7 @@ module.exports = {
         }
         const user = await userFrom(args[0]);
         if (!user) return message.reply({ content: M.T('usage_warn', lang), allowedMentions: { parse: [] } }).catch(() => {});
-        if (used === 'warnings' || used === 'avertissement') return M.respond(message, { components: [listView(client.db, guild, user, lang, message)] });
-        if (used === 'modlogs' || used === 'historique') return M.respond(message, { components: [historyView(client.db, guild, user, lang, message)] });
+        if (['warnings', 'avertissement', 'modlogs', 'historique', 'warning'].includes(used)) return M.respond(message, { components: [historyCard(client.db, guild, user, lang, message, message.author.id)] });
         if (used === 'clearwarn') {
             const r = clearWarnings(client, guild, message.member, user, lang);
             if (r.error) return M.fail(message, r.error, lang);

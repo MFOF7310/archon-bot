@@ -96,7 +96,7 @@
   "usage_ban": "Usage: `.ban @member [reason]` · `.unban <user id> [reason]` · `.ban setinvite <link>` · `.ban getinvite`",
   "usage_kick": "Usage: `.kick @member [reason]`",
   "usage_mute": "Usage: `.mute @member 10m [reason]` · `.unmute @member`",
-  "usage_warn": "Usage: `.warn @member [reason]` · `.warnings @member` · `.clearwarn @member` · `.removewarn <id>` · `.modlogs @member`",
+  "usage_warn": "Usage: `.warn @member [reason]` · `.warnings @member` (record, with Remove buttons) · `.clearwarn @member` · `.removewarn <id>`",
   "usage_clear": "Usage: `.clear 20` or `.clear 20 @member`",
   "usage_slowmode": "Usage: `.slowmode 10s` or `.slowmode off`",
   "already_banned": "That person is already banned.",
@@ -106,5 +106,16 @@
   "public_note": "Shown to the channel.",
   "btn_confirm_cancelled": "Cancelled",
   "l_target_user": "User",
-  "usage_unban": "Usage: `.unban <user id> [reason]` · or `/unban` and type their name."
+  "usage_unban": "Usage: `.unban <user id> [reason]` · or `/unban` and type their name.",
+  "hist_title": "{user}'s record",
+  "hist_sub": "{active} active warnings · {total} in all · {logs} other sanctions shown",
+  "hist_active": "Active warnings",
+  "hist_none_active": "None right now.",
+  "hist_logs": "Moderation history",
+  "hist_none_logs": "Nothing else on record.",
+  "btn_remove": "Remove",
+  "btn_clear_all": "Clear all",
+  "clear_confirm_title": "Clear all of {user}'s active warnings?",
+  "clear_confirm_body": "Their active warnings are removed. The history keeps a line saying it was done.",
+  "clear_log": "All active warnings of {user} were cleared."
 }
