@@ -90,14 +90,19 @@ function welcomeScreen(lang, guild, client, userId = '0', sid = 'preview') {
     const line = (i) => {
         if (i.done) return `${icon('ok', guild)} ${C(`item_${i.key}`)}`;
         const why = i.problem ? C(`problem_${i.problem}`) : C('notSet');
-        return `${i.problem && i.problem !== 'notOn' ? icon('warn', guild) : i.level === 'core' ? icon('off', guild) : '○'} ${C(`item_${i.key}`)} · ${why}\n-# ${C('fixIn', { where: fixLabel(i.panel) })}`;
+        return `${i.problem && i.problem !== 'notOn' ? icon('warn', guild) : i.level === 'core' ? icon('off', guild) : icon('unset', guild)} ${C(`item_${i.key}`)} · ${why}\n-# ${C('fixIn', { where: fixLabel(i.panel) })}`;
     };
     const filled = res.total ? Math.round((res.doneCount / res.total) * 10) : 0;
     const items = [{ text: `-# ARCHON · ${T(lang, 'title')}\n## ${icon('ch_title', guild)} ${C('heading', { server: safeName(guild.name) })}\n${C('progress', { done: res.doneCount, total: res.total })}${res.coreLeft ? ` · ${C(res.coreLeft === 1 ? 'coreLeftOne' : 'coreLeft', { n: res.coreLeft })}` : ` · ${C('coreDone')}`}\n\`${'█'.repeat(filled)}${'░'.repeat(10 - filled)}\`` }];
     for (const level of ['core', 'recommended', 'optional']) {
         const list = res.items.filter((i) => i.level === level);
         if (!list.length) continue;
-        items.push({ rule: true }, { text: `### ${C(`level_${level}`)}\n${list.map(line).join('\n')}` });
+        // what's left is shown in full; what's done fits in one line (a long list of ticks is skipped, not read)
+        const todo = list.filter((i) => !i.done), done = list.filter((i) => i.done);
+        const body = !todo.length
+            ? `${icon('ok', guild)} ${C('levelAllDone', { n: done.length })}`
+            : [...todo.map(line), ...(done.length ? [`-# ${icon('ok', guild)} ${C('alsoDone', { list: done.map((i) => C(`item_${i.key}`)).join(', ') })}`] : [])].join('\n');
+        items.push({ rule: true }, { text: `### ${C(`level_${level}`)}\n${body}` });
     }
     items.push({ rule: true }, { text: C('wizardHint', { total: STEPS.length, start: T(lang, 'start') }) });
     items.push({ row: new ActionRowBuilder().addComponents(

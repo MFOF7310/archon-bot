@@ -556,7 +556,7 @@ async function configCard(client, guild, db, lang, who) {
         const id = row[`level_${m}_role`];
         if (!id) return `${tag} -# ${L('notSet', lang)}`.replace(' -# ', ' · ');
         const problem = roleProblem(guild, guild.roles.cache.get(String(id)));
-        if (!problem) return `${tag} ${icon('ok', guild)} <@&${id}>`;
+        if (!problem) return { ok: true, text: `${tag} ${icon('ok', guild)} <@&${id}>` };
         if (problem === 'gone') return `${tag} ${icon('no', guild)} ${L('roleGone', lang)}`;
         return `${tag} ${icon('warn', guild)} <@&${id}>\n-# ${L(problem === 'above' ? 'roleAbove' : 'roleManaged', lang)}`;
     });
@@ -566,19 +566,24 @@ async function configCard(client, guild, db, lang, who) {
         const id = row[col];
         if (!id) return `${tag} · ${L('notSet', lang)}`;
         const problem = roleProblem(guild, guild.roles.cache.get(String(id)));
-        if (!problem) return `${tag} ${icon('ok', guild)} <@&${id}>`;
+        if (!problem) return { ok: true, text: `${tag} ${icon('ok', guild)} <@&${id}>` };
         if (problem === 'gone') return `${tag} ${icon('no', guild)} ${L('roleGone', lang)}`;
         return `${tag} ${icon('warn', guild)} <@&${id}>\n-# ${L(problem === 'above' ? 'roleAbove' : 'roleManaged', lang)}`;
     });
+    // A series where every role works is one line (the full list is in /roles); otherwise only what needs a look
+    const rolesCmd = (() => { try { return require('../lib/cmd').slash(client, 'roles', { guild }); } catch { return '/roles'; } })();
+    const fold = (list) => (list.every((x) => x?.ok)
+        ? `${icon('ok', guild)} ${L('allSet', lang, { n: list.length })} · ${rolesCmd}`
+        : list.filter((x) => !x?.ok).join('\n') + (list.some((x) => x?.ok) ? `\n-# ${icon('ok', guild)} ${L('othersSet', lang, { n: list.filter((x) => x?.ok).length })}` : ''));
 
     const items = [
         { text: `-# ARCHON · ${L('title', lang)}\n## ${icon('stats', guild)} ${L('heading', lang, { guild: guild.name })}\n${stats.n ? L('summary', lang, { n: stats.n, top: stats.top || 1 }) : L('summaryNone', lang)}` },
         { rule: true },
         { text: `**${L('channelLabel', lang)}**\n${row.levelup_channel ? `<#${row.levelup_channel}>` : L('channelHere', lang)}` },
         { rule: true },
-        { text: `**${L('rewardsLabel', lang)}**\n${rewards.join('\n')}\n-# ${L('rewardsHint', lang)}` },
+        { text: `**${L('rewardsLabel', lang)}**\n${fold(rewards)}${rewards.every((x) => x?.ok) ? '' : `\n-# ${L('rewardsHint', lang)}`}` },
         { rule: true },
-        { text: `**${L('streakLabel', lang)}**\n${streaks.join('\n')}\n-# ${L('streakHint', lang)}` },
+        { text: `**${L('streakLabel', lang)}**\n${fold(streaks)}${streaks.every((x) => x?.ok) ? '' : `\n-# ${L('streakHint', lang)}`}` },
         { rule: true },
         { text: `**${L('bannersLabel', lang)}**` },
         { media: ['attachment://lvl-theme.png', L('bannersLabel', lang)] },

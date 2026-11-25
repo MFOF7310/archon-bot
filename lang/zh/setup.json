@@ -100,6 +100,8 @@
     "reset_kept": "等级、金钱、Premium 以及 Discord 角色本身都不会改变。",
     "reset_tip": "建议：先导出一份副本。",
     "reset_yes": "是的，全部清除",
-    "reset_done": "设置已清除。清单从零开始。"
+    "reset_done": "设置已清除。清单从零开始。",
+    "levelAllDone": "全部 {n} 项已就绪",
+    "alsoDone": "已就绪：{list}"
   }
 }

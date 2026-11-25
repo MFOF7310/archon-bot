@@ -100,6 +100,8 @@
     "reset_kept": "Levels, money, Premium and the Discord roles themselves stay as they are.",
     "reset_tip": "Tip: export a copy first.",
     "reset_yes": "Yes, erase everything",
-    "reset_done": "Settings erased. The checklist starts from zero."
+    "reset_done": "Settings erased. The checklist starts from zero.",
+    "levelAllDone": "All {n} are ready",
+    "alsoDone": "Already ready: {list}"
   }
 }

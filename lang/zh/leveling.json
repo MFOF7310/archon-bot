@@ -102,5 +102,7 @@
   "preset_dark": "暗色",
   "themeDefaultWelcome": "默认（成员身份组的颜色，否则为绿色）",
   "voice_milestone_one": "{icon} {user} 在本服务器的语音频道里度过了第一个**小时**。",
-  "voice_milestone": "{icon} {user} 已在本服务器的语音频道里度过了 **{hours} 小时**。"
+  "voice_milestone": "{icon} {user} 已在本服务器的语音频道里度过了 **{hours} 小时**。",
+  "allSet": "全部 {n} 个已就绪",
+  "othersSet": "其他 {n} 个已就绪"
 }

@@ -335,32 +335,6 @@ async function welcomeMsg(ch, u, cat, n, lang='en', isPremium=false, s=null, iss
     await ch.send(opening).catch(err => console.error('[TICKET] welcomeMsg send failed:', err.message));
 }
 
-function cfgCard(s, g, c, lang='en') {
-    const _v2 = require('../lib/games/v2');
-    const io = g.id === process.env.GUILD_ID;
-    const fch = (id, ek) => id ? `<#${id}>` : (io && process.env[ek] ? `<#${process.env[ek]}> 🔹 env` : `*${t('ticket.cfgNS', lang) || 'Not Set'}*`);
-    const fr = (id, ek) => id ? `<@&${id}>` : (io && process.env[ek] ? `<@&${process.env[ek]}> 🔹 env` : `*${t('ticket.cfgNS', lang) || 'Not Set'}*`);
-    
-    const acRaw = s?.ticketAutoCloseHours;
-    const ac = (acRaw !== undefined && acRaw !== null && acRaw !== '') ? Number(acRaw) : 0;
-    const lmRaw = s?.ticketLimitPerUser;
-    const lm = (lmRaw !== undefined && lmRaw !== null && lmRaw !== '') ? Number(lmRaw) : 1;
-
-    const body = `**${t('ticket.cfgCat', lang) || 'Category'}** · ${fch(s?.ticketCategory, 'TICKET_CATEGORY_ID')}\n` +
-                 `**${t('ticket.cfgStaff', lang) || 'Staff Role'}** · ${fr(s?.ticketStaffRole, 'TICKET_STAFF_ROLE_ID')}\n` +
-                 `**${t('ticket.cfgTx', lang) || 'Log Channel'}** · ${fch(s?.ticketTranscriptChannel, 'TICKET_TRANSCRIPT_CHANNEL_ID')}\n` +
-                 `**${t('ticket.cfgLog', lang) || 'Extra Log'}** · ${fch(s?.ticketLogChannel, 'TICKET_LOG_CHANNEL_ID')}\n` +
-                 `**${t('ticket.cfgAC', lang) || 'Auto-Close'}** · ${ac <= 0 || isNaN(ac) ? `${em('ic_off', em('ic_off', '❌'))} ${t('ticket.cfgOff', lang) || 'Off'}` : `\`${ac}h\``}\n` +
-                 `**${t('ticket.cfgLim', lang) || 'Limit'}** · \`${lm}\` / user`;
-
-    return _v2.card(0x00fbff, [
-        { text: `## 🦅 ${t('ticket.cfgTitle', lang) || 'TICKET CONFIG'}` },
-        { rule: true },
-        { text: body },
-        { rule: true },
-        { text: `-# ${t('ticket.cfgFoot', lang) || 'ARCHON CG-223'} • ${g.name || 'Server'}` }
-    ]);
-}
 
 // ================= LIVE CONFIGURATION CARD =================
 // One card, a menu per setting: picking a value saves it and redraws the card. Only Manage Server can change it.

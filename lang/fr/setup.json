@@ -100,6 +100,8 @@
     "reset_kept": "Les niveaux, l'argent, le Premium et les rôles Discord eux-mêmes ne bougent pas.",
     "reset_tip": "Conseil : exporte d'abord une copie.",
     "reset_yes": "Oui, tout effacer",
-    "reset_done": "Réglages effacés. La checklist repart de zéro."
+    "reset_done": "Réglages effacés. La checklist repart de zéro.",
+    "levelAllDone": "Les {n} sont prêts",
+    "alsoDone": "Déjà prêts : {list}"
   }
 }
