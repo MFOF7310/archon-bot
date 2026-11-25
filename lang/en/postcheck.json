@@ -43,7 +43,8 @@
     "test": "test message",
     "ticket-log": "ticket transcript",
     "tempvoice": "temporary voice rooms",
-    "serverlog": "server log"
+    "serverlog": "server log",
+    "rejoin": "link back in"
   },
   "alertBtnCheck": "Check again",
   "alertBtnMute": "Mute 7 days",
@@ -146,7 +147,8 @@
   "lowRole": "My role **{bot}** is under all {above} of your roles. I can post normally, but I can't give roles, time out, kick or ban anyone yet.",
   "lowRoleFix": "To fix it: Server Settings → Roles, then drag **{bot}** above the roles I should give (for example {roles}).",
   "titles": {
-    "tempvoice": "I can't delete empty temporary voice rooms"
+    "tempvoice": "I can't delete empty temporary voice rooms",
+    "rejoin": "I can't give a link back into the server"
   },
   "countIn": "{ok} of {total} working",
   "sumChannelsOk": "All {n} channels work",

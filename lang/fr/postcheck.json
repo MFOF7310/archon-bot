@@ -43,7 +43,8 @@
     "test": "message de test",
     "ticket-log": "transcription de ticket",
     "tempvoice": "salons vocaux temporaires",
-    "serverlog": "journal du serveur"
+    "serverlog": "journal du serveur",
+    "rejoin": "lien pour revenir"
   },
   "alertBtnCheck": "Vérifier à nouveau",
   "alertBtnMute": "Mute 7 jours",
@@ -146,7 +147,8 @@
   "lowRole": "Mon rôle **{bot}** est sous tes {above} rôles. Je peux publier normalement, mais je ne peux pas encore donner de rôles, exclure temporairement, expulser ni bannir.",
   "lowRoleFix": "Pour corriger : Paramètres du serveur → Rôles, puis fais glisser **{bot}** au-dessus des rôles que je dois donner (par exemple {roles}).",
   "titles": {
-    "tempvoice": "Je ne peux pas supprimer les salons vocaux temporaires vides"
+    "tempvoice": "Je ne peux pas supprimer les salons vocaux temporaires vides",
+    "rejoin": "Je ne peux pas donner de lien pour revenir sur le serveur"
   },
   "countIn": "{ok} sur {total} en place",
   "sumChannelsOk": "Les {n} salons fonctionnent",

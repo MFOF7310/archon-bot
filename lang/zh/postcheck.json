@@ -43,7 +43,8 @@
     "test": "测试消息",
     "ticket-log": "工单记录",
     "tempvoice": "临时语音频道",
-    "serverlog": "服务器日志"
+    "serverlog": "服务器日志",
+    "rejoin": "返回链接"
   },
   "alertBtnCheck": "再次检查",
   "alertBtnMute": "静音 7 天",
@@ -146,7 +147,8 @@
   "lowRole": "我的身份组 **{bot}** 位于你全部 {above} 个身份组之下。我可以正常发消息，但暂时无法分配身份组、禁言、踢出或封禁任何人。",
   "lowRoleFix": "修复方法：服务器设置 → 身份组，然后把 **{bot}** 拖到我需要分配的身份组之上（例如 {roles}）。",
   "titles": {
-    "tempvoice": "我无法删除空的临时语音频道"
+    "tempvoice": "我无法删除空的临时语音频道",
+    "rejoin": "我无法提供返回服务器的链接"
   },
   "countIn": "{total} 项中 {ok} 项正常",
   "sumChannelsOk": "全部 {n} 个频道正常",
