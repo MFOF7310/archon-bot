@@ -102,6 +102,9 @@
     "reset_yes": "Oui, tout effacer",
     "reset_done": "Réglages effacés. La checklist repart de zéro.",
     "levelAllDone": "Les {n} sont prêts",
-    "alsoDone": "Déjà prêts : {list}"
-  }
+    "alsoDone": "Déjà prêts : {list}",
+    "wizardHintLeft": "**Il reste {n} question(s)** : {start} ne pose que celles-là.",
+    "wizardAllSet": "Les {total} essentiels de l'assistant sont réglés. **{redo}** pour les changer."
+  },
+  "redo": "Relancer l'assistant"
 }

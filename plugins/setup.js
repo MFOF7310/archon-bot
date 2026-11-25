@@ -42,6 +42,20 @@ const POWERFUL = [
 ];
 
 const T = (lang, key, vars) => i18n.t('setup.' + key, lang, vars);
+
+// What each wizard step holds now (a channel or role that still exists), so the wizard only asks what's missing
+const STEP_COL = { rules: 'rules_channel', welcome: 'welcome_channel', member: 'member_role', log: 'log_channel' };
+function currentOf(client, guild) {
+    let row = {};
+    try { row = client.db.prepare('SELECT * FROM server_settings WHERE guild_id = ?').get(guild.id) || {}; } catch { row = {}; }
+    const out = {};
+    for (const st of STEPS) {
+        const id = row[STEP_COL[st.key]] || (st.key === 'rules' ? guild.rulesChannelId : null);
+        if (id && (st.kind === 'role' ? guild.roles.cache.has(String(id)) : guild.channels.cache.has(String(id)))) out[st.key] = String(id);
+    }
+    return out;
+}
+const missingSteps = (client, guild) => { const cur = currentOf(client, guild); return STEPS.map((st, n) => (cur[st.key] ? -1 : n)).filter((n) => n >= 0); };
 const safeName = (s) => String(s || '').replace(/[*_~`|>\\]/g, '').slice(0, 80);
 
 // The language: the server's own (or the slash command's), and always one we have; anything else is English.
@@ -104,9 +118,15 @@ function welcomeScreen(lang, guild, client, userId = '0', sid = 'preview') {
             : [...todo.map(line), ...(done.length ? [`-# ${icon('ok', guild)} ${C('alsoDone', { list: done.map((i) => C(`item_${i.key}`)).join(', ') })}`] : [])].join('\n');
         items.push({ rule: true }, { text: `### ${C(`level_${level}`)}\n${body}` });
     }
-    items.push({ rule: true }, { text: C('wizardHint', { total: STEPS.length, start: T(lang, 'start') }) });
+    // the wizard asks only what's still missing; when its questions are all answered it's offered to change them
+    let left = STEPS.length;
+    try { left = missingSteps(client, guild).length; } catch { /* ask everything */ }
+    const hint = left === STEPS.length ? C('wizardHint', { total: STEPS.length, start: T(lang, 'start') })
+        : left ? C('wizardHintLeft', { n: left, start: T(lang, 'start') })
+        : C('wizardAllSet', { total: STEPS.length, redo: T(lang, 'redo') });
+    items.push({ rule: true }, { text: hint });
     items.push({ row: new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(cid(sid, 'start')).setLabel(T(lang, 'start')).setStyle(ButtonStyle.Success).setEmoji(icon('next', guild)),
+        new ButtonBuilder().setCustomId(cid(sid, 'start')).setLabel(T(lang, left ? 'start' : 'redo')).setStyle(left ? ButtonStyle.Success : ButtonStyle.Secondary).setEmoji(icon(left ? 'next' : 'refresh', guild)),
         new ButtonBuilder().setCustomId(cid(sid, 'cancel')).setLabel(T(lang, 'cancel')).setStyle(ButtonStyle.Secondary)) });
     items.push({ row: new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId(`chan:back:${userId}`).setLabel(C('panel_channels')).setStyle(ButtonStyle.Secondary).setEmoji(icon('ch_title', guild)),
@@ -143,12 +163,12 @@ function resetScreen(lang, guild, sid = 'preview') {
     ]);
 }
 
-function questionScreen(lang, guild, idx, notice, suggestion = suggestFor(guild, STEPS[idx]), sid = 'preview') {
+function questionScreen(lang, guild, idx, notice, suggestion = suggestFor(guild, STEPS[idx]), sid = 'preview', n = idx + 1, total = STEPS.length) {
     const step = STEPS[idx];
     const embed = new EmbedBuilder().setColor(GOLD)
         .setTitle(T(lang, `q.${step.key}.title`))
         .setDescription(T(lang, `q.${step.key}.text`) + (notice ? `\n\n⚠️ ${notice}` : ''))
-        .setFooter({ text: T(lang, 'footer', { server: safeName(guild.name), n: idx + 1, total: STEPS.length }) });
+        .setFooter({ text: T(lang, 'footer', { server: safeName(guild.name), n, total }) });
     const picker = step.kind === 'role' ? new RoleSelectMenuBuilder() : new ChannelSelectMenuBuilder().setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement);
     picker.setCustomId(cid(sid, 'pick')).setPlaceholder(T(lang, step.kind === 'role' ? 'placeholderRole' : 'placeholderChannel')).setMinValues(1).setMaxValues(1);
     const buttons = new ActionRowBuilder();
@@ -247,13 +267,20 @@ module.exports = {
         if (!guild) return;
         const { lang, state } = session.data;
         let { idx } = session.data;
+        let ask = session.data.ask || STEPS.map((_, n) => n);   // the steps this run asks, in order
+        let pos = session.data.pos ?? ask.indexOf(idx);
+        const at = () => [pos + 1, ask.length];
         const userId = session.userId;
         const savedCount = () => Object.keys(state).length;
 
         const advance = () => {
-            idx += 1;
-            if (idx < STEPS.length) { save({ lang, idx, state }); return i.update(questionScreen(lang, guild, idx, null, undefined, sid)).catch(() => {}); }
+            pos += 1;
+            if (pos < ask.length) { idx = ask[pos]; save({ lang, idx, pos, ask, state }); return i.update(questionScreen(lang, guild, idx, null, undefined, sid, ...at())).catch(() => {}); }
             end();
+            // the summary shows every essential: what was answered now, and what was already set
+            let current = {};
+            try { current = currentOf(client, guild); } catch { /* answered ones only */ }
+            for (const [k, v] of Object.entries(current)) if (!(k in state)) state[k] = v;
             const warnings = STEPS.filter((s) => s.needsPost && state[s.key]).map((s) => channelWarning(lang, guild, s, state[s.key])).filter(Boolean);
             const low = require('../lib/role-check').lowRoleText(guild, lang);
             if (low) warnings.push(low);
@@ -263,7 +290,11 @@ module.exports = {
         };
 
         if (action === 'cancel') { end(); return i.update(plainScreen(lang, savedCount() ? 'cancelledSaved' : 'cancelled')).catch(() => {}); }
-        if (action === 'start' && idx === -1) return advance();
+        if (action === 'start' && idx === -1) {
+            try { const miss = missingSteps(client, guild); if (miss.length) ask = miss; } catch { /* ask everything */ }
+            pos = -1;
+            return advance();
+        }
         if (action === 'export') {
             return i.reply({ content: T(lang, 'check.export_done'), files: [exportFile(client, guild)], flags: 1 << 6 }).catch((e) => console.error('[SETUP] export:', e.message));
         }
@@ -288,7 +319,7 @@ module.exports = {
             if (!id) return;
             if (step.kind === 'role') {
                 const problem = roleProblem(lang, guild, guild.roles.cache.get(id));
-                if (problem) return i.update(questionScreen(lang, guild, idx, problem, null, sid)).catch(() => {});   // stay on this question
+                if (problem) return i.update(questionScreen(lang, guild, idx, problem, null, sid, ...at())).catch(() => {});   // stay on this question
             }
             client.updateServerSetting(guild.id, step.setting, id);
             for (const [k, v] of step.extra || []) client.updateServerSetting(guild.id, k, v);
@@ -297,7 +328,7 @@ module.exports = {
         }
         // a click that doesn't fit the current screen (an old copy of the card): show where the wizard is now
         if (idx === -1) return i.update(welcomeScreen(lang, guild, client, userId, sid)).catch(() => {});
-        return i.update(questionScreen(lang, guild, idx, null, undefined, sid)).catch(() => {});
+        return i.update(questionScreen(lang, guild, idx, null, undefined, sid, ...at())).catch(() => {});
     },
 
     // Used by the installer's self-test.

@@ -102,6 +102,9 @@
     "reset_yes": "Yes, erase everything",
     "reset_done": "Settings erased. The checklist starts from zero.",
     "levelAllDone": "All {n} are ready",
-    "alsoDone": "Already ready: {list}"
-  }
+    "alsoDone": "Already ready: {list}",
+    "wizardHintLeft": "**{n} question(s) left**: {start} asks only those.",
+    "wizardAllSet": "The wizard's {total} essentials are set. **{redo}** to change them."
+  },
+  "redo": "Redo the wizard"
 }

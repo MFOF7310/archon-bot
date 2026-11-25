@@ -102,6 +102,9 @@
     "reset_yes": "是的，全部清除",
     "reset_done": "设置已清除。清单从零开始。",
     "levelAllDone": "全部 {n} 项已就绪",
-    "alsoDone": "已就绪：{list}"
-  }
+    "alsoDone": "已就绪：{list}",
+    "wizardHintLeft": "**还剩 {n} 个问题**：{start} 只会问这些。",
+    "wizardAllSet": "向导的 {total} 项基本设置都已完成。点 **{redo}** 可以修改。"
+  },
+  "redo": "重新运行向导"
 }
