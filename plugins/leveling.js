@@ -37,11 +37,12 @@ function resolveColor(input) {
 
 // ================= PER-SERVER DEFAULT THEMES =================
 const DEFAULT_THEMES = {
-    5:  { bg1: '#43b581', bg2: '#2e7d52', accent: '#66f0a0', label: 'INITIATE' },
-    10: { bg1: '#faa61a', bg2: '#b3780d', accent: '#ffd54f', label: 'ADEPT' },
-    15: { bg1: '#5865f2', bg2: '#2d3a8c', accent: '#8b9aff', label: 'VETERAN' },
-    20: { bg1: '#e74c3c', bg2: '#8e2409', accent: '#ff7a6b', label: 'ELITE' },
-    25: { bg1: '#9b59b6', bg2: '#5b2c6f', accent: '#d7a3ef', label: 'LEGEND' },
+    // colours only: the rank name on the banner comes from the one rank ladder (lib/games/progress.js)
+    5:  { bg1: '#43b581', bg2: '#2e7d52', accent: '#66f0a0' },
+    10: { bg1: '#faa61a', bg2: '#b3780d', accent: '#ffd54f' },
+    15: { bg1: '#5865f2', bg2: '#2d3a8c', accent: '#8b9aff' },
+    20: { bg1: '#e74c3c', bg2: '#8e2409', accent: '#ff7a6b' },
+    25: { bg1: '#9b59b6', bg2: '#5b2c6f', accent: '#d7a3ef' },
 };
 
 // ================= XP FORMULA (matches index.js exactly) =================
@@ -56,7 +57,14 @@ function xpProgress(totalXP, level) {
 function getTheme(level, custom) {
     const keys = Object.keys(DEFAULT_THEMES).map(Number).sort((a, b) => b - a);
     for (const k of keys) if (level >= k) return { ...DEFAULT_THEMES[k], ...(custom || {}) };
-    return { bg1: '#5865f2', bg2: '#2d3a8c', accent: '#8b9aff', label: 'ROOKIE', ...(custom || {}) };
+    return { bg1: '#5865f2', bg2: '#2d3a8c', accent: '#8b9aff', ...(custom || {}) };
+}
+
+// The name members see (server nickname, then display name), like /profile. Canvas can't draw colour emojis: removed.
+function shownName(user, member) {
+    const raw = member?.displayName || user.globalName || user.username;
+    const clean = String(raw || '').replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu, '').replace(/\s{2,}/g, ' ').trim();
+    return clean || user.username;
 }
 
 // ================= AVATAR =================
@@ -65,7 +73,7 @@ async function getAvatar(user, size = 128) {
 }
 
 // ================= CANVAS: LEGENDARY LEVEL BANNER (2x) =================
-async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}, lang = 'en') {
+async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}, lang = 'en', member = null) {
     const SCALE = 2;
     const CW = W * SCALE, CH = H * SCALE;
     const t = getTheme(level, theme);
@@ -91,15 +99,17 @@ async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}, l
         ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i - CH, CH); ctx.stroke();
     }
 
-    // Rank label badge
+    // Rank badge: the member's rank, the same name as on /profile and the level reward role
+    const rankLabel = require('../lib/games/progress').rankName(level, lang).toLocaleUpperCase(lang);
+    ctx.font = `bold ${11 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
+    const badgeW = Math.max(110 * SCALE, ctx.measureText(rankLabel).width + 24 * SCALE);
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    roundRect(ctx, 20 * SCALE, 18 * SCALE, 110 * SCALE, 28 * SCALE, 6 * SCALE);
+    roundRect(ctx, 20 * SCALE, 18 * SCALE, badgeW, 28 * SCALE, 6 * SCALE);
     ctx.fill();
     ctx.fillStyle = t.accent;
-    ctx.font = `bold ${11 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(t.label, 75 * SCALE, 32 * SCALE);
+    ctx.fillText(rankLabel, 20 * SCALE + badgeW / 2, 32 * SCALE);
 
     // Avatar
     const av = await getAvatar(user, 256);
@@ -146,7 +156,8 @@ async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}, l
     // Username
     ctx.fillStyle = t.accent;
     ctx.font = `${26 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
-    const name = user.username.length > 20 ? user.username.substring(0, 19) + '\u2026' : user.username;
+    const shown = shownName(user, member);
+    const name = [...shown].length > 20 ? [...shown].slice(0, 19).join('') + '\u2026' : shown;
     ctx.fillText(name, tx, CH / 2 + 24 * SCALE);
 
     // XP text
@@ -191,7 +202,7 @@ async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}, l
     return c.encode('png');
 }
 // ================= CANVAS: RANK CARD (2x) =================
-async function renderRankCard(user, rank, level, totalXP, theme = {}, lang = 'en') {
+async function renderRankCard(user, rank, level, totalXP, theme = {}, lang = 'en', member = null) {
     const SCALE = 2;
     const CW = W * SCALE, CH = H * SCALE;
     const t = getTheme(level, theme);
@@ -265,13 +276,14 @@ async function renderRankCard(user, rank, level, totalXP, theme = {}, lang = 'en
     ctx.fillStyle = '#ffffff';
     ctx.font = `bold ${28 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.textAlign = 'left';
-    const nm = user.username.length > 22 ? user.username.substring(0, 21) + '\u2026' : user.username;
+    const shown = shownName(user, member);
+    const nm = [...shown].length > 22 ? [...shown].slice(0, 21).join('') + '\u2026' : shown;
     ctx.fillText(nm, tx, CH / 2 - 35 * SCALE);
 
     // Level
     ctx.fillStyle = t.accent;
     ctx.font = `bold ${20 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
-    ctx.fillText(L('cardLevelSmall', lang, { level }), tx, CH / 2 - 5 * SCALE);
+    ctx.fillText(`${L('cardLevelSmall', lang, { level })} · ${require('../lib/games/progress').rankName(level, lang)}`, tx, CH / 2 - 5 * SCALE);
 
     // XP
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
@@ -460,7 +472,7 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db, 
     const _milestoneNeeds = require('../lib/canPost').neededFor('levelup-milestone');
     if (!canSend('levelup-milestone', ch, _milestoneNeeds, { guild: member.guild, channelId: ch.id, quiet: !chId })) return;
     const customTheme = db ? levelTheme(getThemeDB(db, member.guild.id)) : null;   // the saved columns as { bg1, bg2, accent }
-    const png = await renderLevelBanner(member.user, newLevel, xpCurrent, xpNeeded, customTheme, lang);
+    const png = await renderLevelBanner(member.user, newLevel, xpCurrent, xpNeeded, customTheme, lang, member);
     const theme = getTheme(newLevel, customTheme);
     const embed = new EmbedBuilder().setColor(parseInt(theme.bg1.replace('#', ''), 16)).setImage('attachment://levelup.png');
     if (added.length) embed.addFields({ name: _t('leveling.newRolesLabel', lang), value: added.map(r => `• ${r}`).join('\n'), inline: false });
@@ -496,7 +508,8 @@ async function handleRank(message, args, client, db, lang = 'en') {
     const d = await rankData(client, db, message.guild.id, target.id);
     if (!d) return message.reply(t('leveling.no_xp', lang)).catch(() => { });
     const customTheme = levelTheme(getThemeDB(db, message.guild.id));
-    const png = await renderRankCard(target, d.rank, d.level, d.xp, customTheme, lang);
+    const targetMember = message.mentions.members?.first() || (target.id === message.author.id ? message.member : message.guild.members.cache.get(target.id));
+    const png = await renderRankCard(target, d.rank, d.level, d.xp, customTheme, lang, targetMember);
     const embed = new EmbedBuilder().setColor(0x5865f2).setImage('attachment://rank.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
     await message.reply(toV2({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'rank.png' })] })).catch(() => { });
 }
@@ -717,7 +730,7 @@ async function themePreview(ix, mode, row) {
             const cfg = { ...Style.normalizeWelcomeConfig({}), welcomeAccent: Colors.normHex(row?.welcome_accent) || null, lang: 'en' };
             return await Style.renderWelcomeCard(ix.member, ix.guild.memberCount || 1, cfg);
         }
-        return await renderLevelBanner(ix.user, 12, 640, 1000, levelTheme(row), require('../lib/pick-lang').pickLang(ix.client, ix.guildId, ix, ix.user.id));
+        return await renderLevelBanner(ix.user, 12, 640, 1000, levelTheme(row), require('../lib/pick-lang').pickLang(ix.client, ix.guildId, ix, ix.user.id), ix.member);
     } catch (e) {
         console.error('[LEVELING] theme preview:', e.message);
         return bannerPreview(row, require('../lib/pick-lang').pickLang(ix.client, ix.guildId, ix, ix.user.id));
@@ -960,7 +973,8 @@ module.exports = {
             const d = await rankData(client, db, ix.guild.id, target.id);
             if (!d) return ix.editReply({ content: t('leveling.no_xp', lang) }).catch(() => { });
             const customTheme = db ? levelTheme(getThemeDB(db, ix.guild.id)) : null;
-            const png = await renderRankCard(target, d.rank, d.level, d.xp, customTheme, lang);
+            const targetMember = ix.options.getMember('user') || (target.id === ix.user.id ? ix.member : ix.guild.members.cache.get(target.id));
+            const png = await renderRankCard(target, d.rank, d.level, d.xp, customTheme, lang, targetMember);
             const embed = new EmbedBuilder().setColor(0x5865f2).setImage('attachment://rank.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
             return ix.editReply(toV2({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'rank.png' })] })).catch(() => { });
         }

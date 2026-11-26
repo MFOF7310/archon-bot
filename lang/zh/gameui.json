@@ -18,11 +18,12 @@
   "unknown": "未知",
   "footer": "ARCHON CG-223 · {game}",
   "ranks": {
+    "newcomer": "新人",
     "recruit": "新兵",
     "fieldAgent": "外勤特工",
     "cyberSpecialist": "网络专家",
     "bkoCommander": "BKO 指挥官",
-    "systemArchitect": "系统架构师"
+    "systemArchitect": "架构师"
   },
   "rewardCredits": "+{credits} 积分"
 }

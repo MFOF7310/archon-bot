@@ -18,11 +18,12 @@
   "unknown": "Inconnu",
   "footer": "ARCHON CG-223 · {game}",
   "ranks": {
+    "newcomer": "Nouveau",
     "recruit": "Recrue",
     "fieldAgent": "Agent de terrain",
-    "cyberSpecialist": "Spécialiste cyber",
+    "cyberSpecialist": "Cyber-spécialiste",
     "bkoCommander": "Commandant BKO",
-    "systemArchitect": "Architecte système"
+    "systemArchitect": "Architecte"
   },
   "rewardCredits": "+{credits} crédits"
 }

@@ -2847,24 +2847,11 @@ if (message.content && message.content.length > 4000) {
             const levelBannerUrl = getLevelBanner(newLevel);
 
             // Determine tier name & color
-            let levelTier, levelTierColor, tierEmoji;
-            if (newLevel <= 5) {
-                levelTier = userLang === 'fr' ? 'Initié' : 'Initiate';
-                levelTierColor = '#95a5a6';
-                tierEmoji = '🌱';
-            } else if (newLevel <= 10) {
-                levelTier = userLang === 'fr' ? 'Chevalier' : 'Knight';
-                levelTierColor = '#9b59b6';
-                tierEmoji = '⚔️';
-            } else if (newLevel <= 20) {
-                levelTier = userLang === 'fr' ? 'Seigneur Synapse' : 'Synapse Lord';
-                levelTierColor = '#ffd700';
-                tierEmoji = '👑';
-            } else {
-                levelTier = userLang === 'fr' ? 'Architecte Suprême' : 'Supreme Architect';
-                levelTierColor = '#e74c3c';
-                tierEmoji = '🌟';
-            }
+            // the one rank ladder (lib/games/progress.js): the name of the level reward role reached
+            const _rank = require('./lib/games/progress').rankForLevel(newLevel);
+            const levelTier = require('./lib/games/progress').rankName(newLevel, userLang);
+            const levelTierColor = '#' + _rank.color.toString(16).padStart(6, '0');
+            const tierEmoji = _rank.emoji;
 
             // The old "Tier: …" roles were looked up by name and existed on almost no server (it only filled the log with
             // role_not_found). Level reward roles are the ones set in /roles, given by plugins/leveling.js.
@@ -2880,7 +2867,7 @@ if (message.content && message.content.length > 4000) {
 
             // ================= MILESTONE CHECK =================
             const isMilestone = [5, 10, 15, 20, 25, 30, 35, 50, 75, 100].includes(newLevel) || (newLevel > 35 && newLevel % 5 === 0);
-            const tierChanged = [6, 11, 21].includes(newLevel); // tier roles change here, never on a milestone
+            const tierChanged = [5, 10, 15, 20, 25].includes(newLevel); // a new rank starts here
             const announce = isMilestone || tierChanged; // announce only these, but never exit: the sync and command handling below must run
 
             if (client.leveling?.onLevelUp && message.guild) {

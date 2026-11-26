@@ -535,7 +535,7 @@ async function profileMessage(client, guild, target, lang, own) {
     let accent = 0x3498db;
     try {
         const d = client.db?.prepare('SELECT xp, level FROM users WHERE id = ? AND guild_id = ?').get(target.id, guildId) || {};
-        accent = progress.rankForLevel(d.level || progress.levelFromXp(d.xp)).color;
+        accent = progress.rankForLevel(progress.levelFromXp(d.xp)).color;
     } catch (e) { /* default colour */ }
     const c = new ContainerBuilder().setAccentColor(accent)
         .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL('attachment://profile.png')))

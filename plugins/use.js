@@ -20,15 +20,8 @@ const langOf = (client, gid, where, uid) => { try { const l = require('../lib/pi
 const C = { panel: 0x7F77DD, ok: 0x1D9E75, warn: 0xEF9F27, bad: 0xE24B4A, gold: 0xE6A817 };
 
 const calculateLevel = (xp) => Math.floor(0.1 * Math.sqrt(xp || 0)) + 1;
-const AGENT_RANKS = [
-    { minLevel: 1, maxLevel: 5, title: { fr: 'Recrue', en: 'Recruit' }, emoji: '🌱' },
-    { minLevel: 6, maxLevel: 15, title: { fr: 'Agent de terrain', en: 'Field agent' }, emoji: '🔹' },
-    { minLevel: 16, maxLevel: 30, title: { fr: 'Spécialiste cyber', en: 'Cyber specialist' }, emoji: '💠' },
-    { minLevel: 31, maxLevel: 50, title: { fr: 'Commandant BKO', en: 'BKO commander' }, emoji: '⚜️' },
-    { minLevel: 51, maxLevel: Infinity, title: { fr: 'Architecte système', en: 'System architect' }, emoji: '👑' },
-];
-const getRank = (level) => AGENT_RANKS.find((r) => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1];
-const rankName = (r, lang) => `${r.emoji} ${r.title[lang] || r.title.en}`;
+const getRank = (level) => require('../lib/games/progress').rankForLevel(level);   // the one rank ladder
+const rankName = (r, lang) => `${r.emoji} ${t(`gameui.ranks.${r.key}`, lang)}`;
 
 const itemsOf = (client) => new Map((client.shopItems || []).map((it) => [it.id, it]));
 const nameOf = (item, lang, id) => item?.[lang]?.name || item?.en?.name || item?.name || id;

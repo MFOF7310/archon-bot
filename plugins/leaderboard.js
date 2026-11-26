@@ -4,17 +4,7 @@ const { t } = require('../lib/i18n');
 
 function calculateLevel(xp) { return Math.floor(0.1 * Math.sqrt(xp || 0)) + 1; }
 
-const AGENT_RANKS = [
-    { minLevel: 1,  maxLevel: 5,        key: 'recruit'    },
-    { minLevel: 6,  maxLevel: 15,       key: 'agent'      },
-    { minLevel: 16, maxLevel: 30,       key: 'specialist' },
-    { minLevel: 31, maxLevel: 50,       key: 'commander'  },
-    { minLevel: 51, maxLevel: Infinity, key: 'architect'  },
-];
-
-function getRank(level) {
-    return AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[0];
-}
+function getRank(level) { return require('../lib/games/progress').rankForLevel(level); }   // the one rank ladder
 
 function getSortType(raw, lang) {
     const valid = ['xp','credits','messages','msg','streak','daily','wins','games','voice','vocal','vc'];
@@ -67,9 +57,9 @@ function buildV2Card(data, guildName, tKey, lang, context) {
 
     for (let i = 0; i < entries.length; i++) {
         const entry = entries[i];
-        const level = entry.level || calculateLevel(entry.xp);
+        const level = calculateLevel(entry.xp);   // from XP, like /profile (the saved level can lag)
         const rank = getRank(level);
-        const rankName = t(`leaderboard.ranks.${rank.key}`, lang);
+        const rankName = t(`gameui.ranks.${rank.key}`, lang);
         
         // Custom Emojis for Top 3
         let medal = `**${i + 1}.**`;

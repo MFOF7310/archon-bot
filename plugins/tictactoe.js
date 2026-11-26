@@ -15,20 +15,13 @@ const GAME_MS   = 120000;
 
 const COLORS = { play: 0x9b59b6, win: 0x57f287, draw: 0xfee75c, loss: 0xed4245, neutral: 0x99aab5 };
 
-const AGENT_RANKS = [
-    { minLevel: 1,  maxLevel: 5,        key: 'rank_1', emoji: '🌱' },
-    { minLevel: 6,  maxLevel: 15,       key: 'rank_2', emoji: '🔹' },
-    { minLevel: 16, maxLevel: 30,       key: 'rank_3', emoji: '💠' },
-    { minLevel: 31, maxLevel: 50,       key: 'rank_4', emoji: '⚜️' },
-    { minLevel: 51, maxLevel: Infinity, key: 'rank_5', emoji: '👑' },
-];
 const LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
 
 // Players currently in a challenge or a match, so nobody plays two at once
 const busy = new Set();
 
 const calculateLevel = (xp) => Math.floor(0.1 * Math.sqrt(xp)) + 1;
-const getRank = (level) => AGENT_RANKS.find(r => level >= r.minLevel && level <= r.maxLevel) || AGENT_RANKS[AGENT_RANKS.length - 1];
+const getRank = (level) => require('../lib/games/progress').rankForLevel(level);   // the one rank ladder
 const unix = (ms) => Math.floor(ms / 1000);
 
 function checkWinner(board) {
@@ -75,6 +68,7 @@ module.exports = {
         const guildId = message.guild?.id ?? 'DM';
         const lang = client.detectLanguage ? client.detectLanguage('tictactoe', guildId) : 'en';
         const t = (key, vars) => i18n.t(`tictactoe.${key}`, lang, vars);
+        const rn = (r) => i18n.t(`gameui.ranks.${r.key}`, lang);
 
         const challenger = message.author;
         const opponent   = message.mentions.users.first();
@@ -189,8 +183,8 @@ module.exports = {
             const markOf = (id) => (id === challenger.id ? EMOJIS.small_cross : EMOJIS.small_check);
 
             const header  = `### ${EMOJIS.duel_sword} ${t('arena')}\n-# ${t('entry_fee')}`;
-            const players = `${EMOJIS.small_cross} <@${challenger.id}> · ${cRank.emoji} ${t(cRank.key)} · Lv.${cLevel}\n`
-                          + `${EMOJIS.small_check} <@${opponent.id}> · ${oRank.emoji} ${t(oRank.key)} · Lv.${oLevel}`;
+            const players = `${EMOJIS.small_cross} <@${challenger.id}> · ${cRank.emoji} ${rn(cRank)} · Lv.${cLevel}\n`
+                          + `${EMOJIS.small_check} <@${opponent.id}> · ${oRank.emoji} ${rn(oRank)} · Lv.${oLevel}`;
 
             const playCard = () => v2.card(COLORS.play, [
                 { text: header },
@@ -254,10 +248,10 @@ module.exports = {
                 const lines = [
                     `${t('prize')}: **+${REWARD} 🪙 · +${WIN_XP} XP**`,
                     `${t('consolation', { loser: `<@${loser.id}>` })}: **+${LOSS_XP} XP**`,
-                    `${t('win_rate')}: **${rate}%** · ${rank.emoji} ${t(rank.key)} · Lv.${level}`,
+                    `${t('win_rate')}: **${rate}%** · ${rank.emoji} ${rn(rank)} · Lv.${level}`,
                 ];
                 if (level > oldLevel) {
-                    lines.push(`-# ${t('levelup_desc', { username: winner.username, level, emoji: rank.emoji, rank: t(rank.key) })}`);
+                    lines.push(`-# ${t('levelup_desc', { username: winner.username, level, emoji: rank.emoji, rank: rn(rank) })}`);
                 }
 
                 return b.update(v2.card(COLORS.win, [
