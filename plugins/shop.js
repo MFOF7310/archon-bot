@@ -64,7 +64,7 @@ module.exports = {
 
             let description = `${item.price.toLocaleString()} ${t('shop.creditsLabel', lang)} - ${itemDesc}`;
             // Use Unicode emojis for descriptions (custom emojis are not supported here)
-            if (ownedSet.has(item.id)) description = `${em('ic_ok', '✅')} ${t('shop.owned', lang)} - ${description}`;
+            if (ownedSet.has(item.id)) description = `✓ ${t('shop.owned', lang)} - ${description}`;   // a custom emoji showed as raw <:ic_ok:…> text here
             if (item.requirement?.level && currentLevel < item.requirement.level) description = `🔒 ${t('shop.locked', lang)} ${item.requirement.level} - ${description}`;
 
             const opt = {
