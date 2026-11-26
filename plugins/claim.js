@@ -202,7 +202,9 @@ async function claim(client, { user, member, guild, channel, lang }) {
         // Streak roles at 3, 7, 30 and 100 days. Every tier reached is given if missing, not only on the exact day:
         // a role created or fixed after someone passed its day used to be never given. Read fresh from the database
         // (a role made a minute ago may not be in the cached settings yet), and a refusal is logged with its reason.
-        if (guild && member) {
+        // Given in the background, after the card is sent: role calls to Discord can take seconds, and a slash
+        // command must answer within 3 s (it failed with "Unknown interaction" while the roles were being given)
+        if (guild && member) (async () => {
             let fresh = {};
             try { fresh = db.prepare('SELECT daily_initiate_role, daily_warrior_role, daily_champion_role, daily_legend_role FROM server_settings WHERE guild_id = ?').get(gid) || {}; } catch { fresh = {}; }
             const COL = { dailyInitiateRoleId: 'daily_initiate_role', dailyWarriorRoleId: 'daily_warrior_role', dailyChampionRoleId: 'daily_champion_role', dailyLegendRoleId: 'daily_legend_role' };
@@ -215,7 +217,7 @@ async function claim(client, { user, member, guild, channel, lang }) {
             }
             // the daily XP can pass a level: its role comes now, not at the next milestone
             await require('../lib/reward-roles').syncLevelRoles(member, updated.level, db).catch(() => {});
-        }
+        })().catch((e) => console.error('[CLAIM] roles:', e.message));
 
         const on = guild ? remindersOn(db, user.id, gid) : false;
         if (on) schedule(client, db, user.id, gid, channel?.id, lang, now);
