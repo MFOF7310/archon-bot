@@ -146,7 +146,8 @@ module.exports = {
         const actor = await guild.members.fetch(interaction.user.id).catch(() => null);
         if (!M.hasPerm(actor, PermissionFlagsBits.BanMembers)) return M.fail(interaction, M.T('no_perm', lang, { perm: 'Ban Members' }), lang);
 
-        // check everything, then ask
+        // check everything, then ask (privately; the checks call Discord, so answer within the 3 s first)
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const user = interaction.options.getUser('user');
         const problem = await precheck(guild, actor, user, lang, interaction);
         if (problem) return M.fail(interaction, problem, lang);
@@ -154,7 +155,7 @@ module.exports = {
         const deleteSeconds = DELETE_CHOICES[interaction.options.getString('delete_messages') || 'none'] || 0;
         const nonce = remember({ guildId: guild.id, actorId: actor.id, userId: user.id, reason, deleteSeconds, lang, channelId: interaction.channelId, ephemeral: true });
         const ask = M.card({ look: 'ban', title: M.T('ban_confirm_title', lang, { user: M.safe(user.username) }), lines: [[null, M.T('ban_confirm_text', lang)], [M.T('l_reason', lang), M.safe(reason)]], avatar: M.avatarOf(user), ctx: interaction });
-        return interaction.reply({ components: [ask, confirmRow(nonce, actor.id, lang)], flags: M.V2 | MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+        return interaction.editReply({ components: [ask, confirmRow(nonce, actor.id, lang)], flags: M.V2, allowedMentions: { parse: [] } });
     },
 
     run: async (client, message, args, db, serverSettings, usedCommand) => {
@@ -205,12 +206,13 @@ module.exports = {
         if (action === 'no') return interaction.update({ components: [M.card({ look: 'info', title: M.T('cancelled', p.lang), ctx: interaction })], flags: M.V2 });
 
         // Checked again: roles or permissions may have changed while the question was open
+        // (after acknowledging the click: these checks call Discord and could pass the 3 s)
+        await interaction.deferUpdate();
         const actor = await guild.members.fetch(actorId).catch(() => null);
         const user = await client.users.fetch(p.userId).catch(() => null);
         const problem = !actor || !user ? M.T('expired', p.lang) : await precheck(guild, actor, user, p.lang, interaction);
-        if (problem) return interaction.update({ components: [M.card({ look: 'error', title: M.T('refused', p.lang), lines: [[null, problem]], ctx: interaction })], flags: M.V2, allowedMentions: { parse: [] } });
+        if (problem) return interaction.editReply({ components: [M.card({ look: 'error', title: M.T('refused', p.lang), lines: [[null, problem]], ctx: interaction })], flags: M.V2, allowedMentions: { parse: [] } });
 
-        await interaction.deferUpdate();
         try {
             const result = await doBan(client, guild, actor, user, p.reason, p.deleteSeconds, p.lang, interaction);
             await interaction.editReply({ components: [result], flags: M.V2, allowedMentions: { parse: [] } });

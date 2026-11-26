@@ -67,6 +67,7 @@ module.exports = {
         const lang = M.langFor(client, interaction);
         const actor = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
         const channel = interaction.options.getChannel('channel') || interaction.channel;
+        await interaction.deferReply({ flags: 64 });   // the channel change and the mod log can pass Discord's 3 s
         try {
             const r = await setSlow(client, channel, actor, interaction.options.getString('duration'), lang, interaction);
             if (r.error) return M.fail(interaction, r.error, lang);

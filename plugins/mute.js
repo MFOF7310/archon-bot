@@ -86,10 +86,15 @@ module.exports = {
         const user = interaction.options.getUser('target');
         const member = await guild.members.fetch(user.id).catch(() => null);
         const reason = M.cleanReason(interaction.options.getString('reason'), lang);
+        // Discord needs an answer within 3 s; the timeout, the DM and the mod log can take longer
+        await interaction.deferReply();
         const r = interaction.options.getSubcommand() === 'remove'
             ? await doUnmute(client, guild, actor, member, reason, lang, interaction)
             : await doMute(client, guild, actor, member, M.parseDuration(interaction.options.getString('duration') || '1h'), reason, lang, interaction);
-        if (r.error) return M.fail(interaction, r.error, lang);
+        if (r.error) {   // the refusal stays private, like before
+            await interaction.deleteReply().catch(() => {});
+            return interaction.followUp({ components: [M.card({ look: 'error', title: M.T('refused', lang), lines: [[null, r.error]], ctx: interaction })], flags: M.V2 | 64, allowedMentions: { parse: [] } });
+        }
         return M.respond(interaction, { components: [r.card] });
     },
 
