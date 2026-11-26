@@ -66,7 +66,8 @@ const GAMES = {
 
 // ================= SMALL HELPERS =================
 const calculateLevel = (xp) => Math.floor(0.1 * Math.sqrt(xp)) + 1;
-const agentIndex = (level) => (level >= 51 ? 5 : level >= 31 ? 4 : level >= 16 ? 3 : level >= 6 ? 2 : 1);
+// old rank tiers, kept for tests only: the title shown now comes from the one rank ladder (lib/games/progress.js)
+const agentIndex = (level) => (level >= 25 ? 5 : level >= 20 ? 4 : level >= 15 ? 3 : level >= 10 ? 2 : 1);
 const words = (s) => String(s || '').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
 
 // Text typed by a member: no markdown or mention characters, one line, cut to the limit.
@@ -186,11 +187,11 @@ async function start(env, input) {
     function savedCard() {
         const user = env.getUser();
         const xp = Number(user && user.xp) || 0;
-        const level = Number(user && user.level) || calculateLevel(xp);
+        const level = Math.max(Number(user && user.level) || 1, calculateLevel(xp));   // XP is the truth, the saved level can lag
         const embed = new EmbedBuilder()
             .setColor((info(saved.game) && info(saved.game).color) || DEFAULT_COLOR)
             .setTitle(`${emojiOf(saved.game, true)} ${niceGame(saved.game)} · ${env.user.name}`.trim())
-            .setDescription(tr('g_progress', { lvl: level, agentTitle: tr('g_agent' + agentIndex(level)), pts: xp.toLocaleString('en-US') }))
+            .setDescription(tr('g_progress', { lvl: level, agentTitle: require('../lib/games/progress').rankName(level, env.lang), pts: xp.toLocaleString('en-US') }))
             .addFields(
                 { name: tr('g_mode'), value: saved.mode || tr('g_notSet'), inline: true },
                 { name: tr('g_rank'), value: saved.rank || tr('g_notSet'), inline: true },

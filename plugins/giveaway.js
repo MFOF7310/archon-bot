@@ -136,8 +136,8 @@ function init(client, db) {
                     return interaction.reply({ content: t('alreadyIn'), flags: 64 });
                 }
 
-                const user = client.userDataCache?.get(`${interaction.user.id}:${gw.guild_id}`) || db.prepare('SELECT level, credits FROM users WHERE id = ? AND guild_id = ?').get(interaction.user.id, gw.guild_id);
-                if (gw.min_level > 0 && (!user || user.level < gw.min_level)) {
+                const user = client.userDataCache?.get(`${interaction.user.id}:${gw.guild_id}`) || db.prepare('SELECT level, xp, credits FROM users WHERE id = ? AND guild_id = ?').get(interaction.user.id, gw.guild_id);
+                if (gw.min_level > 0 && (!user || require('../lib/games/progress').trueLevel(user) < gw.min_level)) {   // level from XP too
                     return interaction.reply({ content: t('needLevel').replace('{level}', gw.min_level), flags: 64 });
                 }
                 if (gw.min_credits > 0 && (!user || user.credits < gw.min_credits)) {

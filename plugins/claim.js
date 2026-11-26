@@ -153,7 +153,7 @@ function waitCard(t, { data, last }) {
 
 function profileCard(t, user, name, data) {
     return v2.card(GOLD, [
-        { thumbnail: [`### ${name}\n-# ${t('profileLevel', { n: data.level || levelOf(data.xp) })}`, user.displayAvatarURL({ extension: 'png', size: 128 })] },
+        { thumbnail: [`### ${name}\n-# ${t('profileLevel', { n: Math.max(Number(data.level) || 1, levelOf(data.xp)) })}`, user.displayAvatarURL({ extension: 'png', size: 128 })] },
         { rule: true },
         { text: t('profileBody', { xp: fmt(data.xp), credits: fmt(data.credits), streak: data.streak_days || 0, best: data.highest_streak || 0, total: data.total_dailies || 0 }) },
     ]);

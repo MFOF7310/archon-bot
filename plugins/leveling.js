@@ -567,7 +567,7 @@ async function configCard(client, guild, db, lang, who) {
     const { dashboardUrl } = require('../lib/postProblems');
     let row = {}, stats = {};
     try { row = db?.prepare(`SELECT levelup_channel, ${MILESTONES.map((m) => `level_${m}_role`).join(', ')}, ${STREAK_ROLES.map((x) => x[1]).join(', ')} FROM server_settings WHERE guild_id = ?`).get(guild.id) || {}; } catch { row = {}; }
-    try { stats = db?.prepare('SELECT COUNT(*) AS n, MAX(level) AS top FROM users WHERE guild_id = ? AND xp > 0').get(guild.id) || {}; } catch { stats = {}; }
+    try { stats = db?.prepare('SELECT COUNT(*) AS n, MAX(level) AS top, MAX(xp) AS topXp FROM users WHERE guild_id = ? AND xp > 0').get(guild.id) || {}; stats.top = require('../lib/games/progress').trueLevel({ level: stats.top, xp: stats.topXp }); } catch { stats = {}; }
     const theme = db ? getThemeDB(db, guild.id) : null;
 
     const rewards = MILESTONES.map((m) => {
