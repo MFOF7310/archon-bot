@@ -2890,7 +2890,7 @@ if (message.content && message.content.length > 4000) {
                 const xpNeed = Math.pow(newLevel / 0.1, 2) - Math.pow((newLevel - 1) / 0.1, 2);
                 const roleLine = (tierChanged && roleResult?.ok && roleResult.role?.name) ? `${tierEmoji} ${require('./lib/i18n').t('leveling.levelUpRole', userLang, { role: roleResult.role.name })}` : null;
                 await client.leveling.onLevelUp(message.member, newLevel, Math.floor(xpCur), Math.floor(xpNeed), client, db,
-                    { channel: message.channel, template: serverSettings.levelupMessage, xp: newXP, tier: levelTier, roleLine }).catch((e) => console.log(`[LEVELUP] ${e.message}`));
+                    { channel: message.channel, template: serverSettings.levelupMessage, xp: newXP, tier: levelTier, roleLine, fromLevel: oldLevel }).catch((e) => console.log(`[LEVELUP] ${e.message}`));
             } else if (announce) {
                 // ================= CUSTOM levelup_message TEMPLATE =================
                 const customTemplate = serverSettings.levelupMessage;

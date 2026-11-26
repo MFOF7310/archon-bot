@@ -104,5 +104,11 @@
   "voice_milestone_one": "{icon} {user} has spent their first **hour** in voice on this server.",
   "voice_milestone": "{icon} {user} has now spent **{hours} hours** in voice on this server.",
   "allSet": "All {n} are in place",
-  "othersSet": "{n} others in place"
+  "othersSet": "{n} others in place",
+  "cardLevelBig": "LEVEL {level}",
+  "cardRank": "RANK #{rank}",
+  "cardLevelSmall": "Level {level}",
+  "cardTotal": "Total: {xp} XP",
+  "rolePowerful": "This role has admin or moderation permissions: ARCHON won't hand it out as a reward.",
+  "disabled": "Leveling is turned off on this server."
 }

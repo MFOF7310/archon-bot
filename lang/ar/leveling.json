@@ -104,5 +104,11 @@
   "voice_milestone_one": "{icon} أمضى {user} أول **ساعة** له في الصوت على هذا الخادم.",
   "voice_milestone": "{icon} أمضى {user} حتى الآن **{hours} ساعة** في الصوت على هذا الخادم.",
   "allSet": "كلها جاهزة ({n})",
-  "othersSet": "{n} أخرى جاهزة"
+  "othersSet": "{n} أخرى جاهزة",
+  "cardLevelBig": "المستوى {level}",
+  "cardRank": "الترتيب #{rank}",
+  "cardLevelSmall": "المستوى {level}",
+  "cardTotal": "المجموع: {xp} XP",
+  "rolePowerful": "لهذه الرتبة صلاحيات إدارة أو إشراف: لن يمنحها ARCHON كمكافأة.",
+  "disabled": "نظام المستويات معطّل في هذا الخادم."
 }

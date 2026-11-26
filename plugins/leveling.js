@@ -3,12 +3,8 @@ const em = (k, fb) => { try { return require('../config/emojis')[k] || fb; } cat
 const { t } = require('../lib/i18n');
 const { toV2 } = require('../lib/v2convert');   // classic embeds -> Components V2 cards
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
-const fs = require('fs');
-const path = require('path');
 
 const W = 850, H = 260;
-const AV_CACHE = path.join(__dirname, '..', 'cache', 'avatars');
-if (!fs.existsSync(AV_CACHE)) fs.mkdirSync(AV_CACHE, { recursive: true });
 
 // ================= COLOR NAME → HEX MAP =================
 const COLOR_MAP = {
@@ -55,7 +51,7 @@ function xpNeededForLevel(level) { return Math.floor(xpForLevel(level) - xpForLe
 function xpProgress(totalXP, level) {
     const cur = xpInCurrentLevel(totalXP, level);
     const need = xpNeededForLevel(level);
-    return need > 0 ? Math.min(cur / need, 0.99) : 0;
+    return need > 0 ? Math.max(0, Math.min(cur / need, 0.99)) : 0;
 }
 function getTheme(level, custom) {
     const keys = Object.keys(DEFAULT_THEMES).map(Number).sort((a, b) => b - a);
@@ -63,16 +59,13 @@ function getTheme(level, custom) {
     return { bg1: '#5865f2', bg2: '#2d3a8c', accent: '#8b9aff', label: 'ROOKIE', ...(custom || {}) };
 }
 
-// ================= AVATAR CACHE =================
+// ================= AVATAR =================
 async function getAvatar(user, size = 128) {
-    const url = user.displayAvatarURL({ extension: 'png', size });
-    const f = path.join(AV_CACHE, `${user.id}-${size}.png`);
-    if (fs.existsSync(f)) return loadImage(f);
-    try { return await loadImage(url); } catch { return null; }
+    try { return await loadImage(user.displayAvatarURL({ extension: 'png', size })); } catch { return null; }
 }
 
 // ================= CANVAS: LEGENDARY LEVEL BANNER (2x) =================
-async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}) {
+async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}, lang = 'en') {
     const SCALE = 2;
     const CW = W * SCALE, CH = H * SCALE;
     const t = getTheme(level, theme);
@@ -80,7 +73,7 @@ async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}) {
     const ctx = c.getContext('2d');
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
-    const prog = xpNeeded > 0 ? Math.min(xpCurrent / xpNeeded, 0.99) : 0.5;
+    const prog = xpNeeded > 0 ? Math.max(0, Math.min(xpCurrent / xpNeeded, 0.99)) : 0.5;
 
     // Background gradient
     const grad = ctx.createLinearGradient(0, 0, CW, CH);
@@ -148,7 +141,7 @@ async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}) {
     ctx.font = `bold ${52 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`LEVEL ${level}`, tx, CH / 2 - 22 * SCALE);
+    ctx.fillText(L('cardLevelBig', lang, { level }), tx, CH / 2 - 22 * SCALE);
 
     // Username
     ctx.fillStyle = t.accent;
@@ -198,7 +191,7 @@ async function renderLevelBanner(user, level, xpCurrent, xpNeeded, theme = {}) {
     return c.encode('png');
 }
 // ================= CANVAS: RANK CARD (2x) =================
-async function renderRankCard(user, rank, level, totalXP, theme = {}) {
+async function renderRankCard(user, rank, level, totalXP, theme = {}, lang = 'en') {
     const SCALE = 2;
     const CW = W * SCALE, CH = H * SCALE;
     const t = getTheme(level, theme);
@@ -264,7 +257,7 @@ async function renderRankCard(user, rank, level, totalXP, theme = {}) {
     ctx.font = `bold ${11 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(`RANK #${rank}`, 62 * SCALE, 29 * SCALE);
+    ctx.fillText(L('cardRank', lang, { rank }), 62 * SCALE, 29 * SCALE);
 
     const tx = ax + ar * 2 + 22 * SCALE;
 
@@ -278,7 +271,7 @@ async function renderRankCard(user, rank, level, totalXP, theme = {}) {
     // Level
     ctx.fillStyle = t.accent;
     ctx.font = `bold ${20 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
-    ctx.fillText(`Level ${level}`, tx, CH / 2 - 5 * SCALE);
+    ctx.fillText(L('cardLevelSmall', lang, { level }), tx, CH / 2 - 5 * SCALE);
 
     // XP
     ctx.fillStyle = 'rgba(255,255,255,0.6)';
@@ -288,7 +281,7 @@ async function renderRankCard(user, rank, level, totalXP, theme = {}) {
     // Total XP
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
     ctx.font = `${10 * SCALE}px "Liberation Sans", "Noto Sans Arabic", "Noto Sans CJK SC", Arial, sans-serif`;
-    ctx.fillText(`Total: ${Math.floor(totalXP).toLocaleString()} XP`, tx, CH / 2 + 42 * SCALE);
+    ctx.fillText(L('cardTotal', lang, { xp: Math.floor(totalXP).toLocaleString() }), tx, CH / 2 + 42 * SCALE);
 
     // Progress bar
     const bx = tx, by = CH - 40 * SCALE, bw = 420 * SCALE, bh = 10 * SCALE;
@@ -438,7 +431,11 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db, 
     // a role created later, or a level jumped with game or /claim XP, is caught up here
     const added = await assignRoles(member, newLevel, db).catch(() => []);
     if (added.length) console.log(`[LEVELING] guild=${member.guild.id} ${member.id} got: ${added.join(', ')}`);
-    const isMilestone = DEFAULT_THEMES[newLevel] || (newLevel > 25 && newLevel % 5 === 0);
+    // a jump of several levels (game XP, /claim) that passes 5, 10, 15… still gets the milestone banner
+    const isMs = (l) => DEFAULT_THEMES[l] || (l > 25 && l % 5 === 0);
+    const from = Number(opts.fromLevel) || newLevel - 1;
+    let isMilestone = false;
+    for (let l = Math.max(from + 1, 1); l <= newLevel; l++) if (isMs(l)) { isMilestone = true; break; }
     const ss = client.getServerSettings?.(member.guild.id) || {};
     const chId = ss.levelupChannel || ss.levelup_channel;
     const ch = (chId ? member.guild.channels.cache.get(chId) : null) || opts.channel || member.guild.systemChannel;
@@ -463,7 +460,7 @@ async function handleLevelUp(member, newLevel, xpCurrent, xpNeeded, client, db, 
     const _milestoneNeeds = require('../lib/canPost').neededFor('levelup-milestone');
     if (!canSend('levelup-milestone', ch, _milestoneNeeds, { guild: member.guild, channelId: ch.id, quiet: !chId })) return;
     const customTheme = db ? levelTheme(getThemeDB(db, member.guild.id)) : null;   // the saved columns as { bg1, bg2, accent }
-    const png = await renderLevelBanner(member.user, newLevel, xpCurrent, xpNeeded, customTheme);
+    const png = await renderLevelBanner(member.user, newLevel, xpCurrent, xpNeeded, customTheme, lang);
     const theme = getTheme(newLevel, customTheme);
     const embed = new EmbedBuilder().setColor(parseInt(theme.bg1.replace('#', ''), 16)).setImage('attachment://levelup.png');
     if (added.length) embed.addFields({ name: _t('leveling.newRolesLabel', lang), value: added.map(r => `• ${r}`).join('\n'), inline: false });
@@ -482,15 +479,24 @@ async function handleWelcome(member, client, db) {
     await ch.send(toV2({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'welcome.png' })] })).catch(() => { });
 }
 
+// The numbers on a rank card: XP still waiting in the write queue is saved first (the card used to lag up to 30 s),
+// and the level comes from the XP like /profile (games add XP without saving the level, so the saved level could lag)
+async function rankData(client, db, guildId, userId) {
+    try { await client.flushUserUpdates?.(); } catch { /* the queue saves itself a bit later */ }
+    const row = client.getUserData?.(userId, guildId) || db?.prepare(`SELECT level, xp FROM users WHERE guild_id = ? AND id = ?`)?.get(guildId, userId);
+    if (!row) return null;
+    const xp = Number(row.xp) || 0;
+    const level = require('../lib/games/progress').levelFromXp(xp);
+    const rank = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM users WHERE guild_id = ? AND xp > ?`)?.get(guildId, xp)?.rank || '?';
+    return { xp, level, rank };
+}
+
 async function handleRank(message, args, client, db, lang = 'en') {
     const target = message.mentions.users.first() || message.author;
-    // Fetch from users table (ARCHON CG-223 schema)
-    const row = db?.prepare(`SELECT level, xp FROM users WHERE guild_id = ? AND id = ?`)?.get(message.guild.id, target.id);
-    if (!row) return message.reply(t('leveling.no_xp', lang)).catch(() => { });
-    const rankRow = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM users WHERE guild_id = ? AND xp > ?`)?.get(message.guild.id, row.xp);
-    const rank = rankRow?.rank || '?';
+    const d = await rankData(client, db, message.guild.id, target.id);
+    if (!d) return message.reply(t('leveling.no_xp', lang)).catch(() => { });
     const customTheme = levelTheme(getThemeDB(db, message.guild.id));
-    const png = await renderRankCard(target, rank, row.level, row.xp, customTheme);
+    const png = await renderRankCard(target, d.rank, d.level, d.xp, customTheme, lang);
     const embed = new EmbedBuilder().setColor(0x5865f2).setImage('attachment://rank.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
     await message.reply(toV2({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'rank.png' })] })).catch(() => { });
 }
@@ -558,7 +564,7 @@ async function configCard(client, guild, db, lang, who) {
         const problem = roleProblem(guild, guild.roles.cache.get(String(id)));
         if (!problem) return { ok: true, text: `${tag} ${icon('ok', guild)} <@&${id}>` };
         if (problem === 'gone') return `${tag} ${icon('no', guild)} ${L('roleGone', lang)}`;
-        return `${tag} ${icon('warn', guild)} <@&${id}>\n-# ${L(problem === 'above' ? 'roleAbove' : 'roleManaged', lang)}`;
+        return `${tag} ${icon('warn', guild)} <@&${id}>\n-# ${L(problem === 'above' ? 'roleAbove' : problem === 'powerful' ? 'rolePowerful' : 'roleManaged', lang)}`;
     });
 
     const streaks = STREAK_ROLES.map(([days, col]) => {
@@ -568,7 +574,7 @@ async function configCard(client, guild, db, lang, who) {
         const problem = roleProblem(guild, guild.roles.cache.get(String(id)));
         if (!problem) return { ok: true, text: `${tag} ${icon('ok', guild)} <@&${id}>` };
         if (problem === 'gone') return `${tag} ${icon('no', guild)} ${L('roleGone', lang)}`;
-        return `${tag} ${icon('warn', guild)} <@&${id}>\n-# ${L(problem === 'above' ? 'roleAbove' : 'roleManaged', lang)}`;
+        return `${tag} ${icon('warn', guild)} <@&${id}>\n-# ${L(problem === 'above' ? 'roleAbove' : problem === 'powerful' ? 'rolePowerful' : 'roleManaged', lang)}`;
     });
     // A series where every role works is one line (the full list is in /roles); otherwise only what needs a look
     const rolesCmd = (() => { try { return require('../lib/cmd').slash(client, 'roles', { guild }); } catch { return '/roles'; } })();
@@ -711,7 +717,7 @@ async function themePreview(ix, mode, row) {
             const cfg = { ...Style.normalizeWelcomeConfig({}), welcomeAccent: Colors.normHex(row?.welcome_accent) || null, lang: 'en' };
             return await Style.renderWelcomeCard(ix.member, ix.guild.memberCount || 1, cfg);
         }
-        return await renderLevelBanner(ix.user, 12, 640, 1000, levelTheme(row));
+        return await renderLevelBanner(ix.user, 12, 640, 1000, levelTheme(row), require('../lib/pick-lang').pickLang(ix.client, ix.guildId, ix, ix.user.id));
     } catch (e) {
         console.error('[LEVELING] theme preview:', e.message);
         return bannerPreview(row, require('../lib/pick-lang').pickLang(ix.client, ix.guildId, ix, ix.user.id));
@@ -862,9 +868,13 @@ async function autocomplete(ix, client) {
 async function handleComponent(ix, client) {
     const lang = require('../lib/pick-lang').pickLang(client, ix.guildId, ix, ix.user.id);
     // banner colours are cosmetic: Manage Server is enough (like /welcome, which opens them); creating roles follows /roles
-    if (ix.customId === 'lvl:theme' || ix.customId.startsWith('lvl:t')) {
+    if (ix.customId === 'lvl:theme' || ix.customId.startsWith('lvl:t') || ix.customId === 'lvl:reset') {
         if (!rights(ix.member).theme) return ix.reply({ content: require('../lib/access').deny(ix.member, 'settings', lang), flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => {});
-        return handleTheme(ix, client, lang);
+        if (ix.customId !== 'lvl:reset') return handleTheme(ix, client, lang);
+        // the old "Reset colours" button, still on older config cards
+        if (client.db) client.db.prepare('DELETE FROM leveling_themes WHERE guild_id = ?').run(ix.guildId);
+        await ix.update(await configCard(client, ix.guild, client.db, lang, ix.member)).catch(() => {});
+        return ix.followUp({ content: L('resetDone', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
     }
     if (!rights(ix.member).roles) return ix.reply({ content: require('../lib/access').deny(ix.member, 'roles', lang), flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } }).catch(() => {});
     if (ix.customId === 'lvl:create' || ix.customId === 'lvl:streak') {
@@ -874,9 +884,8 @@ async function handleComponent(ix, client) {
         await ix.editReply(await configCard(client, ix.guild, client.db, lang, ix.member)).catch(() => {});
         return ix.followUp({ content: r.error ? L(r.error, lang) : (r.made || r.reused) ? [r.made ? L('createDone', lang, { n: r.made }) : null, r.reused ? L('createReused', lang, { n: r.reused }) : null].filter(Boolean).join('\n') : L('createNothing', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
     }
-    if (client.db) client.db.prepare('DELETE FROM leveling_themes WHERE guild_id = ?').run(ix.guildId);
-    await ix.update(await configCard(client, ix.guild, client.db, lang, ix.member)).catch(() => {});
-    return ix.followUp({ content: L('resetDone', lang), flags: MessageFlags.Ephemeral }).catch(() => {});
+    // any other lvl: button (an old message): nothing to do, and above all nothing is wiped
+    return ix.deferUpdate().catch(() => {});
 }
 
 module.exports = {
@@ -912,6 +921,8 @@ module.exports = {
     run: async (client, message, args, db, ss) => {
         const lang = require('../lib/pick-lang').pickLang(client, message.guild?.id, null, message.author.id);
         const sub = args[0]?.toLowerCase() || 'rank';
+        const off = (client.getServerSettings?.(message.guild?.id) || {}).leveling_enabled === 0;
+        if (off && sub !== 'config' && sub !== 'theme') return message.reply(L('disabled', lang)).catch(() => { });
         if (sub === 'rank') return handleRank(message, args, client, db, lang);
         if (sub === 'config') {
             return message.reply({ ...(await configCard(client, message.guild, db, lang, message.member)), allowedMentions: { parse: [] } }).catch(() => { });
@@ -943,14 +954,13 @@ module.exports = {
         const lang = require('../lib/pick-lang').pickLang(client, ix.guildId, ix, ix.user.id);
 
         if (sc === 'rank') {
+            if (ss.leveling_enabled === 0) return ix.reply({ content: L('disabled', lang), flags: MessageFlags.Ephemeral }).catch(() => { });
             await ix.deferReply();
             const target = ix.options.getUser('user') || ix.user;
-            const row = db?.prepare(`SELECT level, xp FROM users WHERE guild_id = ? AND id = ?`)?.get(ix.guild.id, target.id);
-            if (!row) return ix.editReply({ content: t('leveling.no_xp', lang) }).catch(() => { });
-            const rankRow = db?.prepare(`SELECT COUNT(*) + 1 as rank FROM users WHERE guild_id = ? AND xp > ?`)?.get(ix.guild.id, row.xp);
-            const rank = rankRow?.rank || '?';
+            const d = await rankData(client, db, ix.guild.id, target.id);
+            if (!d) return ix.editReply({ content: t('leveling.no_xp', lang) }).catch(() => { });
             const customTheme = db ? levelTheme(getThemeDB(db, ix.guild.id)) : null;
-            const png = await renderRankCard(target, rank, row.level, row.xp, customTheme);
+            const png = await renderRankCard(target, d.rank, d.level, d.xp, customTheme, lang);
             const embed = new EmbedBuilder().setColor(0x5865f2).setImage('attachment://rank.png').setFooter({ text: 'ARCHON CG-223' }).setTimestamp();
             return ix.editReply(toV2({ embeds: [embed], files: [new AttachmentBuilder(png, { name: 'rank.png' })] })).catch(() => { });
         }
@@ -990,8 +1000,7 @@ module.exports = {
         }
 
         if (sc === 'setrole') {
-            const adm = ix.member.permissions.has(PermissionFlagsBits.ManageGuild);
-            if (!adm) return ix.reply({ content: t('leveling.manage_only', lang), flags: 1 << 6 });
+            if (!rights(ix.member).roles) return ix.reply({ content: require('../lib/access').deny(ix.member, 'roles', lang), flags: 1 << 6, allowedMentions: { parse: [] } });
             const level = ix.options.getInteger('level');
             const role = ix.options.getRole('role');
             const col = `level_${level}_role`;

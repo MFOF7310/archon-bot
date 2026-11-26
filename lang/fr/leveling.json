@@ -104,5 +104,11 @@
   "voice_milestone_one": "{icon} {user} a passé sa première **heure** en vocal sur ce serveur.",
   "voice_milestone": "{icon} {user} a maintenant passé **{hours} heures** en vocal sur ce serveur.",
   "allSet": "Les {n} sont en place",
-  "othersSet": "{n} autres en place"
+  "othersSet": "{n} autres en place",
+  "cardLevelBig": "NIVEAU {level}",
+  "cardRank": "RANG #{rank}",
+  "cardLevelSmall": "Niveau {level}",
+  "cardTotal": "Total : {xp} XP",
+  "rolePowerful": "Ce rôle a des permissions d'admin ou de modération : ARCHON ne le donne pas en récompense.",
+  "disabled": "Le système de niveaux est désactivé sur ce serveur."
 }

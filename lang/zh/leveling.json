@@ -104,5 +104,11 @@
   "voice_milestone_one": "{icon} {user} 在本服务器的语音频道里度过了第一个**小时**。",
   "voice_milestone": "{icon} {user} 已在本服务器的语音频道里度过了 **{hours} 小时**。",
   "allSet": "全部 {n} 个已就绪",
-  "othersSet": "其他 {n} 个已就绪"
+  "othersSet": "其他 {n} 个已就绪",
+  "cardLevelBig": "等级 {level}",
+  "cardRank": "排名 #{rank}",
+  "cardLevelSmall": "等级 {level}",
+  "cardTotal": "总计：{xp} XP",
+  "rolePowerful": "此身份组拥有管理或审核权限：ARCHON 不会把它作为奖励发放。",
+  "disabled": "本服务器已关闭等级系统。"
 }
