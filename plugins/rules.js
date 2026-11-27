@@ -79,18 +79,33 @@ function withIcons(text, where) {
 }
 
 // ─── the text ───
-// "Name: details" → **Name** · details; "# Heading" → a heading; other lines keep their markdown. Numbers 1–9 use the icons.
+// "Name: details" → **Name** · details; "# Heading" → a heading; "-# note" stays a small note. Numbers 1–9 use the icons.
+// The number shown is the one the owner wrote: when the text numbers its rules ("5. …"), only those lines get a number,
+// and every other line (an intro, a second line of a rule, a sanction note) is shown as it is. It used to count every
+// line, so the owner's rule 5 came out as 6 or 7.
+// Text with no numbers at all: each line is a rule, numbered in order; "- …" lines are sub-points under the rule above
+// (unless every line is a "- …" line: then those are the rules).
+const NUMBERED = /^(\d{1,3})[.)]\s+/;
+const BULLET = /^[-*•]\s+/;
 function format(text, where) {
+    const lines = String(text || '').split('\n').map((raw) => raw.trim()).filter(Boolean);
+    const isRule = (l) => !/^#{1,3}\s/.test(l) && !/^-#\s/.test(l);
+    const ownNumbers = lines.some((l) => NUMBERED.test(l));
+    const allBullets = !ownNumbers && lines.filter(isRule).every((l) => BULLET.test(l));
+    const nameIt = (body) => { const m = /^([^:*_`<>]{2,40}):\s+(.+)$/.exec(body); return m ? `**${m[1].trim()}** · ${m[2]}` : body; };
+    const numIcon = (k) => (k >= 1 && k <= 9 ? icon(`num_${k}`, where) : `**${k}.**`);
     let n = 0;
-    return String(text || '').split('\n').map((raw) => raw.trim()).filter(Boolean).map((line) => {
+    return lines.map((line) => {
         if (/^#{1,3}\s/.test(line)) return `\n### ${line.replace(/^#{1,3}\s+/, '')}`;
         if (/^-#\s/.test(line)) return line;
+        if (ownNumbers) {
+            const m = NUMBERED.exec(line);
+            if (!m) return BULLET.test(line) ? `• ${line.replace(BULLET, '')}` : line;   // intro, second line, note: no number
+            return `${numIcon(Number(m[1]))} ${nameIt(line.replace(NUMBERED, ''))}`;
+        }
+        if (BULLET.test(line) && !allBullets) return `• ${line.replace(BULLET, '')}`;   // a sub-point of the rule above
         n += 1;
-        const body = line.replace(/^(\d+[.)]|[-*•])\s+/, '');
-        const m = /^([^:*_`<>]{2,40}):\s+(.+)$/.exec(body);
-        const text2 = m ? `**${m[1].trim()}** · ${m[2]}` : body;
-        const num = n <= 9 ? icon(`num_${n}`, where) : `**${n}.**`;
-        return `${num} ${text2}`;
+        return `${numIcon(n)} ${nameIt(line.replace(BULLET, ''))}`;
     }).join('\n').trim();
 }
 const render = (text, where) => format(withIcons(text, where), where);
@@ -184,6 +199,7 @@ function settingsCard(client, guild, lang, where) {
         { row: new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('rules:who').setStyle(ButtonStyle.Secondary).setLabel(tr('btnWho')).setEmoji(icon('users', where)),
             new ButtonBuilder().setCustomId('rules:norole').setStyle(ButtonStyle.Secondary).setLabel(tr('btnNoRole')).setEmoji(icon('x', where)).setDisabled(!role),
+            new ButtonBuilder().setCustomId('rules:ai').setStyle(ButtonStyle.Primary).setLabel(tr('btnAi')).setEmoji(icon('brain', where)),
         ) },
     ]);
 }
@@ -204,6 +220,71 @@ async function translated(client, gid, text, lang) {
     if (!out) return null;
     db.prepare('INSERT OR REPLACE INTO rules_translations (guild_id, lang, hash, text) VALUES (?, ?, ?, ?)').run(gid, lang, hash, out);
     return out;
+}
+
+// ─── rules drafted by Archon AI (/rules settings → Write with AI) ───
+// The owner says what kind of server it is, how strict, and what to include. The draft is shown privately with the real
+// card layout; nothing is saved until they press Save (or change it in the edit box first). Plain text only: no code
+// blocks, no ANSI or diff (most members read Discord on a phone), and only icon codes from SUGGESTED.
+const drafts = new Map();   // `${guild}:${user}` → { text, at }
+const aiBusy = new Map();
+const DRAFT_MS = 20 * 60 * 1000;
+
+function aiModal(tr) {
+    const kind = new TextInputBuilder().setCustomId('kind').setLabel(tr('aiKind').slice(0, 45)).setStyle(TextInputStyle.Short)
+        .setMaxLength(100).setRequired(true).setPlaceholder(tr('aiKindPh').slice(0, 100));
+    const tone = new TextInputBuilder().setCustomId('tone').setLabel(tr('aiTone').slice(0, 45)).setStyle(TextInputStyle.Short)
+        .setMaxLength(40).setRequired(false).setPlaceholder(tr('aiTonePh').slice(0, 100));
+    const extra = new TextInputBuilder().setCustomId('extra').setLabel(tr('aiExtra').slice(0, 45)).setStyle(TextInputStyle.Paragraph)
+        .setMaxLength(1000).setRequired(false).setPlaceholder(tr('aiExtraPh').slice(0, 100));
+    return new ModalBuilder().setCustomId('rules:aigen').setTitle(tr('aiModalTitle').slice(0, 45))
+        .addComponents(...[kind, tone, extra].map((x) => new ActionRowBuilder().addComponents(x)));
+}
+
+// the model's answer, cleaned: no code fences or ANSI, icon codes outside the list removed, rules numbered 1, 2, 3…
+function cleanDraft(raw) {
+    let n = 0;
+    return String(raw || '')
+        .replace(/```[a-z]*\n?/gi, '').replace(/\u001b\[[0-9;]*m/g, '').replace(/\[[0-9;]{1,8}m/g, '')
+        .replace(/:([A-Za-z0-9_]{2,32}):/g, (all, k) => (SUGGESTED.includes(k) ? all : ''))
+        .split('\n').map((l) => l.replace(/\s+$/, '').replace(/\s{2,}/g, ' ').trim())
+        .filter((l, i, a) => l || (i > 0 && a[i - 1]))
+        .map((l) => (NUMBERED.test(l) ? `${++n}. ${l.replace(NUMBERED, '')}` : l))
+        .join('\n').trim().slice(0, 3800);
+}
+
+async function draftRules(client, guild, { kind, tone, extra }) {
+    const { generateAIResponse } = require('../lib/lydia/models');
+    const serverLang = langOf(client, guild.id, null, null);
+    const system = `You write the rules of a Discord server, in ${LANG_NAME[serverLang] || 'English'}. Output only the rules: no intro, `
+        + 'no closing sentence, no code blocks, no ANSI, no diff, no tables, no bold or italics.\n'
+        + 'Format, one item per line:\n'
+        + '- a section heading: "# Heading" (2 or 3 sections at most)\n'
+        + '- a rule: "<number>. <Short name>: <one clear sentence>". Number the rules 1, 2, 3… straight through all sections. '
+        + 'Never write a rule on two lines.\n'
+        + '- at the very end, one line "-# <note>" saying what happens when a rule is broken.\n'
+        + `Between 6 and 10 rules, under 1800 characters. You may put one icon code right after a rule's colon, only from this list: ${SUGGESTED.map((k) => `:${k}:`).join(' ')}. Never write any other code.\n`
+        + 'Sentences are plain, friendly and firm, written for the members. Include respect, no spam or ads, and following Discord\'s Terms of Service. '
+        + 'Never invent channel names: if a point needs a channel, describe it ("the scrims channel").';
+    const ask = `Server name: ${guild.name}\nKind of server: ${kind}\nHow strict: ${tone || 'normal'}\nPoints the owner wants: ${extra || 'none'}`;
+    const res = await generateAIResponse(system, ask, [], null, undefined, guild.id);
+    return cleanDraft(res?.content);
+}
+
+function draftCard(client, guild, lang, where, text) {
+    const tr = L(lang);
+    const row = getRow(client.db, guild.id);
+    return v2.card(colorOf(row), [
+        { text: `## ${icon('gavel', where)} ${tr('aiPreviewTitle')}\n-# ${tr('aiPreviewSub')}` },
+        { rule: true },
+        { text: render(text, where) },
+        { rule: true },
+        { row: new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('rules:aisave').setStyle(ButtonStyle.Success).setLabel(tr('btnAiSave')).setEmoji(icon('check', where)),
+            new ButtonBuilder().setCustomId('rules:aiedit').setStyle(ButtonStyle.Secondary).setLabel(tr('btnAiEdit')).setEmoji(icon('tool', where)),
+            new ButtonBuilder().setCustomId('rules:ai').setStyle(ButtonStyle.Secondary).setLabel(tr('btnAiRetry')).setEmoji(icon('refresh', where)),
+        ) },
+    ]);
 }
 
 // ─── buttons, menus, the box ───
@@ -250,6 +331,33 @@ async function handleComponent(interaction, client) {
 
     if (!isAdmin(interaction.member)) return interaction.reply({ content: tr('needManageGuild'), flags: EPH });
 
+    if (id === 'rules:ai') return interaction.showModal(aiModal(tr));
+    if (id === 'rules:aigen') {
+        const key = `${guild.id}:${interaction.user.id}`;
+        if (Date.now() - (aiBusy.get(key) || 0) < 20000) return interaction.reply({ content: tr('aiWait'), flags: EPH });
+        aiBusy.set(key, Date.now());
+        await interaction.deferReply({ flags: EPH });
+        const f = (k) => { try { return interaction.fields.getTextInputValue(k).trim(); } catch { return ''; } };
+        const text = await draftRules(client, guild, { kind: f('kind'), tone: f('tone'), extra: f('extra') })
+            .catch((e) => { console.error('[RULES] draft:', e.message); return ''; });
+        aiBusy.delete(key);
+        if (!text || !NUMBERED.test(text.split('\n').find((l) => NUMBERED.test(l)) || '')) return interaction.editReply({ content: tr('aiFailed') });
+        drafts.set(key, { text, at: Date.now() });
+        return interaction.editReply({ ...draftCard(client, guild, lang, interaction, text), flags: V2 });
+    }
+    if (id === 'rules:aisave' || id === 'rules:aiedit') {
+        const key = `${guild.id}:${interaction.user.id}`;
+        const d = drafts.get(key);
+        if (!d || Date.now() - d.at > DRAFT_MS) { drafts.delete(key); return interaction.reply({ content: tr('aiExpired'), flags: EPH }); }
+        if (id === 'rules:aiedit') return interaction.showModal(editModal(tr, getRow(db, guild.id).title, d.text));   // Save in the box saves it
+        drafts.delete(key);
+        save(db, guild.id, { rules_text: d.text });
+        await interaction.deferUpdate();
+        const r = await refreshPanel(client, guild).catch(() => null);
+        const done = `${icon('ok', interaction)} ${r?.edited ? tr('savedPanel', { channel: `<#${r.ch.id}>` }) : tr('savedNoPanel')}`;
+        // the draft card is a V2 message: it becomes a one-line V2 card (a V2 message can't go back to plain text)
+        return interaction.editReply({ ...v2.card(GOLD, [{ text: done }]), flags: V2 }).catch(() => interaction.followUp({ content: done, flags: EPH }));
+    }
     if (id === 'rules:save') {
         const text = interaction.fields.getTextInputValue('text').trim();
         const title = interaction.fields.getTextInputValue('title').trim() || null;
