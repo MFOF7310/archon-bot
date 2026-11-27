@@ -59,12 +59,14 @@
   "aiTonePh": "relaxed, normal or strict",
   "aiExtra": "Points to include (optional)",
   "aiExtraPh": "No ads, scrims at 8 pm, English only in general chat…",
-  "aiWait": "One moment, a draft is already being written.",
+  "aiWait": "One moment: you can ask for another draft in {s} s.",
   "aiFailed": "The draft didn't come through. Try again in a moment.",
   "aiPreviewTitle": "Draft rules",
   "aiPreviewSub": "Nothing is saved yet. Save it, change it first, or ask for another one.",
   "btnAiSave": "Save",
   "btnAiEdit": "Change it",
   "btnAiRetry": "Another draft",
-  "aiExpired": "This draft has expired. Ask for a new one with Write with AI in /rules settings."
+  "aiExpired": "This draft has expired. Ask for a new one with Write with AI in /rules settings.",
+  "aiQuotaFree": "This server has used its {n} AI drafts for today. Come back tomorrow, or write the rules with /rules edit. Premium servers get {premium} a day.",
+  "aiQuotaPremium": "This server has used its {n} AI drafts for today. Come back tomorrow, or write the rules with /rules edit."
 }

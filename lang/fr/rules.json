@@ -59,12 +59,14 @@
   "aiTonePh": "souple, normal ou strict",
   "aiExtra": "Points à inclure (facultatif)",
   "aiExtraPh": "Pas de pub, scrims à 20 h, français dans le salon général…",
-  "aiWait": "Un instant, un brouillon est déjà en cours.",
+  "aiWait": "Un instant : tu pourras demander un autre brouillon dans {s} s.",
   "aiFailed": "Le brouillon n'a pas pu être rédigé. Réessaie dans un instant.",
   "aiPreviewTitle": "Brouillon des règles",
   "aiPreviewSub": "Rien n'est encore enregistré. Enregistre-le, modifie-le d'abord, ou demandes-en un autre.",
   "btnAiSave": "Enregistrer",
   "btnAiEdit": "Modifier",
   "btnAiRetry": "Un autre brouillon",
-  "aiExpired": "Ce brouillon a expiré. Demandes-en un nouveau avec Rédiger avec l'IA dans /rules settings."
+  "aiExpired": "Ce brouillon a expiré. Demandes-en un nouveau avec Rédiger avec l'IA dans /rules settings.",
+  "aiQuotaFree": "Ce serveur a utilisé ses {n} brouillons IA du jour. Reviens demain, ou écris les règles avec /rules edit. Les serveurs Premium en ont {premium} par jour.",
+  "aiQuotaPremium": "Ce serveur a utilisé ses {n} brouillons IA du jour. Reviens demain, ou écris les règles avec /rules edit."
 }
