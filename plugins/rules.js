@@ -241,21 +241,37 @@ function aiModal(tr) {
         .addComponents(...[kind, tone, extra].map((x) => new ActionRowBuilder().addComponents(x)));
 }
 
-// the model's answer, cleaned: no code fences or ANSI, icon codes outside the list removed, rules numbered 1, 2, 3…
-function cleanDraft(raw) {
+// the model's answer, cleaned: no code fences or ANSI, icon codes outside the list removed, channel links kept only for
+// this server's real channels, rules numbered 1, 2, 3…
+function cleanDraft(raw, channelIds = new Set()) {
     let n = 0;
     return String(raw || '')
         .replace(/```[a-z]*\n?/gi, '').replace(/\u001b\[[0-9;]*m/g, '').replace(/\[[0-9;]{1,8}m/g, '')
         .replace(/:([A-Za-z0-9_]{2,32}):/g, (all, k) => (SUGGESTED.includes(k) ? all : ''))
+        .replace(/<#(\d{17,20})>/g, (all, id) => (channelIds.has(id) ? all : ''))
+        .replace(/<@[&!]?\d{17,20}>/g, '')
         .split('\n').map((l) => l.replace(/\s+$/, '').replace(/\s{2,}/g, ' ').trim())
         .filter((l, i, a) => l || (i > 0 && a[i - 1]))
         .map((l) => (NUMBERED.test(l) ? `${++n}. ${l.replace(NUMBERED, '')}` : l))
         .join('\n').trim().slice(0, 3800);
 }
 
+// What the model is given: the owner's answers, the rules the server already has (to rewrite, not replace with
+// invented ones), and the server's real text channels (the only ones it may link). No numbers it wasn't given.
+function textChannels(guild) {
+    return [...guild.channels.cache.values()]
+        .filter((c) => [0, 5, 15].includes(c.type) && c.permissionsFor?.(guild.roles.everyone)?.has?.(PermissionFlagsBits.ViewChannel) !== false)
+        .sort((a, b) => (a.rawPosition ?? 0) - (b.rawPosition ?? 0))
+        .slice(0, 40);
+}
+
 async function draftRules(client, guild, { kind, tone, extra }) {
     const { generateAIResponse } = require('../lib/lydia/models');
     const serverLang = langOf(client, guild.id, null, null);
+    const chans = textChannels(guild);
+    let current = '';
+    try { current = getRow(client.db, guild.id).rules_text || (await require('../lib/rules-text').get(client, guild))?.text || ''; } catch { current = ''; }
+    current = String(current).slice(0, 2500);
     const system = `You write the rules of a Discord server, in ${LANG_NAME[serverLang] || 'English'}. Output only the rules: no intro, `
         + 'no closing sentence, no code blocks, no ANSI, no diff, no tables, no bold or italics.\n'
         + 'Format, one item per line:\n'
@@ -264,11 +280,18 @@ async function draftRules(client, guild, { kind, tone, extra }) {
         + 'Never write a rule on two lines.\n'
         + '- at the very end, one line "-# <note>" saying what happens when a rule is broken.\n'
         + `Between 6 and 10 rules, under 1800 characters. You may put one icon code right after a rule's colon, only from this list: ${SUGGESTED.map((k) => `:${k}:`).join(' ')}. Never write any other code.\n`
-        + 'Sentences are plain, friendly and firm, written for the members. Include respect, no spam or ads, and following Discord\'s Terms of Service. '
-        + 'Never invent channel names: if a point needs a channel, describe it ("the scrims channel").';
-    const ask = `Server name: ${guild.name}\nKind of server: ${kind}\nHow strict: ${tone || 'normal'}\nPoints the owner wants: ${extra || 'none'}`;
+        + 'Sentences are plain, friendly and firm, written for the members. Include respect, no spam or ads, and following Discord\'s Terms of Service.\n'
+        + 'Channels: when a rule is about a channel from the list below, write it exactly as its <#id> code. Never name or invent a channel that is not in the list; '
+        + 'if none fits, say it in words ("the scrims channel").\n'
+        + 'Facts: never invent numbers or details the owner did not give: no ban or mute durations, no minimum age, no times, no warning counts. '
+        + 'Sanctions stay general ("a warning, then an exclusion") unless the owner wrote them.\n'
+        + 'Current rules: when the server already has rules, keep everything they say (their points, numbers and channels), rewrite them clearly in this format, '
+        + 'and only add what the owner asked for or what is clearly missing (respect, spam, Terms of Service).';
+    const ask = `Server name: ${guild.name}\nKind of server: ${kind}\nHow strict: ${tone || 'normal'}\nPoints the owner wants: ${extra || 'none'}\n`
+        + `Text channels:\n${chans.length ? chans.map((c) => `- #${c.name} = <#${c.id}>`).join('\n') : '(none)'}\n`
+        + `Current rules:\n${current.trim() || '(none yet)'}`;
     const res = await generateAIResponse(system, ask, [], null, undefined, guild.id);
-    return cleanDraft(res?.content);
+    return cleanDraft(res?.content, new Set(chans.map((c) => c.id)));
 }
 
 function draftCard(client, guild, lang, where, text) {
