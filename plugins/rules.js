@@ -184,29 +184,68 @@ function editModal(tr, title, text) {
         .addComponents(new ActionRowBuilder().addComponents(name), new ActionRowBuilder().addComponents(body));
 }
 
+// What the saved rules hold, for the settings card: rules, sections, icons (counted like the card numbers them)
+function rulesStats(text) {
+    const lines = String(text || '').split('\n').map((l) => l.trim()).filter(Boolean);
+    const isRule = (l) => !/^#{1,3}\s/.test(l) && !/^-#\s/.test(l);
+    const own = lines.some((l) => NUMBERED.test(l));
+    const allBullets = !own && lines.filter(isRule).every((l) => BULLET.test(l));
+    const rules = lines.filter((l) => (own ? NUMBERED.test(l) : isRule(l) && (allBullets || !BULLET.test(l)))).length;
+    const sections = lines.filter((l) => /^#{1,3}\s/.test(l)).length;
+    const icons = (String(text || '').match(/(?<!<a?):[A-Za-z0-9_]{2,32}:(?!\d)|<a?:\w+:\d+>/g) || []).length;
+    return { rules, sections, icons };
+}
+
+// /rules settings. Rules already written: their state first (how many, where the panel is, when it changed) and the
+// buttons to change them. No rules yet: how to start, Archon AI first, and the icons that fit rules.
 function settingsCard(client, guild, lang, where) {
     const tr = L(lang, where);
     const row = getRow(client.db, guild.id);
     const role = row.accept_role_id ? guild.roles.cache.get(String(row.accept_role_id)) : null;
     const colorName = Object.entries(COLORS).find(([, h]) => h.toLowerCase() === String(row.color || COLORS.gold).toLowerCase())?.[0] || 'gold';
-    const lines = [
+    const written = !!String(row.rules_text || '').trim();
+    const st = rulesStats(row.rules_text);
+    const shown = SUGGESTED.map((k) => { const e = withIcons(`:${k}:`, where); return e && e !== `:${k}:` ? `${e} \`:${k}:\`` : null; }).filter(Boolean);
+    const others = [
         role ? tr('settingsRole', { role: `<@&${role.id}>` }) : tr('settingsNoRole'),
         tr('settingsColor', { color: tr(`color_${colorName}`) }),
         tr('acceptedCount', { n: acceptedCount(client.db, guild.id) }),
-    ];
-    const shown = SUGGESTED.map((k) => { const e = withIcons(`:${k}:`, where); return e && e !== `:${k}:` ? `${e} \`:${k}:\`` : null; }).filter(Boolean);
-    return v2.card(colorOf(row), [
-        { text: `### ${icon('tool', where)} ${tr('settingsTitle')}\n${lines.join('\n')}` },
-        ...(shown.length ? [{ rule: true }, { text: `${tr('iconsHint')}\n${shown.join('  ')}` }] : []),
+    ].map((l) => `-# ${l}`).join('\n');
+
+    const items = [];
+    const actions = new ActionRowBuilder();
+    if (written) {
+        const count = [tr('stRules', { n: st.rules }), st.sections > 1 ? tr('stSections', { s: st.sections }) : null].filter(Boolean).join(' ');
+        const when = row.updated_at ? ` · ${tr('updated', { when: `<t:${row.updated_at}:R>` })}` : '';
+        const panel = row.panel_channel_id && row.panel_message_id ? tr('stPanel', { channel: `<#${row.panel_channel_id}>` }) : tr('stNoPanel');
+        items.push({ text: `### ${icon('tool', where)} ${tr('settingsTitle')}\n${count}${when}\n${panel}\n${others}` });
+        items.push({ rule: true });
+        items.push({ text: st.icons ? `-# ${tr('stIcons', { n: st.icons })}` : `${tr('iconsHint')}\n${shown.join('  ')}` });
+        actions.addComponents(
+            new ButtonBuilder().setCustomId('rules:edit').setStyle(ButtonStyle.Success).setLabel(tr('btnEdit')).setEmoji(icon('tool', where)),
+            new ButtonBuilder().setCustomId('rules:view').setStyle(ButtonStyle.Secondary).setLabel(tr('btnView')).setEmoji(icon('gavel', where)),
+            new ButtonBuilder().setCustomId('rules:ai').setStyle(ButtonStyle.Primary).setLabel(tr('btnAiRewrite')).setEmoji(icon('brain', where)),
+        );
+    } else {
+        items.push({ text: `### ${icon('tool', where)} ${tr('settingsTitle')}\n${tr('stEmpty')}\n-# ${tr('stEmptySub')}` });
+        if (shown.length) { items.push({ rule: true }); items.push({ text: `${tr('iconsHint')}\n${shown.join('  ')}` }); }
+        actions.addComponents(
+            new ButtonBuilder().setCustomId('rules:ai').setStyle(ButtonStyle.Primary).setLabel(tr('btnAi')).setEmoji(icon('brain', where)),
+            new ButtonBuilder().setCustomId('rules:edit').setStyle(ButtonStyle.Secondary).setLabel(tr('btnWriteSelf')).setEmoji(icon('tool', where)),
+        );
+    }
+    items.push({ row: actions });
+    if (!written) items.push({ text: others });
+    items.push(
         { row: new ActionRowBuilder().addComponents(new RoleSelectMenuBuilder().setCustomId('rules:role').setPlaceholder(tr('pickRole')).setMinValues(0).setMaxValues(1)) },
         { row: new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('rules:color').setPlaceholder(tr('pickColor'))
             .addOptions(Object.keys(COLORS).map((k) => ({ label: tr(`color_${k}`), value: k, default: k === colorName })))) },
         { row: new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId('rules:who').setStyle(ButtonStyle.Secondary).setLabel(tr('btnWho')).setEmoji(icon('users', where)),
             new ButtonBuilder().setCustomId('rules:norole').setStyle(ButtonStyle.Secondary).setLabel(tr('btnNoRole')).setEmoji(icon('x', where)).setDisabled(!role),
-            new ButtonBuilder().setCustomId('rules:ai').setStyle(ButtonStyle.Primary).setLabel(tr('btnAi')).setEmoji(icon('brain', where)),
         ) },
-    ]);
+    );
+    return v2.card(colorOf(row), items);
 }
 
 // ─── translation (Archon AI), kept per language and version ───
@@ -380,6 +419,14 @@ async function handleComponent(interaction, client) {
     if (!isAdmin(interaction.member)) return interaction.reply({ content: tr('needManageGuild'), flags: EPH });
 
     if (id === 'rules:ai') return interaction.showModal(aiModal(tr));
+    // the settings card's Edit / Write them myself, and View the card
+    if (id === 'rules:edit') {
+        const row = getRow(db, guild.id);
+        let text = row.rules_text;
+        if (!text) { try { text = (await require('../lib/rules-text').get(client, guild))?.text || ''; } catch { text = ''; } }
+        return interaction.showModal(editModal(tr, row.title, text));
+    }
+    if (id === 'rules:view') return interaction.reply({ ...card(client, guild, getRow(db, guild.id), lang, { where: interaction, viewer: interaction.user.id }), flags: V2 | EPH });
     if (id === 'rules:aigen') {
         const key = `${guild.id}:${interaction.user.id}`;
         const wait = AI_GAP_MS - (Date.now() - (aiBusy.get(key) || 0));

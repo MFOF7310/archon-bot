@@ -68,5 +68,16 @@
   "btnAiRetry": "Un autre brouillon",
   "aiExpired": "Ce brouillon a expiré. Demandes-en un nouveau avec Rédiger avec l'IA dans /rules settings.",
   "aiQuotaFree": "Ce serveur a utilisé ses {n} brouillons IA du jour. Reviens demain, ou écris les règles avec /rules edit. Les serveurs Premium en ont {premium} par jour.",
-  "aiQuotaPremium": "Ce serveur a utilisé ses {n} brouillons IA du jour. Reviens demain, ou écris les règles avec /rules edit."
+  "aiQuotaPremium": "Ce serveur a utilisé ses {n} brouillons IA du jour. Reviens demain, ou écris les règles avec /rules edit.",
+  "stRules": "Règles : **{n}**",
+  "stSections": "en {s} sections",
+  "stPanel": "Panneau posté dans {channel}",
+  "stNoPanel": "Le panneau n'est pas encore posté : /rules panel",
+  "stIcons": "{n} icônes utilisées. Pour les changer : /rules edit",
+  "stEmpty": "Ce serveur n'a pas encore de règles.",
+  "stEmptySub": "Laisse Archon AI les rédiger en quelques secondes, ou écris-les toi-même.",
+  "btnEdit": "Modifier",
+  "btnView": "Voir la carte",
+  "btnAiRewrite": "Réécrire avec l'IA",
+  "btnWriteSelf": "Écrire moi-même"
 }

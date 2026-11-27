@@ -68,5 +68,16 @@
   "btnAiRetry": "Another draft",
   "aiExpired": "This draft has expired. Ask for a new one with Write with AI in /rules settings.",
   "aiQuotaFree": "This server has used its {n} AI drafts for today. Come back tomorrow, or write the rules with /rules edit. Premium servers get {premium} a day.",
-  "aiQuotaPremium": "This server has used its {n} AI drafts for today. Come back tomorrow, or write the rules with /rules edit."
+  "aiQuotaPremium": "This server has used its {n} AI drafts for today. Come back tomorrow, or write the rules with /rules edit.",
+  "stRules": "Rules: **{n}**",
+  "stSections": "in {s} sections",
+  "stPanel": "Panel posted in {channel}",
+  "stNoPanel": "The panel isn't posted yet: /rules panel",
+  "stIcons": "{n} icons used. To change them: /rules edit",
+  "stEmpty": "This server has no rules yet.",
+  "stEmptySub": "Let Archon AI draft them in a few seconds, or write them yourself.",
+  "btnEdit": "Edit",
+  "btnView": "View the card",
+  "btnAiRewrite": "Rewrite with AI",
+  "btnWriteSelf": "Write them myself"
 }
