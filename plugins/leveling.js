@@ -562,6 +562,8 @@ function rights(who) {
 
 async function configCard(client, guild, db, lang, who) {
     const can = rights(who);
+    // /commands in the hints become clickable pills, for whoever reads this card (lib/cmd)
+    const lk = (s) => { try { return require('../lib/cmd').links(s, { client, guild, member: who === true ? null : who }); } catch { return s; } };
     const { icon } = require('../lib/ui/icons');
     const { card } = require('../lib/games/v2');
     const { dashboardUrl } = require('../lib/postProblems');
@@ -600,13 +602,13 @@ async function configCard(client, guild, db, lang, who) {
         { rule: true },
         { text: `**${L('channelLabel', lang)}**\n${row.levelup_channel ? `<#${row.levelup_channel}>` : L('channelHere', lang)}` },
         { rule: true },
-        { text: `**${L('rewardsLabel', lang)}**\n${fold(rewards)}${rewards.every((x) => x?.ok) ? '' : `\n-# ${L('rewardsHint', lang)}`}` },
+        { text: `**${L('rewardsLabel', lang)}**\n${fold(rewards)}${rewards.every((x) => x?.ok) ? '' : `\n-# ${lk(L('rewardsHint', lang))}`}` },
         { rule: true },
-        { text: `**${L('streakLabel', lang)}**\n${fold(streaks)}${streaks.every((x) => x?.ok) ? '' : `\n-# ${L('streakHint', lang)}`}` },
+        { text: `**${L('streakLabel', lang)}**\n${fold(streaks)}${streaks.every((x) => x?.ok) ? '' : `\n-# ${lk(L('streakHint', lang))}`}` },
         { rule: true },
         { text: `**${L('bannersLabel', lang)}**` },
         { media: ['attachment://lvl-theme.png', L('bannersLabel', lang)] },
-        { text: `-# ${L('bannersHint', lang)}` },
+        { text: `-# ${lk(L('bannersHint', lang))}` },
     ];
     const buttons = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setStyle(ButtonStyle.Link).setURL(dashboardUrl(guild.id)).setLabel(L('btnDashboard', lang)).setEmoji(icon('dashboard', guild)));
@@ -756,7 +758,7 @@ async function themeCard(ix, mode, lang) {
         rows.push(new ActionRowBuilder().addComponents(colourSelect('lvl:tc:waccent', ACCENT_KEYS, a, lang, server)));
     } else {
         const t = levelTheme(row), shown = shownLevel(row);
-        items.push({ text: [line('bg1', t.bg1, shown.bg1), line('bg2', t.bg2, shown.bg2), line('accent', t.accent, shown.accent)].join('\n') + `\n-# ${L('themeLevelNote', lang)}` });
+        items.push({ text: [line('bg1', t.bg1, shown.bg1), line('bg2', t.bg2, shown.bg2), line('accent', t.accent, shown.accent)].join('\n') + `\n-# ${require('../lib/cmd').links(L('themeLevelNote', lang), { client: ix.client, guild: ix.guild, member: ix.member })}` });
         const { StringSelectMenuBuilder } = require('discord.js');
         const presets = [...server, ...THEME_PRESETS.map(([k, a, , c]) => ({ label: L(`preset_${k}`, lang), value: k, emoji: Colors.dot(a), description: `${Colors.nameOf(a, lang)} · ${Colors.nameOf(c, lang)}`.slice(0, 100) }))];
         rows.push(new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId('lvl:tp').setPlaceholder(L('themePresetPick', lang)).addOptions(presets)));

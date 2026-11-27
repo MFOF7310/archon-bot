@@ -238,7 +238,7 @@ async function handleComponent(interaction, client) {
         setReminders(db, interaction.user.id, a, false);
         return interaction.update({ ...v2.card(GREY, [{ text: `### ${em('ic_bell_off', '🔕')} ${t('remindOff')}` }]) }).catch(() => {});
     }
-    if (interaction.user.id !== a) return interaction.reply({ content: t('notYours'), flags: MessageFlags.Ephemeral }).catch(() => {});
+    if (interaction.user.id !== a) return interaction.reply({ content: require('../lib/cmd').links(t('notYours'), { client, guild: interaction.guild, member: interaction.member }), flags: MessageFlags.Ephemeral }).catch(() => {});
 
     if (what === 'profile') {
         const data = client.getUserData?.(a, b) || {};

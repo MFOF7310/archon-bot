@@ -27,7 +27,12 @@ const EPH = MessageFlags.Ephemeral;
 const COLORS = { gold: '#E6A817', blue: '#378ADD', green: '#23A55A', red: '#E74C3C', purple: '#7F77DD', teal: '#1D9E75', orange: '#D85A30', grey: '#4E5058' };
 const LANG_NAME = { en: 'English', fr: 'French', zh: 'Simplified Chinese', ar: 'Arabic', bm: 'Bambara' };
 
-const L = (lang) => (k, v) => t(`rules.${k}`, lang, v || {});
+// with an interaction (a reply only that member reads), every /command in the words becomes a clickable pill (lib/cmd)
+const L = (lang, ix = null) => (k, v) => {
+    const s = t(`rules.${k}`, lang, v || {});
+    if (!ix?.isRepliable) return s;
+    try { return require('../lib/cmd').links(s, { client: ix.client, guild: ix.guild, member: ix.member }); } catch { return s; }
+};
 const langOf = (client, gid, ix, uid) => pickLang(client, gid, ix || null, uid) || 'en';
 const isAdmin = (member) => !!member?.permissions?.has(PermissionFlagsBits.ManageGuild);
 const colorOf = (row) => { const n = parseInt(String(row.color || '').replace('#', ''), 16); return Number.isFinite(n) ? n : GOLD; };
@@ -111,7 +116,7 @@ function format(text, where) {
 const render = (text, where) => format(withIcons(text, where), where);
 
 function card(client, guild, row, lang, { where, text, viewer, translatedTo } = {}) {
-    const tr = L(lang);
+    const tr = L(lang, where?.isRepliable ? where : null);   // the posted panel keeps plain words
     const body = text ?? row.rules_text;
     const title = row.title || tr('title');
     if (!body || !String(body).trim()) {
@@ -180,7 +185,7 @@ function editModal(tr, title, text) {
 }
 
 function settingsCard(client, guild, lang, where) {
-    const tr = L(lang);
+    const tr = L(lang, where);
     const row = getRow(client.db, guild.id);
     const role = row.accept_role_id ? guild.roles.cache.get(String(row.accept_role_id)) : null;
     const colorName = Object.entries(COLORS).find(([, h]) => h.toLowerCase() === String(row.color || COLORS.gold).toLowerCase())?.[0] || 'gold';
@@ -355,7 +360,7 @@ async function handleComponent(interaction, client) {
     if (!guild) return;
     ensure(db);
     const lang = langOf(client, guild.id, interaction, interaction.user.id);
-    const tr = L(lang);
+    const tr = L(lang, interaction);
     const id = interaction.customId;
     if (id.startsWith('rules_accept_') || id === 'rules:accept') return accept(interaction, client);
 
@@ -458,7 +463,7 @@ module.exports = {
         const guild = interaction.guild;
         ensure(db);
         const lang = langOf(client, guild.id, interaction, interaction.user.id);
-        const tr = L(lang);
+        const tr = L(lang, interaction);
         const sub = interaction.options.getSubcommand();
 
         if (sub === 'show') {
