@@ -184,13 +184,17 @@ async function executeWipe(interaction, type, t, client, db, message, targetUser
         }
         if (client.flushUserUpdates) await client.flushUserUpdates(0);
 
-        let backupSent = false;
+                let backupSent = false;
         try {
-            const dbPath = path.join(__dirname, '..', 'database.sqlite');
-            const buffer = fs.readFileSync(dbPath);
+            const tmp = `/tmp/backup_${Date.now()}.sqlite`;
+            await db.backup(tmp);
+            const buffer = fs.readFileSync(tmp);
+            fs.unlinkSync(tmp);
+            if (buffer.length === 0) throw new Error('empty backup');
             await message.author.send({ content: t.backupSent, files: [new AttachmentBuilder(buffer, { name: `backup_${Date.now()}.sqlite` })] });
             backupSent = true;
-        } catch (e) {}
+        } catch (e) { console.error('[refresh] backup failed:', e.message); }
+        if (!backupSent) return message.reply('The backup failed, so nothing was deleted. Check the logs.');
 
         let result;
         if (type === 'xp') result = db.prepare('UPDATE users SET xp = 0, level = 1 WHERE xp > 0 OR level > 1').run();
